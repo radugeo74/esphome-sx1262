@@ -1,4 +1,4 @@
-Modified from https://github.com/SzczepanLeon/esphome-components with radio SX1262 drivers
+Modified from https://github.com/SzczepanLeon/esphome-components with radio SX1262 drivers.
 Version 5 based on Kuba's dirty [fork](https://github.com/IoTLabs-pl/esphome-components).
 
 > **_NOTE:_**  Component with CC1101 support is here:
