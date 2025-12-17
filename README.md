@@ -1,4 +1,7 @@
+Don't add esp32 folder to components, it will mess up with your yaml compilation on a new version of esphome. If it's not present it will use official version of esp32.
+
 Modified from https://github.com/SzczepanLeon/esphome-components with radio SX1262 drivers.
+
 Version 5 based on Kuba's dirty [fork](https://github.com/IoTLabs-pl/esphome-components).
 
 > **_NOTE:_**  Component with CC1101 support is here:
