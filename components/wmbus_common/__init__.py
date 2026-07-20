@@ -44,7 +44,7 @@ class WMBusComponentManifest(ComponentManifest):
         SOURCE_FILE_EXTENSIONS.add(".cpp")
         resources = [fr for fr in super(
         ).resources if fr.resource not in exclude_files]
-        SOURCE_FILE_EXTENSIONS.discard(".cpp")
+        SOURCE_FILE_EXTENSIONS.discard(".cc")
         return resources
 
 
