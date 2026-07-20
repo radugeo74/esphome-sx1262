@@ -41,7 +41,7 @@ class WMBusComponentManifest(ComponentManifest):
     @property
     def resources(self):
         exclude_files = {f"driver_{name}.cpp" for name in self.exclude_drivers}
-        SOURCE_FILE_EXTENSIONS.add(".cpp")
+        SOURCE_FILE_EXTENSIONS.add(".cc")
         resources = [fr for fr in super(
         ).resources if fr.resource not in exclude_files]
         SOURCE_FILE_EXTENSIONS.discard(".cc")
