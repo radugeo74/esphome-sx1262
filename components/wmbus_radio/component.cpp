@@ -20,15 +20,53 @@ namespace wmbus_radio {
 static const char *TAG = "wmbus";
 
 void Radio::setup() {
-  ASSERT_SETUP(this->packet_queue_ = xQueueCreate(3, sizeof(Packet *)));
+  // Create queue used to pass received packets to the main ESPHome loop.
+  this->packet_queue_ = xQueueCreate(3, sizeof(Packet *));
 
-  ASSERT_SETUP(xTaskCreate((TaskFunction_t)this->receiver_task, "radio_recv",
-                           3 * 1024, this, 2, &(this->receiver_task_handle_)));
+  if (this->packet_queue_ == nullptr) {
+    ESP_LOGE(TAG, "Failed to create radio packet queue");
+    this->mark_failed();
+    return;
+  }
+
+  BaseType_t task_result;
+
+#if portNUM_PROCESSORS > 1
+  // ESP32 / ESP32-S3 dual-core:
+  // keep the receiver on core 1 and give it enough stack.
+  task_result = xTaskCreatePinnedToCore(
+      (TaskFunction_t) this->receiver_task,
+      "radio_recv",
+      8 * 1024,
+      this,
+      24,
+      &(this->receiver_task_handle_),
+      1
+  );
+#else
+  // Single-core ESP32 variants.
+  task_result = xTaskCreate(
+      (TaskFunction_t) this->receiver_task,
+      "radio_recv",
+      8 * 1024,
+      this,
+      24,
+      &(this->receiver_task_handle_)
+  );
+#endif
+
+  if (task_result != pdPASS) {
+    ESP_LOGE(TAG, "Failed to create radio receiver task");
+    this->mark_failed();
+    return;
+  }
 
   ESP_LOGI(TAG, "Receiver task created [%p]", this->receiver_task_handle_);
 
-  this->radio->attach_data_interrupt(Radio::wakeup_receiver_task_from_isr,
-                                     &(this->receiver_task_handle_));
+  this->radio->attach_data_interrupt(
+      Radio::wakeup_receiver_task_from_isr,
+      &(this->receiver_task_handle_)
+  );
 }
 
 void Radio::loop() {
