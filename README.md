@@ -29,7 +29,6 @@ esphome:
 esp32:
   board: heltec_wifi_lora_32_V3
   flash_size: 8MB
-  toolchain: platformio
   framework:
     type: esp-idf
 
