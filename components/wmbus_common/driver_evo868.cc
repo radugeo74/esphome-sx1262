@@ -43,7 +43,7 @@ namespace
             "current_status",
             "Status of meter.",
             DEFAULT_PRINT_PROPERTIES
-            | PrintProperty::STATUS | PrintProperty::INCLUDE_TPL_STATUS,
+            | PrintProperty::PRINT_PROPERTY_STATUS | PrintProperty::INCLUDE_TPL_STATUS,
             FieldMatcher::build()
             .set(MeasurementType::Instantaneous)
             .set(VIFRange::ErrorFlags),

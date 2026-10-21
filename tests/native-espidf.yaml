@@ -1,0 +1,301 @@
+# Synthetic build fixture; not the user's Home Assistant configuration.
+esphome:
+  name: sx1262-native-test
+esp32:
+  board: heltec_wifi_lora_32_V3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+    version: 5.5.6
+external_components:
+  - source:
+      type: local
+      path: ../components
+logger:
+api:
+ota:
+  - platform: esphome
+wifi:
+  ssid: native-build-test
+  password: test-only-password
+time:
+  - platform: sntp
+    id: time_sntp
+spi:
+  clk_pin: GPIO9
+  mosi_pin: GPIO10
+  miso_pin: GPIO11
+wmbus_radio:
+  radio_type: SX1262
+  cs_pin: GPIO8
+  reset_pin: GPIO12
+  irq_pin: GPIO14
+  on_frame:
+    - then:
+        - socket_transmitter.send:
+            id: test_socket
+            data: !lambda return frame->as_hex();
+        - wmbus_radio.send_frame_with_socket:
+            id: test_socket
+            format: hex
+        - wmbus_radio.send_frame_with_socket:
+            id: test_socket
+            format: raw
+        - wmbus_radio.send_frame_with_socket:
+            id: test_socket
+            format: rtlwmbus
+socket_transmitter:
+  id: test_socket
+  ip_address: 192.0.2.1
+  port: 9022
+  protocol: UDP
+wmbus_meter:
+  - id: test_meter_1
+    meter_id: 0x10000001
+    type: fhkvdataiii
+    mode: [T1]
+  - id: test_meter_2
+    meter_id: 0x10000002
+    type: fhkvdataiii
+    mode: [T1]
+  - id: test_meter_3
+    meter_id: 0x10000003
+    type: fhkvdataiii
+    mode: [T1]
+  - id: test_meter_4
+    meter_id: 0x10000004
+    type: fhkvdataiii
+    mode: [T1]
+  - id: test_meter_5
+    meter_id: 0x10000005
+    type: fhkvdataiii
+    mode: [T1]
+  - id: test_meter_6
+    meter_id: 0x10000006
+    type: fhkvdataiii
+    mode: [T1]
+  - id: test_meter_7
+    meter_id: 0x10000007
+    type: fhkvdataiii
+    mode: [T1]
+  - id: test_meter_8
+    meter_id: 0x10000008
+    type: mkradio4
+    mode: [T1]
+  - id: test_meter_9
+    meter_id: 0x10000009
+    type: mkradio4
+    mode: [T1]
+  - id: test_meter_10
+    meter_id: 0x1000000a
+    type: mkradio4
+    mode: [T1]
+  - id: test_meter_11
+    meter_id: 0x1000000b
+    type: mkradio4
+    mode: [T1]
+  - id: test_meter_12
+    meter_id: 0x1000000c
+    type: mkradio4
+    mode: [T1]
+sensor:
+  - platform: wmbus_meter
+    parent_id: test_meter_1
+    name: Test meter 1 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_1
+    name: Test meter 1 current_hca
+    field: current_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_1
+    name: Test meter 1 previous_hca
+    field: previous_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_1
+    name: Test meter 1 temp_room_c
+    field: temp_room_c
+  - platform: wmbus_meter
+    parent_id: test_meter_1
+    name: Test meter 1 temp_radiator_c
+    field: temp_radiator_c
+  - platform: wmbus_meter
+    parent_id: test_meter_2
+    name: Test meter 2 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_2
+    name: Test meter 2 current_hca
+    field: current_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_2
+    name: Test meter 2 previous_hca
+    field: previous_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_2
+    name: Test meter 2 temp_room_c
+    field: temp_room_c
+  - platform: wmbus_meter
+    parent_id: test_meter_2
+    name: Test meter 2 temp_radiator_c
+    field: temp_radiator_c
+  - platform: wmbus_meter
+    parent_id: test_meter_3
+    name: Test meter 3 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_3
+    name: Test meter 3 current_hca
+    field: current_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_3
+    name: Test meter 3 previous_hca
+    field: previous_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_3
+    name: Test meter 3 temp_room_c
+    field: temp_room_c
+  - platform: wmbus_meter
+    parent_id: test_meter_3
+    name: Test meter 3 temp_radiator_c
+    field: temp_radiator_c
+  - platform: wmbus_meter
+    parent_id: test_meter_4
+    name: Test meter 4 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_4
+    name: Test meter 4 current_hca
+    field: current_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_4
+    name: Test meter 4 previous_hca
+    field: previous_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_4
+    name: Test meter 4 temp_room_c
+    field: temp_room_c
+  - platform: wmbus_meter
+    parent_id: test_meter_4
+    name: Test meter 4 temp_radiator_c
+    field: temp_radiator_c
+  - platform: wmbus_meter
+    parent_id: test_meter_5
+    name: Test meter 5 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_5
+    name: Test meter 5 current_hca
+    field: current_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_5
+    name: Test meter 5 previous_hca
+    field: previous_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_5
+    name: Test meter 5 temp_room_c
+    field: temp_room_c
+  - platform: wmbus_meter
+    parent_id: test_meter_5
+    name: Test meter 5 temp_radiator_c
+    field: temp_radiator_c
+  - platform: wmbus_meter
+    parent_id: test_meter_6
+    name: Test meter 6 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_6
+    name: Test meter 6 current_hca
+    field: current_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_6
+    name: Test meter 6 previous_hca
+    field: previous_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_6
+    name: Test meter 6 temp_room_c
+    field: temp_room_c
+  - platform: wmbus_meter
+    parent_id: test_meter_6
+    name: Test meter 6 temp_radiator_c
+    field: temp_radiator_c
+  - platform: wmbus_meter
+    parent_id: test_meter_7
+    name: Test meter 7 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_7
+    name: Test meter 7 current_hca
+    field: current_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_7
+    name: Test meter 7 previous_hca
+    field: previous_hca
+  - platform: wmbus_meter
+    parent_id: test_meter_7
+    name: Test meter 7 temp_room_c
+    field: temp_room_c
+  - platform: wmbus_meter
+    parent_id: test_meter_7
+    name: Test meter 7 temp_radiator_c
+    field: temp_radiator_c
+  - platform: wmbus_meter
+    parent_id: test_meter_8
+    name: Test meter 8 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_8
+    name: Test meter 8 total_m3
+    field: total_m3
+  - platform: wmbus_meter
+    parent_id: test_meter_8
+    name: Test meter 8 target_m3
+    field: target_m3
+  - platform: wmbus_meter
+    parent_id: test_meter_9
+    name: Test meter 9 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_9
+    name: Test meter 9 total_m3
+    field: total_m3
+  - platform: wmbus_meter
+    parent_id: test_meter_9
+    name: Test meter 9 target_m3
+    field: target_m3
+  - platform: wmbus_meter
+    parent_id: test_meter_10
+    name: Test meter 10 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_10
+    name: Test meter 10 total_m3
+    field: total_m3
+  - platform: wmbus_meter
+    parent_id: test_meter_10
+    name: Test meter 10 target_m3
+    field: target_m3
+  - platform: wmbus_meter
+    parent_id: test_meter_11
+    name: Test meter 11 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_11
+    name: Test meter 11 total_m3
+    field: total_m3
+  - platform: wmbus_meter
+    parent_id: test_meter_11
+    name: Test meter 11 target_m3
+    field: target_m3
+  - platform: wmbus_meter
+    parent_id: test_meter_12
+    name: Test meter 12 rssi_dbm
+    field: rssi_dbm
+  - platform: wmbus_meter
+    parent_id: test_meter_12
+    name: Test meter 12 total_m3
+    field: total_m3
+  - platform: wmbus_meter
+    parent_id: test_meter_12
+    name: Test meter 12 target_m3
+    field: target_m3

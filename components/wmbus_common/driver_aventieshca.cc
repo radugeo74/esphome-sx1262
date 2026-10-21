@@ -39,7 +39,7 @@ namespace
         addStringFieldWithExtractorAndLookup(
             "status",
             "Meter status from error flags and tpl status field.",
-            PrintProperty::STATUS | PrintProperty::INCLUDE_TPL_STATUS,
+            PrintProperty::PRINT_PROPERTY_STATUS | PrintProperty::INCLUDE_TPL_STATUS,
             FieldMatcher::build()
             .set(MeasurementType::Instantaneous)
             .set(VIFRange::ErrorFlags),

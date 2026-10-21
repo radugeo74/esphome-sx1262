@@ -38,7 +38,7 @@ namespace
         addStringField(
             "status",
             "Meter status. Includes both meter error field and tpl status field.",
-            PrintProperty::STATUS | PrintProperty::INCLUDE_TPL_STATUS);
+            PrintProperty::PRINT_PROPERTY_STATUS | PrintProperty::INCLUDE_TPL_STATUS);
 
         addOptionalLibraryFields("on_time_h");
 

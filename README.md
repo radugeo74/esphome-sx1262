@@ -38,7 +38,8 @@ logger:
   baud_rate: 115200
 
 external_components:
-  - source: github://radugeo74/esphome-sx1262@master # Forked from SzczepanLeon
+  - source: github://radugeo74/esphome-sx1262@native-espidf
+    refresh: always
 
 api:
 

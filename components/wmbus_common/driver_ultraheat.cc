@@ -106,7 +106,7 @@ namespace
         addStringFieldWithExtractorAndLookup(
             "status",
             "Meter status.",
-            PrintProperty::STATUS | PrintProperty::INCLUDE_TPL_STATUS,
+            PrintProperty::PRINT_PROPERTY_STATUS | PrintProperty::INCLUDE_TPL_STATUS,
             FieldMatcher::build()
             .set(VIFRange::ErrorFlags),
             Translate::Lookup(

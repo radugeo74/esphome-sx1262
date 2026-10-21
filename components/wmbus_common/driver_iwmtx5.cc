@@ -44,7 +44,7 @@ namespace
         addStringField(
             "status",
             "Status and error flags.",
-            PrintProperty::STATUS | PrintProperty::INCLUDE_TPL_STATUS);
+            PrintProperty::PRINT_PROPERTY_STATUS | PrintProperty::INCLUDE_TPL_STATUS);
     }
 }
 

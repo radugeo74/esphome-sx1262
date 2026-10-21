@@ -121,6 +121,7 @@ with suppress(ImportError):
         "wmbus_radio.send_frame_with_socket",
         SocketTransmitterSendAction,
         FRAME_SOCKET_SEND_SCHEMA,
+        synchronous=True,
     )
     async def send_frame_with_socket_to_code(config, action_id, template_arg, args):
         output_type = {
@@ -134,7 +135,7 @@ with suppress(ImportError):
             action_id, cg.TemplateArguments(output_type, *template_arg), paren
         )
         template_ = LambdaExpression(
-            f"return frame.as_{config[CONF_FORMAT]}();", args, ""
+            f"return frame->as_{config[CONF_FORMAT]}();", args, ""
         )
 
         cg.add(var.set_data(template_))

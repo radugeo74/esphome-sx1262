@@ -44,7 +44,7 @@ namespace
         addStringFieldWithExtractorAndLookup(
             "status",
             "Status of meter. Not fully understood!",
-            DEFAULT_PRINT_PROPERTIES | PrintProperty::STATUS,
+            DEFAULT_PRINT_PROPERTIES | PrintProperty::PRINT_PROPERTY_STATUS,
             FieldMatcher::build()
             .set(DifVifKey("04FF23")),
             {
