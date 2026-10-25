@@ -38,7 +38,6 @@ logger:
 
 external_components:
   - source: github://radugeo74/esphome-sx1262@native-espidf
-    refresh: 1d
 
 api:
 
