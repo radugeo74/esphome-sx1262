@@ -14,6 +14,7 @@ from esphome.components.mqtt import (
     MQTTPublishAction,
     mqtt_publish_action_to_code,
 )
+
 from ..wmbus_radio import RadioComponent
 from ..wmbus_common import validate_driver
 
