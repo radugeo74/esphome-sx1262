@@ -1,4 +1,4 @@
-# ESPHome wM-Bus for Heltec Wireless Stick Lite V2 (SX1262)
+# ESPHome wM-Bus for Heltec Wireless Stick Lite V2 (SX1262) Modified to work natively with espidf
 
 This project provides ESPHome support for reading **wM-Bus** meters using **SX1262** radio drivers. It is specifically tailored for the **Heltec Wireless Stick Lite V2** board.
 
