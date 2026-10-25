@@ -68,6 +68,11 @@ wmbus_radio:
   cs_pin: GPIO8
   reset_pin: GPIO12
   irq_pin: GPIO14
+  on_frame:
+      - then:
+        - logger.log:
+            format: "RSSI: %ddBm Telegram: %s (%d)"
+            args: [ frame->rssi(), frame->as_hex().c_str(), frame->data().size() ]
 
 wmbus_meter:
   - id: heat_meter_bathroom
