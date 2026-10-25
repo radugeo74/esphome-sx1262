@@ -94,7 +94,6 @@ async def to_code(config):
             [(MeterRef, "meter")],
             conf,
         )
-)
 
 
 TELEGRAM_MQTT_PUBLISH_ACTION_SCHEMA = cv.All(
