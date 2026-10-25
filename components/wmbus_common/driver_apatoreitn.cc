@@ -17,6 +17,8 @@
 */
 
 #include"meters_common_implementation.h"
+extern "C" bool wmbus_driver_anchor_apatoreitn() { return true; }
+
 
 namespace
 {

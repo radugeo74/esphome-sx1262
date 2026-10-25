@@ -16,6 +16,8 @@
 */
 
 #include"meters_common_implementation.h"
+extern "C" bool wmbus_driver_anchor_omnipower() { return true; }
+
 
 /*
 Implemented October 2020 Janus Bo Andersen:

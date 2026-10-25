@@ -16,6 +16,8 @@
 */
 
 #include"meters_common_implementation.h"
+extern "C" bool wmbus_driver_anchor_bfw240radio() { return true; }
+
 
 namespace
 {

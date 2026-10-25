@@ -16,6 +16,8 @@
 */
 
 #include"meters_common_implementation.h"
+extern "C" bool wmbus_driver_anchor_auto() { return true; }
+
 
 struct MeterAuto : public virtual MeterCommonImplementation
 {

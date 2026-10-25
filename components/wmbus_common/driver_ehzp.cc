@@ -15,6 +15,8 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include"meters_common_implementation.h"
+extern "C" bool wmbus_driver_anchor_ehzp() { return true; }
+
 
 namespace
 {

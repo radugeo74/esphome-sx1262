@@ -18,6 +18,13 @@ AVAILABLE_DRIVERS = {
 _registered_drivers = set()
 
 
+def _driver_anchor(driver: str) -> str:
+    """Return the linker anchor exported by a driver translation unit."""
+    return "wmbus_driver_anchor_" + "".join(
+        character if character.isalnum() else "_" for character in driver
+    )
+
+
 validate_driver = cv.All(
     cv.one_of(*AVAILABLE_DRIVERS, lower=True, space="_"),
     lambda driver: _registered_drivers.add(driver) or driver,
@@ -54,4 +61,9 @@ async def to_code(config):
     component.exclude_drivers = AVAILABLE_DRIVERS - _registered_drivers
 
     var = cg.new_Pvariable(config[CONF_ID], sorted(_registered_drivers))
+    for driver in sorted(_registered_drivers):
+        # Native ESP-IDF puts component sources in static archives.  Referencing
+        # the per-driver anchor forces extraction of only the selected driver's
+        # object, so its existing registerDriver() initializer is retained.
+        cg.add_build_flag(f"-Wl,--undefined={_driver_anchor(driver)}")
     await cg.register_component(var, config)
