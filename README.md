@@ -73,6 +73,19 @@ wmbus_radio:
         - logger.log:
             format: "RSSI: %ddBm Telegram: %s (%d)"
             args: [ frame->rssi(), frame->as_hex().c_str(), frame->data().size() ]
+      - then:
+        - output.turn_on: status_led
+        - delay: 100ms
+        - output.turn_off: status_led
+## Send telegram to another machine in RTLwMBus format
+#      - then:
+#          - socket_transmitter.send:
+#              data: !lambda return frame->as_rtlwmbus();
+
+output:
+  - platform: gpio
+    id: status_led
+    pin: GPIO35
 
 wmbus_meter:
   - id: heat_meter_bathroom
