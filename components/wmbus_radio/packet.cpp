@@ -128,8 +128,8 @@ std::optional<Frame> Packet::convert_to_frame() {
       FrameStatus::FullFrame)
     frame.emplace(this);
 
-  delete this;
-
+  // Packet lifetime is owned by Radio::loop() via std::unique_ptr.
+  // Do not delete this object here: that would cause a double-free.
   return frame;
 }
 
