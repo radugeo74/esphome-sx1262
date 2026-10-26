@@ -1,5 +1,7 @@
 #include "component.h"
 
+#include <memory>
+
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
@@ -70,14 +72,18 @@ void Radio::setup() {
 }
 
 void Radio::loop() {
-  Packet *p;
-  if (xQueueReceive(this->packet_queue_, &p, 0) != pdPASS)
+  Packet *packet_ptr = nullptr;
+  if (xQueueReceive(this->packet_queue_, &packet_ptr, 0) != pdPASS)
     return;
 
-  // ESP_LOGI(TAG, "Have RAW data from radio (%zu bytes)",
-  //          p->calculate_payload_size());
+  // Ownership was released by receiver_task() after queueing.
+  // Ensure the packet is freed even when frame conversion fails.
+  std::unique_ptr<Packet> packet(packet_ptr);
 
-  auto frame = p->convert_to_frame();
+  // ESP_LOGI(TAG, "Have RAW data from radio (%zu bytes)",
+  //          packet->calculate_payload_size());
+
+  auto frame = packet->convert_to_frame();
 
   if (!frame) {
     ESP_LOGD(TAG, "Failed to convert packet to frame");
