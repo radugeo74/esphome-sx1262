@@ -72,6 +72,26 @@ void Radio::setup() {
 }
 
 void Radio::loop() {
+  // ESP-IDF FreeRTOS reports high-water marks in BYTES (not words).
+  // Sample both stacks even when no radio telegram is in the queue.
+  // This keeps the measurement independent of the packet-processing path.
+  static TickType_t last_stack_log = 0;
+  const TickType_t now = xTaskGetTickCount();
+  if ((now - last_stack_log) >= pdMS_TO_TICKS(30000)) {
+    last_stack_log = now;
+    const UBaseType_t main_free = uxTaskGetStackHighWaterMark(nullptr);
+    const UBaseType_t receiver_free =
+        this->receiver_task_handle_ != nullptr
+            ? uxTaskGetStackHighWaterMark(this->receiver_task_handle_)
+            : 0;
+    ESP_LOGI(TAG, "Stack low-water free: esphome_loop=%u B, radio_recv=%u B",
+             static_cast<unsigned>(main_free),
+             static_cast<unsigned>(receiver_free));
+    if (main_free < 1024 || (this->receiver_task_handle_ != nullptr && receiver_free < 1024)) {
+      ESP_LOGW(TAG, "Low task stack headroom (below 1024 bytes)");
+    }
+  }
+
   Packet *packet_ptr = nullptr;
   if (xQueueReceive(this->packet_queue_, &packet_ptr, 0) != pdPASS)
     return;
