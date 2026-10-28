@@ -150,16 +150,24 @@ void Radio::receive_frame() {
 
   auto packet = std::make_unique<Packet>();
 
-  if (!this->radio->read_in_task(packet->rx_data_ptr(), packet->rx_capacity(), 0))
+  if (!this->radio->read_in_task(packet->rx_data_ptr(), packet->rx_capacity(), 0)) {
+    this->radio->restart_rx();
     return;
+  }
 
-  if (!packet->calculate_payload_size())
+  if (!packet->calculate_payload_size()) {
+    this->radio->restart_rx();
     return;
+  }
 
-  if (!this->radio->read_in_task(packet->rx_data_ptr(), packet->rx_capacity(),  3))
+  if (!this->radio->read_in_task(packet->rx_data_ptr(), packet->rx_capacity(),  3)) {
+    this->radio->restart_rx();
     return;
+  }
 
   packet->set_rssi(this->radio->get_rssi());
+  // Re-arm exactly once, after RSSI is captured and before queueing.
+  this->radio->restart_rx();
   auto packet_ptr = packet.get();
 
   if (xQueueSend(this->packet_queue_, &packet_ptr, 0) == pdTRUE) {
