@@ -5,6 +5,7 @@
 #include "esp_system.h"
 #include "record_decoder.h"
 #include "generated_ixml.h"
+#include "numeric_bridge.h"
 #include <cstring>
 
 static const char *TAG = "xmq_cpp_probe";
@@ -42,6 +43,15 @@ extern "C" void app_main(void) {
   }
   ESP_LOGI(TAG, "Generated mkradio4 IXML self-test PASS, captures=%u",
            static_cast<unsigned>(parsed.count));
+  NumericValue numeric{};
+  if (decode_water_values(parsed, numeric) != NumericStatus::Ok ||
+      std::fabs(numeric.target_m3 - 0.1) > 0.00001 ||
+      std::fabs(numeric.total_m3 - 0.4) > 0.00001) {
+    ESP_LOGE(TAG, "C++ IXML-to-numeric self-test failed");
+    abort();
+  }
+  ESP_LOGI(TAG, "C++ water values: target=%.3f m3 total=%.3f m3",
+           numeric.target_m3, numeric.total_m3);
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
            static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
