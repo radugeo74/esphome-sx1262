@@ -15,7 +15,7 @@ jobs:
   embedded-drivers:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check generated XMQ header reproducibility
         run: python3 experimental/xmq/tools/embed_drivers.py --check
       - name: Compile and run embedding smoke test
@@ -29,6 +29,6 @@ jobs:
     # This is explicitly an experimental probe, not a release gate.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Compile upstream libxmq C source and list unresolved symbols
         run: bash experimental/xmq/tools/probe_libxmq_host.sh
