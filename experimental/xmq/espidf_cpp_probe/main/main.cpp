@@ -52,6 +52,29 @@ extern "C" void app_main(void) {
   }
   ESP_LOGI(TAG, "C++ water values: target=%.3f m3 total=%.3f m3",
            numeric.target_m3, numeric.total_m3);
+  CalcValue calculated[16]{};
+  size_t calculated_count = 0;
+  if (seed_calculation_fields(parsed, generated_ixml::mkradio4::capture_keys, 2,
+                              generated_ixml::mkradio4::field_keys, 2,
+                              calculated, calculated_count, 16) != NumericStatus::Ok ||
+      calculate(generated_ixml::mkradio4::calculations,
+                generated_ixml::mkradio4::calculation_count,
+                calculated, calculated_count, 16) != CalcStatus::Ok) {
+    ESP_LOGE(TAG, "Generated XMQ calculate self-test failed");
+    abort();
+  }
+  bool target_ok = false, total_ok = false;
+  for (size_t i = 0; i < calculated_count; ++i) {
+    if (std::strcmp(calculated[i].name, "target") == 0)
+      target_ok = std::fabs(calculated[i].value - 0.1) < 0.00001;
+    if (std::strcmp(calculated[i].name, "total") == 0)
+      total_ok = std::fabs(calculated[i].value - 0.4) < 0.00001;
+  }
+  if (!target_ok || !total_ok) {
+    ESP_LOGE(TAG, "Unexpected generated XMQ calculate values");
+    abort();
+  }
+  ESP_LOGI(TAG, "Generated XMQ calculate fields PASS");
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
            static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
