@@ -1,4 +1,5 @@
 #include "generated_ixml.h"
+#include "record_decoder.h"
 #include <cassert>
 #include <cstdint>
 #include <cstring>
