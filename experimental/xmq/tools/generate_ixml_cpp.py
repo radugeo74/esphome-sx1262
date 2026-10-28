@@ -6,6 +6,7 @@ primitive definitions (-hex/-byte/-word) and >dvk metadata are handled by
 the bounded runtime primitives and record mapping respectively.
 """
 import argparse
+import ast
 import re
 import sys
 from pathlib import Path
@@ -73,9 +74,51 @@ def metadata(path, grammar):
     return annotations, matches
 
 
+def compile_calculations(path):
+    driver = validate_driver(parse(path.read_text(encoding="utf-8")))
+    result = []
+    for group in blocks(driver, "fields"):
+        for field in blocks(group["entries"], "field"):
+            entries = field["entries"]
+            name = values(entries, "name")
+            expr = values(entries, "calculate")
+            if not expr:
+                continue
+            if len(name) != 1 or len(expr) != 1:
+                raise ValueError("Ambiguous calculate field")
+            # Explicitly compile only an arithmetic subset; other formulas remain
+            # available to the existing host-only calendar interpreter.
+            if not all(ch.isalnum() or ch in "_ +*()." for ch in expr[0]):
+                continue
+            expression = re.sub(r"(?<![A-Za-z_0-9])1m3\\b", "1", expr[0])
+            try:
+                tree = ast.parse(expression, mode="eval")
+            except SyntaxError:
+                continue
+            steps = []
+            def walk(node):
+                if isinstance(node, ast.Constant) and type(node.value) in (float, int):
+                    steps.append(("Number", None, float(node.value)))
+                elif isinstance(node, ast.Name) and IDENT.fullmatch(node.id):
+                    key = node.id.removesuffix("_counter").removesuffix("_m3")
+                    steps.append(("Field", key, 0))
+                elif isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mult)):
+                    walk(node.left)
+                    walk(node.right)
+                    steps.append(("Add" if isinstance(node.op, ast.Add) else "Multiply", None, 0))
+                else:
+                    raise ValueError("Unsupported expression")
+            try:
+                walk(tree.body)
+            except ValueError:
+                continue
+            result.append((name[0], steps))
+    return result
+
+
 def generate(files):
     lines = ["// Generated from pinned original XMQ definitions; do not edit.",
-             "#pragma once", '#include "ixml_subset.h"',
+             "#pragma once", '#include "ixml_subset.h"', '#include "calculate_subset.h"',
              "namespace generated_ixml {"]
     for path in files:
         grammars = extract_grammar(path)
@@ -86,6 +129,7 @@ def generate(files):
             raise ValueError("Unsafe namespace")
         parsed = compile_grammar(grammars[0])
         annotations, matches = metadata(path, grammars[0])
+        calculated = compile_calculations(path)
         lines.append(f"namespace {namespace} {{")
         for index, (name, entries) in enumerate(parsed):
             lines.append(f"inline constexpr xmq_portable::Step steps_{index}[] = {{")
@@ -106,6 +150,18 @@ def generate(files):
         for name, key in matches:
             lines.append(f'  {{"{name}", "{key}"}},')
         lines.append("};")
+        for index, (fieldname, steps) in enumerate(calculated):
+            lines.append(f"inline constexpr xmq_portable::CalcStep calc_steps_{index}[] = {{")
+            for op, name, number in steps:
+                label = 'nullptr' if name is None else '"' + name + '"'
+                lines.append(f"  {{xmq_portable::CalcOp::{op}, {label}, {number}}},")
+            lines.append("};")
+        if calculated:
+            lines.append("inline constexpr xmq_portable::CalcFormula calculations[] = {")
+            for index, (fieldname, steps) in enumerate(calculated):
+                lines.append(f'  {{"{fieldname}", calc_steps_{index}, {len(steps)}}},')
+            lines.append("};")
+            lines.append(f"inline constexpr size_t calculation_count = {len(calculated)};")
         lines.append("}")
         print(f"Generated {namespace}: {len(parsed)} rule tables", file=sys.stderr)
     lines.append("}")
