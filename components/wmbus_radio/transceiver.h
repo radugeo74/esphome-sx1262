@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <cstdint>
+#include <string>
 
 #define BYTE(x, n) ((uint8_t)(x >> (n * 8)))
 
@@ -32,10 +33,12 @@ public:
   void set_spi(spi::SPIDelegate *spi);
   void set_reset_pin(InternalGPIOPin *reset_pin);
   void set_irq_pin(InternalGPIOPin *irq_pin);
+  void set_rx_gain_mode(const std::string &mode) { this->rx_gain_boosted_ = (mode == "BOOSTED"); }
 
 protected:
   InternalGPIOPin *reset_pin_;
   InternalGPIOPin *irq_pin_;
+  bool rx_gain_boosted_{false};  // Preserve existing POWER_SAVING default.
 
   void reset();
   void common_setup();
