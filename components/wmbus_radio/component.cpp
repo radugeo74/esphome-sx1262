@@ -123,8 +123,9 @@ void Radio::loop() {
   else {
     ESP_LOGW(TAG, "Telegram not handled by any handler");
     Telegram t;
-    if (t.parseHeader(frame->data()) && t.addresses.empty()) {
-      ESP_LOGW(TAG, "Check if telegram can be parsed on:");
+    const bool parsed = t.parseHeader(frame->data());
+    if (!parsed || t.addresses.empty()) {
+      ESP_LOGW(TAG, "Telegram header could not be parsed or has no address");
     } else {
       ESP_LOGW(TAG, "Check if telegram with address %s can be parsed on:",
                t.addresses.back().id.c_str());
