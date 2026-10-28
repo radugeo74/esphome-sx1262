@@ -194,6 +194,13 @@ jobs:
             -o /tmp/xmq-generated-ixml-test
           /tmp/xmq-generated-ixml-test
           echo "PASS generated C++ IXML driver tables"
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/portable_cpp/test_numeric_bridge.cpp \
+            -o /tmp/xmq-numeric-bridge-test
+          /tmp/xmq-numeric-bridge-test
+          echo "PASS C++ IXML-to-numeric bridge"
+
 
 
   espidf-s3-cpp-link:
