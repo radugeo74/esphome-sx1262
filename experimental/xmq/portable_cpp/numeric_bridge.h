@@ -7,6 +7,47 @@
 namespace xmq_portable {
 enum class NumericStatus : uint8_t { Ok, MissingCapture, InvalidCapture, InvalidRecord };
 struct NumericValue { double target_m3; double total_m3; };
+inline NumericStatus lookup_mapped_record(const Result &ixml,
+                                         const CaptureKey *annotations, size_t annotation_count,
+                                         const FieldKey *fields, size_t field_count,
+                                         const char *wanted, Record &out) {
+  if (!annotations || !fields || !wanted) return NumericStatus::MissingCapture;
+  const char *key = nullptr;
+  for (size_t i = 0; i < field_count; ++i)
+    if (std::strcmp(fields[i].field, wanted) == 0) {
+      key = fields[i].difvif;
+      break;
+    }
+  if (!key) return NumericStatus::MissingCapture;
+  for (size_t i = 0; i < ixml.count; ++i) {
+    const Capture &cap = ixml.captures[i];
+    for (size_t j = 0; j < annotation_count; ++j) {
+      if (std::strcmp(cap.name, annotations[j].capture) != 0 ||
+          std::strcmp(key, annotations[j].difvif) != 0) continue;
+      if (cap.length != 2) return NumericStatus::InvalidCapture;
+      const auto status = decode_record(key, std::strlen(key), cap.data, cap.length, out);
+      return status == Status::Ok ? NumericStatus::Ok : NumericStatus::InvalidRecord;
+    }
+  }
+  return NumericStatus::MissingCapture;
+}
+inline NumericStatus decode_mapped_water(const Result &ixml,
+                                         const CaptureKey *annotations, size_t annotation_count,
+                                         const FieldKey *fields, size_t field_count,
+                                         NumericValue &out) {
+  Record prev{}, curr{};
+  const auto a = lookup_mapped_record(ixml, annotations, annotation_count,
+                                     fields, field_count, "prev_raw", prev);
+  if (a != NumericStatus::Ok) return a;
+  const auto b = lookup_mapped_record(ixml, annotations, annotation_count,
+                                     fields, field_count, "curr_raw", curr);
+  if (b != NumericStatus::Ok) return b;
+  if (prev.unit != Unit::VolumeM3 || curr.unit != Unit::VolumeM3)
+    return NumericStatus::InvalidRecord;
+  out.target_m3 = prev.scaled;
+  out.total_m3 = prev.scaled + curr.scaled;
+  return NumericStatus::Ok;
+}
 inline NumericStatus decode_water_values(const Result &ixml, NumericValue &out) {
   bool prev_found = false, curr_found = false;
   double previous = 0, current = 0;
