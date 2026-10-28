@@ -12,7 +12,7 @@ from pathlib import Path
 from portable_xmq import blocks, parse, validate_driver, values
 
 ROOT = Path(__file__).resolve().parents[1]
-RULE = re.compile(r"(?ms)^\\s*(-?[A-Za-z_][A-Za-z_0-9]*)\\s*=\\s*(.*?)\\.")
+RULE = re.compile(r"(?ms)^\s*(-?[A-Za-z_][A-Za-z_0-9]*)\s*=\s*(.*?)\.")
 TOKEN = re.compile(r"^'([0-9A-Fa-f]+)'$")
 
 
@@ -98,8 +98,8 @@ def run_ixml(rules, payload):
 
 def marked_fixtures(source):
     # Official test telegrams with explicit '_' separating transport headers and payload.
-    for body in re.findall(r"(?ms)^\\s*test\\s*\\{(.*?)^\\s*\\}", source):
-        match = re.search(r"(?m)^\\s*telegram\\s*=\\s*(\\S+)", body)
+    for body in re.findall(r"(?ms)^\s*test\s*\{(.*?)^\s*\}", source):
+        match = re.search(r"(?m)^\s*telegram\s*=\s*(\S+)", body)
         if match and "_" in match.group(1):
             yield match.group(1).split("_", 1)[1]
 
@@ -122,7 +122,7 @@ def main():
         print(path.name, "rules", len(rules), "fixture results", results, flush=True)
     if args.json_out:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
-        args.json_out.write_text(json.dumps(report, indent=2) + "\\n")
+        args.json_out.write_text(json.dumps(report, indent=2) + "\n")
     return report
 
 
