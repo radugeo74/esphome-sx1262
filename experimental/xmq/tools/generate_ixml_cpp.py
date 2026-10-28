@@ -88,9 +88,9 @@ def compile_calculations(path):
                 raise ValueError("Ambiguous calculate field")
             # Explicitly compile only an arithmetic subset; other formulas remain
             # available to the existing host-only calendar interpreter.
-            if not all(ch.isalnum() or ch in "_ +*()." for ch in expr[0]):
-                continue
-            expression = re.sub(r"(?<![A-Za-z_0-9])1m3\b", "1", expr[0])
+            expression = re.sub(r"(?<![A-Za-z_0-9])([0-9]+)(?:counter|m3)\\b",
+                                r"\\1", expr[0])
+            expression = expression.replace("&&", " and ").replace("||", " or ")
             try:
                 tree = ast.parse(expression, mode="eval")
             except SyntaxError:
@@ -102,10 +102,30 @@ def compile_calculations(path):
                 elif isinstance(node, ast.Name) and IDENT.fullmatch(node.id):
                     key = node.id.removesuffix("_counter").removesuffix("_m3")
                     steps.append(("Field", key, 0))
-                elif isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mult)):
+                elif isinstance(node, ast.BinOp):
+                    ops = {ast.Add: "Add", ast.Mult: "Multiply",
+                           ast.Sub: "Subtract", ast.Mod: "Modulo",
+                           ast.RShift: "ShiftRight"}
+                    op = ops.get(type(node.op))
+                    if op is None:
+                        raise ValueError("Unsupported binary operator")
                     walk(node.left)
                     walk(node.right)
-                    steps.append(("Add" if isinstance(node.op, ast.Add) else "Multiply", None, 0))
+                    steps.append((op, None, 0))
+                elif isinstance(node, ast.Compare) and len(node.ops) == 1:
+                    ops = {ast.Lt: "Less", ast.LtE: "LessEqual", ast.Eq: "Equal"}
+                    op = ops.get(type(node.ops[0]))
+                    if op is None:
+                        raise ValueError("Unsupported comparison")
+                    walk(node.left)
+                    walk(node.comparators[0])
+                    steps.append((op, None, 0))
+                elif isinstance(node, ast.BoolOp):
+                    op = "And" if isinstance(node.op, ast.And) else "Or"
+                    walk(node.values[0])
+                    for value in node.values[1:]:
+                        walk(value)
+                        steps.append((op, None, 0))
                 else:
                     raise ValueError("Unsupported expression")
             try:
