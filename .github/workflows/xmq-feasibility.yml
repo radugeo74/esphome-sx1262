@@ -57,3 +57,20 @@ jobs:
         run: |
           python3 experimental/xmq/tests/decode_upstream.py \
             --binary /tmp/wmbusmeters-upstream/build/wmbusmeters
+
+  espidf-s3-feasibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install ESP-IDF 5.5.6
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.6
+          target: esp32s3
+          path: experimental/xmq/espidf_probe
+          command: |
+            idf.py set-target esp32s3
+            idf.py build
+            idf.py size
+            bash "$GITHUB_WORKSPACE/experimental/xmq/tools/probe_libxmq_espidf.sh"
