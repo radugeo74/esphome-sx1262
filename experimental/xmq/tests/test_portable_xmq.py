@@ -25,7 +25,7 @@ class XmqParserTests(unittest.TestCase):
                 print(filename, "fields:", len(fields), "ixml:", sum(bool(values(f["entries"], "ixml")) for f in fields))
 
     def test_repeated_values_and_multiline_string(self):
-        tree = parse('driver {\n name = test\n meter_type = WaterMeter\n detect {\n mvt = TCH,95,62\n mvt = TCH,70,72\n }\n fields { field { name = test ixml = "a\nb" } }\n }')
+        tree = parse('driver {\n name = test\n meter_type = WaterMeter\n detect {\n mvt = TCH,95,62\n mvt = TCH,70,72\n }\n fields { field { name = test\n ixml = "a\nb" } }\n }')
         d = validate_driver(tree)
         self.assertEqual(values(blocks(d, "detect")[0]["entries"], "mvt"), ["TCH,95,62", "TCH,70,72"])
 
