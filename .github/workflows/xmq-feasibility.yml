@@ -143,3 +143,13 @@ jobs:
         run: |
           python3 -m py_compile experimental/xmq/tools/calculate_probe.py
           python3 -m unittest discover -s experimental/xmq/tests -p 'test_calculate_probe.py' -v
+
+  xmq-driver-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate IXML-DIF/VIF-calculate pipeline against original driver
+        run: |
+          python3 -m py_compile experimental/xmq/tools/driver_pipeline_probe.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_driver_pipeline_probe.py' -v
