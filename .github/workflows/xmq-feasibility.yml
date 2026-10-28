@@ -1,0 +1,34 @@
+name: XMQ feasibility (experimental only)
+
+on:
+  push:
+    branches: ["experimental/wmbusmeters-xmq"]
+    paths:
+      - "experimental/xmq/**"
+      - ".github/workflows/xmq-feasibility.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  embedded-drivers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check generated XMQ header reproducibility
+        run: python3 experimental/xmq/tools/embed_drivers.py --check
+      - name: Compile and run embedding smoke test
+        run: |
+          g++ -std=c++17 -Wall -Wextra -pedantic -Werror \
+            experimental/xmq/tests/embedding_smoke.cpp -o /tmp/xmq_embed_smoke
+          /tmp/xmq_embed_smoke
+
+  libxmq-host-probe:
+    runs-on: ubuntu-latest
+    # This is explicitly an experimental probe, not a release gate.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile upstream libxmq C source and list unresolved symbols
+        run: bash experimental/xmq/tools/probe_libxmq_host.sh
