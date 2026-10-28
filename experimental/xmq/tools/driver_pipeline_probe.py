@@ -33,7 +33,7 @@ def interpret_record(key, value):
 
 
 
-def decode(path: Path, payload: str):
+def extract_records(path: Path, payload: str):
     driver = validate_driver(parse(path.read_text(encoding="utf-8")))
     grammar = extract_grammar(path)
     if len(grammar) != 1:
@@ -54,6 +54,12 @@ def decode(path: Path, payload: str):
         suffix, scaled = interpret_record(key, value)
         records[key] = {"raw": value, "unit": suffix, "scaled": scaled}
 
+    return records
+
+
+def decode(path: Path, payload: str):
+    driver = validate_driver(parse(path.read_text(encoding="utf-8")))
+    records = extract_records(path, payload)
     env = {}
     computed = {}
     pending = []
