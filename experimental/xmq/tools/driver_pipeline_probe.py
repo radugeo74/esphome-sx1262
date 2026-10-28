@@ -57,7 +57,7 @@ def decode(path: Path, payload: str):
                     raise BridgeError(f"Ambiguous match: {fieldname}")
                 key = matches[0].upper()
                 if key in records:
-                    env[fieldname + "_counter"] = records[key]["raw"]
+                    env[fieldname + "_counter"] = records[key]["m3"]
                     # Do not use this numeric scaling for non-volume VIFs.
                     env[fieldname + "_m3"] = records[key]["m3"]
             formulas = values(e, "calculate")
