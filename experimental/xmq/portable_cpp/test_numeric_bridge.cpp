@@ -9,10 +9,10 @@ int main() {
  Result result{captures,8,0,0};
  assert(execute(generated_ixml::mkradio4::rules,generated_ixml::mkradio4::count,"decode",payload,sizeof(payload),result)==ParseStatus::Ok);
  NumericValue values{};
- assert(decode_water_values(result,values)==NumericStatus::Ok);
+ assert(decode_mapped_water(result, generated_ixml::mkradio4::capture_keys, 2, generated_ixml::mkradio4::field_keys, 2, values)==NumericStatus::Ok);
  assert(std::fabs(values.target_m3-0.1)<1e-8);
  assert(std::fabs(values.total_m3-0.4)<1e-8);
  Result missing{captures,8,1,0};
- assert(decode_water_values(missing,values)==NumericStatus::MissingCapture);
+ assert(decode_mapped_water(missing, generated_ixml::mkradio4::capture_keys, 2, generated_ixml::mkradio4::field_keys, 2, values)==NumericStatus::MissingCapture);
  return 0;
 }
