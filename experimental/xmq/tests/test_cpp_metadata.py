@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from generate_ixml_cpp import generate, metadata
+from generate_ixml_cpp import generate, metadata, compile_calculations
 from ixml_probe import extract_grammar
 
 
@@ -23,6 +23,14 @@ class MetadataTests(unittest.TestCase):
                 for capture, key in expected.items():
                     self.assertEqual(actual[capture].upper(), key)
                 self.assertTrue(matches)
+
+    def test_water_calculate_dependency_chain(self):
+        formulas = compile_calculations(ROOT / "drivers" / "mkradio4.xmq")
+        self.assertEqual([name for name, _ in formulas],
+                         ["prev", "curr", "target", "total"])
+        self.assertEqual(formulas[0][1][0], ("Field", "prev_raw", 0))
+        self.assertIn(("Number", None, 1.0), formulas[0][1])
+        self.assertEqual(formulas[-1][1][-1][0], "Add")
 
     def test_generated_tables(self):
         header = generate([ROOT / "drivers" / "mkradio4.xmq",
