@@ -71,3 +71,27 @@ jobs:
           path: experimental/xmq/espidf_probe
           command: |
             bash "../tools/probe_libxmq_espidf.sh"
+
+  xmq-portability-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fetch pinned source files and inventory portability
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.request import urlretrieve
+          sha = "293fd38cdcca176091c789c33a8797d67471c060"
+          folder = Path("/tmp/wmbus-xmq-source")
+          folder.mkdir(parents=True, exist_ok=True)
+          for filename in ("xmq.c", "xmq.h", "xmq_internals.h", "driver_dynamic.cc", "drivers.cc"):
+              urlretrieve(f"https://raw.githubusercontent.com/wmbusmeters/wmbusmeters/{sha}/src/{filename}", folder / filename)
+          PY
+          python3 experimental/xmq/tools/inventory_dependencies.py \
+            --src /tmp/wmbus-xmq-source --out /tmp/xmq-portability.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xmq-portability-inventory
+          path: /tmp/xmq-portability.json
+          retention-days: 14
