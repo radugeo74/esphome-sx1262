@@ -41,10 +41,12 @@ def month_offset(base, months):
 def date_expression(expression, env):
     # This is a deliberately bounded subset matching XMQ date expressions:
     # date literal + numeric expression * 1month + numeric expression * 24h.
+    # Each term wraps the multiplication itself: (expression * 1month).
+    # The earlier regex mistakenly expected (expression) * 1month.
     pattern = re.compile(
         r"""^\s*['"](?P<base>\d{4}-\d{2}-\d{2})['"]\s*\+\s*
-        (?P<months>\(.+\))\s*\*\s*1month\s*\+\s*
-        (?P<days>\(.+\))\s*\*\s*24h\s*$""",
+        \((?P<months>.*?)\s*\*\s*1month\)\s*\+\s*
+        \((?P<days>.*?)\s*\*\s*24h\)\s*$""",
         re.X | re.S,
     )
     match = pattern.match(expression)
