@@ -21,7 +21,7 @@ size xmq.o
 printf '\nUndefined external symbols (portability inventory):\n'
 nm -u xmq.o || true
 
-printf '\nLinking and executing XMQ parser against embedded Techem definitions...\n'
+printf '\nLinking and executing XMQ parser smoke test...\n'
 gcc -std=gnu11 -O2 -I. $(pkg-config --cflags libxml-2.0) \
   -c -x c -o xmq_parse_smoke.o - <<'EOF'
 #include "xmq.h"
@@ -44,3 +44,51 @@ int main(void) {
 EOF
 gcc xmq_parse_smoke.o xmq.o $(pkg-config --libs libxml-2.0) -lm -o xmq_parse_smoke
 ./xmq_parse_smoke
+
+printf '\nParsing original upstream Techem XMQ driver definitions...\n'
+DRIVER_DIR="${GITHUB_WORKSPACE:-$(pwd)}/experimental/xmq/drivers"
+# Keep the full GitHub workspace path available after changing to /tmp above.
+gcc -std=gnu11 -O2 -I. $(pkg-config --cflags libxml-2.0) \
+  -c -x c -o xmq_techem_test.o - <<'EOF'
+#include "xmq.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+static int check(const char *filename, const char *expected) {
+  FILE *f = fopen(filename, "rb");
+  if (!f) { perror(filename); return 20; }
+  if (fseek(f, 0, SEEK_END)) return 21;
+  long length = ftell(f);
+  if (length <= 0 || fseek(f, 0, SEEK_SET)) return 22;
+  char *buf = (char *)malloc((size_t)length + 1);
+  if (!buf) return 23;
+  if (fread(buf, 1, (size_t)length, f) != (size_t)length) return 24;
+  fclose(f);
+  buf[length] = 0;
+  XMQReturnDoc rd = xmqNewDoc();
+  if (rd.status != XMQ_OK || !rd.doc) return 25;
+  if (!xmqParseBuffer(rd.doc, buf, buf + length, NULL, 0)) {
+    fprintf(stderr, "Could not parse %s: %s\n", filename, xmqDocError(rd.doc));
+    return 26;
+  }
+  const char *name = xmqGetString(rd.doc, "/driver/name");
+  if (!name || strcmp(name, expected)) {
+    fprintf(stderr, "%s: expected %s, got %s\n", filename, expected, name ? name : "(null)");
+    return 27;
+  }
+  int tests = xmqForeach(rd.doc, "/driver/tests/test", NULL, NULL);
+  if (tests <= 0) { fprintf(stderr, "%s: no tests found\n", filename); return 28; }
+  printf("%s: parsed name=%s, test fixtures=%d\n", filename, name, tests);
+  free(buf);
+  return 0;
+}
+int main(int argc, char **argv) {
+  if (argc != 3) return 2;
+  if (check(argv[1], "fhkvdataiii")) return 3;
+  if (check(argv[2], "mkradio4")) return 4;
+  puts("Techem XMQ driver definitions: PASS");
+  return 0;
+}
+EOF
+gcc xmq_techem_test.o xmq.o $(pkg-config --libs libxml-2.0) -lm -o xmq_techem_test
+./xmq_techem_test "${DRIVER_DIR}/fhkvdataiii.xmq" "${DRIVER_DIR}/mkradio4.xmq"
