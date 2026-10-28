@@ -63,8 +63,10 @@ def metadata(path, grammar):
                 if len(names) != 1 or len(keys) != 1:
                     raise ValueError("Ambiguous DIF/VIF mapping")
                 matches.append((names[0], keys[0].upper()))
-    if not annotations or not matches:
-        raise ValueError("Missing capture annotations or DIF/VIF field matches")
+    if not annotations:
+        raise ValueError(f"{path}: no IXML dvk capture annotations found")
+    if not matches:
+        raise ValueError(f"{path}: no field match.difvifkey definitions found")
     for name, key in annotations + matches:
         if not IDENT.fullmatch(name) or len(key) % 2 or not 4 <= len(key) <= 16:
             raise ValueError("Invalid generated mapping")
