@@ -32,3 +32,28 @@ jobs:
       - uses: actions/checkout@v5
       - name: Compile upstream libxmq C source and list unresolved symbols
         run: bash experimental/xmq/tools/probe_libxmq_host.sh
+
+  upstream-decoding-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Reference decoder test, separate from the experimental embedded implementation.
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev pkg-config
+      - name: Checkout pinned upstream wmbusmeters
+        run: |
+          git clone https://github.com/wmbusmeters/wmbusmeters.git /tmp/wmbusmeters-upstream
+          cd /tmp/wmbusmeters-upstream
+          git checkout 293fd38cdcca176091c789c33a8797d67471c060
+      - name: Compile full upstream reference decoder
+        run: |
+          cd /tmp/wmbusmeters-upstream
+          ./configure
+          make -j2
+      - name: Decode and verify four official Techem fixtures
+        run: |
+          python3 experimental/xmq/tests/decode_upstream.py \
+            --binary /tmp/wmbusmeters-upstream/build/wmbusmeters
