@@ -85,7 +85,7 @@ jobs:
           sha = "293fd38cdcca176091c789c33a8797d67471c060"
           folder = Path("/tmp/wmbus-xmq-source")
           folder.mkdir(parents=True, exist_ok=True)
-          for filename in ("xmq.c", "xmq.h", "xmq_internals.h", "driver_dynamic.cc", "drivers.cc"):
+          for filename in ("xmq.c", "xmq.h", "driver_dynamic.cc", "drivers.cc"):
               urlretrieve(f"https://raw.githubusercontent.com/wmbusmeters/wmbusmeters/{sha}/src/{filename}", folder / filename)
           PY
           python3 experimental/xmq/tools/inventory_dependencies.py \
