@@ -201,6 +201,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+      - name: Generate IXML C++ rule tables from original XMQ drivers
+        run: |
+          python3 experimental/xmq/tools/generate_ixml_cpp.py \
+            experimental/xmq/drivers/mkradio4.xmq \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            --out experimental/xmq/generated/generated_ixml.h
       - name: Build and link portable C++ decoder for ESP32-S3
         uses: espressif/esp-idf-ci-action@v1
         with:
