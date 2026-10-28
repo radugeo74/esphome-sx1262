@@ -50,7 +50,7 @@ def compile_grammar(source):
 
 
 def metadata(path, grammar):
-    annotations = re.findall(r"(?m)^\\s*(DV_[A-Za-z_0-9]+)>dvk\\s*=\\s*\\+'([A-Fa-f0-9]+)'\\s*\\.", grammar)
+    annotations = re.findall(r"(?m)^\s*(DV_[A-Za-z_0-9]+)>dvk\s*=\s*\+'([A-Fa-f0-9]+)'\s*\.", grammar)
     driver = validate_driver(parse(path.read_text(encoding="utf-8")))
     matches = []
     for group in blocks(driver, "fields"):
