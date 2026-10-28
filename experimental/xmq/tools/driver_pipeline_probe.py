@@ -2,7 +2,7 @@
 """IXML -> synthetic DIF/VIF records -> XMQ calculate chain (host experiment).
 
 Uses original driver field names, match.difvifkey and calculate expressions.
-Currently supports unsigned 16-bit records and standard volume VIF 0x10..0x17.
+Supports selected unsigned 16-bit VIF families: volume, HCA, temperature and raw dates.
 Other types fail explicitly. Not yet a complete wireless M-Bus decoder.
 """
 import re
@@ -16,6 +16,21 @@ ANNOTATION = re.compile(r"(?m)^\s*(DV_[A-Za-z_0-9]+)>dvk\s*=\s*\+'([0-9A-Fa-f]+)
 
 class BridgeError(ValueError):
     pass
+
+
+def interpret_record(key, value):
+    """Small explicit subset of EN 13757 VIF interpretation."""
+    vif = int(key[-2:], 16)
+    if 0x10 <= vif <= 0x17:
+        return "m3", value * (10 ** (vif - 0x16))
+    if vif == 0x6E:
+        return "hca", value
+    if vif in (0x65, 0x5D):
+        return "c", value / 100.0
+    if key.endswith("FD3A"):
+        return "counter", value
+    raise BridgeError(f"Unsupported VIF {vif:#x} in {key}")
+
 
 
 def decode(path: Path, payload: str):
@@ -36,10 +51,8 @@ def decode(path: Path, payload: str):
         if key in records:
             raise BridgeError(f"Duplicate DIF/VIF key {key}")
         value = int.from_bytes(binary, "little")
-        vif = int(key[-2:], 16)
-        if not 0x10 <= vif <= 0x17:
-            raise BridgeError(f"Unsupported VIF {vif:#x} for {name}")
-        records[key] = {"raw": value, "m3": value * (10 ** (vif - 0x16))}
+        suffix, scaled = interpret_record(key, value)
+        records[key] = {"raw": value, "unit": suffix, "scaled": scaled}
 
     env = {}
     computed = {}
@@ -57,9 +70,9 @@ def decode(path: Path, payload: str):
                     raise BridgeError(f"Ambiguous match: {fieldname}")
                 key = matches[0].upper()
                 if key in records:
-                    env[fieldname + "_counter"] = records[key]["m3"]
-                    # Do not use this numeric scaling for non-volume VIFs.
-                    env[fieldname + "_m3"] = records[key]["m3"]
+                    record = records[key]
+                    env[fieldname + "_counter"] = record["scaled"]
+                    env[fieldname + "_" + record["unit"]] = record["scaled"]
             formulas = values(e, "calculate")
             if formulas:
                 if len(formulas) != 1:
