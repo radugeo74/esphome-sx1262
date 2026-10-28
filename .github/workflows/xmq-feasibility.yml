@@ -184,6 +184,7 @@ jobs:
           /tmp/xmq-ixml-subset-test
           echo "PASS portable C++ IXML subset"
 
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_cpp_metadata.py' -v
           python3 experimental/xmq/tools/generate_ixml_cpp.py \
             experimental/xmq/drivers/mkradio4.xmq \
             experimental/xmq/drivers/fhkvdataiii.xmq \
