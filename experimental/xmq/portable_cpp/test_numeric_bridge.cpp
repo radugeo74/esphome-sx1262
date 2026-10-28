@@ -42,5 +42,22 @@ int main() {
                              generated_ixml::fhkvdataiii::field_keys,2,
                              "previous_date_raw",hca)==NumericStatus::Ok);
  assert(hca.raw==0x299F);
+ CalcValue dates[16] = {{"previous_date_raw", static_cast<double>(0x299F)},
+                        {"current_date_raw", static_cast<double>(0x2450)}};
+ size_t date_count = 2;
+ assert(calculate(generated_ixml::fhkvdataiii::calculations,
+                  generated_ixml::fhkvdataiii::calculation_count,
+                  dates, date_count, 16) == CalcStatus::Ok);
+ bool prev_day = false, prev_month = false, prev_year = false;
+ bool curr_day = false, curr_month = false, curr_year = false;
+ for (size_t i = 0; i < date_count; ++i) {
+   if (std::strcmp(dates[i].name,"previous_day")==0) prev_day = dates[i].value == 31;
+   if (std::strcmp(dates[i].name,"previous_month")==0) prev_month = dates[i].value == 12;
+   if (std::strcmp(dates[i].name,"previous_year")==0) prev_year = dates[i].value == 20;
+   if (std::strcmp(dates[i].name,"current_day")==0) curr_day = dates[i].value == 5;
+   if (std::strcmp(dates[i].name,"current_month")==0) curr_month = dates[i].value == 2;
+   if (std::strcmp(dates[i].name,"current_year")==0) curr_year = dates[i].value == 21;
+ }
+ assert(prev_day && prev_month && prev_year && curr_day && curr_month && curr_year);
  return 0;
 }
