@@ -95,3 +95,24 @@ jobs:
           name: xmq-portability-inventory
           path: /tmp/xmq-portability.json
           retention-days: 14
+
+  portable-xmq-parser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Syntax check and structural parser regression tests
+        run: |
+          python3 -m py_compile experimental/xmq/tools/portable_xmq.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_portable_xmq.py' -v
+      - name: Export parsed structure for review
+        run: |
+          python3 experimental/xmq/tools/portable_xmq.py \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            experimental/xmq/drivers/mkradio4.xmq \
+            --out /tmp/xmq-structural-tree.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xmq-structural-tree
+          path: /tmp/xmq-structural-tree.json
+          retention-days: 14
