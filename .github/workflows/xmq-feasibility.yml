@@ -178,6 +178,11 @@ jobs:
             -o /tmp/xmq-record-decoder-test
           /tmp/xmq-record-decoder-test
           echo "PASS portable C++ DIF/VIF record decoder"
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            experimental/xmq/portable_cpp/test_ixml_subset.cpp \
+            -o /tmp/xmq-ixml-subset-test
+          /tmp/xmq-ixml-subset-test
+          echo "PASS portable C++ IXML subset"
 
   espidf-s3-cpp-link:
     runs-on: ubuntu-24.04
