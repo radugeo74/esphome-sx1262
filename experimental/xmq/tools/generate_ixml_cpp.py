@@ -90,7 +90,7 @@ def compile_calculations(path):
             # available to the existing host-only calendar interpreter.
             if not all(ch.isalnum() or ch in "_ +*()." for ch in expr[0]):
                 continue
-            expression = re.sub(r"(?<![A-Za-z_0-9])1m3\\b", "1", expr[0])
+            expression = re.sub(r"(?<![A-Za-z_0-9])1m3\b", "1", expr[0])
             try:
                 tree = ast.parse(expression, mode="eval")
             except SyntaxError:
