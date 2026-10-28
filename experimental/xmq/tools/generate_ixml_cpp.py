@@ -10,6 +10,7 @@ import re
 import sys
 from pathlib import Path
 from ixml_probe import extract_grammar, grammar_rules
+from portable_xmq import parse, validate_driver, blocks, values
 
 IDENT = re.compile(r"^[A-Za-z_][A-Za-z_0-9]*$")
 HEX = re.compile(r"^'([A-Fa-f0-9]{2})'$")
@@ -48,6 +49,28 @@ def compile_grammar(source):
     return output
 
 
+def metadata(path, grammar):
+    annotations = re.findall(r"(?m)^\\s*(DV_[A-Za-z_0-9]+)>dvk\\s*=\\s*\\+'([A-Fa-f0-9]+)'\\s*\\.", grammar)
+    driver = validate_driver(parse(path.read_text(encoding="utf-8")))
+    matches = []
+    for group in blocks(driver, "fields"):
+        for field in blocks(group["entries"], "field"):
+            entries = field["entries"]
+            names = values(entries, "name")
+            keys = [key for m in blocks(entries, "match")
+                    for key in values(m["entries"], "difvifkey")]
+            if keys:
+                if len(names) != 1 or len(keys) != 1:
+                    raise ValueError("Ambiguous DIF/VIF mapping")
+                matches.append((names[0], keys[0].upper()))
+    if not annotations or not matches:
+        raise ValueError("Missing capture annotations or DIF/VIF field matches")
+    for name, key in annotations + matches:
+        if not IDENT.fullmatch(name) or len(key) % 2 or not 4 <= len(key) <= 16:
+            raise ValueError("Invalid generated mapping")
+    return annotations, matches
+
+
 def generate(files):
     lines = ["// Generated from pinned original XMQ definitions; do not edit.",
              "#pragma once", '#include "ixml_subset.h"',
@@ -60,6 +83,7 @@ def generate(files):
         if not IDENT.fullmatch(namespace):
             raise ValueError("Unsafe namespace")
         parsed = compile_grammar(grammars[0])
+        annotations, matches = metadata(path, grammars[0])
         lines.append(f"namespace {namespace} {{")
         for index, (name, entries) in enumerate(parsed):
             lines.append(f"inline constexpr xmq_portable::Step steps_{index}[] = {{")
@@ -72,6 +96,14 @@ def generate(files):
             lines.append(f'  {{"{name}", steps_{index}, {len(entries)}}},')
         lines.append("};")
         lines.append("inline constexpr size_t count = sizeof(rules) / sizeof(rules[0]);")
+        lines.append("inline constexpr xmq_portable::CaptureKey capture_keys[] = {")
+        for name, key in annotations:
+            lines.append(f'  {{"{name}", "{key.upper()}"}},')
+        lines.append("};")
+        lines.append("inline constexpr xmq_portable::FieldKey field_keys[] = {")
+        for name, key in matches:
+            lines.append(f'  {{"{name}", "{key}"}},')
+        lines.append("};")
         lines.append("}")
         print(f"Generated {namespace}: {len(parsed)} rule tables", file=sys.stderr)
     lines.append("}")
