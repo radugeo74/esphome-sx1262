@@ -184,6 +184,18 @@ jobs:
           /tmp/xmq-ixml-subset-test
           echo "PASS portable C++ IXML subset"
 
+          python3 experimental/xmq/tools/generate_ixml_cpp.py \
+            experimental/xmq/drivers/mkradio4.xmq \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            --out /tmp/generated_ixml.h
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/portable_cpp/test_generated_ixml.cpp \
+            -o /tmp/xmq-generated-ixml-test
+          /tmp/xmq-generated-ixml-test
+          echo "PASS generated C++ IXML driver tables"
+
+
   espidf-s3-cpp-link:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
