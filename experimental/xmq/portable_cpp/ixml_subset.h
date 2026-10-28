@@ -6,7 +6,7 @@
 namespace xmq_portable {
 // Bounded subset of IXML byte/word grammar. Rule tree is generated from XMQ
 // definitions; this interpreter has no meter-specific byte offsets.
-enum class Op : uint8_t { Byte, Word, Literal, Capture, Rest, Call };
+enum class Op : uint8_t { Byte, Word, Literal, Capture, Rest, Call, Choice };
 struct Step { Op op; uint16_t arg; const char *name; };
 struct Rule { const char *name; const Step *steps; size_t count; };
 struct Capture { const char *name; const uint8_t *data; size_t length; };
@@ -51,6 +51,37 @@ inline ParseStatus execute(const Rule *rules, size_t count, const char *entry,
         case Op::Rest:
           last_begin = pos; last_length = length - pos; pos = length;
           break;
+
+        case Op::Choice: {
+          if (!s.name) return ParseStatus::InvalidGrammar;
+          const char *cursor = s.name;
+          ParseStatus failure = ParseStatus::NoMatch;
+          bool matched = false;
+          while (*cursor) {
+            const char *end = std::strchr(cursor, '|');
+            const size_t size = end ? static_cast<size_t>(end - cursor) : std::strlen(cursor);
+            if (!size || size >= 64) return ParseStatus::InvalidGrammar;
+            char candidate[64]{};
+            std::memcpy(candidate, cursor, size);
+            const auto old_pos = pos;
+            const auto old_count = result.count;
+            const auto old_begin = last_begin;
+            const auto old_length = last_length;
+            const auto status = self(self, find_rule(rules, count, candidate), depth + 1);
+            if (status == ParseStatus::Ok) { matched = true; break; }
+            if (status != ParseStatus::NoMatch && status != ParseStatus::Truncated)
+              return status;
+            failure = status;
+            pos = old_pos;
+            result.count = old_count;
+            last_begin = old_begin;
+            last_length = old_length;
+            if (!end) break;
+            cursor = end + 1;
+          }
+          if (!matched) return failure;
+          break;
+        }
         case Op::Call: {
           const auto status = self(self, find_rule(rules, count, s.name), depth + 1);
           if (status != ParseStatus::Ok) return status;
