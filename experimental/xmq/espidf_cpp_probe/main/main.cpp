@@ -44,7 +44,7 @@ extern "C" void app_main(void) {
   ESP_LOGI(TAG, "Generated mkradio4 IXML self-test PASS, captures=%u",
            static_cast<unsigned>(parsed.count));
   NumericValue numeric{};
-  if (decode_water_values(parsed, numeric) != NumericStatus::Ok ||
+  if (decode_mapped_water(parsed, generated_ixml::mkradio4::capture_keys, 2, generated_ixml::mkradio4::field_keys, 2, numeric) != NumericStatus::Ok ||
       std::fabs(numeric.target_m3 - 0.1) > 0.00001 ||
       std::fabs(numeric.total_m3 - 0.4) > 0.00001) {
     ESP_LOGE(TAG, "C++ IXML-to-numeric self-test failed");
