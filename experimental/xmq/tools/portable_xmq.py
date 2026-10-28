@@ -26,10 +26,10 @@ def tokens(source):
         elif source.startswith("//", i) or c == "#":
             while i < n and source[i] != "\n":
                 i += 1
-        elif c in "{}=,":
+        elif c in (chr(39), chr(34)):
             yield (c, c, line)
             i += 1
-        elif c in "'\\"":
+        elif c in (chr(39), chr(34)):
             quote, begin, buf = c, line, []
             i += 1
             while i < n:
@@ -37,7 +37,7 @@ def tokens(source):
                 if c == quote:
                     i += 1
                     break
-                if c == "\\\\" and i + 1 < n:
+                if ord(c) == 92 and i + 1 < n:
                     buf.append(source[i:i+2])
                     i += 2
                     continue
@@ -50,7 +50,7 @@ def tokens(source):
             yield ("STRING", "".join(buf), begin)
         else:
             start = i
-            while i < n and not source[i].isspace() and source[i] not in "{}=,\\"'":
+            while i < n and not source[i].isspace() and source[i] not in ("{", "}", "=", ",", chr(39), chr(34)):
                 if source.startswith("//", i):
                     break
                 i += 1
