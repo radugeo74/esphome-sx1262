@@ -32,6 +32,15 @@ class MetadataTests(unittest.TestCase):
         self.assertIn(("Number", None, 1.0), formulas[0][1])
         self.assertEqual(formulas[-1][1][-1][0], "Add")
 
+    def test_heat_numeric_calculations(self):
+        formulas = compile_calculations(ROOT / "drivers" / "fhkvdataiii.xmq")
+        names = [name for name, _ in formulas]
+        self.assertEqual(names, ["previous_day", "previous_month", "previous_year",
+                                 "current_day", "current_month", "current_year"])
+        ops = {step[0] for _, steps in formulas for step in steps}
+        self.assertTrue({"Modulo", "ShiftRight", "LessEqual", "Less", "Equal",
+                         "And", "Or"}.issubset(ops))
+
     def test_generated_tables(self):
         header = generate([ROOT / "drivers" / "mkradio4.xmq",
                            ROOT / "drivers" / "fhkvdataiii.xmq"])
