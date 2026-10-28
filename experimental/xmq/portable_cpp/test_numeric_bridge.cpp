@@ -14,5 +14,19 @@ int main() {
  assert(std::fabs(values.total_m3-0.4)<1e-8);
  Result missing{captures,8,1,0};
  assert(decode_mapped_water(missing, generated_ixml::mkradio4::capture_keys, 2, generated_ixml::mkradio4::field_keys, 2, values)==NumericStatus::MissingCapture);
+ const uint8_t heat[] = {0x0F,0x9F,0x29,0x2D,0x00,0x50,0x24,0x04,0x00,
+                         0x11,0xBD,0x08,0x38,0x09,0x04,0x00,0x00,0x00,
+                         0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+                         0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,
+                         0x00,0x00,0x03,0x14,0x0E};
+ Capture heat_caps[12]{};
+ Result heat_result{heat_caps,12,0,0};
+ assert(execute(generated_ixml::fhkvdataiii::rules,generated_ixml::fhkvdataiii::count,
+                "decode",heat,sizeof(heat),heat_result)==ParseStatus::Ok);
+ Record hca{};
+ assert(lookup_mapped_record(heat_result,generated_ixml::fhkvdataiii::capture_keys,6,
+                             generated_ixml::fhkvdataiii::field_keys,2,
+                             "previous_date_raw",hca)==NumericStatus::Ok);
+ assert(hca.raw==0x299F);
  return 0;
 }
