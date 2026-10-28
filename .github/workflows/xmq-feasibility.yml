@@ -73,4 +73,4 @@ jobs:
             idf.py set-target esp32s3
             idf.py build
             idf.py size
-            bash "$GITHUB_WORKSPACE/experimental/xmq/tools/probe_libxmq_espidf.sh"
+            bash "../tools/probe_libxmq_espidf.sh"
