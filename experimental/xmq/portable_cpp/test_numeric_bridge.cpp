@@ -12,6 +12,20 @@ int main() {
  assert(decode_mapped_water(result, generated_ixml::mkradio4::capture_keys, 2, generated_ixml::mkradio4::field_keys, 2, values)==NumericStatus::Ok);
  assert(std::fabs(values.target_m3-0.1)<1e-8);
  assert(std::fabs(values.total_m3-0.4)<1e-8);
+ CalcValue env[16]{};
+ size_t env_count = 0;
+ assert(seed_calculation_fields(result, generated_ixml::mkradio4::capture_keys, 2,
+     generated_ixml::mkradio4::field_keys, 2, env, env_count, 16) == NumericStatus::Ok);
+ assert(calculate(generated_ixml::mkradio4::calculations,
+     generated_ixml::mkradio4::calculation_count, env, env_count, 16) == CalcStatus::Ok);
+ bool target_ok = false, total_ok = false;
+ for (size_t i = 0; i < env_count; ++i) {
+   if (std::strcmp(env[i].name, "target") == 0)
+     target_ok = std::fabs(env[i].value - 0.1) < 1e-8;
+   if (std::strcmp(env[i].name, "total") == 0)
+     total_ok = std::fabs(env[i].value - 0.4) < 1e-8;
+ }
+ assert(target_ok && total_ok);
  Result missing{captures,8,1,0};
  assert(decode_mapped_water(missing, generated_ixml::mkradio4::capture_keys, 2, generated_ixml::mkradio4::field_keys, 2, values)==NumericStatus::MissingCapture);
  const uint8_t heat[] = {0x0F,0x9F,0x29,0x2D,0x00,0x50,0x24,0x04,0x00,
