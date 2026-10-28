@@ -9,6 +9,8 @@ namespace xmq_portable {
 enum class Op : uint8_t { Byte, Word, Literal, Capture, Rest, Call, Choice };
 struct Step { Op op; uint16_t arg; const char *name; };
 struct Rule { const char *name; const Step *steps; size_t count; };
+struct CaptureKey { const char *capture; const char *difvif; };
+struct FieldKey { const char *field; const char *difvif; };
 struct Capture { const char *name; const uint8_t *data; size_t length; };
 struct Result { Capture *captures; size_t capacity; size_t count; size_t consumed; };
 enum class ParseStatus : uint8_t { Ok, InvalidGrammar, Truncated, NoMatch, CapacityExceeded, DepthExceeded };
