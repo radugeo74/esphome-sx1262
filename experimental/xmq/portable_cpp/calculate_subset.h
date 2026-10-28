@@ -1,10 +1,11 @@
 #pragma once
 #include <cstddef>
 #include <cstring>
+#include <cmath>
 #include "numeric_bridge.h"
 
 namespace xmq_portable {
-enum class CalcOp : uint8_t { Field, Number, Add, Multiply };
+enum class CalcOp : uint8_t { Field, Number, Add, Multiply, Subtract, Modulo, ShiftRight, Less, LessEqual, Equal, And, Or };
 struct CalcStep { CalcOp op; const char *name; double number; };
 struct CalcFormula { const char *field; const CalcStep *steps; size_t count; };
 struct CalcValue { const char *name; double value; };
@@ -33,11 +34,35 @@ inline CalcStatus calculate(const CalcFormula *formulas, size_t formula_count,
       } else if (step.op == CalcOp::Number) {
         if (depth >= 24) return CalcStatus::CapacityExceeded;
         stack[depth++] = step.number;
-      } else if (step.op == CalcOp::Add || step.op == CalcOp::Multiply) {
+      } else if (step.op != CalcOp::Field && step.op != CalcOp::Number) {
         if (depth < 2) return CalcStatus::InvalidProgram;
         const double right = stack[--depth];
         const double left = stack[--depth];
-        stack[depth++] = step.op == CalcOp::Add ? left + right : left * right;
+        double answer = 0;
+        const bool integral = std::isfinite(left) && std::isfinite(right) &&
+            left >= 0 && right >= 0 && left <= 4294967295.0 &&
+            right <= 4294967295.0 && std::floor(left) == left && std::floor(right) == right;
+        switch (step.op) {
+          case CalcOp::Add: answer = left + right; break;
+          case CalcOp::Multiply: answer = left * right; break;
+          case CalcOp::Subtract: answer = left - right; break;
+          case CalcOp::Modulo:
+            if (!integral || right == 0) return CalcStatus::InvalidProgram;
+            answer = static_cast<uint32_t>(left) % static_cast<uint32_t>(right);
+            break;
+          case CalcOp::ShiftRight:
+            if (!integral || right >= 32) return CalcStatus::InvalidProgram;
+            answer = static_cast<uint32_t>(left) >> static_cast<unsigned>(right);
+            break;
+          case CalcOp::Less: answer = left < right ? 1 : 0; break;
+          case CalcOp::LessEqual: answer = left <= right ? 1 : 0; break;
+          case CalcOp::Equal: answer = left == right ? 1 : 0; break;
+          case CalcOp::And: answer = (left != 0 && right != 0) ? 1 : 0; break;
+          case CalcOp::Or: answer = (left != 0 || right != 0) ? 1 : 0; break;
+          default: return CalcStatus::InvalidProgram;
+        }
+        if (!std::isfinite(answer)) return CalcStatus::InvalidProgram;
+        stack[depth++] = answer;
       } else return CalcStatus::InvalidProgram;
     }
     if (depth != 1 || value_count >= capacity) return CalcStatus::InvalidProgram;
