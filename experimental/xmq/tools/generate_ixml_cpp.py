@@ -88,8 +88,8 @@ def compile_calculations(path):
                 raise ValueError("Ambiguous calculate field")
             # Explicitly compile only an arithmetic subset; other formulas remain
             # available to the existing host-only calendar interpreter.
-            expression = re.sub(r"(?<![A-Za-z_0-9])([0-9]+)(?:counter|m3)\\b",
-                                r"\\1", expr[0])
+            expression = re.sub(r"(?<![A-Za-z_0-9])([0-9]+)(?:counter|m3)\b",
+                                r"\1", expr[0])
             expression = expression.replace("&&", " and ").replace("||", " or ")
             try:
                 tree = ast.parse(expression, mode="eval")
