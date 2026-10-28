@@ -26,7 +26,7 @@ def tokens(source):
         elif source.startswith("//", i) or c == "#":
             while i < n and source[i] != "\n":
                 i += 1
-        elif c in (chr(39), chr(34)):
+        elif c in ("{", "}", "=", ","):
             yield (c, c, line)
             i += 1
         elif c in (chr(39), chr(34)):
