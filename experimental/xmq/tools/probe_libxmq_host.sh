@@ -20,3 +20,27 @@ printf '\nCompiled object sizes:\n'
 size xmq.o
 printf '\nUndefined external symbols (portability inventory):\n'
 nm -u xmq.o || true
+
+printf '\nLinking and executing XMQ parser against embedded Techem definitions...\n'
+gcc -std=gnu11 -O2 -I. $(pkg-config --cflags libxml-2.0) \
+  -c -x c -o xmq_parse_smoke.o - <<'EOF'
+#include "xmq.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+int main(void) {
+  const char *sample = "driver { name = smoke meter_type = WaterMeter }";
+  XMQReturnDoc rd = xmqNewDoc();
+  if (rd.status != XMQ_OK || !rd.doc) return 10;
+  if (!xmqParseBuffer(rd.doc, sample, sample + strlen(sample), NULL, 0)) return 11;
+  const char *name = xmqGetString(rd.doc, "/driver/name");
+  if (!name || strcmp(name, "smoke") != 0) {
+    fprintf(stderr, "XMQ parsed but name lookup failed: %s\\n", name ? name : "(null)");
+    return 12;
+  }
+  puts("libxmq host parse and lookup: PASS");
+  return 0;
+}
+EOF
+gcc xmq_parse_smoke.o xmq.o $(pkg-config --libs libxml-2.0) -lm -o xmq_parse_smoke
+./xmq_parse_smoke
