@@ -61,7 +61,8 @@ void SX1262::setup() {
   ESP_LOGVV(TAG, "setting RX gain");
   this->spi_write(RADIOLIB_SX126X_CMD_WRITE_REGISTER, {
                   BYTE(RADIOLIB_SX126X_REG_RX_GAIN, 1), BYTE(RADIOLIB_SX126X_REG_RX_GAIN, 0),
-                  RADIOLIB_SX126X_RX_GAIN_POWER_SAVING
+                  this->rx_gain_boosted_ ? RADIOLIB_SX126X_RX_GAIN_BOOSTED
+                                         : RADIOLIB_SX126X_RX_GAIN_POWER_SAVING
   });
 
   ESP_LOGVV(TAG, "setting IRQ parameters");
@@ -107,16 +108,7 @@ bool SX1262::get_frame(uint8_t *buffer, size_t length, uint32_t offset) {
   if (this->irq_pin_->digital_read()) {
     spi_read_frame(RADIOLIB_SX126X_CMD_READ_BUFFER, {uint8_t(offset), 0x00}, buffer, length);
 
-    // Clear IRQ 
-    if (offset > 0) {
-      const uint32_t irqmask = RADIOLIB_SX126X_IRQ_RX_DONE; 
-      this->spi_write(RADIOLIB_SX126X_CMD_CLEAR_IRQ_STATUS, {BYTE(irqmask, 1), BYTE(irqmask, 0)});
-
-      const uint32_t timeout = 0x000000; // 0xFFFFFF;
-      this->spi_write(RADIOLIB_SX126X_CMD_SET_RX, {
-                      BYTE(timeout, 2), BYTE(timeout, 1), BYTE(timeout, 0)
-      });
-    } 
+    // RX re-arming is handled once by Radio::receive_frame() after RSSI capture.
     return true;
   }
 
