@@ -1,3 +1,5 @@
+from pathlib import Path
+import sys
 import esphome.config_validation as cv
 import esphome.codegen as cg
 from esphome.const import (
@@ -16,6 +18,7 @@ from ..wmbus_common import validate_driver
 CONF_METER_ID = "meter_id"
 CONF_RADIO_ID = "radio_id"
 CONF_ON_TELEGRAM = "on_telegram"
+CONF_XMQ_SHADOW = "xmq_shadow"
 
 CODEOWNERS = ["@SzczepanLeon", "@kubasaw"]
 
@@ -49,6 +52,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(CONF_RADIO_ID): cv.use_id(RadioComponent),
         cv.Optional(CONF_METER_ID, default=""): cv.hex_int,
         cv.Optional(CONF_TYPE, default="auto"): validate_driver,
+        cv.Optional(CONF_XMQ_SHADOW, default=False): cv.boolean,
         cv.Optional(CONF_KEY): cv.Any(
             cv.All(cv.string_strict, lambda s: s.encode().hex(),
                    hex_key_validator),
@@ -77,6 +81,24 @@ async def to_code(config):
             config[CONF_MODE],
         )
     )
+
+    if config[CONF_XMQ_SHADOW]:
+        # Keep XMQ generation explicitly opt-in; the normal component remains
+        # independent of the experimental grammar and generated headers.
+        root = Path(__file__).resolve().parents[2]
+        xmq = root / "experimental" / "xmq"
+        sys.path.insert(0, str(xmq / "tools"))
+        try:
+            from generate_ixml_cpp import generate
+            output = xmq / "generated" / "generated_ixml.h"
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(generate([
+                xmq / "drivers" / "mkradio4.xmq",
+                xmq / "drivers" / "fhkvdataiii.xmq",
+            ]), encoding="utf-8")
+        finally:
+            sys.path.pop(0)
+    cg.add(meter.set_xmq_shadow(config[CONF_XMQ_SHADOW]))
 
     radio = await cg.get_variable(config[CONF_RADIO_ID])
     cg.add(meter.set_radio(radio))
