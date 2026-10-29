@@ -1,6 +1,8 @@
 #pragma once
 
 #include <functional>
+#include <atomic>
+#include <cstdint>
 
 #include "freertos/FreeRTOS.h"
 
@@ -33,6 +35,15 @@ protected:
   RadioTransceiver *radio{nullptr};
   TaskHandle_t receiver_task_handle_{nullptr};
   QueueHandle_t packet_queue_{nullptr};
+
+  // Cross-core diagnostics. Relaxed atomics are sufficient for independent counts.
+  std::atomic<uint32_t> packets_created_{0};
+  std::atomic<uint32_t> packets_read_failed_{0};
+  std::atomic<uint32_t> packets_queued_{0};
+  std::atomic<uint32_t> packets_queue_dropped_{0};
+  std::atomic<uint32_t> packets_dequeued_{0};
+  std::atomic<uint32_t> packets_invalid_{0};
+  std::atomic<uint32_t> packets_valid_{0};
 
   std::vector<std::function<void(Frame *)>> handlers_;
 };
