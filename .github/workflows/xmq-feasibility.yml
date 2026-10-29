@@ -5,6 +5,7 @@ on:
     branches: ["experimental/wmbusmeters-xmq"]
     paths:
       - "experimental/xmq/**"
+      - "components/wmbus_meter/**"
       - ".github/workflows/xmq-feasibility.yml"
   workflow_dispatch:
 
