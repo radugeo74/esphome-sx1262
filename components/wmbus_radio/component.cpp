@@ -87,6 +87,8 @@ void Radio::loop() {
     ESP_LOGI(TAG, "Stack low-water free: esphome_loop=%u B, radio_recv=%u B",
              static_cast<unsigned>(main_free),
              static_cast<unsigned>(receiver_free));
+    const uint32_t queued = this->packets_queued_.load(std::memory_order_relaxed);
+    const uint32_t dequeued = this->packets_dequeued_.load(std::memory_order_relaxed);
     ESP_LOGI(TAG,
              "Packet lifetime: created=%lu read_fail=%lu queued=%lu drop=%lu "
              "dequeued=%lu invalid=%lu valid=%lu pending=%lu",
@@ -97,9 +99,7 @@ void Radio::loop() {
              static_cast<unsigned long>(this->packets_dequeued_.load(std::memory_order_relaxed)),
              static_cast<unsigned long>(this->packets_invalid_.load(std::memory_order_relaxed)),
              static_cast<unsigned long>(this->packets_valid_.load(std::memory_order_relaxed)),
-             static_cast<unsigned long>(
-                 this->packets_queued_.load(std::memory_order_relaxed) -
-                 this->packets_dequeued_.load(std::memory_order_relaxed)));
+             static_cast<unsigned long>(queued >= dequeued ? queued - dequeued : 0));
     if (main_free < 1024 || (this->receiver_task_handle_ != nullptr && receiver_free < 1024)) {
       ESP_LOGW(TAG, "Low task stack headroom (below 1024 bytes)");
     }
