@@ -17,3 +17,16 @@ jobs:
             -fsanitize=address,undefined -fno-omit-frame-pointer \
             tests/test_packet_queue_ownership.cpp -o /tmp/packet-ownership-test
           /tmp/packet-ownership-test
+
+  espidf-s3-component-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned ESPHome toolchain
+        run: python -m pip install esphome==2026.4.1
+      - name: Compile actual local radio component for ESP32-S3 (no flash)
+        run: esphome compile tests/sx1262_lifetime_ci.yaml
