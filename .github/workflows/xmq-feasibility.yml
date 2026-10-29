@@ -207,6 +207,13 @@ jobs:
             -o /tmp/xmq-driver-runtime-test
           /tmp/xmq-driver-runtime-test
           echo "PASS generated driver runtime (water, heat, invalid payload)"
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/portable_cpp/test_frame_bridge.cpp \
+            -o /tmp/xmq-frame-bridge-test
+          /tmp/xmq-frame-bridge-test
+          echo "PASS zero-copy parsed frame bridge"
+
 
 
 
