@@ -83,7 +83,8 @@ inline NumericStatus seed_calculation_fields(const Result &result,
                                              field_count, fields[i].field, record);
     if (status != NumericStatus::Ok) return status;
     // XMQ Dimensionless record fields are represented as _counter.
-    if (record.unit != Unit::VolumeM3 && record.unit != Unit::RawCounter)
+    if (record.unit != Unit::VolumeM3 && record.unit != Unit::RawCounter &&
+        record.unit != Unit::Hca && record.unit != Unit::TemperatureC)
       return NumericStatus::InvalidRecord;
     values[count++] = {fields[i].field, record.scaled};
   }
