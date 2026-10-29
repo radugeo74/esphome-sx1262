@@ -32,7 +32,8 @@ int main() {
   const DriverTables heat{
     generated_ixml::fhkvdataiii::rules, generated_ixml::fhkvdataiii::count,
     generated_ixml::fhkvdataiii::capture_keys, 6,
-    generated_ixml::fhkvdataiii::field_keys, 2,
+    generated_ixml::fhkvdataiii::field_keys,
+    sizeof(generated_ixml::fhkvdataiii::field_keys) / sizeof(FieldKey),
     generated_ixml::fhkvdataiii::calculations, generated_ixml::fhkvdataiii::calculation_count,
     generated_ixml::fhkvdataiii::date_calculations,
     generated_ixml::fhkvdataiii::date_calculation_count};
@@ -48,6 +49,10 @@ int main() {
   assert(dates[1].year==2020 && dates[1].month==12 && dates[1].day==31);
   assert(field(output,"previous_day")==31);
   assert(field(output,"current_day")==5);
+  assert(field(output,"previous_hca")==45);
+  assert(field(output,"current_hca")==4);
+  assert(std::fabs(field(output,"temp_room_c")-22.37)<0.00001);
+  assert(std::fabs(field(output,"temp_radiator_c")-23.6)<0.00001);
   assert(decode_driver_payload(heat,heat_payload,2,captures,12,output)
          ==DriverStatus::ParseError);
   assert(output.value_count==0 && output.date_count==0);
