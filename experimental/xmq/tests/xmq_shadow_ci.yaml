@@ -36,3 +36,10 @@ wmbus_meter:
     type: fhkvdataiii
     xmq_shadow: true
     mode: [T1]
+
+  - id: test_water
+    radio_id: radio
+    meter_id: 0x87654321
+    type: mkradio4
+    xmq_shadow: true
+    mode: [T1, C1]
