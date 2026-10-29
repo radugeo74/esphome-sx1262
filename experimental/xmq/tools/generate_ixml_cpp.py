@@ -142,13 +142,13 @@ def compile_date_calculations(path):
     driver = validate_driver(parse(path.read_text(encoding="utf-8")))
     dates = []
     pattern = re.compile(
-        r"""^['"](?P<base>\\d{4}-\\d{2}-\\d{2})['"]\\s*\\+\\s*
-            \\(\\s*\\(\\s*\\(\\s*(?P<year>[A-Za-z_][A-Za-z_0-9]*)_counter
-            \\s*\\*\\s*12counter\\s*\\)\\s*\\+\\s*
-            (?P<month>[A-Za-z_][A-Za-z_0-9]*)_counter\\s*-\\s*1counter\\s*\\)
-            \\s*\\*\\s*1month\\s*\\)\\s*\\+\\s*
-            \\(\\s*\\(\\s*(?P<day>[A-Za-z_][A-Za-z_0-9]*)_counter
-            \\s*-\\s*1counter\\s*\\)\\s*\\*\\s*24h\\s*\\)$""",
+        r"""^['"](?P<base>\d{4}-\d{2}-\d{2})['"]\s*\+\s*
+            \(\s*\(\s*\(\s*(?P<year>[A-Za-z_][A-Za-z_0-9]*)_counter
+            \s*\*\s*12counter\s*\)\s*\+\s*
+            (?P<month>[A-Za-z_][A-Za-z_0-9]*)_counter\s*-\s*1counter\s*\)
+            \s*\*\s*1month\s*\)\s*\+\s*
+            \(\s*\(\s*(?P<day>[A-Za-z_][A-Za-z_0-9]*)_counter
+            \s*-\s*1counter\s*\)\s*\*\s*24h\s*\)$""",
         re.X | re.S,
     )
     for group in blocks(driver, "fields"):
