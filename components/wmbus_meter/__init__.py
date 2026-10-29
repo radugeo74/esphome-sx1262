@@ -84,6 +84,7 @@ async def to_code(config):
     )
 
     if config[CONF_XMQ_SHADOW]:
+        cg.add_define("WMBUS_XMQ_SHADOW_ENABLED")
         # Keep XMQ generation explicitly opt-in; the normal component remains
         # independent of the experimental grammar and generated headers.
         root = Path(__file__).resolve().parents[2]
