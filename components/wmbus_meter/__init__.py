@@ -108,6 +108,18 @@ async def to_code(config):
             for header in (xmq / "portable_cpp").glob("*.h"):
                 shutil.copyfile(header, portable_dir / header.name)
             (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
+            from generate_driver_registry import generate as generate_registry
+            registry = generate_registry([
+                xmq / "drivers" / "mkradio4.xmq",
+                xmq / "drivers" / "fhkvdataiii.xmq",
+            ])
+            registry = registry.replace(
+                '#include "pure_driver_registry.h"',
+                '#include "esphome/components/wmbus_radio/pure_driver_registry.h"',
+            )
+            (component_dir / "xmq_driver_registry.h").write_text(
+                registry, encoding="utf-8"
+            )
             # The external component is copied into build/src before to_code runs.
             # Headers generated here remain in the original source directory.
             # Add it explicitly to the C++ include search path for both CI and HA.
