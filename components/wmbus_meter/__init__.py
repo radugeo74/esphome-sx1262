@@ -106,9 +106,9 @@ async def to_code(config):
             portable_dir.mkdir(parents=True, exist_ok=True)
             for header in (xmq / "portable_cpp").glob("*.h"):
                 shutil.copyfile(header, portable_dir / header.name)
-            generated = generated.replace('#include "ixml_subset.h"', '#include "xmq_portable/ixml_subset.h"')
-            generated = generated.replace('#include "calculate_subset.h"', '#include "xmq_portable/calculate_subset.h"')
-            generated = generated.replace('#include "calendar_subset.h"', '#include "xmq_portable/calendar_subset.h"')
+            generated = generated.replace('#include "ixml_subset.h"', '#include "ixml_subset.h"')
+            generated = generated.replace('#include "calculate_subset.h"', '#include "calculate_subset.h"')
+            generated = generated.replace('#include "calendar_subset.h"', '#include "calendar_subset.h"')
             (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
             # The external component is copied into build/src before to_code runs.
             # Headers generated here remain in the original source directory.
