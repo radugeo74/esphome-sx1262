@@ -1,7 +1,10 @@
 #include "wmbus_meter.h"
-#if __has_include("../../experimental/xmq/generated/generated_ixml.h")
-#include "../../experimental/xmq/portable_cpp/frame_bridge.h"
-#include "../../experimental/xmq/generated/generated_ixml.h"
+#if defined(WMBUS_XMQ_SHADOW_ENABLED) && !__has_include("xmq_generated.h")
+#error "XMQ shadow is enabled but generated tables are missing from ESPHome build"
+#endif
+#if __has_include("xmq_generated.h")
+#include "xmq_portable/frame_bridge.h"
+#include "xmq_generated.h"
 #define WMBUS_XMQ_TABLES_AVAILABLE 1
 #endif
 
