@@ -1,6 +1,8 @@
 #pragma once
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
+#include <utility>
+#include <vector>
 
 
 #include "esphome/components/wmbus_common/meters.h"
@@ -14,6 +16,7 @@ public:
                         std::initializer_list<LinkMode> linkModes);
   void set_radio(wmbus_radio::Radio *radio);
   void set_xmq_shadow(bool enabled) { this->xmq_shadow_enabled_ = enabled; }
+  void set_xmq_only(bool enabled) { this->xmq_only_enabled_ = enabled; }
 
   void dump_config() override;
   std::string get_id();
@@ -28,6 +31,8 @@ public:
 
 protected:
   bool xmq_shadow_enabled_{false};
+  bool xmq_only_enabled_{false};
+  std::vector<std::pair<std::string, double>> xmq_values_;
   uint32_t xmq_shadow_success_{0};
   uint32_t xmq_shadow_failed_{0};
   LinkModeSet link_modes_;
