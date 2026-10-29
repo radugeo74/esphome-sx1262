@@ -1,4 +1,9 @@
 #include "wmbus_meter.h"
+#if __has_include("../../experimental/xmq/generated/generated_ixml.h")
+#include "../../experimental/xmq/portable_cpp/frame_bridge.h"
+#include "../../experimental/xmq/generated/generated_ixml.h"
+#define WMBUS_XMQ_TABLES_AVAILABLE 1
+#endif
 
 namespace esphome {
 namespace wmbus_meter {
@@ -61,6 +66,68 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
 
   this->meter->handleTelegram(about, frame->data(), false, &adresses, &id_match,
                               telegram.get());
+
+  if (id_match && this->xmq_shadow_enabled_) {
+#if defined(WMBUS_XMQ_TABLES_AVAILABLE)
+    // Observation only: do not call mark_as_handled(), change meter state,
+    // or publish any values. Run only after legacy ID matching and decryption.
+    if (!telegram->decryption_failed &&
+        telegram->header_size >= 0 && telegram->suffix_size >= 0 &&
+        !telegram->frame.empty()) {
+      const auto name = this->meter->driverName().str();
+      const bool heat = name == "fhkvdataiii";
+      const bool water = name == "mkradio4";
+      if (heat || water) {
+        using namespace xmq_portable;
+        const DriverTables heat_tables{
+          generated_ixml::fhkvdataiii::rules, generated_ixml::fhkvdataiii::count,
+          generated_ixml::fhkvdataiii::capture_keys,
+          sizeof(generated_ixml::fhkvdataiii::capture_keys) / sizeof(CaptureKey),
+          generated_ixml::fhkvdataiii::field_keys,
+          sizeof(generated_ixml::fhkvdataiii::field_keys) / sizeof(FieldKey),
+          generated_ixml::fhkvdataiii::calculations,
+          generated_ixml::fhkvdataiii::calculation_count,
+          generated_ixml::fhkvdataiii::date_calculations,
+          generated_ixml::fhkvdataiii::date_calculation_count};
+        const DriverTables water_tables{
+          generated_ixml::mkradio4::rules, generated_ixml::mkradio4::count,
+          generated_ixml::mkradio4::capture_keys,
+          sizeof(generated_ixml::mkradio4::capture_keys) / sizeof(CaptureKey),
+          generated_ixml::mkradio4::field_keys,
+          sizeof(generated_ixml::mkradio4::field_keys) / sizeof(FieldKey),
+          generated_ixml::mkradio4::calculations,
+          generated_ixml::mkradio4::calculation_count, nullptr, 0};
+        Capture captures[12]{};
+        CalcValue values[24]{};
+        CalendarDate dates[2]{};
+        DecodedPayload decoded{values, 24, 0, dates, 2, 0};
+        const auto *bytes = telegram->frame.data();
+        const size_t length = telegram->frame.size();
+        const auto status = heat
+            ? decode_manufacturer_frame(heat_tables, bytes, length,
+                static_cast<size_t>(telegram->header_size),
+                static_cast<size_t>(telegram->suffix_size),
+                telegram->mfct_0f_index, captures, 12, decoded)
+            : decode_parsed_frame(water_tables, bytes, length,
+                static_cast<size_t>(telegram->header_size),
+                static_cast<size_t>(telegram->suffix_size),
+                captures, 12, decoded);
+        if (status == DriverStatus::Ok) {
+          ++this->xmq_shadow_success_;
+        } else {
+          ++this->xmq_shadow_failed_;
+        }
+        // Rate-limited counts; no decrypted payload or encryption keys in logs.
+        if ((this->xmq_shadow_success_ + this->xmq_shadow_failed_) % 30 == 1)
+          ESP_LOGI(TAG, "XMQ shadow driver=%s ok=%u fail=%u last_status=%u",
+                   name.c_str(), this->xmq_shadow_success_,
+                   this->xmq_shadow_failed_, static_cast<unsigned>(status));
+      }
+    }
+#else
+    ESP_LOGW(TAG, "XMQ shadow enabled but generated driver tables are missing");
+#endif
+  }
 
   if (id_match) {
     this->last_telegram = std::move(telegram);
