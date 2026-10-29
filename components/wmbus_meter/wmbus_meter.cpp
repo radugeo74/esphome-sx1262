@@ -1,6 +1,9 @@
 #include "wmbus_meter.h"
 #include "esphome/components/wmbus_radio/pure_frame_header.h"
 #include "esphome/components/wmbus_radio/pure_meter_match.h"
+#include "esphome/components/wmbus_radio/pure_transport.h"
+#include "esphome/components/wmbus_radio/pure_security.h"
+#include "esphome/components/wmbus_radio/pure_mode5_prepare.h"
 #if defined(WMBUS_XMQ_SHADOW_ENABLED) && !__has_include("xmq_generated.h")
 #error "XMQ shadow is enabled but generated tables are missing from ESPHome build"
 #endif
@@ -92,6 +95,27 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
       ESP_LOGD(TAG, "Pure ID matcher unsupported configured meter ID format");
     } else if (match == wmbus_pure::MatchStatus::Match) {
       ESP_LOGD(TAG, "Pure ID match for meter %s", configured_id.c_str());
+      // Observe only validated frame layouts. These counters deliberately do
+      // not access meter keys, decrypt bytes, or alter legacy dispatch.
+      wmbus_pure::TransportEnvelope env{};
+      const auto transport_status = wmbus_pure::inspect_transport(pure_header, env);
+      if (transport_status == wmbus_pure::TransportStatus::Ok) {
+        const auto security = wmbus_pure::inspect_tpl_security(env);
+        if (security.kind == wmbus_pure::SecurityKind::AesCbcIvMode5) {
+          wmbus_pure::Mode5Prepared prepared{};
+          const auto prep = wmbus_pure::prepare_mode5(
+              raw.data(), raw.size(), pure_header, env, prepared);
+          ++this->pure_mode5_seen_;
+          if (prep == wmbus_pure::Mode5PrepareStatus::Ok)
+            ++this->pure_mode5_ready_;
+          if (this->pure_mode5_seen_ % 30 == 1) {
+            ESP_LOGI(TAG, "Pure mode5 diagnostic seen=%u ready=%u prep_status=%u",
+                     static_cast<unsigned>(this->pure_mode5_seen_),
+                     static_cast<unsigned>(this->pure_mode5_ready_),
+                     static_cast<unsigned>(prep));
+          }
+        }
+      }
     }
   }
 
