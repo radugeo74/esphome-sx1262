@@ -35,6 +35,8 @@ protected:
   std::vector<std::pair<std::string, double>> xmq_values_;
   uint32_t xmq_shadow_success_{0};
   uint32_t xmq_shadow_failed_{0};
+  uint32_t pure_mode5_seen_{0};
+  uint32_t pure_mode5_ready_{0};
   LinkModeSet link_modes_;
   wmbus_radio::Radio *radio;
 
