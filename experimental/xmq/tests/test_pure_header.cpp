@@ -1,4 +1,5 @@
 #include "../../../components/wmbus_radio/pure_frame_header.h"
+#include "../../../components/wmbus_radio/pure_meter_match.h"
 #include <cassert>
 #include <cstdint>
 using namespace wmbus_pure;
@@ -14,6 +15,11 @@ int main() {
   assert(h.manufacturer==0x5068);
   assert(h.control==0x44 && h.version==0x69 && h.device_type==0x80);
   assert(h.ci==0xA0 && h.application_length==40 && h.application[0]==0x11);
+  assert(match_meter_id(h,"24273067")==MatchStatus::Match);
+  assert(match_meter_id(h,"24273068")==MatchStatus::DifferentId);
+  assert(match_meter_id(h,"00000000")==MatchStatus::DifferentId);
+  assert(match_meter_id(h,"24273A67")==MatchStatus::InvalidConfiguredId);
+  assert(match_meter_id(h,"2427306")==MatchStatus::InvalidConfiguredId);
   f[0]=49;
   assert(parse_header(f,sizeof(f),h)==HeaderStatus::InvalidLength);
   f[0]=50; f[4]=0xFA;
