@@ -14,6 +14,14 @@ permissions:
   contents: read
 
 jobs:
+  pure-transport:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile and test bounded transport envelope reader
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_transport.cpp -o /tmp/test-pure-transport
+          /tmp/test-pure-transport
   pure-complete-frame:
     runs-on: ubuntu-24.04
     steps:
