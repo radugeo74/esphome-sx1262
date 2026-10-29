@@ -125,6 +125,22 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
           ESP_LOGI(TAG, "XMQ shadow driver=%s ok=%u fail=%u last_status=%u",
                    name.c_str(), this->xmq_shadow_success_,
                    this->xmq_shadow_failed_, static_cast<unsigned>(status));
+          if (status == DriverStatus::BadArguments) {
+            PayloadSpan span{};
+            const PayloadStatus payload_status = heat
+                ? manufacturer_payload(bytes, length,
+                    static_cast<size_t>(telegram->header_size),
+                    static_cast<size_t>(telegram->suffix_size),
+                    telegram->mfct_0f_index, span)
+                : application_payload(bytes, length,
+                    static_cast<size_t>(telegram->header_size),
+                    static_cast<size_t>(telegram->suffix_size), span);
+            ESP_LOGI(TAG, "XMQ badargs driver=%s payload_status=%u frame_len=%u header=%d suffix=%d mfct_0f_index=%d",
+                     name.c_str(), static_cast<unsigned>(payload_status),
+                     static_cast<unsigned>(length),
+                     telegram->header_size, telegram->suffix_size,
+                     telegram->mfct_0f_index);
+          }
           // Log only decoded numeric fields, never keys, raw frames or captures.
           // Limit both frequency and field count to keep reception responsive.
           if (status == DriverStatus::Ok) {
