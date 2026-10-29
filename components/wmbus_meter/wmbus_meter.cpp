@@ -120,8 +120,14 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
                 static_cast<size_t>(telegram->suffix_size),
                 captures, 12, decoded);
         if (status == DriverStatus::Ok) {
+          if (this->xmq_only_enabled_) {
+            this->xmq_values_.clear();
+            for (size_t i = 0; i < decoded.value_count; ++i)
+              this->xmq_values_.emplace_back(decoded.values[i].name, decoded.values[i].value);
+          }
           ++this->xmq_shadow_success_;
         } else {
+          if (this->xmq_only_enabled_) this->xmq_values_.clear();
           ++this->xmq_shadow_failed_;
         }
         // Rate-limited counts; no decrypted payload or encryption keys in logs.
@@ -164,7 +170,7 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
 #endif
   }
 
-  if (id_match) {
+  if (id_match && (!this->xmq_only_enabled_ || !this->xmq_values_.empty())) {
     this->last_telegram = std::move(telegram);
     this->defer([this]() {
       this->on_telegram_callback_manager();
@@ -208,6 +214,16 @@ optional<float> Meter::get_numeric_field(std::string field_name) {
   std::string name;
   Unit unit;
   extractUnit(field_name, &name, &unit);
+
+  if (this->xmq_only_enabled_) {
+    // This path is authoritative for numeric measurement values.
+    // The upstream meter still identifies/decrypts the telegram, but its
+    // decoded measurement values are never read by HA sensors.
+    const char *wanted = name.c_str();
+    for (const auto &entry : this->xmq_values_)
+      if (entry.first == wanted) return static_cast<float>(entry.second);
+    return {};
+  }
 
   auto value = this->meter->getNumericValue(name, unit);
 
