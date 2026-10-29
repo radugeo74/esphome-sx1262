@@ -4,6 +4,7 @@
 
 #include "freertos/queue.h"
 #include "freertos/task.h"
+#include "pure_frame_header.h"
 
 #define ASSERT(expr, expected, before_exit)                                    \
   {                                                                            \
@@ -114,7 +115,23 @@ void Radio::loop() {
            frame->data().size(), frame->rssi(), toString(frame->link_mode()),
            frame->format().c_str());
 
-  uint8_t packet_handled = 0;
+  // Independent header reader is diagnostic-only during migration.
+  // Keep the existing handlers and their sensor updates unchanged.
+  wmbus_pure::Header pure_header{};
+  const auto &payload = frame->data();
+  const auto pure_status = wmbus_pure::parse_header(
+      payload.data(), payload.size(), pure_header);
+  if (pure_status == wmbus_pure::HeaderStatus::Ok) {
+    ESP_LOGD(TAG, "Pure header meter_id=%08u manufacturer=%04X version=%02X type=%02X ci=%02X",
+             static_cast<unsigned>(pure_header.meter_id),
+             static_cast<unsigned>(pure_header.manufacturer),
+             static_cast<unsigned>(pure_header.version),
+             static_cast<unsigned>(pure_header.device_type),
+             static_cast<unsigned>(pure_header.ci));
+  } else {
+    ESP_LOGD(TAG, "Pure header unsupported/invalid status=%u",
+             static_cast<unsigned>(pure_status));
+  }
   for (auto &handler : this->handlers_)
     handler(&frame.value());
   
