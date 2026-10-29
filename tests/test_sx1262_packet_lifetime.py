@@ -28,6 +28,16 @@ class PacketOwnershipContract(unittest.TestCase):
         self.assertIn("size_t frame_length = 0;", PACKET)
         self.assertNotIn("(size_t *)&dummy", PACKET)
 
+    def test_packet_diagnostics_are_cross_core_safe(self):
+        header = (ROOT / "components/wmbus_radio/component.h").read_text()
+        for counter in ("packets_created_", "packets_read_failed_", "packets_queued_",
+                        "packets_queue_dropped_", "packets_dequeued_",
+                        "packets_invalid_", "packets_valid_"):
+            self.assertIn("std::atomic<uint32_t> " + counter, header)
+            self.assertIn("this->" + counter, COMPONENT)
+        self.assertIn("std::memory_order_relaxed", COMPONENT)
+        self.assertIn('Packet lifetime: created=', COMPONENT)
+
     def test_isr_wakeup_flag_initialization(self):
         self.assertIn("BaseType_t xHigherPriorityTaskWoken = pdFALSE;", COMPONENT)
         self.assertIn("if (arg == nullptr || *arg == nullptr)", COMPONENT)
