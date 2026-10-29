@@ -14,6 +14,16 @@ permissions:
   contents: read
 
 jobs:
+  pure-mbedtls:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install mbedTLS headers
+        run: sudo apt-get update && sudo apt-get install -y libmbedtls-dev
+      - name: Validate mbedTLS AES backend
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_mbedtls.cpp -lmbedcrypto -o /tmp/test-pure-mbedtls
+          /tmp/test-pure-mbedtls
   pure-mode5-pipeline:
     runs-on: ubuntu-24.04
     steps:
