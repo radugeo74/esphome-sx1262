@@ -123,9 +123,11 @@ std::optional<Frame> Packet::convert_to_frame() {
   }
 
   removeAnyDLLCRCs(this->data_);
-  int dummy;
-  if (checkWMBusFrame(this->data_, (size_t *)&dummy, &dummy, &dummy, false) ==
-      FrameStatus::FullFrame)
+  size_t frame_length = 0;
+  int payload_length = 0;
+  int payload_offset = 0;
+  if (checkWMBusFrame(this->data_, &frame_length, &payload_length,
+                      &payload_offset, false) == FrameStatus::FullFrame)
     frame.emplace(this);
 
   // Packet lifetime is owned by Radio::loop() via std::unique_ptr.
