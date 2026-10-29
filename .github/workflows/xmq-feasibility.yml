@@ -14,6 +14,15 @@ permissions:
   contents: read
 
 jobs:
+  pure-aes-cbc:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test AES-128-CBC against NIST vectors
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Wno-deprecated-declarations \
+            experimental/xmq/tests/test_pure_aes_cbc.cpp -lcrypto -o /tmp/test-pure-aes-cbc
+          /tmp/test-pure-aes-cbc
   pure-security:
     runs-on: ubuntu-24.04
     steps:
