@@ -7,6 +7,7 @@
 #include "generated_ixml.h"
 #include "numeric_bridge.h"
 #include "driver_runtime.h"
+#include "frame_bridge.h"
 #include <cstring>
 
 static const char *TAG = "xmq_cpp_probe";
@@ -114,6 +115,15 @@ extern "C" void app_main(void) {
     abort();
   }
   ESP_LOGI(TAG, "Generated driver runtime self-test PASS");
+  PayloadSpan borrowed{};
+  if (application_payload(water, sizeof(water), 0, 0, borrowed) != PayloadStatus::Ok ||
+      decode_parsed_frame(water_tables, water, sizeof(water), 0, 0,
+                          runtime_captures, 12, runtime_output) != DriverStatus::Ok ||
+      runtime_output.value_count == 0) {
+    ESP_LOGE(TAG, "Parsed frame bridge self-test failed");
+    abort();
+  }
+  ESP_LOGI(TAG, "Parsed frame bridge self-test PASS");
 
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
