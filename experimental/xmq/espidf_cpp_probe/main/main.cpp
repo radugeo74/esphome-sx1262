@@ -75,6 +75,27 @@ extern "C" void app_main(void) {
     abort();
   }
   ESP_LOGI(TAG, "Generated XMQ calculate fields PASS");
+  // Calendar metadata comes from the pinned fhkvdataiii XMQ PointInTime rules.
+  CalcValue heat_dates[16] = {{"previous_date_raw", 0x299F},
+                              {"current_date_raw", 0x2450}};
+  size_t heat_date_count = 2;
+  if (calculate(generated_ixml::fhkvdataiii::calculations,
+                generated_ixml::fhkvdataiii::calculation_count,
+                heat_dates, heat_date_count, 16) != CalcStatus::Ok) {
+    ESP_LOGE(TAG, "Generated heat date components failed");
+    abort();
+  }
+  CalendarDate calendar_dates[2]{};
+  if (calculate_dates(generated_ixml::fhkvdataiii::date_calculations,
+                      generated_ixml::fhkvdataiii::date_calculation_count,
+                      heat_dates, heat_date_count, calendar_dates, 2) != CalendarStatus::Ok ||
+      calendar_dates[0].year != 2021 || calendar_dates[0].month != 2 ||
+      calendar_dates[0].day != 5 || calendar_dates[1].year != 2020 ||
+      calendar_dates[1].month != 12 || calendar_dates[1].day != 31) {
+    ESP_LOGE(TAG, "Generated calendar fields failed");
+    abort();
+  }
+  ESP_LOGI(TAG, "Generated XMQ Gregorian calendar self-test PASS");
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
            static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
