@@ -14,6 +14,18 @@ permissions:
   contents: read
 
 jobs:
+  espidf-s3-crypto-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile pure AES/mBedTLS with actual ESP-IDF ESP32-S3 toolchain
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.6
+          target: esp32s3
+          path: experimental/xmq/espidf_probe
+          command: idf.py build
   pure-mbedtls:
     runs-on: ubuntu-24.04
     steps:
