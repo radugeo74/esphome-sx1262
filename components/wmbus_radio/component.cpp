@@ -139,13 +139,17 @@ void Radio::loop() {
     ESP_LOGI(TAG, "Telegram handled by %d handlers", frame->handlers_count());
   else {
     ESP_LOGW(TAG, "Telegram not handled by any handler");
-    Telegram t;
-    const bool parsed = t.parseHeader(frame->data());
-    if (!parsed || t.addresses.empty()) {
-      ESP_LOGW(TAG, "Telegram header could not be parsed or has no address");
+    // Decode the primary DLL address without the legacy Telegram parser.
+    // Unsupported frame variants remain explicit instead of guessing an ID.
+    wmbus_pure::Header unmatched_header{};
+    const auto unmatched_status = wmbus_pure::parse_header(
+        frame->data().data(), frame->data().size(), unmatched_header);
+    if (unmatched_status != wmbus_pure::HeaderStatus::Ok) {
+      ESP_LOGW(TAG, "Independent header parser rejected frame (status=%u)",
+               static_cast<unsigned>(unmatched_status));
     } else {
-      ESP_LOGW(TAG, "Check if telegram with address %s can be parsed on:",
-               t.addresses.back().id.c_str());
+      ESP_LOGW(TAG, "Check if telegram with address %08u can be parsed on:",
+               static_cast<unsigned>(unmatched_header.meter_id));
     }
     ESP_LOGW(TAG,
              (std::string{"https://wmbusmeters.org/analyze/"} + frame->as_hex())
