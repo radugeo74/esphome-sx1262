@@ -3,7 +3,7 @@
 #error "XMQ shadow is enabled but generated tables are missing from ESPHome build"
 #endif
 #if __has_include("xmq_generated.h")
-#include "xmq_portable/frame_bridge.h"
+#include "frame_bridge.h"
 #include "xmq_generated.h"
 #define WMBUS_XMQ_TABLES_AVAILABLE 1
 #endif
