@@ -11,3 +11,9 @@ jobs:
       - uses: actions/checkout@v5
       - name: Packet lifetime and ISR contracts
         run: python3 -m unittest discover -s tests -p 'test_sx1262_packet_lifetime.py' -v
+      - name: Compile and run ownership scenarios with sanitizers
+        run: |
+          g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            tests/test_packet_queue_ownership.cpp -o /tmp/packet-ownership-test
+          /tmp/packet-ownership-test
