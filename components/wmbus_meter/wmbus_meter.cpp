@@ -1,4 +1,6 @@
 #include "wmbus_meter.h"
+#include "esphome/components/wmbus_radio/pure_frame_header.h"
+#include "esphome/components/wmbus_radio/pure_meter_match.h"
 #if defined(WMBUS_XMQ_SHADOW_ENABLED) && !__has_include("xmq_generated.h")
 #error "XMQ shadow is enabled but generated tables are missing from ESPHome build"
 #endif
@@ -58,6 +60,22 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     ESP_LOGW(TAG, "Frame link mode %s not supported by meter %s",
              toString(frame->link_mode()), this->meter->name().c_str());
     return;
+  }
+
+  // Migration diagnostic: independently match the configured meter ID.
+  // The legacy handler still owns processing and HA updates in this stage.
+  wmbus_pure::Header pure_header{};
+  const auto &raw = frame->data();
+  const auto header_result =
+      wmbus_pure::parse_header(raw.data(), raw.size(), pure_header);
+  if (header_result == wmbus_pure::HeaderStatus::Ok) {
+    const std::string configured_id = this->get_id();
+    const auto match = wmbus_pure::match_meter_id(pure_header, configured_id.c_str());
+    if (match == wmbus_pure::MatchStatus::InvalidConfiguredId) {
+      ESP_LOGD(TAG, "Pure ID matcher unsupported configured meter ID format");
+    } else if (match == wmbus_pure::MatchStatus::Match) {
+      ESP_LOGD(TAG, "Pure ID match for meter %s", configured_id.c_str());
+    }
   }
 
   auto about =
