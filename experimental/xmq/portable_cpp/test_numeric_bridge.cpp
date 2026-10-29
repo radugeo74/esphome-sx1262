@@ -59,5 +59,19 @@ int main() {
    if (std::strcmp(dates[i].name,"current_year")==0) curr_year = dates[i].value == 21;
  }
  assert(prev_day && prev_month && prev_year && curr_day && curr_month && curr_year);
+ CalendarDate evaluated[2]{};
+ assert(calculate_dates(generated_ixml::fhkvdataiii::date_calculations,
+     generated_ixml::fhkvdataiii::date_calculation_count, dates, date_count,
+     evaluated, 2) == CalendarStatus::Ok);
+ assert(evaluated[0].year == 2021 && evaluated[0].month == 2 && evaluated[0].day == 5);
+ assert(evaluated[1].year == 2020 && evaluated[1].month == 12 && evaluated[1].day == 31);
+ // Gregorian leap-year, rollover and invalid-input regressions.
+ const CalendarFormula leap[] = {{"leap", 2000, 1, 1, "y", "m", "d"}};
+ const CalcValue leap_values[] = {{"y",24}, {"m",2}, {"d",29}};
+ CalendarDate leap_date[1]{};
+ assert(calculate_dates(leap, 1, leap_values, 3, leap_date, 1) == CalendarStatus::Ok);
+ assert(leap_date[0].year == 2024 && leap_date[0].month == 2 && leap_date[0].day == 29);
+ const CalcValue invalid_values[] = {{"y",24}, {"m",2}, {"d",1.5}};
+ assert(calculate_dates(leap, 1, invalid_values, 3, leap_date, 1) == CalendarStatus::MissingField);
  return 0;
 }
