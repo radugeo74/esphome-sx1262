@@ -114,7 +114,6 @@ void Radio::loop() {
            frame->data().size(), frame->rssi(), toString(frame->link_mode()),
            frame->format().c_str());
 
-  uint8_t packet_handled = 0;
   for (auto &handler : this->handlers_)
     handler(&frame.value());
   
@@ -137,9 +136,12 @@ void Radio::loop() {
 }
 
 void Radio::wakeup_receiver_task_from_isr(TaskHandle_t *arg) {
-  BaseType_t xHigherPriorityTaskWoken;
+  if (arg == nullptr || *arg == nullptr)
+    return;
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   vTaskNotifyGiveFromISR(*arg, &xHigherPriorityTaskWoken);
-  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+  if (xHigherPriorityTaskWoken == pdTRUE)
+    portYIELD_FROM_ISR();
 }
 
 void Radio::receive_frame() {
@@ -180,7 +182,6 @@ void Radio::receive_frame() {
 }
 
 void Radio::receiver_task(Radio *arg) {
-  int counter = 0;
   while (true)
     arg->receive_frame();
 }
