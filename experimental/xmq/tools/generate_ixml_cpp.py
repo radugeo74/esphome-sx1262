@@ -136,9 +136,43 @@ def compile_calculations(path):
     return result
 
 
+
+def compile_date_calculations(path):
+    """Compile the bounded XMQ base-date + calendar-month + 24h expression."""
+    driver = validate_driver(parse(path.read_text(encoding="utf-8")))
+    dates = []
+    pattern = re.compile(
+        r"""^['"](?P<base>\\d{4}-\\d{2}-\\d{2})['"]\\s*\\+\\s*
+            \\(\\s*\\(\\s*\\(\\s*(?P<year>[A-Za-z_][A-Za-z_0-9]*)_counter
+            \\s*\\*\\s*12counter\\s*\\)\\s*\\+\\s*
+            (?P<month>[A-Za-z_][A-Za-z_0-9]*)_counter\\s*-\\s*1counter\\s*\\)
+            \\s*\\*\\s*1month\\s*\\)\\s*\\+\\s*
+            \\(\\s*\\(\\s*(?P<day>[A-Za-z_][A-Za-z_0-9]*)_counter
+            \\s*-\\s*1counter\\s*\\)\\s*\\*\\s*24h\\s*\\)$""",
+        re.X | re.S,
+    )
+    for group in blocks(driver, "fields"):
+        for field in blocks(group["entries"], "field"):
+            entries = field["entries"]
+            if values(entries, "quantity") != ["PointInTime"]:
+                continue
+            names = values(entries, "name")
+            exprs = values(entries, "calculate")
+            if len(names) != 1 or len(exprs) != 1:
+                raise ValueError(f"{path}: ambiguous PointInTime formula")
+            match = pattern.fullmatch(exprs[0].strip())
+            if not match:
+                raise ValueError(f"{path}: unsupported PointInTime formula for {names[0]}")
+            from datetime import date
+            base = date.fromisoformat(match["base"])
+            dates.append((names[0], base.year, base.month, base.day,
+                          match["year"], match["month"], match["day"]))
+    return dates
+
+
 def generate(files):
     lines = ["// Generated from pinned original XMQ definitions; do not edit.",
-             "#pragma once", '#include "ixml_subset.h"', '#include "calculate_subset.h"',
+             "#pragma once", '#include "ixml_subset.h"', '#include "calculate_subset.h"', '#include "calendar_subset.h"',
              "namespace generated_ixml {"]
     for path in files:
         grammars = extract_grammar(path)
@@ -150,6 +184,7 @@ def generate(files):
         parsed = compile_grammar(grammars[0])
         annotations, matches = metadata(path, grammars[0])
         calculated = compile_calculations(path)
+        date_calculated = compile_date_calculations(path)
         lines.append(f"namespace {namespace} {{")
         for index, (name, entries) in enumerate(parsed):
             lines.append(f"inline constexpr xmq_portable::Step steps_{index}[] = {{")
@@ -182,6 +217,12 @@ def generate(files):
                 lines.append(f'  {{"{fieldname}", calc_steps_{index}, {len(steps)}}},')
             lines.append("};")
             lines.append(f"inline constexpr size_t calculation_count = {len(calculated)};")
+        if date_calculated:
+            lines.append("inline constexpr xmq_portable::CalendarFormula date_calculations[] = {")
+            for name, year, month, day, yf, mf, df in date_calculated:
+                lines.append(f'  {{"{name}", {year}, {month}, {day}, "{yf}", "{mf}", "{df}"}},')
+            lines.append("};")
+            lines.append(f"inline constexpr size_t date_calculation_count = {len(date_calculated)};")
         lines.append("}")
         print(f"Generated {namespace}: {len(parsed)} rule tables", file=sys.stderr)
     lines.append("}")
