@@ -7,6 +7,7 @@
 
 #include "decode3of6.h"
 #include "pure_dll_crc.h"
+#include "pure_complete_frame.h"
 
 #define WMBUS_PREAMBLE_SIZE (3)
 #define WMBUS_MODE_C_SUFIX_LEN (2)
@@ -135,6 +136,18 @@ std::optional<Frame> Packet::convert_to_frame() {
       ? wmbus_pure::strip_dll_crc(received_with_crc.data(),
                                 received_with_crc.size(), pure_format, pure_decoded)
       : wmbus_pure::CrcStatus::LengthMismatch;
+  // Full-frame verification runs on the same original input, but does not
+  // influence the legacy frame acceptance or sensor publishing.
+  if (pure_supported && pure_crc_status == wmbus_pure::CrcStatus::Ok) {
+    wmbus_pure::CompleteFrame pure_complete{};
+    const auto complete_status = wmbus_pure::verify_complete_frame(
+        received_with_crc.data(), received_with_crc.size(), pure_format, pure_complete);
+    if (complete_status != wmbus_pure::CompleteStatus::Ok) {
+      ESP_LOGD(TAG, "Pure complete frame unsupported status=%u (mode=%s format=%s)",
+               static_cast<unsigned>(complete_status),
+               toString(this->link_mode_), this->frame_format_.c_str());
+    }
+  }
   removeAnyDLLCRCs(this->data_);
   if (pure_supported) {
     if (pure_crc_status == wmbus_pure::CrcStatus::Ok) {
