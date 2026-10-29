@@ -14,6 +14,14 @@ permissions:
   contents: read
 
 jobs:
+  pure-complete-frame:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test strict full-frame validation for CRC and header
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_complete_frame.cpp -o /tmp/test-pure-complete-frame
+          /tmp/test-pure-complete-frame
   pure-radio-crc:
     runs-on: ubuntu-24.04
     steps:
