@@ -1,5 +1,6 @@
 #include "component.h"
 
+#include <algorithm>
 #include <memory>
 
 #include "freertos/queue.h"
