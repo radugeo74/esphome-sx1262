@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 import sys
 import esphome.config_validation as cv
 import esphome.codegen as cg
@@ -96,10 +97,18 @@ async def to_code(config):
                 xmq / "drivers" / "mkradio4.xmq",
                 xmq / "drivers" / "fhkvdataiii.xmq",
             ])
-            generated = generated.replace('#include "ixml_subset.h"', '#include "../portable_cpp/ixml_subset.h"')
-            generated = generated.replace('#include "calculate_subset.h"', '#include "../portable_cpp/calculate_subset.h"')
-            generated = generated.replace('#include "calendar_subset.h"', '#include "../portable_cpp/calendar_subset.h"')
-            output.write_text(generated, encoding="utf-8")
+            # ESPHome copies external component sources into its build directory.
+            # Keeping the tables under experimental/ alone makes __has_include
+            # silently skip XMQ in the compiled firmware.
+            component_dir = Path(__file__).resolve().parent
+            portable_dir = component_dir / "xmq_portable"
+            portable_dir.mkdir(parents=True, exist_ok=True)
+            for header in (xmq / "portable_cpp").glob("*.h"):
+                shutil.copyfile(header, portable_dir / header.name)
+            generated = generated.replace('#include "ixml_subset.h"', '#include "xmq_portable/ixml_subset.h"')
+            generated = generated.replace('#include "calculate_subset.h"', '#include "xmq_portable/calculate_subset.h"')
+            generated = generated.replace('#include "calendar_subset.h"', '#include "xmq_portable/calendar_subset.h"')
+            (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
         finally:
             sys.path.pop(0)
     cg.add(meter.set_xmq_shadow(config[CONF_XMQ_SHADOW]))
