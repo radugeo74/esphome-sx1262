@@ -37,12 +37,12 @@ void Meter::set_radio(wmbus_radio::Radio *radio) {
 void Meter::dump_config() {
   std::string id = this->get_id();
   std::string driver = this->get_driver();
-  std::string key = this->get_key();
+  const bool has_key = this->meter->meterKeys()->hasConfidentialityKey();
 
   ESP_LOGCONFIG(TAG, "wM-Bus Meter:");
   ESP_LOGCONFIG(TAG, "  ID: 0x%s", id.c_str());
   ESP_LOGCONFIG(TAG, "  Driver: %s", driver.c_str());
-  ESP_LOGCONFIG(TAG, "  Key: %s", key.c_str());
+  ESP_LOGCONFIG(TAG, "  Key: %s", has_key ? "configured (redacted)" : "not configured");
 }
 
 std::string Meter::get_id() {
@@ -100,7 +100,31 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
       wmbus_pure::TransportEnvelope env{};
       const auto transport_status = wmbus_pure::inspect_transport(pure_header, env);
       if (transport_status == wmbus_pure::TransportStatus::Ok) {
+        ++this->pure_transport_seen_;
         const auto security = wmbus_pure::inspect_tpl_security(env);
+        if (env.kind == wmbus_pure::TransportKind::ManufacturerSpecific)
+          ++this->pure_proprietary_seen_;
+        else if (security.kind == wmbus_pure::SecurityKind::NoSecurity)
+          ++this->pure_plain_seen_;
+        else if (security.kind == wmbus_pure::SecurityKind::AesCbcNoIvMode7)
+          ++this->pure_mode7_seen_;
+        else if (security.kind == wmbus_pure::SecurityKind::Unsupported)
+          ++this->pure_unsupported_seen_;
+        if (this->pure_transport_seen_ % 30 == 1) {
+          ESP_LOGI(TAG,
+                   "Pure TPL diag meter=%s ci=0x%02X kind=%u security_mode=%u "
+                   "total=%u plain=%u mode5=%u ready5=%u mode7=%u proprietary=%u unsupported=%u",
+                   configured_id.c_str(), static_cast<unsigned>(env.ci),
+                   static_cast<unsigned>(env.kind),
+                   static_cast<unsigned>(security.mode),
+                   static_cast<unsigned>(this->pure_transport_seen_),
+                   static_cast<unsigned>(this->pure_plain_seen_),
+                   static_cast<unsigned>(this->pure_mode5_seen_),
+                   static_cast<unsigned>(this->pure_mode5_ready_),
+                   static_cast<unsigned>(this->pure_mode7_seen_),
+                   static_cast<unsigned>(this->pure_proprietary_seen_),
+                   static_cast<unsigned>(this->pure_unsupported_seen_));
+        }
         if (security.kind == wmbus_pure::SecurityKind::AesCbcIvMode5) {
           wmbus_pure::Mode5Prepared prepared{};
           const auto prep = wmbus_pure::prepare_mode5(
