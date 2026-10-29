@@ -118,10 +118,20 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
           ++this->xmq_shadow_failed_;
         }
         // Rate-limited counts; no decrypted payload or encryption keys in logs.
-        if ((this->xmq_shadow_success_ + this->xmq_shadow_failed_) % 30 == 1)
+        if ((this->xmq_shadow_success_ + this->xmq_shadow_failed_) % 30 == 1) {
           ESP_LOGI(TAG, "XMQ shadow driver=%s ok=%u fail=%u last_status=%u",
                    name.c_str(), this->xmq_shadow_success_,
                    this->xmq_shadow_failed_, static_cast<unsigned>(status));
+          // Log only decoded numeric fields, never keys, raw frames or captures.
+          // Limit both frequency and field count to keep reception responsive.
+          if (status == DriverStatus::Ok) {
+            const size_t logged = decoded.value_count < 8 ? decoded.value_count : 8;
+            for (size_t i = 0; i < logged; ++i) {
+              ESP_LOGI(TAG, "XMQ value %s=%.6f",
+                       decoded.values[i].name, decoded.values[i].value);
+            }
+          }
+        }
       }
     }
 #else
