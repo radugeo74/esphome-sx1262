@@ -25,4 +25,8 @@ int main() {
   f[0]=50; f[4]=0xFA;
   assert(parse_header(f,sizeof(f),h)==HeaderStatus::InvalidId);
   assert(parse_header(nullptr,0,h)==HeaderStatus::TooShort);
+  f[4]=0x67; f[2]=0x00; f[3]=0x00;
+  assert(parse_header(f,sizeof(f),h)==HeaderStatus::InvalidManufacturer);
+  f[2]=0x68; f[3]=0x50;
+  assert(parse_header(f,sizeof(f),h)==HeaderStatus::Ok);
 }
