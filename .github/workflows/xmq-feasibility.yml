@@ -14,6 +14,14 @@ permissions:
   contents: read
 
 jobs:
+  pure-radio-crc:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile and test independent format A/B DLL CRC stripping
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_crc.cpp -o /tmp/test-pure-crc
+          /tmp/test-pure-crc
   pure-radio-layout:
     runs-on: ubuntu-24.04
     steps:
