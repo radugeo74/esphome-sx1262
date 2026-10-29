@@ -1,0 +1,30 @@
+# Disposable compilation fixture. No Wi-Fi, API, OTA, keys or actual meter IDs.
+esphome:
+  name: pure-xmq-ci
+  friendly_name: Pure XMQ CI
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+logger:
+  level: DEBUG
+spi:
+  clk_pin: GPIO9
+  mosi_pin: GPIO10
+  miso_pin: GPIO11
+external_components:
+  - source:
+      type: local
+      path: ../../..
+    components: [wmbus_radio, wmbus_meter, wmbus_common]
+wmbus_radio:
+  radio_type: SX1262
+  cs_pin: GPIO8
+  reset_pin: GPIO12
+  irq_pin: GPIO14
+wmbus_meter:
+  meter_id: 12345678
+  type: fhkvdataiii
+  xmq_shadow: true
+  xmq_only: true
+  mode: [T1, C1]
