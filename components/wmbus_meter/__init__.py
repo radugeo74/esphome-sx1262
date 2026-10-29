@@ -7,7 +7,6 @@ from esphome.const import (
     CONF_ID,
     CONF_TYPE,
     CONF_KEY,
-    CONF_PAYLOAD,
     CONF_TRIGGER_ID,
     CONF_MODE,
 )
@@ -96,8 +95,6 @@ async def to_code(config):
         sys.path.insert(0, str(xmq / "tools"))
         try:
             from generate_ixml_cpp import generate
-            output = xmq / "generated" / "generated_ixml.h"
-            output.parent.mkdir(parents=True, exist_ok=True)
             generated = generate([
                 xmq / "drivers" / "mkradio4.xmq",
                 xmq / "drivers" / "fhkvdataiii.xmq",
@@ -110,9 +107,6 @@ async def to_code(config):
             portable_dir.mkdir(parents=True, exist_ok=True)
             for header in (xmq / "portable_cpp").glob("*.h"):
                 shutil.copyfile(header, portable_dir / header.name)
-            generated = generated.replace('#include "ixml_subset.h"', '#include "ixml_subset.h"')
-            generated = generated.replace('#include "calculate_subset.h"', '#include "calculate_subset.h"')
-            generated = generated.replace('#include "calendar_subset.h"', '#include "calendar_subset.h"')
             (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
             # The external component is copied into build/src before to_code runs.
             # Headers generated here remain in the original source directory.
