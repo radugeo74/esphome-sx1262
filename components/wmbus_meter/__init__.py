@@ -110,6 +110,10 @@ async def to_code(config):
             generated = generated.replace('#include "calculate_subset.h"', '#include "xmq_portable/calculate_subset.h"')
             generated = generated.replace('#include "calendar_subset.h"', '#include "xmq_portable/calendar_subset.h"')
             (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
+            # The external component is copied into build/src before to_code runs.
+            # Headers generated here remain in the original source directory.
+            # Add it explicitly to the C++ include search path for both CI and HA.
+            cg.add_build_flag(f"-I{component_dir}")
         finally:
             sys.path.pop(0)
     cg.add(meter.set_xmq_shadow(config[CONF_XMQ_SHADOW]))
