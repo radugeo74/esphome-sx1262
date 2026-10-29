@@ -14,7 +14,7 @@ logger:
 external_components:
   - source:
       type: local
-      path: ../components
+      path: ../../../components
     components: [wmbus_radio, wmbus_meter, wmbus_common]
 
 spi:
@@ -34,11 +34,5 @@ wmbus_meter:
     radio_id: radio
     meter_id: 0x12345678
     type: fhkvdataiii
-    xmq_shadow: true
-    mode: [T1]
-  - id: test_water
-    radio_id: radio
-    meter_id: 0x12345679
-    type: mkradio4
     xmq_shadow: true
     mode: [T1]
