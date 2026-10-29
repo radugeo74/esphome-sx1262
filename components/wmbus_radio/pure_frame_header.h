@@ -28,9 +28,18 @@ inline HeaderStatus parse_header(const uint8_t *frame, size_t size, Header &out)
     if (low > 9 || high > 9) return HeaderStatus::InvalidId;
     id = id * 100 + high * 10 + low;
   }
-  // Manufacturer letters are encoded in three 5-bit A-Z values.\n  const uint16_t manufacturer = static_cast<uint16_t>(frame[2]) |\n                                (static_cast<uint16_t>(frame[3]) << 8);\n  if (((manufacturer >> 10) & 31u) == 0 ||\n      ((manufacturer >> 5) & 31u) == 0 ||\n      (manufacturer & 31u) == 0 ||\n      ((manufacturer >> 10) & 31u) > 26 ||\n      ((manufacturer >> 5) & 31u) > 26 ||\n      (manufacturer & 31u) > 26)\n    return HeaderStatus::InvalidManufacturer;\n  out.control = frame[1];
-  out.manufacturer = static_cast<uint16_t>(frame[2]) |
-                     (static_cast<uint16_t>(frame[3]) << 8);
+  // Manufacturer letters are encoded in three 5-bit A-Z values.
+  const uint16_t manufacturer = static_cast<uint16_t>(frame[2]) |
+                                (static_cast<uint16_t>(frame[3]) << 8);
+  if (((manufacturer >> 10) & 31u) == 0 ||
+      ((manufacturer >> 5) & 31u) == 0 ||
+      (manufacturer & 31u) == 0 ||
+      ((manufacturer >> 10) & 31u) > 26 ||
+      ((manufacturer >> 5) & 31u) > 26 ||
+      (manufacturer & 31u) > 26)
+    return HeaderStatus::InvalidManufacturer;
+  out.control = frame[1];
+  out.manufacturer = manufacturer;
   out.meter_id = id;
   out.version = frame[8];
   out.device_type = frame[9];
