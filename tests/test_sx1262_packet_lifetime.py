@@ -38,6 +38,14 @@ class PacketOwnershipContract(unittest.TestCase):
         self.assertIn("std::memory_order_relaxed", COMPONENT)
         self.assertIn('Packet lifetime: created=', COMPONENT)
 
+    def test_receiver_task_start_failure_releases_queue(self):
+        self.assertRegex(
+            COMPONENT,
+            r"if \(task_result != pdPASS\) \{[^}]*"
+            r"vQueueDelete\(this->packet_queue_\);[^}]*"
+            r"this->packet_queue_ = nullptr;")
+        self.assertIn("Packet counters inconsistent", COMPONENT)
+
     def test_isr_wakeup_flag_initialization(self):
         self.assertIn("BaseType_t xHigherPriorityTaskWoken = pdFALSE;", COMPONENT)
         self.assertIn("if (arg == nullptr || *arg == nullptr)", COMPONENT)
