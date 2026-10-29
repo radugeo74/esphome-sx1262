@@ -106,12 +106,16 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
         DecodedPayload decoded{values, 24, 0, dates, 2, 0};
         const auto *bytes = telegram->frame.data();
         const size_t length = telegram->frame.size();
-        const auto status = heat
+        // The fhkvdataiii grammar accepts 01, 11 and 0F prefixes.
+        // A missing mfct_0f_index must not reject the 01/11 variants.
+        // For those, try the bounded parsed application span; the grammar
+        // itself still validates the prefix, and this remains shadow-only.
+        const auto status = heat && telegram->mfct_0f_index >= 0
             ? decode_manufacturer_frame(heat_tables, bytes, length,
                 static_cast<size_t>(telegram->header_size),
                 static_cast<size_t>(telegram->suffix_size),
                 telegram->mfct_0f_index, captures, 12, decoded)
-            : decode_parsed_frame(water_tables, bytes, length,
+            : decode_parsed_frame(heat ? heat_tables : water_tables, bytes, length,
                 static_cast<size_t>(telegram->header_size),
                 static_cast<size_t>(telegram->suffix_size),
                 captures, 12, decoded);
