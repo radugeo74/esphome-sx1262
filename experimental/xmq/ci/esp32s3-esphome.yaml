@@ -15,7 +15,7 @@ spi:
 external_components:
   - source:
       type: local
-      path: ../../..
+      path: ../../../components
     components: [wmbus_radio, wmbus_meter, wmbus_common]
 wmbus_radio:
   radio_type: SX1262
