@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from generate_ixml_cpp import generate, metadata, compile_calculations
+from generate_ixml_cpp import generate, metadata, compile_calculations, compile_date_calculations
 from ixml_probe import extract_grammar
 
 
@@ -41,11 +41,20 @@ class MetadataTests(unittest.TestCase):
         self.assertTrue({"Modulo", "ShiftRight", "LessEqual", "Less", "Equal",
                          "And", "Or"}.issubset(ops))
 
+    def test_heat_dates_generated_from_original_xmq(self):
+        names = compile_date_calculations(ROOT / "drivers" / "fhkvdataiii.xmq")
+        self.assertEqual([v[0] for v in names], ["current", "previous"])
+        self.assertEqual(names[0], ("current", 2000, 1, 1,
+                                     "current_year", "current_month", "current_day"))
+        self.assertEqual(names[1], ("previous", 2000, 1, 1,
+                                     "previous_year", "previous_month", "previous_day"))
+
     def test_generated_tables(self):
         header = generate([ROOT / "drivers" / "mkradio4.xmq",
                            ROOT / "drivers" / "fhkvdataiii.xmq"])
         self.assertIn('{"DV_prev", "4215"}', header)
         self.assertIn('{"previous_date_raw", "02FD3A"}', header)
+        self.assertIn("date_calculation_count = 2", header)
 
 
 if __name__ == "__main__":
