@@ -148,8 +148,10 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
           // Log only decoded numeric fields, never keys, raw frames or captures.
           // Limit both frequency and field count to keep reception responsive.
           if (status == DriverStatus::Ok) {
-            const size_t logged = decoded.value_count < 8 ? decoded.value_count : 8;
-            for (size_t i = 0; i < logged; ++i) {
+            // The decoder has a fixed 24-value output buffer. Log all values
+            // on the existing rate-limited sample so HCA/temperature fields
+            // appearing after the date fields are visible for comparison.
+            for (size_t i = 0; i < decoded.value_count && i < 24; ++i) {
               ESP_LOGI(TAG, "XMQ value %s=%.6f",
                        decoded.values[i].name, decoded.values[i].value);
             }
