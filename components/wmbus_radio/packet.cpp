@@ -6,6 +6,7 @@
 #include "esphome/core/helpers.h"
 
 #include "decode3of6.h"
+#include "pure_dll_crc.h"
 
 #define WMBUS_PREAMBLE_SIZE (3)
 #define WMBUS_MODE_C_SUFIX_LEN (2)
@@ -122,7 +123,34 @@ std::optional<Frame> Packet::convert_to_frame() {
              this->data_.size());
   }
 
+  // Migration check: independently validate/strip the DLL CRC on a copy.
+  // The existing path remains authoritative until we have on-device parity
+  // across real T1/C1 frames and both DLL formats.
+  const auto received_with_crc = this->data_;
+  std::vector<uint8_t> pure_decoded;
+  const auto pure_format = this->frame_format_ == "A"
+      ? wmbus_pure::CrcFrameFormat::A : wmbus_pure::CrcFrameFormat::B;
+  const bool pure_supported = this->frame_format_ == "A" || this->frame_format_ == "B";
+  const auto pure_crc_status = pure_supported
+      ? wmbus_pure::strip_dll_crc(received_with_crc.data(),
+                                received_with_crc.size(), pure_format, pure_decoded)
+      : wmbus_pure::CrcStatus::LengthMismatch;
   removeAnyDLLCRCs(this->data_);
+  if (pure_supported) {
+    if (pure_crc_status == wmbus_pure::CrcStatus::Ok) {
+      if (pure_decoded != this->data_) {
+        ESP_LOGW(TAG, "Pure DLL CRC mismatch with legacy (mode=%s format=%s)",
+                 toString(this->link_mode_), this->frame_format_.c_str());
+      } else {
+        ESP_LOGD(TAG, "Pure DLL CRC parity OK (mode=%s format=%s)",
+                 toString(this->link_mode_), this->frame_format_.c_str());
+      }
+    } else {
+      ESP_LOGD(TAG, "Pure DLL CRC check status=%u (mode=%s format=%s)",
+               static_cast<unsigned>(pure_crc_status),
+               toString(this->link_mode_), this->frame_format_.c_str());
+    }
+  }
   int dummy;
   if (checkWMBusFrame(this->data_, (size_t *)&dummy, &dummy, &dummy, false) ==
       FrameStatus::FullFrame)
