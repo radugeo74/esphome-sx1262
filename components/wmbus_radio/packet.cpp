@@ -145,8 +145,11 @@ std::optional<Frame> Packet::convert_to_frame() {
         ESP_LOGD(TAG, "Pure DLL CRC parity OK (mode=%s format=%s)",
                  toString(this->link_mode_), this->frame_format_.c_str());
       }
+    } else if (pure_crc_status == wmbus_pure::CrcStatus::BadCrc) {
+      ESP_LOGD(TAG, "Pure DLL CRC rejected damaged frame (mode=%s format=%s, legacy_size=%zu)",
+               toString(this->link_mode_), this->frame_format_.c_str(), this->data_.size());
     } else {
-      ESP_LOGD(TAG, "Pure DLL CRC check status=%u (mode=%s format=%s)",
+      ESP_LOGD(TAG, "Pure DLL structural reject status=%u (mode=%s format=%s)",
                static_cast<unsigned>(pure_crc_status),
                toString(this->link_mode_), this->frame_format_.c_str());
     }
