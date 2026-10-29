@@ -5,7 +5,7 @@
 #include <cstdint>
 
 namespace wmbus_pure {
-enum class HeaderStatus : uint8_t { Ok, TooShort, InvalidLength, InvalidId };
+enum class HeaderStatus : uint8_t { Ok, TooShort, InvalidLength, InvalidId, InvalidManufacturer };
 struct Header {
   uint8_t control;
   uint16_t manufacturer;
@@ -28,7 +28,7 @@ inline HeaderStatus parse_header(const uint8_t *frame, size_t size, Header &out)
     if (low > 9 || high > 9) return HeaderStatus::InvalidId;
     id = id * 100 + high * 10 + low;
   }
-  out.control = frame[1];
+  // Manufacturer letters are encoded in three 5-bit A-Z values.\n  const uint16_t manufacturer = static_cast<uint16_t>(frame[2]) |\n                                (static_cast<uint16_t>(frame[3]) << 8);\n  if (((manufacturer >> 10) & 31u) == 0 ||\n      ((manufacturer >> 5) & 31u) == 0 ||\n      (manufacturer & 31u) == 0 ||\n      ((manufacturer >> 10) & 31u) > 26 ||\n      ((manufacturer >> 5) & 31u) > 26 ||\n      (manufacturer & 31u) > 26)\n    return HeaderStatus::InvalidManufacturer;\n  out.control = frame[1];
   out.manufacturer = static_cast<uint16_t>(frame[2]) |
                      (static_cast<uint16_t>(frame[3]) << 8);
   out.meter_id = id;
