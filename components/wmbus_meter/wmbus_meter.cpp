@@ -7,6 +7,7 @@
 #if __has_include("xmq_generated.h")
 #include "frame_bridge.h"
 #include "xmq_generated.h"
+#include "xmq_driver_registry.h"
 #define WMBUS_XMQ_TABLES_AVAILABLE 1
 #endif
 
@@ -69,6 +70,22 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
   const auto header_result =
       wmbus_pure::parse_header(raw.data(), raw.size(), pure_header);
   if (header_result == wmbus_pure::HeaderStatus::Ok) {
+#if defined(WMBUS_XMQ_TABLES_AVAILABLE)
+    // Diagnostic only: selection is based on generated XMQ detect.mvt rules,
+    // not the legacy driver. Does not affect dispatch or published values.
+    const auto selection = wmbus_pure::select_driver(
+        wmbus_pure::generated::signatures,
+        wmbus_pure::generated::signature_count,
+        pure_header.manufacturer, pure_header.version, pure_header.device_type);
+    if (selection.status == wmbus_pure::DriverSelectionStatus::Found) {
+      ESP_LOGV(TAG, "Pure XMQ select meter=%08u driver=%s",
+               static_cast<unsigned>(pure_header.meter_id), selection.driver);
+    } else {
+      ESP_LOGD(TAG, "Pure XMQ selection meter=%08u status=%u",
+               static_cast<unsigned>(pure_header.meter_id),
+               static_cast<unsigned>(selection.status));
+    }
+#endif
     const std::string configured_id = this->get_id();
     const auto match = wmbus_pure::match_meter_id(pure_header, configured_id.c_str());
     if (match == wmbus_pure::MatchStatus::InvalidConfiguredId) {
