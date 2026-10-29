@@ -14,6 +14,7 @@ public:
   void set_meter_params(std::string id, std::string driver, std::string key,
                         std::initializer_list<LinkMode> linkModes);
   void set_radio(wmbus_radio::Radio *radio);
+  void set_xmq_shadow(bool enabled) { this->xmq_shadow_enabled_ = enabled; }
 
   void dump_config() override;
   std::string get_id();
@@ -27,6 +28,9 @@ public:
   optional<float> get_numeric_field(std::string field_name);
 
 protected:
+  bool xmq_shadow_enabled_{false};
+  uint32_t xmq_shadow_success_{0};
+  uint32_t xmq_shadow_failed_{0};
   LinkModeSet link_modes_;
   time::RealTimeClock *rtc;
   wmbus_radio::Radio *radio;
