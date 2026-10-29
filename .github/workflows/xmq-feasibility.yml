@@ -14,6 +14,17 @@ permissions:
   contents: read
 
 jobs:
+  esphome-s3-xmq-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install ESPHome 2026.10.1
+        run: |
+          python3 -m venv /tmp/esphome-env
+          /tmp/esphome-env/bin/pip install "esphome==2026.10.1"
+      - name: Compile ESP32-S3 with experimental XMQ components
+        run: /tmp/esphome-env/bin/esphome compile experimental/xmq/ci/esp32s3-esphome.yaml
   espidf-s3-crypto-build:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
