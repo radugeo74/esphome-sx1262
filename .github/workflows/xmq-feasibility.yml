@@ -13,6 +13,15 @@ permissions:
   contents: read
 
 jobs:
+  pure-frame-header:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile and test independent wM-Bus short header reader
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \\
+            experimental/xmq/tests/test_pure_header.cpp -o /tmp/test-pure-header
+          /tmp/test-pure-header
   embedded-drivers:
     runs-on: ubuntu-24.04
     steps:
