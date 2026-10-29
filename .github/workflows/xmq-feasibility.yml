@@ -2,7 +2,7 @@ name: XMQ feasibility (experimental only)
 
 on:
   push:
-    branches: ["experimental/wmbusmeters-xmq", "experimental/wmbusmeters-xmq-only"]
+    branches: ["experimental/wmbusmeters-xmq", "experimental/wmbusmeters-xmq-only", "experimental/wmbus-pure-xmq"]
     paths:
       - "experimental/xmq/**"
       - "components/wmbus_meter/**"
