@@ -14,6 +14,14 @@ permissions:
   contents: read
 
 jobs:
+  pure-security:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test security-mode classification without decryption
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_security.cpp -o /tmp/test-pure-security
+          /tmp/test-pure-security
   pure-transport:
     runs-on: ubuntu-24.04
     steps:
