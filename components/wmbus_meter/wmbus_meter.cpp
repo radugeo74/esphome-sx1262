@@ -71,6 +71,8 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
                               telegram.get());
 
   if (id_match && this->xmq_shadow_enabled_) {
+    // Never reuse values from a previous telegram in authoritative mode.
+    if (this->xmq_only_enabled_) this->xmq_values_.clear();
 #if defined(WMBUS_XMQ_TABLES_AVAILABLE)
     // Observation only: do not call mark_as_handled(), change meter state,
     // or publish any values. Run only after legacy ID matching and decryption.
@@ -219,7 +221,10 @@ optional<float> Meter::get_numeric_field(std::string field_name) {
     // This path is authoritative for numeric measurement values.
     // The upstream meter still identifies/decrypts the telegram, but its
     // decoded measurement values are never read by HA sensors.
-    const char *wanted = name.c_str();
+    std::string wanted = field_name;
+    // Water XMQ names have no unit suffix; heat names carry _hca/_c.
+    if (wanted == "target_m3") wanted = "target";
+    else if (wanted == "total_m3") wanted = "total";
     for (const auto &entry : this->xmq_values_)
       if (entry.first == wanted) return static_cast<float>(entry.second);
     return {};
