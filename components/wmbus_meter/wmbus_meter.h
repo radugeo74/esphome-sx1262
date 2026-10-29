@@ -2,7 +2,6 @@
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 
-#include "esphome/components/time/real_time_clock.h"
 
 #include "esphome/components/wmbus_common/meters.h"
 #include "esphome/components/wmbus_radio/component.h"
@@ -32,7 +31,6 @@ protected:
   uint32_t xmq_shadow_success_{0};
   uint32_t xmq_shadow_failed_{0};
   LinkModeSet link_modes_;
-  time::RealTimeClock *rtc;
   wmbus_radio::Radio *radio;
 
   std::shared_ptr<::Meter> meter;
