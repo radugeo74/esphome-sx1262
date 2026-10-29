@@ -14,6 +14,14 @@ permissions:
   contents: read
 
 jobs:
+  pure-mode5-prepare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate mode 5 preparation
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_mode5_prepare.cpp -o /tmp/test-pure-mode5-prepare
+          /tmp/test-pure-mode5-prepare
   pure-mode5-iv:
     runs-on: ubuntu-24.04
     steps:
