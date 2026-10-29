@@ -6,6 +6,7 @@ on:
     paths:
       - "experimental/xmq/**"
       - "components/wmbus_meter/**"
+      - "components/wmbus_radio/**"
       - ".github/workflows/xmq-feasibility.yml"
   workflow_dispatch:
 
@@ -19,8 +20,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Compile and test independent wM-Bus short header reader
         run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \\
-            experimental/xmq/tests/test_pure_header.cpp -o /tmp/test-pure-header
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_header.cpp -o /tmp/test-pure-header
           /tmp/test-pure-header
   embedded-drivers:
     runs-on: ubuntu-24.04
