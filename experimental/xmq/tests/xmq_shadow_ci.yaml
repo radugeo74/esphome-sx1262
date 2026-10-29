@@ -1,0 +1,44 @@
+esphome:
+  name: xmq-shadow-ci
+  friendly_name: XMQ Shadow CI
+
+esp32:
+  board: heltec_wifi_lora_32_V3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [wmbus_radio, wmbus_meter, wmbus_common]
+
+spi:
+  clk_pin: GPIO9
+  mosi_pin: GPIO10
+  miso_pin: GPIO11
+
+wmbus_radio:
+  id: radio
+  radio_type: SX1262
+  cs_pin: GPIO8
+  reset_pin: GPIO12
+  irq_pin: GPIO14
+
+wmbus_meter:
+  - id: test_heat
+    radio_id: radio
+    meter_id: 0x12345678
+    type: fhkvdataiii
+    xmq_shadow: true
+    mode: [T1]
+  - id: test_water
+    radio_id: radio
+    meter_id: 0x12345679
+    type: mkradio4
+    xmq_shadow: true
+    mode: [T1]
