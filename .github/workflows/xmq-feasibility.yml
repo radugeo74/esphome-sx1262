@@ -14,6 +14,20 @@ permissions:
   contents: read
 
 jobs:
+  pure-driver-registry:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate and test generic XMQ driver selection
+        run: |
+          python3 experimental/xmq/tools/generate_driver_registry.py \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            experimental/xmq/drivers/mkradio4.xmq \
+            --out /tmp/generated_driver_registry.h
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Icomponents/wmbus_radio \
+            experimental/xmq/tests/test_pure_registry.cpp -o /tmp/test-pure-registry
+          /tmp/test-pure-registry
   pure-frame-header:
     runs-on: ubuntu-24.04
     steps:
