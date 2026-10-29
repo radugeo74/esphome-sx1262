@@ -6,6 +6,7 @@
 #include "record_decoder.h"
 #include "generated_ixml.h"
 #include "numeric_bridge.h"
+#include "driver_runtime.h"
 #include <cstring>
 
 static const char *TAG = "xmq_cpp_probe";
@@ -96,6 +97,24 @@ extern "C" void app_main(void) {
     abort();
   }
   ESP_LOGI(TAG, "Generated XMQ Gregorian calendar self-test PASS");
+  // Exercise the same bounded driver runtime used by the host tests.
+  const DriverTables water_tables{
+    generated_ixml::mkradio4::rules, generated_ixml::mkradio4::count,
+    generated_ixml::mkradio4::capture_keys, 2,
+    generated_ixml::mkradio4::field_keys, 2,
+    generated_ixml::mkradio4::calculations, generated_ixml::mkradio4::calculation_count,
+    nullptr, 0};
+  Capture runtime_captures[12]{};
+  CalcValue runtime_values[20]{};
+  CalendarDate runtime_dates[2]{};
+  DecodedPayload runtime_output{runtime_values, 20, 0, runtime_dates, 2, 0};
+  if (decode_driver_payload(water_tables, water, sizeof(water),
+                            runtime_captures, 12, runtime_output) != DriverStatus::Ok) {
+    ESP_LOGE(TAG, "Generic generated driver runtime self-test failed");
+    abort();
+  }
+  ESP_LOGI(TAG, "Generated driver runtime self-test PASS");
+
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
            static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
