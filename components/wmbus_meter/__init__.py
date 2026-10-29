@@ -75,6 +75,8 @@ CONFIG_SCHEMA = cv.Schema(
 
 
 async def to_code(config):
+    if config[CONF_XMQ_ONLY] and config[CONF_TYPE] not in ("fhkvdataiii", "mkradio4"):
+        raise cv.Invalid("xmq_only currently supports only fhkvdataiii and mkradio4")
     meter = cg.new_Pvariable(config[CONF_ID])
     cg.add(
         meter.set_meter_params(
