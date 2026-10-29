@@ -59,6 +59,8 @@ void Radio::setup() {
 
   if (task_result != pdPASS) {
     ESP_LOGE(TAG, "Failed to create radio receiver task");
+    vQueueDelete(this->packet_queue_);
+    this->packet_queue_ = nullptr;
     this->mark_failed();
     return;
   }
@@ -100,6 +102,21 @@ void Radio::loop() {
              static_cast<unsigned long>(this->packets_invalid_.load(std::memory_order_relaxed)),
              static_cast<unsigned long>(this->packets_valid_.load(std::memory_order_relaxed)),
              static_cast<unsigned long>(queued >= dequeued ? queued - dequeued : 0));
+    // The counters are updated on separate cores, so the snapshot may be
+    // transiently inconsistent; flag sustained inconsistencies only.
+    const uint32_t created = this->packets_created_.load(std::memory_order_relaxed);
+    const uint32_t failed = this->packets_read_failed_.load(std::memory_order_relaxed);
+    const uint32_t dropped = this->packets_queue_dropped_.load(std::memory_order_relaxed);
+    const uint32_t invalid = this->packets_invalid_.load(std::memory_order_relaxed);
+    const uint32_t valid = this->packets_valid_.load(std::memory_order_relaxed);
+    // A successfully queued packet is either pending, being processed,
+    // classified invalid or classified valid. Never infer a memory leak solely
+    // from a single cross-core snapshot.
+    if (dequeued > queued + 1U || valid > dequeued + 1U ||
+        invalid > dequeued + 1U || failed > created + 1U ||
+        dropped > created + 1U) {
+      ESP_LOGW(TAG, "Packet counters inconsistent; inspect repeated samples");
+    }
     if (main_free < 1024 || (this->receiver_task_handle_ != nullptr && receiver_free < 1024)) {
       ESP_LOGW(TAG, "Low task stack headroom (below 1024 bytes)");
     }
