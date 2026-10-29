@@ -87,6 +87,19 @@ void Radio::loop() {
     ESP_LOGI(TAG, "Stack low-water free: esphome_loop=%u B, radio_recv=%u B",
              static_cast<unsigned>(main_free),
              static_cast<unsigned>(receiver_free));
+    ESP_LOGI(TAG,
+             "Packet lifetime: created=%lu read_fail=%lu queued=%lu drop=%lu "
+             "dequeued=%lu invalid=%lu valid=%lu pending=%lu",
+             static_cast<unsigned long>(this->packets_created_.load(std::memory_order_relaxed)),
+             static_cast<unsigned long>(this->packets_read_failed_.load(std::memory_order_relaxed)),
+             static_cast<unsigned long>(this->packets_queued_.load(std::memory_order_relaxed)),
+             static_cast<unsigned long>(this->packets_queue_dropped_.load(std::memory_order_relaxed)),
+             static_cast<unsigned long>(this->packets_dequeued_.load(std::memory_order_relaxed)),
+             static_cast<unsigned long>(this->packets_invalid_.load(std::memory_order_relaxed)),
+             static_cast<unsigned long>(this->packets_valid_.load(std::memory_order_relaxed)),
+             static_cast<unsigned long>(
+                 this->packets_queued_.load(std::memory_order_relaxed) -
+                 this->packets_dequeued_.load(std::memory_order_relaxed)));
     if (main_free < 1024 || (this->receiver_task_handle_ != nullptr && receiver_free < 1024)) {
       ESP_LOGW(TAG, "Low task stack headroom (below 1024 bytes)");
     }
@@ -99,6 +112,7 @@ void Radio::loop() {
   // Ownership was released by receiver_task() after queueing.
   // Ensure the packet is freed even when frame conversion fails.
   std::unique_ptr<Packet> packet(packet_ptr);
+  this->packets_dequeued_.fetch_add(1, std::memory_order_relaxed);
 
   // ESP_LOGI(TAG, "Have RAW data from radio (%zu bytes)",
   //          packet->calculate_payload_size());
@@ -106,10 +120,12 @@ void Radio::loop() {
   auto frame = packet->convert_to_frame();
 
   if (!frame) {
+    this->packets_invalid_.fetch_add(1, std::memory_order_relaxed);
     ESP_LOGD(TAG, "Failed to convert packet to frame");
     return;
   }
 
+  this->packets_valid_.fetch_add(1, std::memory_order_relaxed);
   ESP_LOGI(TAG, "Have data (%zu bytes) [RSSI: %ddBm, mode: %s %s]",
            frame->data().size(), frame->rssi(), toString(frame->link_mode()),
            frame->format().c_str());
@@ -151,18 +167,22 @@ void Radio::receive_frame() {
   }
 
   auto packet = std::make_unique<Packet>();
+  this->packets_created_.fetch_add(1, std::memory_order_relaxed);
 
   if (!this->radio->read_in_task(packet->rx_data_ptr(), packet->rx_capacity(), 0)) {
+    this->packets_read_failed_.fetch_add(1, std::memory_order_relaxed);
     this->radio->restart_rx();
     return;
   }
 
   if (!packet->calculate_payload_size()) {
+    this->packets_read_failed_.fetch_add(1, std::memory_order_relaxed);
     this->radio->restart_rx();
     return;
   }
 
   if (!this->radio->read_in_task(packet->rx_data_ptr(), packet->rx_capacity(),  3)) {
+    this->packets_read_failed_.fetch_add(1, std::memory_order_relaxed);
     this->radio->restart_rx();
     return;
   }
@@ -177,8 +197,11 @@ void Radio::receive_frame() {
              uxQueueMessagesWaiting(this->packet_queue_));
     ESP_LOGV(TAG, "Queue send success");
     packet.release();
-  } else
+    this->packets_queued_.fetch_add(1, std::memory_order_relaxed);
+  } else {
+    this->packets_queue_dropped_.fetch_add(1, std::memory_order_relaxed);
     ESP_LOGW(TAG, "Queue send failed");
+  }
 }
 
 void Radio::receiver_task(Radio *arg) {
