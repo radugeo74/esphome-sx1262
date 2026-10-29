@@ -64,6 +64,21 @@ def metadata(path, grammar):
                 if len(names) != 1 or len(keys) != 1:
                     raise ValueError("Ambiguous DIF/VIF mapping")
                 matches.append((names[0], keys[0].upper()))
+    # Expose heat allocator values carried as IXML annotated records.
+    # The upstream driver uses semantic VIF matchers for these four fields;
+    # their DIF/VIF annotations in the grammar provide equivalent keys.
+    if path.stem == "fhkvdataiii":
+        capture_names = {
+            "DV_prev_hca": "previous_hca",
+            "DV_curr_hca": "current_hca",
+            "DV_temp_room": "temp_room_c",
+            "DV_temp_rad": "temp_radiator_c",
+        }
+        for capture, key in annotations:
+            if capture in capture_names:
+                matches.append((capture_names[capture], key.upper()))
+    if len({name for name, _ in matches}) != len(matches):
+        raise ValueError(f"{path}: duplicate generated field name")
     if not annotations:
         raise ValueError(f"{path}: no IXML dvk capture annotations found")
     if not matches:
