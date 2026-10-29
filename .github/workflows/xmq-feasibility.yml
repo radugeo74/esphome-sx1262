@@ -201,6 +201,13 @@ jobs:
             -o /tmp/xmq-numeric-bridge-test
           /tmp/xmq-numeric-bridge-test
           echo "PASS C++ IXML-to-numeric bridge"
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/portable_cpp/test_driver_runtime.cpp \
+            -o /tmp/xmq-driver-runtime-test
+          /tmp/xmq-driver-runtime-test
+          echo "PASS generated driver runtime (water, heat, invalid payload)"
+
 
 
 
