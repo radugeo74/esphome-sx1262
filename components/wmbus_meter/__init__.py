@@ -20,6 +20,7 @@ CONF_METER_ID = "meter_id"
 CONF_RADIO_ID = "radio_id"
 CONF_ON_TELEGRAM = "on_telegram"
 CONF_XMQ_SHADOW = "xmq_shadow"
+CONF_XMQ_ONLY = "xmq_only"
 
 CODEOWNERS = ["@SzczepanLeon", "@kubasaw"]
 
@@ -54,6 +55,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_METER_ID, default=""): cv.hex_int,
         cv.Optional(CONF_TYPE, default="auto"): validate_driver,
         cv.Optional(CONF_XMQ_SHADOW, default=False): cv.boolean,
+        cv.Optional(CONF_XMQ_ONLY, default=False): cv.boolean,
         cv.Optional(CONF_KEY): cv.Any(
             cv.All(cv.string_strict, lambda s: s.encode().hex(),
                    hex_key_validator),
@@ -83,7 +85,7 @@ async def to_code(config):
         )
     )
 
-    if config[CONF_XMQ_SHADOW]:
+    if config[CONF_XMQ_SHADOW] or config[CONF_XMQ_ONLY]:
         cg.add_define("WMBUS_XMQ_SHADOW_ENABLED")
         # Keep XMQ generation explicitly opt-in; the normal component remains
         # independent of the experimental grammar and generated headers.
@@ -116,7 +118,8 @@ async def to_code(config):
             cg.add_build_flag(f"-I{component_dir}")
         finally:
             sys.path.pop(0)
-    cg.add(meter.set_xmq_shadow(config[CONF_XMQ_SHADOW]))
+    cg.add(meter.set_xmq_shadow(config[CONF_XMQ_SHADOW] or config[CONF_XMQ_ONLY]))
+    cg.add(meter.set_xmq_only(config[CONF_XMQ_ONLY]))
 
     radio = await cg.get_variable(config[CONF_RADIO_ID])
     cg.add(meter.set_radio(radio))
