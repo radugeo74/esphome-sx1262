@@ -124,6 +124,31 @@ extern "C" void app_main(void) {
     abort();
   }
   ESP_LOGI(TAG, "Parsed frame bridge self-test PASS");
+  const DriverTables heat_tables{
+    generated_ixml::fhkvdataiii::rules, generated_ixml::fhkvdataiii::count,
+    generated_ixml::fhkvdataiii::capture_keys, 6,
+    generated_ixml::fhkvdataiii::field_keys, 2,
+    generated_ixml::fhkvdataiii::calculations,
+    generated_ixml::fhkvdataiii::calculation_count,
+    generated_ixml::fhkvdataiii::date_calculations,
+    generated_ixml::fhkvdataiii::date_calculation_count};
+  const uint8_t heat_application[] = {
+    0x01,0x02, // preceding application records
+    0x0F,0x9F,0x29,0x2D,0x00,0x50,0x24,0x04,0x00,
+    0x11,0xBD,0x08,0x38,0x09,0x04,0x00,0x00,0x00,
+    0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,
+    0x00,0x00,0x03,0x14,0x0E};
+  if (decode_manufacturer_frame(heat_tables, heat_application,
+       sizeof(heat_application), 0, 0, 2, runtime_captures, 12,
+       runtime_output) != DriverStatus::Ok ||
+       runtime_output.date_count != 2 ||
+       runtime_dates[0].year != 2021 || runtime_dates[0].month != 2 ||
+       runtime_dates[0].day != 5) {
+    ESP_LOGE(TAG, "Manufacturer payload XMQ bridge self-test failed");
+    abort();
+  }
+  ESP_LOGI(TAG, "Manufacturer 0x0F payload XMQ bridge PASS");
 
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
