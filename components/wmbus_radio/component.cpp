@@ -141,7 +141,7 @@ void Radio::wakeup_receiver_task_from_isr(TaskHandle_t *arg) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   vTaskNotifyGiveFromISR(*arg, &xHigherPriorityTaskWoken);
   if (xHigherPriorityTaskWoken == pdTRUE)
-    portYIELD_FROM_ISR();
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 void Radio::receive_frame() {
