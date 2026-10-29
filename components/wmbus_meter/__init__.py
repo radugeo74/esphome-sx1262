@@ -92,10 +92,14 @@ async def to_code(config):
             from generate_ixml_cpp import generate
             output = xmq / "generated" / "generated_ixml.h"
             output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(generate([
+            generated = generate([
                 xmq / "drivers" / "mkradio4.xmq",
                 xmq / "drivers" / "fhkvdataiii.xmq",
-            ]), encoding="utf-8")
+            ])
+            generated = generated.replace('#include "ixml_subset.h"', '#include "../portable_cpp/ixml_subset.h"')
+            generated = generated.replace('#include "calculate_subset.h"', '#include "../portable_cpp/calculate_subset.h"')
+            generated = generated.replace('#include "calendar_subset.h"', '#include "../portable_cpp/calendar_subset.h"')
+            output.write_text(generated, encoding="utf-8")
         finally:
             sys.path.pop(0)
     cg.add(meter.set_xmq_shadow(config[CONF_XMQ_SHADOW]))
