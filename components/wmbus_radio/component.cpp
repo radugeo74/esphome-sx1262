@@ -5,6 +5,8 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "pure_frame_header.h"
+#include "pure_aes_cbc.h"
+#include "pure_aes_mbedtls.h"
 
 #define ASSERT(expr, expected, before_exit)                                    \
   {                                                                            \
@@ -22,7 +24,27 @@ namespace esphome {
 namespace wmbus_radio {
 static const char *TAG = "wmbus";
 
+// Link-time and runtime self-check for the ESP32 mbedTLS backend.
+// This uses only public NIST test data and is independent of meter keys.
+static bool pure_mbedtls_selfcheck() {
+  const uint8_t key[16] = {0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,
+                            0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c};
+  const uint8_t iv[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+  const uint8_t cipher[16] = {0x76,0x49,0xab,0xac,0x81,0x19,0xb2,0x46,
+                               0xce,0xe9,0x8e,0x9b,0x12,0xe9,0x19,0x7d};
+  const uint8_t expected[16] = {0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,
+                                 0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a};
+  std::vector<uint8_t> clear;
+  return wmbus_pure::decrypt_aes128_cbc(
+      cipher, sizeof(cipher), key, iv, wmbus_pure::mbedtls_aes128_decrypt_block,
+      nullptr, clear) == wmbus_pure::AesCbcStatus::Ok &&
+      clear.size() == sizeof(expected) &&
+      std::equal(clear.begin(), clear.end(), expected);
+}
+
 void Radio::setup() {
+  ESP_LOGI(TAG, "Pure AES/mBedTLS self-check: %s",
+           pure_mbedtls_selfcheck() ? "PASS" : "FAIL");
   // Create queue used to pass received packets to the main ESPHome loop.
   this->packet_queue_ = xQueueCreate(3, sizeof(Packet *));
 
