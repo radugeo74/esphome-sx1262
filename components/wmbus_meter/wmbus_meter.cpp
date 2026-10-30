@@ -242,7 +242,6 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
       const auto *descriptor = xmq_portable::find_decode_descriptor(
           name.c_str(), pure_header.ci);
       if (descriptor) {
-        const bool heat = name == "fhkvdataiii";  // legacy manufacturer offset handling
         using namespace xmq_portable;
         Capture captures[12]{};
         CalcValue values[24]{};
@@ -250,19 +249,12 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
         DecodedPayload decoded{values, 24, 0, dates, 2, 0};
         const auto *bytes = telegram->frame.data();
         const size_t length = telegram->frame.size();
-        // The fhkvdataiii grammar accepts 01, 11 and 0F prefixes.
-        // A missing mfct_0f_index must not reject the 01/11 variants.
-        // For those, try the bounded parsed application span; the grammar
-        // itself still validates the prefix, and this remains shadow-only.
-        const auto status = heat && telegram->mfct_0f_index >= 0
-            ? decode_manufacturer_frame(descriptor->tables, bytes, length,
-                static_cast<size_t>(telegram->header_size),
-                static_cast<size_t>(telegram->suffix_size),
-                telegram->mfct_0f_index, captures, 12, decoded)
-            : decode_parsed_frame(descriptor->tables, bytes, length,
-                static_cast<size_t>(telegram->header_size),
-                static_cast<size_t>(telegram->suffix_size),
-                captures, 12, decoded);
+        // Catalog policy preserves legacy 0F offset handling and 01/11 fallback.
+        const auto status = decode_descriptor_frame(
+            *descriptor, bytes, length,
+            static_cast<size_t>(telegram->header_size),
+            static_cast<size_t>(telegram->suffix_size),
+            telegram->mfct_0f_index, captures, 12, decoded);
         // Independent shadow: start at DLL bytes (already CRC stripped by
         // radio), parse the header ourselves and pass the manufacturer
         // application payload straight to the portable XMQ decoder.
@@ -332,14 +324,11 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
                    this->xmq_shadow_failed_, static_cast<unsigned>(status));
           if (status == DriverStatus::BadArguments) {
             PayloadSpan span{};
-            const PayloadStatus payload_status = heat
-                ? manufacturer_payload(bytes, length,
-                    static_cast<size_t>(telegram->header_size),
-                    static_cast<size_t>(telegram->suffix_size),
-                    telegram->mfct_0f_index, span)
-                : application_payload(bytes, length,
-                    static_cast<size_t>(telegram->header_size),
-                    static_cast<size_t>(telegram->suffix_size), span);
+            const PayloadStatus payload_status = descriptor_payload(
+                *descriptor, bytes, length,
+                static_cast<size_t>(telegram->header_size),
+                static_cast<size_t>(telegram->suffix_size),
+                telegram->mfct_0f_index, span);
             ESP_LOGI(TAG, "XMQ badargs driver=%s payload_status=%u frame_len=%u header=%d suffix=%d mfct_0f_index=%d",
                      name.c_str(), static_cast<unsigned>(payload_status),
                      static_cast<unsigned>(length),
