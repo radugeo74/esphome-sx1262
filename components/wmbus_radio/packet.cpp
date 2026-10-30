@@ -179,8 +179,9 @@ std::optional<Frame> Packet::convert_to_frame() {
     ++pure_equal;
   else
     ++pure_disagree;
-  if (pure_checked % 100 == 1 || pure_disagree <= 3 &&
-      !(pure_accepted == legacy_accepted && (!pure_accepted || identical))) {
+  if (pure_checked % 100 == 1 ||
+      (pure_disagree <= 3 &&
+       !(pure_accepted == legacy_accepted && (!pure_accepted || identical)))) {
     ESP_LOGI(TAG,
              "Pure radio parity checked=%u equal=%u disagree=%u pure_ok=%u legacy_ok=%u format=%s",
              static_cast<unsigned>(pure_checked),
