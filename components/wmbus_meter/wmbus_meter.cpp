@@ -307,10 +307,9 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
                      static_cast<unsigned>(independent_status));
           }
         }
-        // Compare the measurements actually exposed to HA against the current
-        // legacy meter state, after successful legacy telegram handling.
-        // Diagnostic only: neither decoder's values are written or published.
-        if (status == DriverStatus::Ok && !this->xmq_only_enabled_) {
+        // Compare decoded XMQ with the legacy decoder even in xmq_only mode.
+        // handleTelegram() updates legacy state; parity does not change publishing.
+        if (status == DriverStatus::Ok) {
           size_t field_count = 0;
           const auto *fields = parity_fields(name.c_str(), field_count);
           uint32_t equal = 0, different = 0, missing_xmq = 0, missing_legacy = 0;
@@ -340,8 +339,9 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
           this->xmq_field_parity_missing_legacy_ += missing_legacy;
           if (this->xmq_field_parity_checks_ % 30 == 1 ||
               (different + missing_xmq + missing_legacy && this->xmq_field_parity_checks_ <= 4)) {
-            ESP_LOGI(TAG, "XMQ field parity meter=%s frames=%u equal=%u different=%u missing_xmq=%u missing_legacy=%u",
+            ESP_LOGI(TAG, "XMQ field parity meter=%s xmq_only=%u frames=%u equal=%u different=%u missing_xmq=%u missing_legacy=%u",
                      this->get_id().c_str(),
+                     static_cast<unsigned>(this->xmq_only_enabled_),
                      static_cast<unsigned>(this->xmq_field_parity_checks_),
                      static_cast<unsigned>(this->xmq_field_parity_equal_),
                      static_cast<unsigned>(this->xmq_field_parity_different_),
