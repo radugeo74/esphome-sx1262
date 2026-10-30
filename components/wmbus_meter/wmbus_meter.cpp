@@ -247,7 +247,8 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
           }
           if (same) ++this->pure_raw_match_;
           else ++this->pure_raw_mismatch_;
-          if (this->pure_raw_seen_ % 30 == 1 || !same) {
+          if (this->pure_raw_seen_ % 30 == 1 ||
+              (!same && this->pure_raw_mismatch_ <= 3)) {
             ESP_LOGI(TAG,
                      "Pure raw XMQ driver=%s ci=0x%02X seen=%u match=%u mismatch=%u status=%u",
                      name.c_str(), independent.ci,
