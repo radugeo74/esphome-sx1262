@@ -13,6 +13,7 @@ enum class CompleteStatus : uint8_t {
 };
 struct CompleteFrame {
   Header header{};
+  HeaderStatus header_status{HeaderStatus::TooShort};
   std::vector<uint8_t> bytes;
 };
 inline CompleteStatus verify_complete_frame(const uint8_t *frame, size_t size,
@@ -26,12 +27,13 @@ inline CompleteStatus verify_complete_frame(const uint8_t *frame, size_t size,
   if (crc == CrcStatus::LengthMismatch) return CompleteStatus::InvalidLength;
   if (crc != CrcStatus::Ok) return CompleteStatus::BadCrc;
   Header parsed{};
-  if (parse_header(verified.data(), verified.size(), parsed) != HeaderStatus::Ok)
+  result.header_status = parse_header(verified.data(), verified.size(), parsed);
+  if (result.header_status != HeaderStatus::Ok)
     return CompleteStatus::UnsupportedHeader;
   // Header.application points into the vector storage. Move the bytes first,
   // then reconstruct the pointer from the owned vector.
   result.bytes = std::move(verified);
-  const auto status = parse_header(result.bytes.data(), result.bytes.size(), result.header);
-  return status == HeaderStatus::Ok ? CompleteStatus::Ok : CompleteStatus::UnsupportedHeader;
+  result.header_status = parse_header(result.bytes.data(), result.bytes.size(), result.header);
+  return result.header_status == HeaderStatus::Ok ? CompleteStatus::Ok : CompleteStatus::UnsupportedHeader;
 }
 }  // namespace wmbus_pure
