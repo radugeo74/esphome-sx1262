@@ -35,6 +35,11 @@ protected:
   std::vector<std::pair<std::string, double>> xmq_values_;
   uint32_t xmq_shadow_success_{0};
   uint32_t xmq_shadow_failed_{0};
+  uint32_t xmq_field_parity_checks_{0};
+  uint32_t xmq_field_parity_equal_{0};
+  uint32_t xmq_field_parity_different_{0};
+  uint32_t xmq_field_parity_missing_xmq_{0};
+  uint32_t xmq_field_parity_missing_legacy_{0};
   uint32_t pure_raw_seen_{0};
   uint32_t pure_raw_match_{0};
   uint32_t pure_raw_mismatch_{0};
