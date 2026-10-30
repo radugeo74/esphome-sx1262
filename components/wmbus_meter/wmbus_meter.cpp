@@ -13,6 +13,7 @@
 #include "frame_bridge.h"
 #include "xmq_generated.h"
 #include "xmq_driver_registry.h"
+#include "xmq_decode_catalog.h"
 #define WMBUS_XMQ_TABLES_AVAILABLE 1
 #endif
 
@@ -182,39 +183,20 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
       if (selection.status == wmbus_pure::DriverSelectionStatus::Found &&
           selection.driver != nullptr) {
         pure_pipeline_driver = selection.driver;
-        const bool heat = std::strcmp(selection.driver, "fhkvdataiii") == 0;
-        const bool water = std::strcmp(selection.driver, "mkradio4") == 0;
-        if ((heat && pure_header.ci == 0xA0) ||
-            (water && pure_header.ci == 0xA2)) {
+        const auto *descriptor = xmq_portable::find_decode_descriptor(
+            selection.driver, pure_header.ci);
+        if (descriptor) {
           using namespace xmq_portable;
-          const DriverTables heat_tables{
-              generated_ixml::fhkvdataiii::rules, generated_ixml::fhkvdataiii::count,
-              generated_ixml::fhkvdataiii::capture_keys,
-              sizeof(generated_ixml::fhkvdataiii::capture_keys) / sizeof(CaptureKey),
-              generated_ixml::fhkvdataiii::field_keys,
-              sizeof(generated_ixml::fhkvdataiii::field_keys) / sizeof(FieldKey),
-              generated_ixml::fhkvdataiii::calculations,
-              generated_ixml::fhkvdataiii::calculation_count,
-              generated_ixml::fhkvdataiii::date_calculations,
-              generated_ixml::fhkvdataiii::date_calculation_count};
-          const DriverTables water_tables{
-              generated_ixml::mkradio4::rules, generated_ixml::mkradio4::count,
-              generated_ixml::mkradio4::capture_keys,
-              sizeof(generated_ixml::mkradio4::capture_keys) / sizeof(CaptureKey),
-              generated_ixml::mkradio4::field_keys,
-              sizeof(generated_ixml::mkradio4::field_keys) / sizeof(FieldKey),
-              generated_ixml::mkradio4::calculations,
-              generated_ixml::mkradio4::calculation_count, nullptr, 0};
           Capture pure_captures[12]{};
           CalcValue pure_values[24]{};
           CalendarDate pure_dates[2]{};
           DecodedPayload pure_decoded{pure_values, 24, 0, pure_dates, 2, 0};
           pure_pipeline_attempted = true;
-          const auto pure_status = decode_driver_payload(
-              heat ? heat_tables : water_tables,
-              pure_header.application, pure_header.application_length,
+          const auto decode_status = decode_driver_payload(
+              descriptor->tables, pure_header.application,
+              pure_header.application_length,
               pure_captures, 12, pure_decoded);
-          pure_pipeline_ok = pure_status == DriverStatus::Ok;
+          pure_pipeline_ok = decode_status == DriverStatus::Ok;
           pure_pipeline_value_count = pure_decoded.value_count;
         }
       }
@@ -257,28 +239,11 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
         telegram->header_size >= 0 && telegram->suffix_size >= 0 &&
         !telegram->frame.empty()) {
       const auto name = this->meter->driverName().str();
-      const bool heat = name == "fhkvdataiii";
-      const bool water = name == "mkradio4";
-      if (heat || water) {
+      const auto *descriptor = xmq_portable::find_decode_descriptor(
+          name.c_str(), pure_header.ci);
+      if (descriptor) {
+        const bool heat = name == "fhkvdataiii";  // legacy manufacturer offset handling
         using namespace xmq_portable;
-        const DriverTables heat_tables{
-          generated_ixml::fhkvdataiii::rules, generated_ixml::fhkvdataiii::count,
-          generated_ixml::fhkvdataiii::capture_keys,
-          sizeof(generated_ixml::fhkvdataiii::capture_keys) / sizeof(CaptureKey),
-          generated_ixml::fhkvdataiii::field_keys,
-          sizeof(generated_ixml::fhkvdataiii::field_keys) / sizeof(FieldKey),
-          generated_ixml::fhkvdataiii::calculations,
-          generated_ixml::fhkvdataiii::calculation_count,
-          generated_ixml::fhkvdataiii::date_calculations,
-          generated_ixml::fhkvdataiii::date_calculation_count};
-        const DriverTables water_tables{
-          generated_ixml::mkradio4::rules, generated_ixml::mkradio4::count,
-          generated_ixml::mkradio4::capture_keys,
-          sizeof(generated_ixml::mkradio4::capture_keys) / sizeof(CaptureKey),
-          generated_ixml::mkradio4::field_keys,
-          sizeof(generated_ixml::mkradio4::field_keys) / sizeof(FieldKey),
-          generated_ixml::mkradio4::calculations,
-          generated_ixml::mkradio4::calculation_count, nullptr, 0};
         Capture captures[12]{};
         CalcValue values[24]{};
         CalendarDate dates[2]{};
@@ -290,11 +255,11 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
         // For those, try the bounded parsed application span; the grammar
         // itself still validates the prefix, and this remains shadow-only.
         const auto status = heat && telegram->mfct_0f_index >= 0
-            ? decode_manufacturer_frame(heat_tables, bytes, length,
+            ? decode_manufacturer_frame(descriptor->tables, bytes, length,
                 static_cast<size_t>(telegram->header_size),
                 static_cast<size_t>(telegram->suffix_size),
                 telegram->mfct_0f_index, captures, 12, decoded)
-            : decode_parsed_frame(heat ? heat_tables : water_tables, bytes, length,
+            : decode_parsed_frame(descriptor->tables, bytes, length,
                 static_cast<size_t>(telegram->header_size),
                 static_cast<size_t>(telegram->suffix_size),
                 captures, 12, decoded);
@@ -315,7 +280,7 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
           DecodedPayload independent_decoded{
               independent_values, 24, 0, independent_dates, 2, 0};
           const auto independent_status = decode_driver_payload(
-              heat ? heat_tables : water_tables,
+              descriptor->tables,
               independent.application, independent.application_length,
               independent_captures, 12, independent_decoded);
           ++this->pure_raw_seen_;
