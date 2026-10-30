@@ -377,6 +377,37 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
           this->xmq_field_parity_different_ += different;
           this->xmq_field_parity_missing_xmq_ += missing_xmq;
           this->xmq_field_parity_missing_legacy_ += missing_legacy;
+          // Global, per-driver numeric parity summary. Unlike the per-meter
+          // 1/31/61 diagnostic this aggregates all configured meters and thus
+          // remains visible in short serial-log captures. Diagnostic only.
+          struct ParityTotals {
+            uint32_t frames{0};
+            uint32_t equal{0};
+            uint32_t different{0};
+            uint32_t missing_xmq{0};
+            uint32_t missing_legacy{0};
+          };
+          static ParityTotals hca_totals{};
+          static ParityTotals water_totals{};
+          ParityTotals *totals = nullptr;
+          if (name == "fhkvdataiii") totals = &hca_totals;
+          else if (name == "mkradio4") totals = &water_totals;
+          if (totals != nullptr) {
+            ++totals->frames;
+            totals->equal += equal;
+            totals->different += different;
+            totals->missing_xmq += missing_xmq;
+            totals->missing_legacy += missing_legacy;
+            if (totals->frames == 1 || totals->frames % 30 == 0 ||
+                ((different || missing_xmq || missing_legacy) && totals->frames <= 4)) {
+              ESP_LOGI(TAG, "XMQ field parity summary driver=%s frames=%u equal=%u different=%u missing_xmq=%u missing_legacy=%u",
+                       name.c_str(), static_cast<unsigned>(totals->frames),
+                       static_cast<unsigned>(totals->equal),
+                       static_cast<unsigned>(totals->different),
+                       static_cast<unsigned>(totals->missing_xmq),
+                       static_cast<unsigned>(totals->missing_legacy));
+            }
+          }
           if (this->xmq_field_parity_checks_ % 30 == 1 ||
               (different + missing_xmq + missing_legacy && this->xmq_field_parity_checks_ <= 4)) {
             ESP_LOGI(TAG, "XMQ field parity meter=%s xmq_only=%u frames=%u equal=%u different=%u missing_xmq=%u missing_legacy=%u",
