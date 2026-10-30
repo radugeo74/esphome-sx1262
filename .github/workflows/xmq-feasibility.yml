@@ -14,6 +14,14 @@ permissions:
   contents: read
 
 jobs:
+  pure-parity-classification:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check radio parity mismatch categories
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_parity_classification.cpp -o /tmp/test-pure-parity-classification
+          /tmp/test-pure-parity-classification
   pure-manufacturer-raw:
     runs-on: ubuntu-24.04
     steps:
