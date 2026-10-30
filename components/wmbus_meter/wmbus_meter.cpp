@@ -75,28 +75,45 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
   const auto header_result =
       wmbus_pure::parse_header(raw.data(), raw.size(), pure_header);
   if (header_result == wmbus_pure::HeaderStatus::Ok) {
-#if defined(WMBUS_XMQ_TABLES_AVAILABLE)
-    // Diagnostic only: selection is based on generated XMQ detect.mvt rules,
-    // not the legacy driver. Does not affect dispatch or published values.
-    const auto selection = wmbus_pure::select_driver(
-        wmbus_pure::generated::signatures,
-        wmbus_pure::generated::signature_count,
-        pure_header.manufacturer, pure_header.version, pure_header.device_type);
-    if (selection.status == wmbus_pure::DriverSelectionStatus::Found) {
-      ESP_LOGV(TAG, "Pure XMQ select meter=%08u driver=%s",
-               static_cast<unsigned>(pure_header.meter_id), selection.driver);
-    } else {
-      ESP_LOGD(TAG, "Pure XMQ selection meter=%08u status=%u",
-               static_cast<unsigned>(pure_header.meter_id),
-               static_cast<unsigned>(selection.status));
-    }
-#endif
     const std::string configured_id = this->get_id();
     const auto match = wmbus_pure::match_meter_id(pure_header, configured_id.c_str());
     if (match == wmbus_pure::MatchStatus::InvalidConfiguredId) {
       ESP_LOGD(TAG, "Pure ID matcher unsupported configured meter ID format");
     } else if (match == wmbus_pure::MatchStatus::Match) {
       ESP_LOGD(TAG, "Pure ID match for meter %s", configured_id.c_str());
+#if defined(WMBUS_XMQ_TABLES_AVAILABLE)
+      // Shadow-only registry selection on the independently matched meter.
+      // Legacy still controls dispatch, decryption and sensor publishing.
+      const auto selection = wmbus_pure::select_driver(
+          wmbus_pure::generated::signatures,
+          wmbus_pure::generated::signature_count,
+          pure_header.manufacturer, pure_header.version, pure_header.device_type);
+      const std::string legacy_driver = this->get_driver();
+      const bool registry_found =
+          selection.status == wmbus_pure::DriverSelectionStatus::Found &&
+          selection.driver != nullptr;
+      const bool registry_match = registry_found && legacy_driver == selection.driver;
+      static uint32_t registry_checked = 0;
+      static uint32_t registry_equal = 0;
+      static uint32_t registry_missing = 0;
+      static uint32_t registry_different = 0;
+      ++registry_checked;
+      if (registry_match) ++registry_equal;
+      else if (!registry_found) ++registry_missing;
+      else ++registry_different;
+      if (registry_checked % 30 == 1 ||
+          (!registry_match && registry_missing + registry_different <= 3)) {
+        ESP_LOGI(TAG,
+                 "Pure registry shadow checked=%u equal=%u missing=%u different=%u meter=%08u selected=%s configured=%s ci=0x%02X",
+                 static_cast<unsigned>(registry_checked),
+                 static_cast<unsigned>(registry_equal),
+                 static_cast<unsigned>(registry_missing),
+                 static_cast<unsigned>(registry_different),
+                 static_cast<unsigned>(pure_header.meter_id),
+                 registry_found ? selection.driver : "none",
+                 legacy_driver.c_str(), static_cast<unsigned>(pure_header.ci));
+      }
+#endif
       // Observe only validated frame layouts. These counters deliberately do
       // not access meter keys, decrypt bytes, or alter legacy dispatch.
       wmbus_pure::TransportEnvelope env{};
