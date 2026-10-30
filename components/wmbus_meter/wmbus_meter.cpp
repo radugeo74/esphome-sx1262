@@ -162,6 +162,80 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     }
   }
 
+  // Independent pre-legacy pipeline. Match/registry/CI and decode the radio
+  // payload before legacy Telegram processing. Observation only; never publish.
+#if defined(WMBUS_XMQ_TABLES_AVAILABLE)
+  bool pure_pipeline_ok = false;
+  bool pure_pipeline_attempted = false;
+  const char *pure_pipeline_driver = "none";
+  size_t pure_pipeline_value_count = 0;
+  if (this->xmq_shadow_enabled_ &&
+      header_result == wmbus_pure::HeaderStatus::Ok) {
+    const std::string configured_id = this->get_id();
+    if (wmbus_pure::match_meter_id(pure_header, configured_id.c_str()) ==
+        wmbus_pure::MatchStatus::Match) {
+      const auto selection = wmbus_pure::select_driver(
+          wmbus_pure::generated::signatures,
+          wmbus_pure::generated::signature_count,
+          pure_header.manufacturer, pure_header.version, pure_header.device_type);
+      if (selection.status == wmbus_pure::DriverSelectionStatus::Found &&
+          selection.driver != nullptr) {
+        pure_pipeline_driver = selection.driver;
+        const bool heat = std::strcmp(selection.driver, "fhkvdataiii") == 0;
+        const bool water = std::strcmp(selection.driver, "mkradio4") == 0;
+        if ((heat && pure_header.ci == 0xA0) ||
+            (water && pure_header.ci == 0xA2)) {
+          using namespace xmq_portable;
+          const DriverTables heat_tables{
+              generated_ixml::fhkvdataiii::rules, generated_ixml::fhkvdataiii::count,
+              generated_ixml::fhkvdataiii::capture_keys,
+              sizeof(generated_ixml::fhkvdataiii::capture_keys) / sizeof(CaptureKey),
+              generated_ixml::fhkvdataiii::field_keys,
+              sizeof(generated_ixml::fhkvdataiii::field_keys) / sizeof(FieldKey),
+              generated_ixml::fhkvdataiii::calculations,
+              generated_ixml::fhkvdataiii::calculation_count,
+              generated_ixml::fhkvdataiii::date_calculations,
+              generated_ixml::fhkvdataiii::date_calculation_count};
+          const DriverTables water_tables{
+              generated_ixml::mkradio4::rules, generated_ixml::mkradio4::count,
+              generated_ixml::mkradio4::capture_keys,
+              sizeof(generated_ixml::mkradio4::capture_keys) / sizeof(CaptureKey),
+              generated_ixml::mkradio4::field_keys,
+              sizeof(generated_ixml::mkradio4::field_keys) / sizeof(FieldKey),
+              generated_ixml::mkradio4::calculations,
+              generated_ixml::mkradio4::calculation_count, nullptr, 0};
+          Capture pure_captures[12]{};
+          CalcValue pure_values[24]{};
+          CalendarDate pure_dates[2]{};
+          DecodedPayload pure_decoded{pure_values, 24, 0, pure_dates, 2, 0};
+          pure_pipeline_attempted = true;
+          const auto pure_status = decode_driver_payload(
+              heat ? heat_tables : water_tables,
+              pure_header.application, pure_header.application_length,
+              pure_captures, 12, pure_decoded);
+          pure_pipeline_ok = pure_status == DriverStatus::Ok;
+          pure_pipeline_value_count = pure_decoded.value_count;
+        }
+      }
+    }
+  }
+  if (pure_pipeline_attempted) {
+    static uint32_t pipeline_seen = 0;
+    static uint32_t pipeline_ok = 0;
+    static uint32_t pipeline_failed = 0;
+    ++pipeline_seen;
+    if (pure_pipeline_ok) ++pipeline_ok;
+    else ++pipeline_failed;
+    if (pipeline_seen % 30 == 1 || (!pure_pipeline_ok && pipeline_failed <= 3))
+      ESP_LOGI(TAG, "Pure pipeline prelegacy seen=%u ok=%u fail=%u driver=%s values=%u",
+               static_cast<unsigned>(pipeline_seen),
+               static_cast<unsigned>(pipeline_ok),
+               static_cast<unsigned>(pipeline_failed),
+               pure_pipeline_driver,
+               static_cast<unsigned>(pure_pipeline_value_count));
+  }
+#endif
+
   auto about =
       AboutTelegram(App.get_friendly_name(), frame->rssi(), FrameType::WMBUS);
 
