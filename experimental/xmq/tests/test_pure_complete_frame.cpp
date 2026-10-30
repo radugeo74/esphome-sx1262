@@ -49,4 +49,16 @@ int main() {
   invalid_header.resize(raw.size());
   assert(verify_complete_frame(invalid_header.data(),invalid_header.size(),
                                CrcFrameFormat::A,result)==CompleteStatus::UnsupportedHeader);
+  assert(result.header_status==HeaderStatus::InvalidManufacturer);
+
+  // CRC must remain valid: header rejection is not a CRC failure.
+  auto invalid_bcd=raw;
+  invalid_bcd[4]=0xFA;
+  const auto crc=crc16_en13757(invalid_bcd.data(),10);
+  invalid_bcd[10]=static_cast<uint8_t>(crc>>8);
+  invalid_bcd[11]=static_cast<uint8_t>(crc);
+  assert(verify_complete_frame(invalid_bcd.data(),invalid_bcd.size(),
+                               CrcFrameFormat::A,result)==CompleteStatus::UnsupportedHeader);
+  assert(result.header_status==HeaderStatus::InvalidId);
+  assert(result.bytes.empty() && result.header.application==nullptr);
 }
