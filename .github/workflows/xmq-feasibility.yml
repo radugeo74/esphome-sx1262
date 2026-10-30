@@ -14,10 +14,11 @@ permissions:
   contents: read
 
 jobs:
-  xmq-field-parity:
+  pure-host-tests:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+      # xmq-field-parity
       - name: Validate numeric field comparisons against legacy values
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
@@ -25,10 +26,7 @@ jobs:
             experimental/xmq/tests/test_xmq_field_parity.cpp \
             -o /tmp/test-xmq-field-parity
           /tmp/test-xmq-field-parity
-  xmq-decode-catalog:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
+      # xmq-decode-catalog
       - name: Generate portable driver headers and test metadata/payload policies
         run: |
           python3 experimental/xmq/tools/generate_ixml_cpp.py \
@@ -40,31 +38,119 @@ jobs:
             experimental/xmq/tests/test_xmq_decode_catalog.cpp \
             -o /tmp/test-xmq-decode-catalog
           /tmp/test-xmq-decode-catalog
-  pure-configured-dispatch:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
+      # pure-configured-dispatch
       - name: Test configured meter routing at 12 and 20 entries
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_meter_dispatch.cpp -o /tmp/test-pure-meter-dispatch
           /tmp/test-pure-meter-dispatch
-  pure-parity-classification:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
+      # pure-parity-classification
       - name: Check radio parity mismatch categories
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_parity_classification.cpp -o /tmp/test-pure-parity-classification
           /tmp/test-pure-parity-classification
-  pure-manufacturer-raw:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
+      # pure-manufacturer-raw
       - name: Validate independent A0/A2 manufacturer spans
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
             experimental/xmq/tests/test_pure_manufacturer_payload.cpp -o /tmp/pure-manufacturer-raw
           /tmp/pure-manufacturer-raw
+      # pure-mode5-pipeline
+      - name: Test whole mode 5 TPL AES pipeline
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Wno-deprecated-declarations experimental/xmq/tests/test_pure_mode5_pipeline.cpp -lcrypto -o /tmp/test-mode5-pipeline
+          /tmp/test-mode5-pipeline
+      # pure-mode5-decrypt
+      - name: Test mode 5 decrypt checks
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Wno-deprecated-declarations experimental/xmq/tests/test_pure_mode5_decrypt.cpp -lcrypto -o /tmp/test-mode5-decrypt
+          /tmp/test-mode5-decrypt
+      # pure-mode5-prepare
+      - name: Validate mode 5 preparation
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_mode5_prepare.cpp -o /tmp/test-pure-mode5-prepare
+          /tmp/test-pure-mode5-prepare
+      # pure-mode5-iv
+      - name: Validate independent mode 5 IV generation
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_mode5_iv.cpp -o /tmp/test-pure-mode5-iv
+          /tmp/test-pure-mode5-iv
+      # pure-aes-cbc
+      - name: Test AES-128-CBC against NIST vectors
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Wno-deprecated-declarations \
+            experimental/xmq/tests/test_pure_aes_cbc.cpp -lcrypto -o /tmp/test-pure-aes-cbc
+          /tmp/test-pure-aes-cbc
+      # pure-security
+      - name: Test security-mode classification without decryption
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_security.cpp -o /tmp/test-pure-security
+          /tmp/test-pure-security
+      # pure-transport
+      - name: Compile and test bounded transport envelope reader
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_transport.cpp -o /tmp/test-pure-transport
+          /tmp/test-pure-transport
+      # pure-complete-frame
+      - name: Test strict full-frame validation for CRC and header
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_complete_frame.cpp -o /tmp/test-pure-complete-frame
+          /tmp/test-pure-complete-frame
+      # pure-radio-crc
+      - name: Compile and test independent format A/B DLL CRC stripping
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_crc.cpp -o /tmp/test-pure-crc
+          /tmp/test-pure-crc
+      # pure-radio-layout
+      - name: Compile and test independent C1 A/B radio layout checks
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_layout.cpp -o /tmp/test-pure-layout
+          /tmp/test-pure-layout
+      # pure-driver-registry
+      - name: Generate and test generic XMQ driver selection
+        run: |
+          python3 experimental/xmq/tools/generate_driver_registry.py \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            experimental/xmq/drivers/mkradio4.xmq \
+            --out /tmp/generated_driver_registry.h
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Icomponents/wmbus_radio \
+            experimental/xmq/tests/test_pure_registry.cpp -o /tmp/test-pure-registry
+          /tmp/test-pure-registry
+      # pure-frame-header
+      - name: Compile and test independent wM-Bus short header reader
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_header.cpp -o /tmp/test-pure-header
+          /tmp/test-pure-header
+      # embedded-drivers
+      - name: Check generated XMQ header reproducibility
+        run: python3 experimental/xmq/tools/embed_drivers.py --check
+      - name: Compile and run embedding smoke test
+        run: |
+          g++ -std=c++17 -Wall -Wextra -pedantic -Werror \
+            experimental/xmq/tests/embedding_smoke.cpp -o /tmp/xmq_embed_smoke
+          /tmp/xmq_embed_smoke
+  xmq-python-logic-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      # xmq-calculate-probe
+      - name: Validate restricted expression evaluator with original XMQ definitions
+        run: |
+          python3 -m py_compile experimental/xmq/tools/calculate_probe.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_calculate_probe.py' -v
+      # xmq-driver-pipeline
+      - name: Validate IXML-DIF/VIF-calculate pipeline against original driver
+        run: |
+          python3 -m py_compile experimental/xmq/tools/driver_pipeline_probe.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_driver_pipeline_probe.py' -v
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_heating_records.py' -v
+      # xmq-calendar-probe
+      - name: Check XMQ calendar formulas against original Techem fixtures
+        run: |
+          python3 -m py_compile experimental/xmq/tools/calendar_probe.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_calendar_probe.py' -v
+          python3 experimental/xmq/tests/verify_combined_decode.py
   esphome-s3-xmq-build:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -98,121 +184,6 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_mbedtls.cpp -lmbedcrypto -o /tmp/test-pure-mbedtls
           /tmp/test-pure-mbedtls
-  pure-mode5-pipeline:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Test whole mode 5 TPL AES pipeline
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Wno-deprecated-declarations experimental/xmq/tests/test_pure_mode5_pipeline.cpp -lcrypto -o /tmp/test-mode5-pipeline
-          /tmp/test-mode5-pipeline
-  pure-mode5-decrypt:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Test mode 5 decrypt checks
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Wno-deprecated-declarations experimental/xmq/tests/test_pure_mode5_decrypt.cpp -lcrypto -o /tmp/test-mode5-decrypt
-          /tmp/test-mode5-decrypt
-  pure-mode5-prepare:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Validate mode 5 preparation
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_mode5_prepare.cpp -o /tmp/test-pure-mode5-prepare
-          /tmp/test-pure-mode5-prepare
-  pure-mode5-iv:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Validate independent mode 5 IV generation
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_mode5_iv.cpp -o /tmp/test-pure-mode5-iv
-          /tmp/test-pure-mode5-iv
-  pure-aes-cbc:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Test AES-128-CBC against NIST vectors
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Wno-deprecated-declarations \
-            experimental/xmq/tests/test_pure_aes_cbc.cpp -lcrypto -o /tmp/test-pure-aes-cbc
-          /tmp/test-pure-aes-cbc
-  pure-security:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Test security-mode classification without decryption
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_security.cpp -o /tmp/test-pure-security
-          /tmp/test-pure-security
-  pure-transport:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Compile and test bounded transport envelope reader
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_transport.cpp -o /tmp/test-pure-transport
-          /tmp/test-pure-transport
-  pure-complete-frame:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Test strict full-frame validation for CRC and header
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_complete_frame.cpp -o /tmp/test-pure-complete-frame
-          /tmp/test-pure-complete-frame
-  pure-radio-crc:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Compile and test independent format A/B DLL CRC stripping
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_crc.cpp -o /tmp/test-pure-crc
-          /tmp/test-pure-crc
-  pure-radio-layout:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Compile and test independent C1 A/B radio layout checks
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_layout.cpp -o /tmp/test-pure-layout
-          /tmp/test-pure-layout
-  pure-driver-registry:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Generate and test generic XMQ driver selection
-        run: |
-          python3 experimental/xmq/tools/generate_driver_registry.py \
-            experimental/xmq/drivers/fhkvdataiii.xmq \
-            experimental/xmq/drivers/mkradio4.xmq \
-            --out /tmp/generated_driver_registry.h
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
-            -I/tmp -Icomponents/wmbus_radio \
-            experimental/xmq/tests/test_pure_registry.cpp -o /tmp/test-pure-registry
-          /tmp/test-pure-registry
-  pure-frame-header:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Compile and test independent wM-Bus short header reader
-        run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_header.cpp -o /tmp/test-pure-header
-          /tmp/test-pure-header
-  embedded-drivers:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Check generated XMQ header reproducibility
-        run: python3 experimental/xmq/tools/embed_drivers.py --check
-      - name: Compile and run embedding smoke test
-        run: |
-          g++ -std=c++17 -Wall -Wextra -pedantic -Werror \
-            experimental/xmq/tests/embedding_smoke.cpp -o /tmp/xmq_embed_smoke
-          /tmp/xmq_embed_smoke
-
   libxmq-host-probe:
     runs-on: ubuntu-24.04
     # This is explicitly an experimental probe, not a release gate.
@@ -322,38 +293,6 @@ jobs:
           name: ixml-binary-captures
           path: /tmp/ixml-captures.json
           retention-days: 14
-
-  xmq-calculate-probe:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v5
-      - name: Validate restricted expression evaluator with original XMQ definitions
-        run: |
-          python3 -m py_compile experimental/xmq/tools/calculate_probe.py
-          python3 -m unittest discover -s experimental/xmq/tests -p 'test_calculate_probe.py' -v
-
-  xmq-driver-pipeline:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v5
-      - name: Validate IXML-DIF/VIF-calculate pipeline against original driver
-        run: |
-          python3 -m py_compile experimental/xmq/tools/driver_pipeline_probe.py
-          python3 -m unittest discover -s experimental/xmq/tests -p 'test_driver_pipeline_probe.py' -v
-          python3 -m unittest discover -s experimental/xmq/tests -p 'test_heating_records.py' -v
-
-  xmq-calendar-probe:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v5
-      - name: Check XMQ calendar formulas against original Techem fixtures
-        run: |
-          python3 -m py_compile experimental/xmq/tools/calendar_probe.py
-          python3 -m unittest discover -s experimental/xmq/tests -p 'test_calendar_probe.py' -v
-          python3 experimental/xmq/tests/verify_combined_decode.py
 
   portable-cpp-records:
     runs-on: ubuntu-24.04
