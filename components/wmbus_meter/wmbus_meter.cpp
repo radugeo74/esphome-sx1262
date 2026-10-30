@@ -272,8 +272,7 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
         if (wmbus_pure::parse_header(raw.data(), raw.size(), independent)
                   == wmbus_pure::HeaderStatus::Ok &&
             independent.meter_id == pure_header.meter_id &&
-            ((heat && independent.ci == 0xA0) ||
-             (water && independent.ci == 0xA2))) {
+            independent.ci == descriptor->ci) {
           Capture independent_captures[12]{};
           CalcValue independent_values[24]{};
           CalendarDate independent_dates[2]{};
