@@ -316,7 +316,7 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
           uint32_t equal = 0, different = 0, missing_xmq = 0, missing_legacy = 0;
           for (size_t i = 0; i < field_count; ++i) {
             std::string legacy_name;
-            Unit legacy_unit;
+            ::Unit legacy_unit;
             extractUnit(fields[i].legacy_field, &legacy_name, &legacy_unit);
             const double legacy_value = this->meter->getNumericValue(legacy_name, legacy_unit);
             double xmq_value = NAN;
