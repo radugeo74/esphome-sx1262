@@ -136,18 +136,14 @@ std::optional<Frame> Packet::convert_to_frame() {
       ? wmbus_pure::strip_dll_crc(received_with_crc.data(),
                                 received_with_crc.size(), pure_format, pure_decoded)
       : wmbus_pure::CrcStatus::LengthMismatch;
-  // Full-frame verification runs on the same original input, but does not
-  // influence the legacy frame acceptance or sensor publishing.
-  if (pure_supported && pure_crc_status == wmbus_pure::CrcStatus::Ok) {
-    wmbus_pure::CompleteFrame pure_complete{};
-    const auto complete_status = wmbus_pure::verify_complete_frame(
-        received_with_crc.data(), received_with_crc.size(), pure_format, pure_complete);
-    if (complete_status != wmbus_pure::CompleteStatus::Ok) {
-      ESP_LOGD(TAG, "Pure complete frame unsupported status=%u (mode=%s format=%s)",
-               static_cast<unsigned>(complete_status),
-               toString(this->link_mode_), this->frame_format_.c_str());
-    }
-  }
+  // Independently verify both CRC and DLL header from the original decoded
+  // radio bytes. Keep this separate from the legacy frame acceptance.
+  wmbus_pure::CompleteFrame pure_complete{};
+  const auto complete_status = pure_supported
+      ? wmbus_pure::verify_complete_frame(
+            received_with_crc.data(), received_with_crc.size(),
+            pure_format, pure_complete)
+      : wmbus_pure::CompleteStatus::UnsupportedHeader;
   removeAnyDLLCRCs(this->data_);
   if (pure_supported) {
     if (pure_crc_status == wmbus_pure::CrcStatus::Ok) {
@@ -168,9 +164,33 @@ std::optional<Frame> Packet::convert_to_frame() {
     }
   }
   int dummy;
-  if (checkWMBusFrame(this->data_, (size_t *)&dummy, &dummy, &dummy, false) ==
-      FrameStatus::FullFrame)
-    frame.emplace(this);
+  const bool legacy_accepted =
+      checkWMBusFrame(this->data_, (size_t *)&dummy, &dummy, &dummy, false) ==
+      FrameStatus::FullFrame;
+  const bool pure_accepted = complete_status == wmbus_pure::CompleteStatus::Ok;
+  const bool identical = pure_accepted && pure_complete.bytes == this->data_;
+  // One set of counters for the radio instance; updates only inside RX loop.
+  static uint32_t pure_checked = 0;
+  static uint32_t pure_equal = 0;
+  static uint32_t pure_disagree = 0;
+  ++pure_checked;
+  if (pure_accepted == legacy_accepted &&
+      (!pure_accepted || identical))
+    ++pure_equal;
+  else
+    ++pure_disagree;
+  if (pure_checked % 100 == 1 || pure_disagree <= 3 &&
+      !(pure_accepted == legacy_accepted && (!pure_accepted || identical))) {
+    ESP_LOGI(TAG,
+             "Pure radio parity checked=%u equal=%u disagree=%u pure_ok=%u legacy_ok=%u format=%s",
+             static_cast<unsigned>(pure_checked),
+             static_cast<unsigned>(pure_equal),
+             static_cast<unsigned>(pure_disagree),
+             static_cast<unsigned>(pure_accepted),
+             static_cast<unsigned>(legacy_accepted),
+             this->frame_format_.c_str());
+  }
+  if (legacy_accepted) frame.emplace(this);
 
   // Packet lifetime is owned by Radio::loop() via std::unique_ptr.
   // Do not delete this object here: that would cause a double-free.
