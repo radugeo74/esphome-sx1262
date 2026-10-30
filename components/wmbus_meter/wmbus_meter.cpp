@@ -234,6 +234,25 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     // Never reuse values from a previous telegram in authoritative mode.
     if (this->xmq_only_enabled_) this->xmq_values_.clear();
 #if defined(WMBUS_XMQ_TABLES_AVAILABLE)
+    // Bounded diagnostic for fhkvdataiii: expose which legacy-dependent gate
+    // prevents field parity, without changing decoder or publication behavior.
+    const bool xmq_hca_diag = this->meter->driverName().str() == "fhkvdataiii";
+    static uint32_t xmq_hca_entered = 0;
+    static uint32_t xmq_hca_rejected = 0;
+    if (xmq_hca_diag) {
+      ++xmq_hca_entered;
+      if (telegram->decryption_failed || telegram->header_size < 0 ||
+          telegram->suffix_size < 0 || telegram->frame.empty()) {
+        ++xmq_hca_rejected;
+        if (xmq_hca_rejected <= 3 || xmq_hca_rejected % 30 == 0)
+          ESP_LOGW(TAG, "XMQ HCA parity gate meter=%s entered=%u rejected=%u decrypt_failed=%u header=%d suffix=%d frame_len=%u",
+                   this->get_id().c_str(), static_cast<unsigned>(xmq_hca_entered),
+                   static_cast<unsigned>(xmq_hca_rejected),
+                   static_cast<unsigned>(telegram->decryption_failed),
+                   telegram->header_size, telegram->suffix_size,
+                   static_cast<unsigned>(telegram->frame.size()));
+      }
+    }
     // Observation only: do not call mark_as_handled(), change meter state,
     // or publish any values. Run only after legacy ID matching and decryption.
     if (!telegram->decryption_failed &&
@@ -242,6 +261,14 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
       const auto name = this->meter->driverName().str();
       const auto *descriptor = xmq_portable::find_decode_descriptor(
           name.c_str(), pure_header.ci);
+      if (!descriptor && xmq_hca_diag) {
+        static uint32_t xmq_hca_no_descriptor = 0;
+        ++xmq_hca_no_descriptor;
+        if (xmq_hca_no_descriptor <= 3 || xmq_hca_no_descriptor % 30 == 0)
+          ESP_LOGW(TAG, "XMQ HCA parity descriptor missing meter=%s ci=0x%02X count=%u",
+                   this->get_id().c_str(), static_cast<unsigned>(pure_header.ci),
+                   static_cast<unsigned>(xmq_hca_no_descriptor));
+      }
       if (descriptor) {
         using namespace xmq_portable;
         Capture captures[12]{};
@@ -256,6 +283,19 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
             static_cast<size_t>(telegram->header_size),
             static_cast<size_t>(telegram->suffix_size),
             telegram->mfct_0f_index, captures, 12, decoded);
+        if (xmq_hca_diag) {
+          static uint32_t xmq_hca_decodes = 0;
+          static uint32_t xmq_hca_failed = 0;
+          ++xmq_hca_decodes;
+          if (status != DriverStatus::Ok) ++xmq_hca_failed;
+          if (xmq_hca_decodes == 1 || xmq_hca_decodes % 30 == 0 ||
+              (status != DriverStatus::Ok && xmq_hca_failed <= 3))
+            ESP_LOGI(TAG, "XMQ HCA secondary decode meter=%s attempted=%u failed=%u status=%u values=%u xmq_only=%u",
+                     this->get_id().c_str(), static_cast<unsigned>(xmq_hca_decodes),
+                     static_cast<unsigned>(xmq_hca_failed), static_cast<unsigned>(status),
+                     static_cast<unsigned>(decoded.value_count),
+                     static_cast<unsigned>(this->xmq_only_enabled_));
+        }
         // Independent shadow: start at DLL bytes (already CRC stripped by
         // radio), parse the header ourselves and pass the manufacturer
         // application payload straight to the portable XMQ decoder.
