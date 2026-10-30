@@ -14,6 +14,14 @@ permissions:
   contents: read
 
 jobs:
+  pure-configured-dispatch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test configured meter routing at 12 and 20 entries
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic experimental/xmq/tests/test_pure_meter_dispatch.cpp -o /tmp/test-pure-meter-dispatch
+          /tmp/test-pure-meter-dispatch
   pure-parity-classification:
     runs-on: ubuntu-24.04
     steps:
