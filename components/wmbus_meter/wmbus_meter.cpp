@@ -1,4 +1,6 @@
 #include "wmbus_meter.h"
+#include <cmath>
+#include <cstring>
 #include "esphome/components/wmbus_radio/pure_frame_header.h"
 #include "esphome/components/wmbus_radio/pure_meter_match.h"
 #include "esphome/components/wmbus_radio/pure_transport.h"
@@ -204,6 +206,57 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
                 static_cast<size_t>(telegram->header_size),
                 static_cast<size_t>(telegram->suffix_size),
                 captures, 12, decoded);
+        // Independent shadow: start at DLL bytes (already CRC stripped by
+        // radio), parse the header ourselves and pass the manufacturer
+        // application payload straight to the portable XMQ decoder.
+        // Never use Telegram header_size, mfct_0f_index or decrypted content.
+        // CI=A0 (Techem HCA) and CI=A2 (Techem water) are opaque payloads.
+        wmbus_pure::Header independent{};
+        if (wmbus_pure::parse_header(raw.data(), raw.size(), independent)
+                  == wmbus_pure::HeaderStatus::Ok &&
+            independent.meter_id == pure_header.meter_id &&
+            ((heat && independent.ci == 0xA0) ||
+             (water && independent.ci == 0xA2))) {
+          Capture independent_captures[12]{};
+          CalcValue independent_values[24]{};
+          CalendarDate independent_dates[2]{};
+          DecodedPayload independent_decoded{
+              independent_values, 24, 0, independent_dates, 2, 0};
+          const auto independent_status = decode_driver_payload(
+              heat ? heat_tables : water_tables,
+              independent.application, independent.application_length,
+              independent_captures, 12, independent_decoded);
+          ++this->pure_raw_seen_;
+          bool same = independent_status == DriverStatus::Ok &&
+                      status == DriverStatus::Ok &&
+                      independent_decoded.value_count == decoded.value_count;
+          if (same) {
+            for (size_t j = 0; j < decoded.value_count; ++j) {
+              bool found = false;
+              for (size_t k = 0; k < independent_decoded.value_count; ++k) {
+                if (std::strcmp(decoded.values[j].name,
+                                independent_decoded.values[k].name) == 0 &&
+                    std::fabs(decoded.values[j].value -
+                              independent_decoded.values[k].value) <= 0.000001) {
+                  found = true;
+                  break;
+                }
+              }
+              if (!found) { same = false; break; }
+            }
+          }
+          if (same) ++this->pure_raw_match_;
+          else ++this->pure_raw_mismatch_;
+          if (this->pure_raw_seen_ % 30 == 1 || !same) {
+            ESP_LOGI(TAG,
+                     "Pure raw XMQ driver=%s ci=0x%02X seen=%u match=%u mismatch=%u status=%u",
+                     name.c_str(), independent.ci,
+                     static_cast<unsigned>(this->pure_raw_seen_),
+                     static_cast<unsigned>(this->pure_raw_match_),
+                     static_cast<unsigned>(this->pure_raw_mismatch_),
+                     static_cast<unsigned>(independent_status));
+          }
+        }
         if (status == DriverStatus::Ok) {
           if (this->xmq_only_enabled_) {
             this->xmq_values_.clear();
