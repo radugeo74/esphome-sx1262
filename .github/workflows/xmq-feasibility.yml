@@ -14,6 +14,21 @@ permissions:
   contents: read
 
 jobs:
+  xmq-decode-catalog:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate portable driver headers and test metadata/payload policies
+        run: |
+          python3 experimental/xmq/tools/generate_ixml_cpp.py \
+            experimental/xmq/drivers/mkradio4.xmq \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            --out /tmp/xmq_generated.h
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/tests/test_xmq_decode_catalog.cpp \
+            -o /tmp/test-xmq-decode-catalog
+          /tmp/test-xmq-decode-catalog
   pure-configured-dispatch:
     runs-on: ubuntu-24.04
     steps:
