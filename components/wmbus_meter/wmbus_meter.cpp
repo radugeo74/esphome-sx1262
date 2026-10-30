@@ -34,7 +34,8 @@ void Meter::set_meter_params(std::string id, std::string driver,
 void Meter::set_radio(wmbus_radio::Radio *radio) {
   this->radio = radio;
   radio->add_meter_handler(this->get_id(),
-      [this](wmbus_radio::Frame *frame) { return this->handle_frame(frame); });
+      [this](wmbus_radio::Frame *frame) { this->handle_frame(frame); },
+      [this](LinkMode mode) { return this->link_modes_.has(mode); });
 }
 void Meter::dump_config() {
   std::string id = this->get_id();
