@@ -6,6 +6,7 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "pure_frame_header.h"
+#include "pure_meter_dispatch.h"
 #include "pure_aes_cbc.h"
 #include "pure_aes_mbedtls.h"
 
@@ -155,8 +156,28 @@ void Radio::loop() {
     ESP_LOGD(TAG, "Pure header unsupported/invalid status=%u",
              static_cast<unsigned>(pure_status));
   }
+  // Fast ID routing for registered meters; invalid headers use fallback.
+  uint32_t selected = 0;
+  for (auto &entry : this->meter_handlers_) {
+    if (pure_status != wmbus_pure::HeaderStatus::Ok ||
+        wmbus_pure::route_to_configured_meter(pure_header, entry.id.c_str())) {
+      entry.callback(&frame.value());
+      ++selected;
+    }
+  }
   for (auto &handler : this->handlers_)
     handler(&frame.value());
+  static uint32_t dispatch_frames = 0, dispatch_matched = 0, dispatch_unmatched = 0;
+  ++dispatch_frames;
+  if (selected) ++dispatch_matched;
+  else ++dispatch_unmatched;
+  if (dispatch_frames % 100 == 1)
+    ESP_LOGI(TAG, "Pure configured dispatch frames=%u matched=%u unmatched=%u registered=%u selected=%u",
+             static_cast<unsigned>(dispatch_frames),
+             static_cast<unsigned>(dispatch_matched),
+             static_cast<unsigned>(dispatch_unmatched),
+             static_cast<unsigned>(this->meter_handlers_.size()),
+             static_cast<unsigned>(selected));
   
   if (frame->handlers_count())
     ESP_LOGI(TAG, "Telegram handled by %d handlers", frame->handlers_count());
@@ -231,6 +252,16 @@ void Radio::receiver_task(Radio *arg) {
 
 void Radio::add_frame_handler(std::function<void(Frame *)> &&callback) {
   this->handlers_.push_back(std::move(callback));
+}
+
+void Radio::add_meter_handler(const std::string &meter_id,
+                              std::function<void(Frame *)> &&callback) {
+  if (!wmbus_pure::configured_id_is_exact(meter_id.c_str())) {
+    ESP_LOGW(TAG, "Unsupported meter ID; using legacy fallback dispatch");
+    this->add_frame_handler(std::move(callback));
+    return;
+  }
+  this->meter_handlers_.push_back({meter_id, std::move(callback)});
 }
 
 } // namespace wmbus_radio
