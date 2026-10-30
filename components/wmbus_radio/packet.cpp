@@ -8,6 +8,7 @@
 #include "decode3of6.h"
 #include "pure_dll_crc.h"
 #include "pure_complete_frame.h"
+#include "pure_parity_classification.h"
 
 #define WMBUS_PREAMBLE_SIZE (3)
 #define WMBUS_MODE_C_SUFIX_LEN (2)
@@ -169,24 +170,43 @@ std::optional<Frame> Packet::convert_to_frame() {
       FrameStatus::FullFrame;
   const bool pure_accepted = complete_status == wmbus_pure::CompleteStatus::Ok;
   const bool identical = pure_accepted && pure_complete.bytes == this->data_;
-  // One set of counters for the radio instance; updates only inside RX loop.
+  // Aggregate reason counters, never print raw telegrams or keys.
   static uint32_t pure_checked = 0;
   static uint32_t pure_equal = 0;
   static uint32_t pure_disagree = 0;
+  static uint32_t crc_legacy = 0;
+  static uint32_t header_legacy = 0;
+  static uint32_t structure_legacy = 0;
+  static uint32_t content_diff = 0;
+  static uint32_t pure_only = 0;
+  const auto reason = wmbus_pure::classify_parity(
+      complete_status, legacy_accepted, identical);
   ++pure_checked;
-  if (pure_accepted == legacy_accepted &&
-      (!pure_accepted || identical))
+  if (reason == wmbus_pure::ParityMismatch::None) {
     ++pure_equal;
-  else
+  } else {
     ++pure_disagree;
-  if (pure_checked % 100 == 1 ||
-      (pure_disagree <= 3 &&
-       !(pure_accepted == legacy_accepted && (!pure_accepted || identical)))) {
+    switch (reason) {
+      case wmbus_pure::ParityMismatch::BadCrcLegacyAccepted: ++crc_legacy; break;
+      case wmbus_pure::ParityMismatch::InvalidHeaderLegacyAccepted: ++header_legacy; break;
+      case wmbus_pure::ParityMismatch::InvalidStructureLegacyAccepted: ++structure_legacy; break;
+      case wmbus_pure::ParityMismatch::ContentMismatch: ++content_diff; break;
+      case wmbus_pure::ParityMismatch::PureOnlyAccepted: ++pure_only; break;
+      case wmbus_pure::ParityMismatch::None: break;
+    }
+  }
+  if (pure_checked % 100 == 1 || (reason != wmbus_pure::ParityMismatch::None &&
+                                  pure_disagree <= 3)) {
     ESP_LOGI(TAG,
-             "Pure radio parity checked=%u equal=%u disagree=%u pure_ok=%u legacy_ok=%u format=%s",
+             "Pure radio parity checked=%u equal=%u disagree=%u crc_legacy=%u header_legacy=%u structure_legacy=%u content_diff=%u pure_only=%u pure_ok=%u legacy_ok=%u format=%s",
              static_cast<unsigned>(pure_checked),
              static_cast<unsigned>(pure_equal),
              static_cast<unsigned>(pure_disagree),
+             static_cast<unsigned>(crc_legacy),
+             static_cast<unsigned>(header_legacy),
+             static_cast<unsigned>(structure_legacy),
+             static_cast<unsigned>(content_diff),
+             static_cast<unsigned>(pure_only),
              static_cast<unsigned>(pure_accepted),
              static_cast<unsigned>(legacy_accepted),
              this->frame_format_.c_str());
