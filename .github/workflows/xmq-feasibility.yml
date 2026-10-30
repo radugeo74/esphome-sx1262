@@ -14,6 +14,15 @@ permissions:
   contents: read
 
 jobs:
+  pure-manufacturer-raw:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate independent A0/A2 manufacturer spans
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic \
+            experimental/xmq/tests/test_pure_manufacturer_payload.cpp -o /tmp/pure-manufacturer-raw
+          /tmp/pure-manufacturer-raw
   esphome-s3-xmq-build:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
