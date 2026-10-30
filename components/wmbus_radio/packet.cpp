@@ -176,6 +176,9 @@ std::optional<Frame> Packet::convert_to_frame() {
   static uint32_t pure_disagree = 0;
   static uint32_t crc_legacy = 0;
   static uint32_t header_legacy = 0;
+  static uint32_t header_id = 0;
+  static uint32_t header_manufacturer = 0;
+  static uint32_t header_other = 0;
   static uint32_t structure_legacy = 0;
   static uint32_t content_diff = 0;
   static uint32_t pure_only = 0;
@@ -188,7 +191,14 @@ std::optional<Frame> Packet::convert_to_frame() {
     ++pure_disagree;
     switch (reason) {
       case wmbus_pure::ParityMismatch::BadCrcLegacyAccepted: ++crc_legacy; break;
-      case wmbus_pure::ParityMismatch::InvalidHeaderLegacyAccepted: ++header_legacy; break;
+      case wmbus_pure::ParityMismatch::InvalidHeaderLegacyAccepted:
+        ++header_legacy;
+        if (pure_complete.header_status == wmbus_pure::HeaderStatus::InvalidId)
+          ++header_id;
+        else if (pure_complete.header_status == wmbus_pure::HeaderStatus::InvalidManufacturer)
+          ++header_manufacturer;
+        else ++header_other;
+        break;
       case wmbus_pure::ParityMismatch::InvalidStructureLegacyAccepted: ++structure_legacy; break;
       case wmbus_pure::ParityMismatch::ContentMismatch: ++content_diff; break;
       case wmbus_pure::ParityMismatch::PureOnlyAccepted: ++pure_only; break;
@@ -198,12 +208,15 @@ std::optional<Frame> Packet::convert_to_frame() {
   if (pure_checked % 100 == 1 || (reason != wmbus_pure::ParityMismatch::None &&
                                   pure_disagree <= 3)) {
     ESP_LOGI(TAG,
-             "Pure radio parity checked=%u equal=%u disagree=%u crc_legacy=%u header_legacy=%u structure_legacy=%u content_diff=%u pure_only=%u pure_ok=%u legacy_ok=%u format=%s",
+             "Pure radio parity checked=%u equal=%u disagree=%u crc_legacy=%u header_legacy=%u header_id=%u header_mfg=%u header_other=%u structure_legacy=%u content_diff=%u pure_only=%u pure_ok=%u legacy_ok=%u format=%s",
              static_cast<unsigned>(pure_checked),
              static_cast<unsigned>(pure_equal),
              static_cast<unsigned>(pure_disagree),
              static_cast<unsigned>(crc_legacy),
              static_cast<unsigned>(header_legacy),
+             static_cast<unsigned>(header_id),
+             static_cast<unsigned>(header_manufacturer),
+             static_cast<unsigned>(header_other),
              static_cast<unsigned>(structure_legacy),
              static_cast<unsigned>(content_diff),
              static_cast<unsigned>(pure_only),
