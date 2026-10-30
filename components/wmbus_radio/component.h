@@ -25,6 +25,7 @@ public:
   void receive_frame();
 
   void add_frame_handler(std::function<void(Frame *)> &&callback);
+  void add_meter_handler(const std::string &meter_id, std::function<void(Frame *)> &&callback);
 
 protected:
   static void wakeup_receiver_task_from_isr(TaskHandle_t *arg);
@@ -34,7 +35,12 @@ protected:
   TaskHandle_t receiver_task_handle_{nullptr};
   QueueHandle_t packet_queue_{nullptr};
 
-  std::vector<std::function<void(Frame *)>> handlers_;
+  struct MeterHandler {
+    std::string id;
+    std::function<void(Frame *)> callback;
+  };
+  std::vector<std::function<void(Frame *)>> handlers_;  // fallback / generic handlers
+  std::vector<MeterHandler> meter_handlers_;
 };
 } // namespace wmbus_radio
 } // namespace esphome
