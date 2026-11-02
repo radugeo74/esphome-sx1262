@@ -575,6 +575,16 @@ void SX126x::run_image_cal() {
 void SX126x::set_mode_rx() {
   uint8_t buf[8];
 
+  if (this->t1_stream_callback_ != nullptr) {
+    // SX126x continuous RX carries its FIFO write pointer across packets.
+    // A new progressive T1 stream starts at FIFO offset zero: explicitly
+    // restart RX and reset both buffer bases before arming sync-word IRQ.
+    // The official SX126x remains the sole owner of SPI, IRQ and RX state.
+    this->set_mode_standby();
+    uint8_t bases[2] = {0x00, 0x00};
+    this->write_opcode_(RADIO_SET_BUFFERBASEADDRESS, bases, 2);
+  }
+
   // configure irq params
   uint16_t irq = this->t1_stream_callback_ != nullptr ? IRQ_SYNCWORD_VALID : (IRQ_RX_DONE | IRQ_RX_TX_TIMEOUT | IRQ_CRC_ERROR);
   buf[0] = (irq >> 8) & 0xFF;
