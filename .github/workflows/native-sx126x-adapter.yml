@@ -100,6 +100,13 @@ jobs:
             experimental/semtech-radio/test_native_t1_fifo_contract.cpp \
             -o /tmp/test-native-t1-fifo-contract
           /tmp/test-native-t1-fifo-contract
+      - name: Compile and run official XMQ heat and water fixture regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/xmq/tests/test_official_driver_fixtures.cpp \
+            -o /tmp/test-official-xmq-fixtures
+          /tmp/test-official-xmq-fixtures
+
       - name: Check ESPHome probe Python syntax
         run: python3 -m py_compile components/wmbus_native_sx126x/__init__.py
 
