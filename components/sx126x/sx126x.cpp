@@ -514,13 +514,19 @@ void SX126x::t1_stream_loop_() {
     const uint16_t final_irq = (static_cast<uint16_t>(final_irq_bytes[0]) << 8) | final_irq_bytes[1];
     uint8_t packet_status[3] = {};
     this->read_opcode_(RADIO_GET_PACKETSTATUS, packet_status, 3);
-    const float rssi_dbm = -static_cast<float>(packet_status[2]) / 2.0f;
+    // GFSK PacketStatus: byte 1 = RSSI at sync, byte 2 = average
+    // packet RSSI. Progressive T1 may finish collecting before RX_DONE,
+    // so compare both measurements before choosing a publishing policy.
+    const float rssi_sync_dbm = -static_cast<float>(packet_status[1]) / 2.0f;
+    const float rssi_avg_dbm = -static_cast<float>(packet_status[2]) / 2.0f;
+    const float rssi_dbm = rssi_avg_dbm;  // Keep existing publishing behavior.
     static uint32_t rssi_probe_samples = 0;
-    if (rssi_probe_samples++ < 16) {
-      ESP_LOGI(TAG, "T1 RSSI probe irq=0x%04X rx_done=%s raw=%u rssi=%.1f dBm",
+    if (rssi_probe_samples++ < 32) {
+      ESP_LOGI(TAG, "T1 RSSI probe irq=0x%04X rx_done=%s sync_raw=%u sync=%.1f dBm avg_raw=%u avg=%.1f dBm",
                static_cast<unsigned>(final_irq),
                (final_irq & IRQ_RX_DONE) ? "yes" : "no",
-               static_cast<unsigned>(packet_status[2]), rssi_dbm);
+               static_cast<unsigned>(packet_status[1]), rssi_sync_dbm,
+               static_cast<unsigned>(packet_status[2]), rssi_avg_dbm);
     }
     this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true, rssi_dbm);
     this->t1_stream_reset_();
