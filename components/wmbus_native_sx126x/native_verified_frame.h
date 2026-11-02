@@ -11,6 +11,7 @@ enum class Status : uint8_t { Ok, BadBoundary, BadCrcOrHeader };
 struct Result {
   Status status{Status::BadBoundary};
   boundary::Status boundary_status{boundary::Status::InvalidInput};
+  size_t first_bad_symbol{SIZE_MAX};
   wmbus_pure::CompleteStatus verify_status{wmbus_pure::CompleteStatus::TooShort};
   wmbus_pure::CompleteFrame frame{};
 };
@@ -18,6 +19,7 @@ inline Result process(boundary::Mode mode, const uint8_t *bytes, size_t size) {
   Result output{};
   auto framed = boundary::convert(mode, bytes, size);
   output.boundary_status = framed.status;
+  output.first_bad_symbol = framed.first_bad_symbol;
   if (framed.status != boundary::Status::Framed) return output;
   output.verify_status = wmbus_pure::verify_complete_frame(
       framed.decoded_dll_with_crc.data(), framed.decoded_dll_with_crc.size(),
