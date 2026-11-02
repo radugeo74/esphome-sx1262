@@ -15,6 +15,7 @@ enum class Mode : uint8_t { T1, C1A, C1B };
 enum class Status : uint8_t { Framed, InvalidInput, Incomplete, InvalidSymbol, TooLong };
 struct Result {
   Mode mode{Mode::T1};
+  size_t first_bad_symbol{SIZE_MAX};
   Status status{Status::InvalidInput};
   std::vector<uint8_t> decoded_dll_with_crc; // no radio sync; not validated
 };
@@ -28,7 +29,10 @@ inline Result convert(Mode mode, const uint8_t *input, size_t size,
       switch (framing) {
         case t1::FrameStatus::Ok: result.status = Status::Framed; break;
         case t1::FrameStatus::Incomplete: result.status = Status::Incomplete; break;
-        case t1::FrameStatus::BadSymbol: result.status = Status::InvalidSymbol; break;
+        case t1::FrameStatus::BadSymbol:
+          result.status = Status::InvalidSymbol;
+          result.first_bad_symbol = t1::first_invalid_symbol(input, size);
+          break;
         case t1::FrameStatus::TooLong: result.status = Status::TooLong; break;
         default: result.status = Status::InvalidInput; break;
       }
@@ -38,7 +42,10 @@ inline Result convert(Mode mode, const uint8_t *input, size_t size,
     switch (status) {
       case t1::DecodeStatus::Ok: result.status = Status::Framed; break;
       case t1::DecodeStatus::Truncated: result.status = Status::Incomplete; break;
-      case t1::DecodeStatus::BadSymbol: result.status = Status::InvalidSymbol; break;
+      case t1::DecodeStatus::BadSymbol:
+        result.status = Status::InvalidSymbol;
+        result.first_bad_symbol = t1::first_invalid_symbol(input, size);
+        break;
       case t1::DecodeStatus::Oversize: result.status = Status::TooLong; break;
       default: result.status = Status::InvalidInput; break;
     }
