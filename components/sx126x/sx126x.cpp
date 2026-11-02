@@ -519,7 +519,9 @@ void SX126x::t1_stream_loop_() {
     // so compare both measurements before choosing a publishing policy.
     const float rssi_sync_dbm = -static_cast<float>(packet_status[1]) / 2.0f;
     const float rssi_avg_dbm = -static_cast<float>(packet_status[2]) / 2.0f;
-    const float rssi_dbm = rssi_avg_dbm;  // Keep existing publishing behavior.
+    // Progressive T1 has no RX_DONE; RssiAvg is stale in this mode.
+    // Use per-sync RSSI, measured on the current detected preamble/sync.
+    const float rssi_dbm = rssi_sync_dbm;
     static uint32_t rssi_probe_samples = 0;
     if (rssi_probe_samples++ < 32) {
       ESP_LOGI(TAG, "T1 RSSI probe irq=0x%04X rx_done=%s sync_raw=%u sync=%.1f dBm avg_raw=%u avg=%.1f dBm",
