@@ -377,13 +377,38 @@ void SX126x::t1_stream_reset_() {
 }
 
 void SX126x::t1_stream_loop_() {
+  // Bounded PHY diagnostics: no hard-coded meter IDs or captured telegrams.
+  static uint32_t last_report_ms = 0;
+  static uint32_t sync_events = 0;
+  static uint32_t other_irq_events = 0;
+  static uint32_t timeouts = 0;
+  static uint32_t completed = 0;
+  const uint32_t now_ms = millis();
+  if (now_ms - last_report_ms >= 30000) {
+    ESP_LOGI(TAG, "T1 PHY health sync=%" PRIu32 " other_irq=%" PRIu32
+                  " timeout=%" PRIu32 " complete=%" PRIu32 " busy=%u dio1=%u rx=%u",
+             sync_events, other_irq_events, timeouts, completed,
+             static_cast<unsigned>(this->busy_pin_->digital_read()),
+             static_cast<unsigned>(this->dio1_pin_->digital_read()),
+             static_cast<unsigned>(this->t1_stream_receiving_));
+    last_report_ms = now_ms;
+  }
   if (!this->t1_stream_receiving_) {
     if (!this->dio1_pin_->digital_read()) return;
     uint8_t irq_bytes[2] = {};
     this->read_opcode_(RADIO_GET_IRQSTATUS, irq_bytes, 2);
     uint16_t flags = (static_cast<uint16_t>(irq_bytes[0]) << 8) | irq_bytes[1];
     this->write_opcode_(RADIO_CLR_IRQSTATUS, irq_bytes, 2);
-    if (!(flags & IRQ_SYNCWORD_VALID)) return;
+    if (!(flags & IRQ_SYNCWORD_VALID)) {
+      ++other_irq_events;
+      if (other_irq_events <= 5)
+        ESP_LOGD(TAG, "T1 PHY unexpected IRQ flags=0x%04X", static_cast<unsigned>(flags));
+      return;
+    }
+    ++sync_events;
+    if (sync_events <= 10)
+      ESP_LOGI(TAG, "T1 PHY sync detected count=%" PRIu32 " flags=0x%04X",
+               sync_events, static_cast<unsigned>(flags));
     this->t1_stream_receiving_ = true;
     this->t1_stream_received_ = 0;
     this->t1_stream_target_ = 0;
@@ -392,6 +417,11 @@ void SX126x::t1_stream_loop_() {
   }
   // An interrupted stream must never emit a packet. RX re-arm is radio-owned.
   if (millis() - this->t1_stream_started_ > 60) {
+    ++timeouts;
+    if (timeouts <= 10)
+      ESP_LOGW(TAG, "T1 PHY timeout received=%u target=%u write progress stalled",
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(this->t1_stream_target_));
     this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true);
     this->t1_stream_reset_();
     return;
@@ -450,6 +480,9 @@ void SX126x::t1_stream_loop_() {
     this->t1_stream_target_ = (decoded * 12 + 7) / 8;
   }
   if (this->t1_stream_target_ && this->t1_stream_received_ == this->t1_stream_target_) {
+    ++completed;
+    if (completed <= 10)
+      ESP_LOGI(TAG, "T1 PHY stream collected bytes=%u", static_cast<unsigned>(this->t1_stream_received_));
     this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true);
     this->t1_stream_reset_();
   }
