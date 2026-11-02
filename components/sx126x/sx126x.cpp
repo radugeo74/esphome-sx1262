@@ -413,7 +413,7 @@ void SX126x::t1_stream_loop_() {
     this->t1_stream_received_ = 0;
     this->t1_stream_target_ = 0;
     this->t1_stream_started_ = millis();
-    this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, true, false);
+    this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, true, false, 0.0f);
   }
   // An interrupted stream must never emit a packet. RX re-arm is radio-owned.
   if (millis() - this->t1_stream_started_ > 60) {
@@ -466,7 +466,7 @@ void SX126x::t1_stream_loop_() {
       this->t1_stream_prefix_[this->t1_stream_received_ + i] = fragment[i];
   }
   this->t1_stream_received_ += available;
-  this->t1_stream_callback_(this->t1_stream_context_, fragment.data(), fragment.size(), false, false);
+  this->t1_stream_callback_(this->t1_stream_context_, fragment.data(), fragment.size(), false, false, 0.0f);
   if (this->t1_stream_target_ == 0 && this->t1_stream_received_ >= 2) {
     // Determine the L-field from the first two encoded bytes via validated
     // 3-of-6 symbols. Receiver callback collects full frame separately.
@@ -505,7 +505,12 @@ void SX126x::t1_stream_loop_() {
     ++completed;
     if (completed <= 10)
       ESP_LOGI(TAG, "T1 PHY stream collected bytes=%u", static_cast<unsigned>(this->t1_stream_received_));
-    this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true);
+    // GFSK packet status reports RSSI in negative half-dBm units.
+    // Read before the next RX rearm to keep RSSI associated with this telegram.
+    uint8_t packet_status[3] = {};
+    this->read_opcode_(RADIO_GET_PACKETSTATUS, packet_status, 3);
+    const float rssi_dbm = -static_cast<float>(packet_status[2]) / 2.0f;
+    this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true, rssi_dbm);
     this->t1_stream_reset_();
   }
 }
