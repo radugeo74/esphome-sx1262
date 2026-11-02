@@ -505,11 +505,23 @@ void SX126x::t1_stream_loop_() {
     ++completed;
     if (completed <= 10)
       ESP_LOGI(TAG, "T1 PHY stream collected bytes=%u", static_cast<unsigned>(this->t1_stream_received_));
-    // GFSK packet status reports RSSI in negative half-dBm units.
-    // Read before the next RX rearm to keep RSSI associated with this telegram.
+    // Snapshot PHY completion before reading packet status. Progressive T1 may
+    // reach its expected byte count before the modem raises RX_DONE. In that
+    // case packet RSSI could still refer to an earlier reception; log the
+    // condition during build-only validation without changing RX semantics.
+    uint8_t final_irq_bytes[2] = {};
+    this->read_opcode_(RADIO_GET_IRQSTATUS, final_irq_bytes, 2);
+    const uint16_t final_irq = (static_cast<uint16_t>(final_irq_bytes[0]) << 8) | final_irq_bytes[1];
     uint8_t packet_status[3] = {};
     this->read_opcode_(RADIO_GET_PACKETSTATUS, packet_status, 3);
     const float rssi_dbm = -static_cast<float>(packet_status[2]) / 2.0f;
+    static uint32_t rssi_probe_samples = 0;
+    if (rssi_probe_samples++ < 16) {
+      ESP_LOGI(TAG, "T1 RSSI probe irq=0x%04X rx_done=%s raw=%u rssi=%.1f dBm",
+               static_cast<unsigned>(final_irq),
+               (final_irq & IRQ_RX_DONE) ? "yes" : "no",
+               static_cast<unsigned>(packet_status[2]), rssi_dbm);
+    }
     this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true, rssi_dbm);
     this->t1_stream_reset_();
   }
