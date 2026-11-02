@@ -105,7 +105,7 @@ class SX126x final : public Component,
     return this->transmit_packet(packet.data(), packet.size());
   }
   // Opt-in T1 mode. Existing ESPHome packet reception stays unchanged otherwise.
-  using T1StreamCallback = void (*)(void *context, const uint8_t *bytes, size_t size, bool start, bool end);
+  using T1StreamCallback = void (*)(void *context, const uint8_t *bytes, size_t size, bool start, bool end, float rssi_dbm);
   void set_t1_stream_callback(T1StreamCallback callback, void *context) {
     this->t1_stream_callback_ = callback;
     this->t1_stream_context_ = context;
