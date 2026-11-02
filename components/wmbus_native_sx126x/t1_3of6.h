@@ -9,6 +9,27 @@ namespace esphome {
 namespace wmbus_native_sx126x {
 namespace t1 {
 enum class DecodeStatus : uint8_t { Ok, Empty, BadSymbol, Truncated, Oversize };
+// Pure diagnostic: zero-based first invalid 3-of-6 symbol.
+inline size_t first_invalid_symbol(const uint8_t *input, size_t size) {
+  static constexpr uint8_t symbols[16] = {
+      0x16,0x0D,0x0E,0x0B,0x1C,0x19,0x1A,0x13,
+      0x2C,0x25,0x26,0x23,0x34,0x31,0x32,0x29
+  };
+  if (!input) return 0;
+  for (size_t n = 0; n < (size * 8) / 6; ++n) {
+    const size_t bit = n * 6;
+    uint8_t code = 0;
+    for (unsigned i = 0; i < 6; ++i) {
+      const size_t at = bit + i;
+      code = static_cast<uint8_t>((code << 1) |
+          ((input[at / 8] >> (7 - (at % 8))) & 1U));
+    }
+    bool valid = false;
+    for (uint8_t symbol : symbols) if (symbol == code) { valid = true; break; }
+    if (!valid) return n;
+  }
+  return SIZE_MAX;
+}
 inline DecodeStatus decode(const uint8_t *input, size_t size,
                            size_t decoded_length, std::vector<uint8_t> &out) {
   out.clear();
