@@ -428,6 +428,17 @@ void SX126x::t1_stream_loop_() {
   }
   uint8_t write_ptr = 0;
   this->read_register_(0x0803, &write_ptr, 1); // RX_ADDR_PTR
+  // Bounded diagnostics near the 256-byte FIFO pointer wrap.
+  if (this->t1_stream_received_ >= 240 && this->t1_stream_received_ <= 270) {
+    static uint32_t wrap_samples = 0;
+    if (wrap_samples < 12) {
+      ESP_LOGD(TAG, "T1 FIFO wrap ptr=%u consumed=%u target=%u",
+               static_cast<unsigned>(write_ptr),
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(this->t1_stream_target_));
+      ++wrap_samples;
+    }
+  }
   uint8_t payload = static_cast<uint8_t>(write_ptr - 1);
   this->write_register_(0x06BB, &payload, 1);
   const uint8_t read_ptr = static_cast<uint8_t>(this->t1_stream_received_);
