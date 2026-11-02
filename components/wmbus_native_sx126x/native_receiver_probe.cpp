@@ -84,8 +84,11 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
     } else {
       ++rejected_frames;
       if (rejected_frames <= 10 || rejected_frames % 50 == 0)
-        ESP_LOGW(TAG, "T1 DLL REJECTED count=%u verified=%u",
-                 static_cast<unsigned>(rejected_frames), static_cast<unsigned>(verified_frames));
+        ESP_LOGW(TAG, "T1 DLL REJECTED count=%u verified=%u status=%u boundary=%u verify=%u",
+                 static_cast<unsigned>(rejected_frames), static_cast<unsigned>(verified_frames),
+                 static_cast<unsigned>(self->t1_fifo_.result().status),
+                 static_cast<unsigned>(self->t1_fifo_.result().boundary_status),
+                 static_cast<unsigned>(self->t1_fifo_.result().verify_status));
     }
   }
 }
