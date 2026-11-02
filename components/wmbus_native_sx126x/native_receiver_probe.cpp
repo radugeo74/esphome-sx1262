@@ -38,7 +38,8 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
     if (state == t1::RxState::Verified) {
       const auto &frame = self->t1_fifo_.result().frame;
       const auto kind = registry::classify(self->t1_fifo_.result(), self->configured_meter_ids_);
-      ESP_LOGI(TAG, "T1 FIFO VERIFIED len=%u configured=%s",
+      ESP_LOGI(TAG, "T1 FIFO VERIFIED id=%08u len=%u configured=%s (diagnostic only)",
+               static_cast<unsigned>(frame.header.meter_id),
                static_cast<unsigned>(frame.bytes.size()),
                kind == registry::Kind::Configured ? "yes" : "no");
       if (kind == registry::Kind::Configured) {
@@ -69,8 +70,8 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
               }
             }
           }
-          ESP_LOGI(TAG, "Native XMQ status=%u fields=%u (mapped sensors only)",
-                   static_cast<unsigned>(status),
+          ESP_LOGI(TAG, "Native XMQ meter=%s driver=%s status=%u fields=%u (mapped sensors only)",
+                   id.c_str(), driver, static_cast<unsigned>(status),
                    static_cast<unsigned>(decoded.value_count));
         }
 #endif
@@ -101,7 +102,7 @@ void NativeReceiverProbe::setup() {
     return;
 #endif
   }
-  ESP_LOGI(TAG, "Native SX126x receiver attached; configured verified frames may update mapped XMQ sensors");
+  ESP_LOGI(TAG, "Native SX126x packet probe attached; diagnostic only, no decoding or publishing");
 }
 
 void NativeReceiverProbe::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) {
@@ -140,7 +141,8 @@ void NativeReceiverProbe::on_packet(const std::vector<uint8_t> &packet, float rs
   const auto check = verified::process(mode, packet.data(), packet.size());
   if (check.status == verified::Status::Ok) {
     const auto kind = registry::classify(check, this->configured_meter_ids_);
-    ESP_LOGI(TAG, "Native VERIFIED mode=%s dll_size=%u configured=%s (diagnostic only)",
+    ESP_LOGI(TAG, "Native VERIFIED id=%08u mode=%s dll_size=%u configured=%s (diagnostic only)",
+             static_cast<unsigned>(check.frame.header.meter_id),
              this->t1_mode_ ? "T1" : (this->c1_format_b_ ? "C1-B" : "C1-A"),
              static_cast<unsigned>(check.frame.bytes.size()), kind == registry::Kind::Configured ? "yes" : "no");
   } else {
@@ -150,8 +152,10 @@ void NativeReceiverProbe::on_packet(const std::vector<uint8_t> &packet, float rs
   }
   // Do not infer whether sync bytes are present or that CRC is valid.
   // A packet from SX126x::on_packet is not necessarily a complete wM-Bus frame.
-  ESP_LOGI(TAG, "Native RX size=%u rssi=%.1f snr=%.1f accepted=%u",
+  ESP_LOGI(TAG, "Native RX size=%u rssi=%.1f snr=%.1f first=%02X %02X %02X accepted=%u",
            static_cast<unsigned>(packet.size()), rssi, snr,
+           packet[0], packet.size() > 1 ? packet[1] : 0,
+           packet.size() > 2 ? packet[2] : 0,
            static_cast<unsigned>(this->accepted_));
 }
 }  // namespace wmbus_native_sx126x
