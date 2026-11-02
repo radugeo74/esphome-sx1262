@@ -21,7 +21,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
 #ifdef SX126X_EXPERIMENTAL_PROGRESS_PROBE
   static void on_rx_fifo_progress(uint8_t fifo_count, uint8_t fifo_start);
 #endif
-  static void on_t1_stream(void *context, const uint8_t *data, size_t count, bool begin, bool end);
+  static void on_t1_stream(void *context, const uint8_t *data, size_t count, bool begin, bool end, float rssi_dbm);
   void set_t1_mode(bool value) { this->t1_mode_ = value; }
   void set_c1_format_b(bool value) { this->c1_format_b_ = value; }
   void add_configured_meter_id(const std::string &value) { this->configured_meter_ids_.push_back(value); }
@@ -29,6 +29,9 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   void add_xmq_sensor(const std::string &meter_id, const std::string &field,
                       sensor::Sensor *output) {
     this->xmq_sensors_.push_back({meter_id, field, output});
+  }
+  void add_rssi_sensor(const std::string &meter_id, sensor::Sensor *output) {
+    this->rssi_sensors_.push_back({meter_id, output});
   }
   void setup() override;
   void on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) override;
@@ -48,6 +51,8 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
     sensor::Sensor *output;
   };
   std::vector<XmqSensorBinding> xmq_sensors_{};
+  struct RssiSensorBinding { std::string meter_id; sensor::Sensor *output; };
+  std::vector<RssiSensorBinding> rssi_sensors_{};
   uint32_t accepted_{0};
   uint32_t rejected_{0};
 };
