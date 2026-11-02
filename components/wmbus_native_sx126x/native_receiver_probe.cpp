@@ -13,6 +13,20 @@ namespace esphome {
 namespace wmbus_native_sx126x {
 static const char *const TAG = "wmbus.native_sx126x";
 
+// Only normalize the outgoing sensor measurement. The XMQ decoded values,
+// driver calculations and radio packet remain untouched.
+static float round_for_sensor(float value, sensor::Sensor *output) {
+  if (output == nullptr || !std::isfinite(value))
+    return value;
+  const int decimals = output->get_accuracy_decimals();
+  if (decimals < 0 || decimals > 6)
+    return value;
+  float scale = 1.0f;
+  for (int i = 0; i < decimals; ++i)
+    scale *= 10.0f;
+  return std::round(value * scale) / scale;
+}
+
 #ifdef SX126X_EXPERIMENTAL_PROGRESS_PROBE
 void NativeReceiverProbe::on_rx_fifo_progress(uint8_t fifo_count, uint8_t fifo_start) {
   // Rate-limit diagnostic to changes in FIFO status; no packet reads or publication.
@@ -51,7 +65,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
         const auto meter_id = std::to_string(frame.header.meter_id);
         for (const auto &binding : self->rssi_sensors_) {
           if (binding.meter_id == meter_id && binding.output != nullptr)
-            binding.output->publish_state(rssi_dbm);
+            binding.output->publish_state(round_for_sensor(rssi_dbm, binding.output));
         }
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
         const auto id = std::to_string(frame.header.meter_id);
@@ -74,7 +88,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                 if (decoded.values[i].name != nullptr &&
                     binding.field == decoded.values[i].name &&
                     std::isfinite(decoded.values[i].value)) {
-                  binding.output->publish_state(decoded.values[i].value);
+                  binding.output->publish_state(round_for_sensor(decoded.values[i].value, binding.output));
                   break;
                 }
               }
