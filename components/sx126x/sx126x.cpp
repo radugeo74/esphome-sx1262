@@ -439,6 +439,17 @@ void SX126x::t1_stream_loop_() {
       ++wrap_samples;
     }
   }
+  // Bounded initial FIFO observation: distinguish pre-sync offset from lost bytes.
+  if (this->t1_stream_received_ < 2) {
+    static uint32_t prefix_samples = 0;
+    if (prefix_samples < 12) {
+      ESP_LOGD(TAG, "T1 FIFO prefix ptr=%u consumed=%u target=%u",
+               static_cast<unsigned>(write_ptr),
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(this->t1_stream_target_));
+      ++prefix_samples;
+    }
+  }
   uint8_t payload = static_cast<uint8_t>(write_ptr - 1);
   this->write_register_(0x06BB, &payload, 1);
   const uint8_t read_ptr = static_cast<uint8_t>(this->t1_stream_received_);
