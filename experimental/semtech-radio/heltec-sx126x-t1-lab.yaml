@@ -1,7 +1,8 @@
 # Heltec T1 LAB candidate; build-only, DO NOT FLASH until RX semantics verified.
 # Build-only; can publish configured sensor after actual RF verification.
 # Confirm board revision and keep current firmware backup.
-# This YAML must be compiled from the repository root with ESPHome 2026.10.1.
+# Import both the patched official sx126x and native adapter from GitHub.
+# Pin ESPHome to 2026.10.1 for this experimental build.
 esphome:
   name: heltec-sx126x-t1-lab
   friendly_name: Heltec SX126x T1 Lab
@@ -23,10 +24,9 @@ spi:
   miso_pin: GPIO11
 
 external_components:
-  - source:
-      type: local
-      path: ../../components
-    components: [wmbus_native_sx126x]
+  - source: github://radugeo74/esphome-sx1262@experimental/semtech-sx126x-sx127x
+    components: [sx126x, wmbus_native_sx126x]
+    refresh: always
 
 sx126x:
   id: native_sx1262
@@ -42,7 +42,7 @@ sx126x:
   sync_value: [0x54, 0x3D]
   preamble_size: 2
   preamble_detect: 2
-  # Opt-in patched official SX126x streams the FIFO from SYNCWORD_VALID;
+  # GitHub-provided patched official SX126x streams FIFO from SYNCWORD_VALID;
   # standard upstream RX_DONE packet listener is not used for T1.
   payload_length: 255
   rx_start: true
