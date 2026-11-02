@@ -422,7 +422,7 @@ void SX126x::t1_stream_loop_() {
       ESP_LOGW(TAG, "T1 PHY timeout received=%u target=%u write progress stalled",
                static_cast<unsigned>(this->t1_stream_received_),
                static_cast<unsigned>(this->t1_stream_target_));
-    this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true);
+    /* Incomplete PHY stream discarded; no DLL end callback. */
     this->t1_stream_reset_();
     return;
   }
@@ -460,20 +460,20 @@ void SX126x::t1_stream_loop_() {
     const int8_t hi = inverse[(first >> 10) & 0x3F];
     const int8_t lo = inverse[(first >> 4) & 0x3F];
     if (hi < 0 || lo < 0) {
-      this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true);
+      /* Incomplete PHY stream discarded; no DLL end callback. */
       this->t1_stream_reset_();
       return;
     }
     const size_t l = static_cast<size_t>((hi << 4) | lo);
     if (l < 10) {
-      this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true);
+      /* Incomplete PHY stream discarded; no DLL end callback. */
       this->t1_stream_reset_();
       return;
     }
     const size_t crc_blocks = 1 + (l - 9 + 15) / 16;
     const size_t decoded = l + 1 + 2 * crc_blocks;
     if (decoded > 255) {
-      this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true);
+      /* Incomplete PHY stream discarded; no DLL end callback. */
       this->t1_stream_reset_();
       return;
     }
