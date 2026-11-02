@@ -35,7 +35,12 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
     self->t1_fifo_.feed_bytes(data, count);
   if (end) {
     const auto state = self->t1_fifo_.end_frame();
+    static uint32_t verified_frames = 0;
+    static uint32_t rejected_frames = 0;
     if (state == t1::RxState::Verified) {
+      ++verified_frames;
+      ESP_LOGI(TAG, "T1 DLL VERIFIED count=%u rejected=%u",
+               static_cast<unsigned>(verified_frames), static_cast<unsigned>(rejected_frames));
       const auto &frame = self->t1_fifo_.result().frame;
       const auto kind = registry::classify(self->t1_fifo_.result(), self->configured_meter_ids_);
       ESP_LOGI(TAG, "T1 FIFO VERIFIED id=%08u len=%u configured=%s (diagnostic only)",
@@ -76,6 +81,11 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
         }
 #endif
       }
+    } else {
+      ++rejected_frames;
+      if (rejected_frames <= 10 || rejected_frames % 50 == 0)
+        ESP_LOGW(TAG, "T1 DLL REJECTED count=%u verified=%u",
+                 static_cast<unsigned>(rejected_frames), static_cast<unsigned>(verified_frames));
     }
   }
 }
