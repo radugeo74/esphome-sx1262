@@ -505,31 +505,12 @@ void SX126x::t1_stream_loop_() {
     ++completed;
     if (completed <= 10)
       ESP_LOGI(TAG, "T1 PHY stream collected bytes=%u", static_cast<unsigned>(this->t1_stream_received_));
-    // Snapshot PHY completion before reading packet status. Progressive T1 may
-    // reach its expected byte count before the modem raises RX_DONE. In that
-    // case packet RSSI could still refer to an earlier reception; log the
-    // condition during build-only validation without changing RX semantics.
-    uint8_t final_irq_bytes[2] = {};
-    this->read_opcode_(RADIO_GET_IRQSTATUS, final_irq_bytes, 2);
-    const uint16_t final_irq = (static_cast<uint16_t>(final_irq_bytes[0]) << 8) | final_irq_bytes[1];
+    // Progressive T1 uses RSSI sampled at sync; packet-average RSSI is
+    // not reliable before RX_DONE. Keep packet status for the current frame
+    // and let the verified-frame logger report its RSSI and meter ID.
     uint8_t packet_status[3] = {};
     this->read_opcode_(RADIO_GET_PACKETSTATUS, packet_status, 3);
-    // GFSK PacketStatus: byte 1 = RSSI at sync, byte 2 = average
-    // packet RSSI. Progressive T1 may finish collecting before RX_DONE,
-    // so compare both measurements before choosing a publishing policy.
-    const float rssi_sync_dbm = -static_cast<float>(packet_status[1]) / 2.0f;
-    const float rssi_avg_dbm = -static_cast<float>(packet_status[2]) / 2.0f;
-    // Progressive T1 has no RX_DONE; RssiAvg is stale in this mode.
-    // Use per-sync RSSI, measured on the current detected preamble/sync.
-    const float rssi_dbm = rssi_sync_dbm;
-    static uint32_t rssi_probe_samples = 0;
-    if (rssi_probe_samples++ < 32) {
-      ESP_LOGI(TAG, "T1 RSSI probe irq=0x%04X rx_done=%s sync_raw=%u sync=%.1f dBm avg_raw=%u avg=%.1f dBm",
-               static_cast<unsigned>(final_irq),
-               (final_irq & IRQ_RX_DONE) ? "yes" : "no",
-               static_cast<unsigned>(packet_status[1]), rssi_sync_dbm,
-               static_cast<unsigned>(packet_status[2]), rssi_avg_dbm);
-    }
+    const float rssi_dbm = -static_cast<float>(packet_status[1]) / 2.0f;
     this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true, rssi_dbm);
     this->t1_stream_reset_();
   }
