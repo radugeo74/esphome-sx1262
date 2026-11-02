@@ -1,0 +1,254 @@
+name: XMQ feasibility (experimental only)
+
+on:
+  push:
+    branches: ["experimental/wmbusmeters-xmq", "experimental/wmbusmeters-xmq-only"]
+    paths:
+      - "experimental/xmq/**"
+      - "components/wmbus_meter/**"
+      - ".github/workflows/xmq-feasibility.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  embedded-drivers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check generated XMQ header reproducibility
+        run: python3 experimental/xmq/tools/embed_drivers.py --check
+      - name: Compile and run embedding smoke test
+        run: |
+          g++ -std=c++17 -Wall -Wextra -pedantic -Werror \
+            experimental/xmq/tests/embedding_smoke.cpp -o /tmp/xmq_embed_smoke
+          /tmp/xmq_embed_smoke
+
+  libxmq-host-probe:
+    runs-on: ubuntu-24.04
+    # This is explicitly an experimental probe, not a release gate.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile upstream libxmq C source and list unresolved symbols
+        run: bash experimental/xmq/tools/probe_libxmq_host.sh
+
+  upstream-decoding-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    # Reference decoder test, separate from the experimental embedded implementation.
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev librtlsdr-dev libusb-1.0-0-dev pkg-config
+      - name: Checkout pinned upstream wmbusmeters
+        run: |
+          git clone https://github.com/wmbusmeters/wmbusmeters.git /tmp/wmbusmeters-upstream
+          cd /tmp/wmbusmeters-upstream
+          git checkout 293fd38cdcca176091c789c33a8797d67471c060
+      - name: Compile full upstream reference decoder
+        run: |
+          cd /tmp/wmbusmeters-upstream
+          ./configure
+          make -j2
+      - name: Decode and verify four official Techem fixtures
+        run: |
+          python3 experimental/xmq/tests/decode_upstream.py \
+            --binary /tmp/wmbusmeters-upstream/build/wmbusmeters
+
+  espidf-s3-feasibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install ESP-IDF 5.5.6
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.6
+          target: esp32s3
+          path: experimental/xmq/espidf_probe
+          command: |
+            bash "../tools/probe_libxmq_espidf.sh"
+
+  xmq-portability-inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fetch pinned source files and inventory portability
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.request import urlretrieve
+          sha = "293fd38cdcca176091c789c33a8797d67471c060"
+          folder = Path("/tmp/wmbus-xmq-source")
+          folder.mkdir(parents=True, exist_ok=True)
+          for filename in ("xmq.c", "xmq.h", "driver_dynamic.cc", "drivers.cc"):
+              urlretrieve(f"https://raw.githubusercontent.com/wmbusmeters/wmbusmeters/{sha}/src/{filename}", folder / filename)
+          PY
+          python3 experimental/xmq/tools/inventory_dependencies.py \
+            --src /tmp/wmbus-xmq-source --out /tmp/xmq-portability.json
+      - uses: actions/upload-artifact@v6
+        with:
+          name: xmq-portability-inventory
+          path: /tmp/xmq-portability.json
+          retention-days: 14
+
+  portable-xmq-parser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Syntax check and structural parser regression tests
+        run: |
+          python3 -m py_compile experimental/xmq/tools/portable_xmq.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_portable_xmq.py' -v
+      - name: Export parsed structure for review
+        run: |
+          python3 experimental/xmq/tools/portable_xmq.py \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            experimental/xmq/drivers/mkradio4.xmq \
+            --out /tmp/xmq-structural-tree.json
+      - uses: actions/upload-artifact@v6
+        with:
+          name: xmq-structural-tree
+          path: /tmp/xmq-structural-tree.json
+          retention-days: 14
+
+  ixml-binary-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile-check and test bounded IXML evaluator against original fixtures
+        run: |
+          python3 -m py_compile experimental/xmq/tools/ixml_probe.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_ixml_probe.py' -v
+          python3 experimental/xmq/tests/verify_ixml_numeric.py
+          python3 experimental/xmq/tools/ixml_probe.py --json-out /tmp/ixml-captures.json
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ixml-binary-captures
+          path: /tmp/ixml-captures.json
+          retention-days: 14
+
+  xmq-calculate-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate restricted expression evaluator with original XMQ definitions
+        run: |
+          python3 -m py_compile experimental/xmq/tools/calculate_probe.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_calculate_probe.py' -v
+
+  xmq-driver-pipeline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate IXML-DIF/VIF-calculate pipeline against original driver
+        run: |
+          python3 -m py_compile experimental/xmq/tools/driver_pipeline_probe.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_driver_pipeline_probe.py' -v
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_heating_records.py' -v
+
+  xmq-calendar-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check XMQ calendar formulas against original Techem fixtures
+        run: |
+          python3 -m py_compile experimental/xmq/tools/calendar_probe.py
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_calendar_probe.py' -v
+          python3 experimental/xmq/tests/verify_combined_decode.py
+
+  portable-cpp-records:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile portable decoder with strict warnings and run reference tests
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            experimental/xmq/portable_cpp/test_record_decoder.cpp \
+            -o /tmp/xmq-record-decoder-test
+          /tmp/xmq-record-decoder-test
+          echo "PASS portable C++ DIF/VIF record decoder"
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            experimental/xmq/portable_cpp/test_ixml_subset.cpp \
+            -o /tmp/xmq-ixml-subset-test
+          /tmp/xmq-ixml-subset-test
+          echo "PASS portable C++ IXML subset"
+
+          python3 -m unittest discover -s experimental/xmq/tests -p 'test_cpp_metadata.py' -v
+          python3 experimental/xmq/tools/generate_ixml_cpp.py \
+            experimental/xmq/drivers/mkradio4.xmq \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            --out /tmp/generated_ixml.h
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/portable_cpp/test_generated_ixml.cpp \
+            -o /tmp/xmq-generated-ixml-test
+          /tmp/xmq-generated-ixml-test
+          echo "PASS generated C++ IXML driver tables"
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/portable_cpp/test_numeric_bridge.cpp \
+            -o /tmp/xmq-numeric-bridge-test
+          /tmp/xmq-numeric-bridge-test
+          echo "PASS C++ IXML-to-numeric bridge"
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/portable_cpp/test_driver_runtime.cpp \
+            -o /tmp/xmq-driver-runtime-test
+          /tmp/xmq-driver-runtime-test
+          echo "PASS generated driver runtime (water, heat, invalid payload)"
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            -I/tmp -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/portable_cpp/test_frame_bridge.cpp \
+            -o /tmp/xmq-frame-bridge-test
+          /tmp/xmq-frame-bridge-test
+          echo "PASS zero-copy parsed frame bridge"
+
+
+
+
+
+  espidf-s3-cpp-link:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate IXML C++ rule tables from original XMQ drivers
+        run: |
+          python3 experimental/xmq/tools/generate_ixml_cpp.py \
+            experimental/xmq/drivers/mkradio4.xmq \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            --out experimental/xmq/generated/generated_ixml.h
+      - name: Build and link portable C++ decoder for ESP32-S3
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.6
+          target: esp32s3
+          path: experimental/xmq/espidf_cpp_probe
+          command: |
+            idf.py build
+            idf.py size
+
+  esphome-xmq-shadow-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install ESPHome 2026.10.1
+        run: pip install esphome==2026.10.1
+      - name: Compile real ESPHome components with XMQ shadow enabled
+        run: esphome compile experimental/xmq/tests/xmq_shadow_ci.yaml
