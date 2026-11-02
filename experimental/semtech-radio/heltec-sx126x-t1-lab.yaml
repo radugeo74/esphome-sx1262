@@ -70,3 +70,11 @@ wmbus_native_sx126x:
   # No personal devices are configured in this public lab fixture.
   # No MQTT/API network transport configured in this build-only fixture.
   configured_meter_ids: []
+  # Synthetic ID exercises the RSSI YAML schema during CI compilation.
+  # It is not a real meter and receives no sensor updates.
+  rssi_sensors:
+    - meter_id: "00000000"
+      sensor:
+        name: "Lab T1 RSSI Schema Test"
+        entity_category: diagnostic
+
