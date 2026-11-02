@@ -102,6 +102,10 @@ jobs:
           /tmp/test-native-t1-fifo-contract
       - name: Compile and run official XMQ heat and water fixture regression
         run: |
+          python3 experimental/xmq/tools/generate_ixml_cpp.py \
+            experimental/xmq/drivers/mkradio4.xmq \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            --out components/wmbus_meter/xmq_generated.h
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
             experimental/xmq/tests/test_official_driver_fixtures.cpp \
             -o /tmp/test-official-xmq-fixtures
