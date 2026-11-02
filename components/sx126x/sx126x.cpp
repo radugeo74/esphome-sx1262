@@ -580,7 +580,7 @@ void SX126x::set_mode_rx() {
     // A new progressive T1 stream starts at FIFO offset zero: explicitly
     // restart RX and reset both buffer bases before arming sync-word IRQ.
     // The official SX126x remains the sole owner of SPI, IRQ and RX state.
-    this->set_mode_standby();
+    this->set_mode_standby(STDBY_XOSC);
     uint8_t bases[2] = {0x00, 0x00};
     this->write_opcode_(RADIO_SET_BUFFERBASEADDRESS, bases, 2);
   }
