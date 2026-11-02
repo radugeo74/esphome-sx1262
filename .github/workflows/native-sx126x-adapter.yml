@@ -1,0 +1,146 @@
+name: Native SX126x adapter (experimental)
+
+on:
+  push:
+    branches:
+      - experimental/semtech-sx126x-sx127x
+    paths:
+      - 'components/wmbus_native_sx126x/**'
+      - 'experimental/semtech-radio/**'
+      - 'experimental/xmq/tests/test_pure_crc.cpp'
+      - '.github/workflows/native-sx126x-adapter.yml'
+  workflow_dispatch:
+
+jobs:
+  native-packet-input:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Repository-wide privacy audit (all branch HEADs)
+        run: python3 experimental/semtech-radio/ci/privacy_audit.py
+      - name: Build input contract test
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_packet_input.cpp \
+            -o /tmp/test-native-packet-input
+      - name: Run input contract test
+        run: /tmp/test-native-packet-input
+      - name: Build and test C1 post-sync framing
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_c1_framing.cpp \
+            -o /tmp/test-native-c1-framing
+          /tmp/test-native-c1-framing
+      - name: Build and test C1 CRC diagnostics
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_c1_integrity.cpp \
+            -o /tmp/test-native-c1-integrity
+          /tmp/test-native-c1-integrity
+      - name: Build and test T1 3-of-6 decoder
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_3of6.cpp \
+            -o /tmp/test-native-t1
+          /tmp/test-native-t1
+      - name: Build and test common T1/C1 frame boundary
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_frame_boundary.cpp \
+            -o /tmp/test-native-frame-boundary
+          /tmp/test-native-frame-boundary
+      - name: Test native C1 boundary against existing pure DLL verifier
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_to_pure_validation.cpp \
+            -o /tmp/test-native-pure-validation
+          /tmp/test-native-pure-validation
+      - name: Test T1 symbols through pure DLL CRC verifier
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_to_pure_validation.cpp \
+            -o /tmp/test-native-t1-pure
+          /tmp/test-native-t1-pure
+      - name: Assert native fixture has no legacy radio owner
+        run: python3 experimental/semtech-radio/ci/check_native_only.py
+      - name: Test variable-length T1 packet framing
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_packet_framing.cpp \
+            -o /tmp/test-native-t1-packet-framing
+          /tmp/test-native-t1-packet-framing
+      - name: Test native verified DLL bridge
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_verified_bridge.cpp \
+            -o /tmp/test-native-verified-bridge
+          /tmp/test-native-verified-bridge
+      - name: Test native verified meter registry
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_meter_registry.cpp \
+            -o /tmp/test-native-meter-registry
+          /tmp/test-native-meter-registry
+      - name: Test progressive T1 FIFO collector
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_progressive_buffer.cpp \
+            -o /tmp/test-native-t1-progressive
+          /tmp/test-native-t1-progressive
+      - name: Test progressive T1 verified bridge
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_progressive_verified.cpp \
+            -o /tmp/test-native-t1-progressive-verified
+          /tmp/test-native-t1-progressive-verified
+      - name: Test non-owning T1 FIFO integration contract
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_fifo_contract.cpp \
+            -o /tmp/test-native-t1-fifo-contract
+          /tmp/test-native-t1-fifo-contract
+      - name: Check ESPHome probe Python syntax
+        run: python3 -m py_compile components/wmbus_native_sx126x/__init__.py
+
+  native-esphome-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned ESPHome
+        run: python -m pip install 'esphome==2026.10.1'
+      - name: Guard official SX126x 2026.10.1 RX hook
+        run: |
+          SX126X_CPP=$(python -c 'from pathlib import Path; import esphome; print(Path(esphome.__file__).parent / "components/sx126x/sx126x.cpp")')
+          python3 experimental/semtech-radio/ci/check_sx126x_rx_hook.py "$SX126X_CPP"
+      - name: Check T1 patcher Python syntax
+        run: python3 -m py_compile experimental/semtech-radio/ci/patch_sx126x_t1_stream.py
+      - name: Apply official SX126x T1 streaming patch in isolated build
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import esphome, sys
+          sys.path.insert(0, 'experimental/semtech-radio/ci')
+          from patch_sx126x_t1_stream import patch
+          base = Path(esphome.__file__).parent / 'components/sx126x'
+          h, c = patch((base/'sx126x.h').read_text(), (base/'sx126x.cpp').read_text())
+          (base/'sx126x.h').write_text(h)
+          (base/'sx126x.cpp').write_text(c)
+          assert 'SX126X_EXPERIMENTAL_T1_STREAM' in h
+          assert 'IRQ_SYNC_WORD_VALID' not in c
+          assert 'IRQ_SYNCWORD_VALID' in c
+          PY
+      - name: Compile official SX126x T1 stream on Heltec (not flashed)
+        run: esphome compile experimental/semtech-radio/heltec-sx126x-t1-lab.yaml
+      - name: Validate native receiver fixture
+        run: esphome config experimental/semtech-radio/ci/native-sx126x-esphome.yaml
+      - name: Validate real-pin Heltec diagnostic YAML
+        run: esphome config experimental/semtech-radio/heltec-sx126x-diagnostic.yaml
+      - name: Validate build-only Heltec T1 lab configuration
+        run: esphome config experimental/semtech-radio/heltec-sx126x-t1-lab.yaml
+      - name: Compile Heltec SX126x diagnostic firmware
+        run: esphome compile experimental/semtech-radio/heltec-sx126x-diagnostic.yaml
+      - name: Compile native SX126x receiver
+        run: esphome compile experimental/semtech-radio/ci/native-sx126x-esphome.yaml
