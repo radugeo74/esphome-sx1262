@@ -20,6 +20,7 @@ CONF_LINK_MODE = "link_mode"
 CONF_CONFIGURED_METER_IDS = "configured_meter_ids"
 CONF_FIFO_PROGRESS_PROBE = "fifo_progress_probe"
 CONF_XMQ_SENSORS = "xmq_sensors"
+CONF_RSSI_SENSORS = "rssi_sensors"
 CONF_METER_ID = "meter_id"
 CONF_FIELD = "field"
 CONF_METER_DRIVERS = "meter_drivers"
@@ -43,6 +44,10 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Required(CONF_DRIVER): cv.one_of("fhkvdataiii", "mkradio4"),
+    })),
+    cv.Optional(CONF_RSSI_SENSORS, default=[]): cv.ensure_list(cv.Schema({
+        cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
+        cv.Required("sensor"): sensor.sensor_schema(unit_of_measurement="dBm", accuracy_decimals=1, device_class="signal_strength", state_class="measurement"),
     })),
     cv.Optional(CONF_XMQ_SENSORS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
@@ -82,6 +87,9 @@ async def to_code(config):
         cg.add(var.add_configured_meter_id(meter_id))
     for item in config[CONF_METER_DRIVERS]:
         cg.add(var.add_meter_driver(item[CONF_METER_ID], item[CONF_DRIVER]))
+    for item in config[CONF_RSSI_SENSORS]:
+        obj = await sensor.new_sensor(item["sensor"])
+        cg.add(var.add_rssi_sensor(item[CONF_METER_ID], obj))
     for item in config[CONF_XMQ_SENSORS]:
         obj = await sensor.new_sensor(item["sensor"])
         cg.add(var.add_xmq_sensor(item[CONF_METER_ID], item[CONF_FIELD], obj))
