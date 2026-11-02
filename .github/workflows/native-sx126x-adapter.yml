@@ -6,6 +6,7 @@ on:
       - experimental/semtech-sx126x-sx127x
     paths:
       - 'components/wmbus_native_sx126x/**'
+      - 'components/sx126x/**'
       - 'experimental/semtech-radio/**'
       - 'experimental/xmq/tests/test_pure_crc.cpp'
       - '.github/workflows/native-sx126x-adapter.yml'
@@ -117,20 +118,15 @@ jobs:
           python3 experimental/semtech-radio/ci/check_sx126x_rx_hook.py "$SX126X_CPP"
       - name: Check T1 patcher Python syntax
         run: python3 -m py_compile experimental/semtech-radio/ci/patch_sx126x_t1_stream.py
-      - name: Apply official SX126x T1 streaming patch in isolated build
+      - name: Assert GitHub-supplied official SX126x includes T1 hook
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import esphome, sys
-          sys.path.insert(0, 'experimental/semtech-radio/ci')
-          from patch_sx126x_t1_stream import patch
-          base = Path(esphome.__file__).parent / 'components/sx126x'
-          h, c = patch((base/'sx126x.h').read_text(), (base/'sx126x.cpp').read_text())
-          (base/'sx126x.h').write_text(h)
-          (base/'sx126x.cpp').write_text(c)
+          h = Path('components/sx126x/sx126x.h').read_text()
+          cpp = Path('components/sx126x/sx126x.cpp').read_text()
           assert 'SX126X_EXPERIMENTAL_T1_STREAM' in h
-          assert 'IRQ_SYNC_WORD_VALID' not in c
-          assert 'IRQ_SYNCWORD_VALID' in c
+          assert 't1_stream_loop_()' in cpp
+          assert 'IRQ_SYNCWORD_VALID' in cpp
           PY
       - name: Compile official SX126x T1 stream on Heltec (not flashed)
         run: esphome compile experimental/semtech-radio/heltec-sx126x-t1-lab.yaml
