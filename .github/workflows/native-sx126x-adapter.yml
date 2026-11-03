@@ -45,6 +45,12 @@ jobs:
             experimental/semtech-radio/test_c1_block_diagnostics.cpp \
             -o /tmp/test-c1-block-diagnostics
           /tmp/test-c1-block-diagnostics
+      - name: Test official mkradio4a NOKEY examples (portable XMQ)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_mkradio4a_plain.cpp \
+            -o /tmp/test-mkradio4a-plain
+          /tmp/test-mkradio4a-plain
       - name: Test synthetic complete C1 A and long C1 B CRC pipeline
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
