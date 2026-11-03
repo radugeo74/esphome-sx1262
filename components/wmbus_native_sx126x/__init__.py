@@ -43,7 +43,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(NativeReceiverProbe),
     cv.Required(CONF_SX126X_ID): cv.use_id(SX126x),
     cv.Optional(CONF_C1_FORMAT, default="B"): cv.one_of("A", "B", upper=True),
-    cv.Optional(CONF_LINK_MODE, default="C1"): cv.one_of("T1", "C1", upper=True),
+    cv.Optional(CONF_LINK_MODE, default="C1"): cv.one_of("T1", "C1", "T1_C1", upper=True),
     cv.Optional(CONF_FIFO_PROGRESS_PROBE, default=False): cv.boolean,
     cv.Optional(CONF_T1_RAW_DIAGNOSTICS, default=False): cv.boolean,
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
@@ -71,6 +71,7 @@ async def to_code(config):
     cg.add(var.set_radio(radio))
     cg.add(var.set_c1_format_b(config[CONF_C1_FORMAT] == "B"))
     cg.add(var.set_t1_mode(config[CONF_LINK_MODE] == "T1"))
+    cg.add(var.set_combined_mode(config[CONF_LINK_MODE] == "T1_C1"))
     cg.add(var.set_t1_raw_diagnostics(config[CONF_T1_RAW_DIAGNOSTICS]))
     cg.add(var.set_fifo_progress_probe(config[CONF_FIFO_PROGRESS_PROBE]))
     # Reuse the existing XMQ generator; no wmbus_radio / legacy radio.
