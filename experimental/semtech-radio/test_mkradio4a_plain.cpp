@@ -33,8 +33,11 @@ int main() {
   warm[23]=0x2F; warm[26]=0x14;
   assert(decode(warm.data(),warm.size(),value)==Status::MissingFields);
   assert(decode(cold.data(),30,value)==Status::TooShort);
-  // Observed C1 55-byte frames do not match the pinned 76-byte fixture.
-  auto short_c1=from_hex("3644685036494600953772253895662423FE064E0030052F2F4315A10000426CBF2C0F542CF2DD8BEC869511B2DB8301C3ABA390FB4FDB6F11");
-  assert(decode(short_c1.data(),short_c1.size(),value)==Status::TooShort);
+  // A CRC-verified but encrypted 55-byte C1 frame has no proven clear records.
+  auto encrypted=warm;
+  encrypted.resize(55);
+  encrypted[0]=0x36;
+  encrypted[23]=0x19;
+  assert(decode(encrypted.data(),encrypted.size(),value)==Status::UnsupportedEnvelope);
   return 0;
 }
