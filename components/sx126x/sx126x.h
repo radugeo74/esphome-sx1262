@@ -5,6 +5,7 @@
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/helpers.h"
 #include "sx126x_reg.h"
 #include <utility>
 #include <vector>
@@ -138,6 +139,7 @@ class SX126x final : public Component,
   T1StreamCallback t1_stream_callback_{nullptr};
   void *t1_stream_context_{nullptr};
   bool combined_t1_c1_stream_{false};
+  HighFrequencyLoopRequester combined_rx_fast_loop_{};
   bool c1_stream_mode_{false};
   bool c1_stream_format_b_{false};
   bool t1_stream_diagnostics_{false};
