@@ -25,6 +25,7 @@ class ProgressiveVerified {
     return VerifiedFeedStatus::Verified;
   }
   const verified::Result &result() const { return this->verified_; }
+  const std::vector<uint8_t> &raw_encoded_bytes() const { return this->buffer_.bytes(); }
  private:
   ProgressiveBuffer buffer_{};
   verified::Result verified_{};
