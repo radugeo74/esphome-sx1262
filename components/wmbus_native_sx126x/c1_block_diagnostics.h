@@ -3,7 +3,7 @@
 // Uses synthetic fixtures only. Never repairs or accepts a failed frame.
 #include <cstddef>
 #include <cstdint>
-#include "../wmbus_radio/pure_dll_crc.h"
+#include "pure_dll_crc.h"
 
 namespace esphome::wmbus_native_sx126x::c1diagnostic {
 enum class Failure : uint8_t { None, TooShort, LengthMismatch, BadCrc };
