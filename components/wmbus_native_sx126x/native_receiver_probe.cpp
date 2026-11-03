@@ -13,6 +13,21 @@ namespace esphome {
 namespace wmbus_native_sx126x {
 static const char *const TAG = "wmbus.native_sx126x";
 
+void NativeReceiverProbe::fire_verified_(uint32_t meter_id, float rssi, const std::vector<uint8_t> &bytes) {
+  if (this->verified_triggers_.empty()) return;
+  static constexpr char HEX[] = "0123456789ABCDEF";
+  std::string telegram_hex;
+  telegram_hex.reserve(bytes.size() * 2);
+  for (uint8_t b : bytes) {
+    telegram_hex.push_back(HEX[b >> 4]);
+    telegram_hex.push_back(HEX[b & 0x0F]);
+  }
+  for (auto *trigger : this->verified_triggers_) {
+    trigger->trigger(meter_id, rssi, telegram_hex, static_cast<uint32_t>(bytes.size()));
+  }
+}
+
+
 // Only normalize the outgoing sensor measurement. The XMQ decoded values,
 // driver calculations and radio packet remain untouched.
 static float round_for_sensor(float value, sensor::Sensor *output) {
@@ -61,6 +76,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                static_cast<unsigned>(frame.header.meter_id),
                static_cast<unsigned>(frame.bytes.size()), rssi_dbm,
                kind == registry::Kind::Configured ? "yes" : "no");
+      self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
       if (kind == registry::Kind::Configured) {
         const auto meter_id = std::to_string(frame.header.meter_id);
         for (const auto &binding : self->rssi_sensors_) {
