@@ -87,7 +87,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
           encoded[2 * i] = HEX[raw[offset + i] >> 4];
           encoded[2 * i + 1] = HEX[raw[offset + i] & 0x0F];
         }
-        encoded[2 * n] = '\\0';
+        encoded[2 * n] = '\0';
         ESP_LOGD(TAG, "T1 RAW chunk offset=%u hex=%s",
                  static_cast<unsigned>(offset), encoded);
       }
