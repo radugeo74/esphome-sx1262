@@ -24,6 +24,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
 #endif
   static void on_t1_stream(void *context, const uint8_t *data, size_t count, bool begin, bool end, float rssi_dbm);
   void set_t1_mode(bool value) { this->t1_mode_ = value; }
+  void set_t1_raw_diagnostics(bool value) { this->t1_raw_diagnostics_ = value; }
   void set_c1_format_b(bool value) { this->c1_format_b_ = value; }
   void add_configured_meter_id(const std::string &value) { this->configured_meter_ids_.push_back(value); }
   void add_meter_driver(const std::string &id, const std::string &driver) { this->meter_drivers_.push_back({id, driver}); }
@@ -45,6 +46,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   bool c1_format_b_{true};
   bool fifo_progress_probe_{false};
   bool t1_mode_{false};
+  bool t1_raw_diagnostics_{false};
   std::vector<std::string> configured_meter_ids_{};
   struct MeterDriver { std::string id; std::string driver; };
   std::vector<MeterDriver> meter_drivers_{};
