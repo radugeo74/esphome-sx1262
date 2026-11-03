@@ -55,7 +55,7 @@ jobs:
             experimental/xmq/drivers/fhkvdataiii.xmq \
             experimental/xmq/drivers/mkradio4a.xmq \
             --out components/wmbus_native_sx126x/xmq_auto_registry.h
-          sed -i 's|#include "pure_driver_registry.h"|#include "esphome/components/wmbus_radio/pure_driver_registry.h"|' components/wmbus_native_sx126x/xmq_auto_registry.h
+          sed -i 's|#include "pure_driver_registry.h"|#include "components/wmbus_radio/pure_driver_registry.h"|' components/wmbus_native_sx126x/xmq_auto_registry.h
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
             experimental/semtech-radio/test_xmq_auto_registry.cpp \
             -o /tmp/test-xmq-auto-registry
