@@ -491,6 +491,25 @@ void SX126x::t1_stream_loop_() {
     // The first two bytes are held in the radio-owned prefix buffer.
     const uint16_t first = (static_cast<uint16_t>(this->t1_stream_prefix_[0]) << 8) |
                            this->t1_stream_prefix_[1];
+    if (this->c1_stream_mode_) {
+      const size_t l = this->t1_stream_prefix_[0];
+      if (l < 10) {
+        ++length_invalid;
+        if (this->t1_stream_diagnostics_ && length_invalid <= 10)
+          ESP_LOGW(TAG, "C1 PHY invalid L=%u", static_cast<unsigned>(l));
+        this->t1_stream_reset_();
+        return;
+      }
+      // C1-B: L includes the frame CRC. C1-A: L excludes block CRCs.
+      const size_t blocks = l < 26 ? 2 : ((l - 26) / 16 + 3);
+      const size_t target = this->c1_stream_format_b_ ? l + 1 : l + 1 + 2 * blocks;
+      if (target > 255) {
+        ++length_oversize;
+        this->t1_stream_reset_();
+        return;
+      }
+      this->t1_stream_target_ = target;
+    } else {
     const int8_t hi = inverse[(first >> 10) & 0x3F];
     const int8_t lo = inverse[(first >> 4) & 0x3F];
     if (hi < 0 || lo < 0) {
@@ -523,6 +542,7 @@ void SX126x::t1_stream_loop_() {
       return;
     }
     this->t1_stream_target_ = (decoded * 12 + 7) / 8;
+    }
   }
   if (this->t1_stream_target_ && this->t1_stream_received_ == this->t1_stream_target_) {
     ++completed;
@@ -613,6 +633,10 @@ void SX126x::set_mode_rx() {
     // restart RX and reset both buffer bases before arming sync-word IRQ.
     // The official SX126x remains the sole owner of SPI, IRQ and RX state.
     this->set_mode_standby(STDBY_XOSC);
+    if (this->c1_stream_mode_) {
+      const uint8_t sync[2] = {0x54, static_cast<uint8_t>(this->c1_stream_format_b_ ? 0x3D : 0xCD)};
+      this->write_register_(REG_GFSK_SYNCWORD, sync, sizeof(sync));
+    }
     uint8_t bases[2] = {0x00, 0x00};
     this->write_opcode_(RADIO_SET_BUFFERBASEADDRESS, bases, 2);
   }
