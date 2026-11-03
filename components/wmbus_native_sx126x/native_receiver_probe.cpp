@@ -260,8 +260,22 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
         prefix[2 * i + 1] = HEX[raw[i] & 0x0F];
       }
       prefix[2 * n] = 0;
-      ESP_LOGD(TAG, "COMBINED C1 CRC probe prefix=%s rx=%u (local diagnostic only)",
-               prefix, static_cast<unsigned>(raw.size()));
+      // First C1-A DLL block consists of L + C + M + address (10 bytes)
+      // followed by the two CRC bytes. Comparing the *first* block
+      // distinguishes corrupt RF payload from later block framing errors.
+      const bool first_block_ready = raw.size() >= 14;
+      const uint8_t *dll = raw.data() + 2;
+      const uint16_t calculated = first_block_ready ?
+          wmbus_pure::crc16_en13757(dll, 10) : 0;
+      const uint16_t received = first_block_ready ?
+          (static_cast<uint16_t>(dll[10]) << 8) | dll[11] : 0;
+      ESP_LOGD(TAG, "COMBINED C1 CRC probe prefix=%s rx=%u L=%02X C=%02X M=%02X%02X first_crc=%04X expected=%04X (local only)",
+               prefix, static_cast<unsigned>(raw.size()),
+               raw.size() >= 3 ? raw[2] : 0,
+               raw.size() >= 4 ? raw[3] : 0,
+               raw.size() >= 6 ? raw[4] : 0,
+               raw.size() >= 6 ? raw[5] : 0,
+               static_cast<unsigned>(received), static_cast<unsigned>(calculated));
     }
   }
   if (checked.status == verified::Status::Ok) {
