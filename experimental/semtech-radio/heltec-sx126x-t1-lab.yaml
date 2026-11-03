@@ -78,3 +78,10 @@ wmbus_native_sx126x:
         name: "Lab T1 RSSI Schema Test"
         entity_category: diagnostic
 
+
+  # CI-only exercise of the native verified-frame automation hook.
+  on_verified:
+    - then:
+        - logger.log:
+            format: "T1 verified meter=%u RSSI=%.1f dBm telegram=%s (%u)"
+            args: ['meter_id', 'rssi', 'telegram_hex.c_str()', 'telegram_size']
