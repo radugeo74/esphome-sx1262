@@ -1,6 +1,7 @@
 #include "native_receiver_probe.h"
 #include "native_frame_boundary.h"
 #include "native_verified_frame.h"
+#include "c1_block_diagnostics.h"
 #include "tpl_security_probe.h"
 #include "native_meter_registry.h"
 #include "c1_integrity.h"
@@ -95,6 +96,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
       }
     }
     if (state == t1::RxState::Verified) {
+      ++self->t1_stats_.ok;
       ++verified_frames;
       ESP_LOGI(TAG, "T1 DLL VERIFIED count=%u rejected=%u",
                static_cast<unsigned>(verified_frames), static_cast<unsigned>(rejected_frames));
@@ -156,6 +158,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
 #endif
       }
     } else {
+      ++self->t1_stats_.rejected;
       ++rejected_frames;
       if (rejected_frames <= 10 || rejected_frames % 50 == 0)
         ESP_LOGW(TAG, "T1 DLL REJECTED count=%u verified=%u status=%u boundary=%u verify=%u bad_symbol=%u",
@@ -235,6 +238,7 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
   if (!end) return;
   const auto &raw = self->combined_encoded_frame_;
   if (raw.size() < 2) return;
+  self->log_combined_stats_();
   const bool is_c1 = raw[0] == 0x54 && (raw[1] == 0xCD || raw[1] == 0x3D);
   if (!is_c1) {
     self->on_t1_stream(self, nullptr, 0, true, false, 0.0f);
@@ -244,6 +248,9 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
   }
   const auto mode = raw[1] == 0xCD ? boundary::Mode::C1A : boundary::Mode::C1B;
   const auto checked = verified::process(mode, raw.data() + 2, raw.size() - 2);
+  auto &stats = mode == boundary::Mode::C1A ? self->c1a_stats_ : self->c1b_stats_;
+  if (checked.status == verified::Status::Ok) ++stats.ok;
+  else ++stats.rejected;
   ESP_LOGI(TAG, "COMBINED C1-%c rx=%u verified=%s boundary=%u verify=%u rssi=%.1f (diagnostic only)",
            raw[1] == 0xCD ? 'A' : 'B', static_cast<unsigned>(raw.size()),
            checked.status == verified::Status::Ok ? "yes" : "no",
@@ -262,22 +269,14 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
         prefix[2 * i + 1] = HEX[raw[i] & 0x0F];
       }
       prefix[2 * n] = 0;
-      // First C1-A DLL block consists of L + C + M + address (10 bytes)
-      // followed by the two CRC bytes. Comparing the *first* block
-      // distinguishes corrupt RF payload from later block framing errors.
-      const bool first_block_ready = raw.size() >= 14;
-      const uint8_t *dll = raw.data() + 2;
-      const uint16_t calculated = first_block_ready ?
-          wmbus_pure::crc16_en13757(dll, 10) : 0;
-      const uint16_t received = first_block_ready ?
-          (static_cast<uint16_t>(dll[10]) << 8) | dll[11] : 0;
-      ESP_LOGD(TAG, "COMBINED C1 CRC probe prefix=%s rx=%u L=%02X C=%02X M=%02X%02X first_crc=%04X expected=%04X (local only)",
+      const auto crc = c1diagnostic::inspect(
+          raw.data() + 2, raw.size() - 2,
+          mode == boundary::Mode::C1A ? wmbus_pure::CrcFrameFormat::A : wmbus_pure::CrcFrameFormat::B);
+      ESP_LOGD(TAG, "COMBINED C1 CRC probe prefix=%s rx=%u block=%u offset=%u failure=%u received=%04X expected=%04X (local only)",
                prefix, static_cast<unsigned>(raw.size()),
-               raw.size() >= 3 ? raw[2] : 0,
-               raw.size() >= 4 ? raw[3] : 0,
-               raw.size() >= 6 ? raw[4] : 0,
-               raw.size() >= 6 ? raw[5] : 0,
-               static_cast<unsigned>(received), static_cast<unsigned>(calculated));
+               static_cast<unsigned>(crc.block), static_cast<unsigned>(crc.offset),
+               static_cast<unsigned>(crc.failure),
+               static_cast<unsigned>(crc.received), static_cast<unsigned>(crc.calculated));
     }
   }
   if (checked.status == verified::Status::Ok) {
@@ -290,6 +289,24 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
              kind == registry::Kind::Configured ? "yes" : "no",
              wmbus_pure::tpl_security::label(security.state));
   }
+}
+
+void NativeReceiverProbe::log_combined_stats_() {
+  if (!this->combined_mode_) return;
+  const uint32_t now = millis();
+  if (this->combined_stats_last_ms_ == 0) {
+    this->combined_stats_last_ms_ = now;
+    return;
+  }
+  if (static_cast<uint32_t>(now - this->combined_stats_last_ms_) < 60000U) return;
+  this->combined_stats_last_ms_ = now;
+  ESP_LOGI(TAG, "COMBINED RX stats T1 ok=%u bad=%u C1A ok=%u bad=%u C1B ok=%u bad=%u (since boot)",
+           static_cast<unsigned>(this->t1_stats_.ok),
+           static_cast<unsigned>(this->t1_stats_.rejected),
+           static_cast<unsigned>(this->c1a_stats_.ok),
+           static_cast<unsigned>(this->c1a_stats_.rejected),
+           static_cast<unsigned>(this->c1b_stats_.ok),
+           static_cast<unsigned>(this->c1b_stats_.rejected));
 }
 
 void NativeReceiverProbe::setup() {
