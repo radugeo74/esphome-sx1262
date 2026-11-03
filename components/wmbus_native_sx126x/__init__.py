@@ -7,7 +7,8 @@ No meter decoding or sensor publication: first establish radio payload semantics
 """
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, CONF_TRIGGER_ID
+from esphome import automation
 from esphome.components.sx126x import SX126x
 from esphome.components import sensor
 
@@ -24,6 +25,7 @@ CONF_RSSI_SENSORS = "rssi_sensors"
 CONF_METER_ID = "meter_id"
 CONF_FIELD = "field"
 CONF_METER_DRIVERS = "meter_drivers"
+CONF_ON_VERIFIED = "on_verified"
 CONF_DRIVER = "driver"
 
 def validate_meter_id(value):
@@ -34,6 +36,7 @@ def validate_meter_id(value):
 
 native_ns = cg.esphome_ns.namespace("wmbus_native_sx126x")
 NativeReceiverProbe = native_ns.class_("NativeReceiverProbe", cg.Component)
+VerifiedFrameTrigger = native_ns.class_("VerifiedFrameTrigger", automation.Trigger.template(cg.uint32, cg.float_, cg.std_string, cg.uint32))
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(NativeReceiverProbe),
@@ -55,6 +58,9 @@ CONFIG_SCHEMA = cv.Schema({
         cv.Required("sensor"): sensor.sensor_schema(accuracy_decimals=2),
     })),
     cv.Optional(CONF_CONFIGURED_METER_IDS, default=[]): cv.ensure_list(cv.All(cv.string_strict, validate_meter_id)),
+    cv.Optional(CONF_ON_VERIFIED): automation.validate_automation(
+        {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(VerifiedFrameTrigger)}
+    ),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -94,3 +100,11 @@ async def to_code(config):
         obj = await sensor.new_sensor(item["sensor"])
         cg.add(var.add_xmq_sensor(item[CONF_METER_ID], item[CONF_FIELD], obj))
     await cg.register_component(var, config)
+    for conf in config.get(CONF_ON_VERIFIED, []):
+        trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(
+            trig,
+            [(cg.uint32, "meter_id"), (cg.float_, "rssi"),
+             (cg.std_string, "telegram_hex"), (cg.uint32, "telegram_size")],
+            conf,
+        )
