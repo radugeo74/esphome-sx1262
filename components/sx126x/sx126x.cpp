@@ -670,6 +670,9 @@ void SX126x::set_mode_rx() {
   uint8_t buf[8];
 
   if (this->t1_stream_callback_ != nullptr) {
+    // Combined 100-kbit/s frames finish in ~5 ms, below ESPHome's default
+    // ~16-ms loop cadence. Poll continuously while this lab mode owns RX.
+    if (this->combined_t1_c1_stream_) this->combined_rx_fast_loop_.start();
     // SX126x continuous RX carries its FIFO write pointer across packets.
     // A new progressive T1 stream starts at FIFO offset zero: explicitly
     // restart RX and reset both buffer bases before arming sync-word IRQ.
