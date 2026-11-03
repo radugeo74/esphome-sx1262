@@ -634,7 +634,7 @@ void SX126x::set_mode_rx() {
     // The official SX126x remains the sole owner of SPI, IRQ and RX state.
     this->set_mode_standby(STDBY_XOSC);
     if (this->c1_stream_mode_) {
-      const uint8_t sync[2] = {0x54, static_cast<uint8_t>(this->c1_stream_format_b_ ? 0x3D : 0xCD)};
+      uint8_t sync[2] = {0x54, static_cast<uint8_t>(this->c1_stream_format_b_ ? 0x3D : 0xCD)};
       this->write_register_(REG_GFSK_SYNCWORD, sync, sizeof(sync));
     }
     uint8_t bases[2] = {0x00, 0x00};
