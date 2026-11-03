@@ -100,6 +100,12 @@ jobs:
             experimental/semtech-radio/test_native_t1_fifo_contract.cpp \
             -o /tmp/test-native-t1-fifo-contract
           /tmp/test-native-t1-fifo-contract
+      - name: Test conservative TPL encryption classification
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/tests/test_tpl_security_probe.cpp \
+            -o /tmp/test-tpl-security
+          /tmp/test-tpl-security
       - name: Compile and run official XMQ heat and water fixture regression
         run: |
           python3 experimental/xmq/tools/generate_ixml_cpp.py \
