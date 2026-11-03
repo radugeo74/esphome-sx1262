@@ -534,6 +534,23 @@ void SX126x::t1_stream_loop_() {
         return;
       }
       this->t1_stream_target_ = target;
+      // In common-sync mode, a delayed poll can observe a FIFO write
+      // pointer already past the complete C1 frame (e.g. 213 for 65).
+      // The first bytes can be genuine, but the RX stream is no longer
+      // bounded by the expected frame. Fail closed, never publish.
+      if (combined_c1 && write_ptr > target) {
+        static uint32_t c1_late_count = 0;
+        ++c1_late_count;
+        if (c1_late_count <= 20 || c1_late_count % 100 == 0) {
+          ESP_LOGW(TAG, "COMBINED C1 late FIFO L=%u target=%u ptr=%u age_ms=%u count=%u; discarded",
+                   static_cast<unsigned>(l), static_cast<unsigned>(target),
+                   static_cast<unsigned>(write_ptr),
+                   static_cast<unsigned>(millis() - this->t1_stream_started_),
+                   static_cast<unsigned>(c1_late_count));
+        }
+        this->t1_stream_reset_();
+        return;
+      }
     } else {
     const int8_t hi = inverse[(first >> 10) & 0x3F];
     const int8_t lo = inverse[(first >> 4) & 0x3F];
