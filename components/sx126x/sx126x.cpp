@@ -484,6 +484,20 @@ void SX126x::t1_stream_loop_() {
       this->t1_stream_prefix_[this->t1_stream_received_ + i] = fragment[i];
   }
   this->t1_stream_received_ += available;
+  if (this->combined_t1_c1_stream_ && this->t1_stream_received_ == 3 &&
+      this->t1_stream_prefix_[0] == 0x54 &&
+      (this->t1_stream_prefix_[1] == 0xCD || this->t1_stream_prefix_[1] == 0x3D)) {
+    static uint32_t c1_fifo_probe_count = 0;
+    if (c1_fifo_probe_count++ < 12) {
+      uint8_t check_ptr = 0;
+      this->read_register_(0x0803, &check_ptr, 1);
+      ESP_LOGD(TAG, "COMBINED C1 FIFO start marker=%02X%02X L=%02X rx_ptr=%u read_ptr=%u age_ms=%u",
+               this->t1_stream_prefix_[0], this->t1_stream_prefix_[1], this->t1_stream_prefix_[2],
+               static_cast<unsigned>(check_ptr),
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(millis() - this->t1_stream_started_));
+    }
+  }
   this->t1_stream_callback_(this->t1_stream_context_, fragment.data(), fragment.size(), false, false, 0.0f);
   if (this->t1_stream_target_ == 0 && this->t1_stream_received_ >= 2) {
     const bool combined_c1 = this->combined_t1_c1_stream_ &&
