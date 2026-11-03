@@ -26,6 +26,7 @@ CONF_METER_ID = "meter_id"
 CONF_FIELD = "field"
 CONF_METER_DRIVERS = "meter_drivers"
 CONF_ON_VERIFIED = "on_verified"
+CONF_T1_RAW_DIAGNOSTICS = "t1_raw_diagnostics"
 CONF_DRIVER = "driver"
 
 def validate_meter_id(value):
@@ -44,6 +45,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_C1_FORMAT, default="B"): cv.one_of("A", "B", upper=True),
     cv.Optional(CONF_LINK_MODE, default="C1"): cv.one_of("T1", "C1", upper=True),
     cv.Optional(CONF_FIFO_PROGRESS_PROBE, default=False): cv.boolean,
+    cv.Optional(CONF_T1_RAW_DIAGNOSTICS, default=False): cv.boolean,
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Required(CONF_DRIVER): cv.one_of("fhkvdataiii", "mkradio4"),
@@ -69,6 +71,7 @@ async def to_code(config):
     cg.add(var.set_radio(radio))
     cg.add(var.set_c1_format_b(config[CONF_C1_FORMAT] == "B"))
     cg.add(var.set_t1_mode(config[CONF_LINK_MODE] == "T1"))
+    cg.add(var.set_t1_raw_diagnostics(config[CONF_T1_RAW_DIAGNOSTICS]))
     cg.add(var.set_fifo_progress_probe(config[CONF_FIFO_PROGRESS_PROBE]))
     # Reuse the existing XMQ generator; no wmbus_radio / legacy radio.
     root = Path(__file__).resolve().parents[2]
