@@ -383,11 +383,16 @@ void SX126x::t1_stream_loop_() {
   static uint32_t other_irq_events = 0;
   static uint32_t timeouts = 0;
   static uint32_t completed = 0;
+  static uint32_t prefix_invalid = 0;
+  static uint32_t length_invalid = 0;
+  static uint32_t length_oversize = 0;
   const uint32_t now_ms = millis();
   if (now_ms - last_report_ms >= 30000) {
     ESP_LOGI(TAG, "T1 PHY health sync=%" PRIu32 " other_irq=%" PRIu32
-                  " timeout=%" PRIu32 " complete=%" PRIu32 " busy=%u dio1=%u rx=%u",
+                  " timeout=%" PRIu32 " complete=%" PRIu32 " prefix_bad=%" PRIu32
+                  " length_bad=%" PRIu32 " oversize=%" PRIu32 " busy=%u dio1=%u rx=%u",
              sync_events, other_irq_events, timeouts, completed,
+             prefix_invalid, length_invalid, length_oversize,
              static_cast<unsigned>(this->busy_pin_->digital_read()),
              static_cast<unsigned>(this->dio1_pin_->digital_read()),
              static_cast<unsigned>(this->t1_stream_receiving_));
@@ -418,7 +423,14 @@ void SX126x::t1_stream_loop_() {
   // An interrupted stream must never emit a packet. RX re-arm is radio-owned.
   if (millis() - this->t1_stream_started_ > 60) {
     ++timeouts;
-    if (timeouts <= 10)
+    if (this->t1_stream_diagnostics_ && (timeouts <= 10 || timeouts % 50 == 0)) {
+      uint8_t ptr = 0;
+      this->read_register_(0x0803, &ptr, 1);
+      ESP_LOGW(TAG, "T1 PHY timeout received=%u target=%u ptr=%u age_ms=%u", 
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(this->t1_stream_target_),
+               static_cast<unsigned>(ptr), static_cast<unsigned>(millis() - this->t1_stream_started_));
+    } else if (timeouts <= 10)
       ESP_LOGW(TAG, "T1 PHY timeout received=%u target=%u write progress stalled",
                static_cast<unsigned>(this->t1_stream_received_),
                static_cast<unsigned>(this->t1_stream_target_));
@@ -482,12 +494,19 @@ void SX126x::t1_stream_loop_() {
     const int8_t hi = inverse[(first >> 10) & 0x3F];
     const int8_t lo = inverse[(first >> 4) & 0x3F];
     if (hi < 0 || lo < 0) {
+      ++prefix_invalid;
+      if (this->t1_stream_diagnostics_ && prefix_invalid <= 10)
+        ESP_LOGW(TAG, "T1 PHY early abort invalid L prefix=%02X%02X hi=%d lo=%d", 
+                 this->t1_stream_prefix_[0], this->t1_stream_prefix_[1], hi, lo);
       /* Incomplete PHY stream discarded; no DLL end callback. */
       this->t1_stream_reset_();
       return;
     }
     const size_t l = static_cast<size_t>((hi << 4) | lo);
     if (l < 10) {
+      ++length_invalid;
+      if (this->t1_stream_diagnostics_ && length_invalid <= 10)
+        ESP_LOGW(TAG, "T1 PHY early abort short L=%u", static_cast<unsigned>(l));
       /* Incomplete PHY stream discarded; no DLL end callback. */
       this->t1_stream_reset_();
       return;
@@ -495,6 +514,10 @@ void SX126x::t1_stream_loop_() {
     const size_t crc_blocks = 1 + (l - 9 + 15) / 16;
     const size_t decoded = l + 1 + 2 * crc_blocks;
     if (decoded > 255) {
+      ++length_oversize;
+      if (this->t1_stream_diagnostics_ && length_oversize <= 10)
+        ESP_LOGW(TAG, "T1 PHY early abort oversize L=%u decoded=%u", 
+                 static_cast<unsigned>(l), static_cast<unsigned>(decoded));
       /* Incomplete PHY stream discarded; no DLL end callback. */
       this->t1_stream_reset_();
       return;
