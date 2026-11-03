@@ -6,6 +6,7 @@
 #include "c1_integrity.h"
 #include "esphome/core/log.h"
 #include <cmath>
+#include <algorithm>
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
 #include "xmq_decode_catalog.h"
 #endif
@@ -67,6 +68,30 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
     const auto state = self->t1_fifo_.end_frame();
     static uint32_t verified_frames = 0;
     static uint32_t rejected_frames = 0;
+    // Diagnostic tap: the full 3-of-6 encoded FIFO stream, BEFORE DLL/CRC
+    // acceptance. Do not dispatch these bytes to meter decoders or sensors.
+    // Emit short chunks to avoid saturating the ESPHome logger's line buffer.
+    if (self->t1_raw_diagnostics_) {
+      const auto &raw = self->t1_fifo_.raw_encoded_bytes();
+      ESP_LOGI(TAG, "T1 RAW frame state=%s encoded_bytes=%u dll_status=%u boundary=%u verify=%u",
+               state == t1::RxState::Verified ? "verified" : "rejected",
+               static_cast<unsigned>(raw.size()),
+               static_cast<unsigned>(self->t1_fifo_.result().status),
+               static_cast<unsigned>(self->t1_fifo_.result().boundary_status),
+               static_cast<unsigned>(self->t1_fifo_.result().verify_status));
+      static constexpr char HEX[] = "0123456789ABCDEF";
+      for (size_t offset = 0; offset < raw.size(); offset += 32) {
+        char encoded[65];
+        const size_t n = std::min<size_t>(32, raw.size() - offset);
+        for (size_t i = 0; i < n; ++i) {
+          encoded[2 * i] = HEX[raw[offset + i] >> 4];
+          encoded[2 * i + 1] = HEX[raw[offset + i] & 0x0F];
+        }
+        encoded[2 * n] = '\\0';
+        ESP_LOGD(TAG, "T1 RAW chunk offset=%u hex=%s",
+                 static_cast<unsigned>(offset), encoded);
+      }
+    }
     if (state == t1::RxState::Verified) {
       ++verified_frames;
       ESP_LOGI(TAG, "T1 DLL VERIFIED count=%u rejected=%u",
