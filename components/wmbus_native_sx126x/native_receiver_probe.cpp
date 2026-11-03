@@ -288,6 +288,20 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.header.ci),
              kind == registry::Kind::Configured ? "yes" : "no",
              wmbus_pure::tpl_security::label(security.state));
+    // Mirror the existing T1 Telegram log for EVERY CRC-verified C1 frame,
+    // including unconfigured meters. Display only: no sensor publication,
+    // decryption, or trigger emission. Frame bytes have DLL CRC stripped.
+    static constexpr char HEX[] = "0123456789ABCDEF";
+    const auto &bytes = checked.frame.bytes;
+    std::string telegram;
+    telegram.reserve(bytes.size() * 2);
+    for (uint8_t value : bytes) {
+      telegram.push_back(HEX[value >> 4]);
+      telegram.push_back(HEX[value & 0x0F]);
+    }
+    ESP_LOGD(TAG, "C1-%c RSSI: %.1f dBm Telegram: %s (%u)",
+             mode == boundary::Mode::C1A ? 'A' : 'B', rssi_dbm,
+             telegram.c_str(), static_cast<unsigned>(bytes.size()));
   }
 }
 
