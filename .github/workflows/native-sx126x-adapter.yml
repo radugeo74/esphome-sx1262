@@ -41,7 +41,7 @@ jobs:
           /tmp/test-native-c1-integrity
       - name: Build and test C1 block CRC failure locator
         run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_radio \
             experimental/semtech-radio/test_c1_block_diagnostics.cpp \
             -o /tmp/test-c1-block-diagnostics
           /tmp/test-c1-block-diagnostics
