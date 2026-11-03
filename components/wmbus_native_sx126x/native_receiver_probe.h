@@ -4,6 +4,7 @@
 #include <string>
 
 #include "esphome/core/component.h"
+#include "esphome/core/automation.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/sx126x/sx126x.h"
 #include "native_packet_input.h"
@@ -33,6 +34,9 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   void add_rssi_sensor(const std::string &meter_id, sensor::Sensor *output) {
     this->rssi_sensors_.push_back({meter_id, output});
   }
+  void add_verified_trigger(Trigger<uint32_t, float, std::string, uint32_t> *trigger) {
+    this->verified_triggers_.push_back(trigger);
+  }
   void setup() override;
   void on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) override;
 
@@ -53,6 +57,8 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   std::vector<XmqSensorBinding> xmq_sensors_{};
   struct RssiSensorBinding { std::string meter_id; sensor::Sensor *output; };
   std::vector<RssiSensorBinding> rssi_sensors_{};
+  std::vector<Trigger<uint32_t, float, std::string, uint32_t> *> verified_triggers_{};
+  void fire_verified_(uint32_t meter_id, float rssi, const std::vector<uint8_t> &bytes);
   uint32_t accepted_{0};
   uint32_t rejected_{0};
 };
