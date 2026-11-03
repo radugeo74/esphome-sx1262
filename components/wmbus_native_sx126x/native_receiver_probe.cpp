@@ -71,7 +71,9 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
     // Diagnostic tap: the full 3-of-6 encoded FIFO stream, BEFORE DLL/CRC
     // acceptance. Do not dispatch these bytes to meter decoders or sensors.
     // Emit short chunks to avoid saturating the ESPHome logger's line buffer.
-    if (self->t1_raw_diagnostics_) {
+    // Combined RX prioritizes servicing the radio over verbose per-T1
+    // hex dumps. Keep standalone T1 diagnostics unchanged.
+    if (self->t1_raw_diagnostics_ && !self->combined_mode_) {
       const auto &raw = self->t1_fifo_.raw_encoded_bytes();
       ESP_LOGI(TAG, "T1 RAW frame state=%s encoded_bytes=%u dll_status=%u boundary=%u verify=%u",
                state == t1::RxState::Verified ? "verified" : "rejected",
