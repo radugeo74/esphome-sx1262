@@ -22,6 +22,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
 #ifdef SX126X_EXPERIMENTAL_PROGRESS_PROBE
   static void on_rx_fifo_progress(uint8_t fifo_count, uint8_t fifo_start);
 #endif
+  static void on_c1_stream(void *context, const uint8_t *data, size_t count, bool begin, bool end, float rssi_dbm);
   static void on_t1_stream(void *context, const uint8_t *data, size_t count, bool begin, bool end, float rssi_dbm);
   void set_t1_mode(bool value) { this->t1_mode_ = value; }
   void set_t1_raw_diagnostics(bool value) { this->t1_raw_diagnostics_ = value; }
@@ -51,6 +52,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   struct MeterDriver { std::string id; std::string driver; };
   std::vector<MeterDriver> meter_drivers_{};
   t1::FifoContract t1_fifo_{};
+  std::vector<uint8_t> c1_encoded_frame_{};
   struct XmqSensorBinding {
     std::string meter_id;
     std::string field;
