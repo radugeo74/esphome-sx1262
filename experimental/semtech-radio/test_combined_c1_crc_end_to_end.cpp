@@ -23,7 +23,7 @@ int main() {
   for (size_t block = 0; block < 3; ++block) {
     const size_t count = block == 2 ? 13 : 16;
     const size_t start = a.size();
-    for (size_t i = 0; i < count; ++i) a.push_back(static_cast<uint8_t>(i + block));
+    for (size_t i = 0; i < count; ++i) a.push_back(static_cast<uint8_t>(block == 0 && i == 0 ? 0x72 : i + block));
     crc_append(a, start, count);
   }
   assert(a.size() == 63);
