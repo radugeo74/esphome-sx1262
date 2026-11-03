@@ -534,8 +534,11 @@ void SX126x::t1_stream_loop_() {
     uint8_t packet_status[3] = {};
     this->read_opcode_(RADIO_GET_PACKETSTATUS, packet_status, 3);
     const float rssi_dbm = -static_cast<float>(packet_status[1]) / 2.0f;
-    this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true, rssi_dbm);
+    // RX must be re-armed BEFORE potentially expensive logger/XMQ callbacks.
+    // The entire encoded frame has already been copied into the adapter's RAM.
+    // In the previous sequence, RX remained inactive during processing.
     this->t1_stream_reset_();
+    this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true, rssi_dbm);
   }
 }
 
