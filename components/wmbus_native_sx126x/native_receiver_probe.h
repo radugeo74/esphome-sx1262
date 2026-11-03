@@ -51,6 +51,12 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   bool t1_mode_{false};
   bool combined_mode_{false};
   bool t1_raw_diagnostics_{false};
+  struct RxModeStats { uint32_t ok{0}; uint32_t rejected{0}; };
+  RxModeStats t1_stats_{};
+  RxModeStats c1a_stats_{};
+  RxModeStats c1b_stats_{};
+  uint32_t combined_stats_last_ms_{0};
+  void log_combined_stats_();
   std::vector<std::string> configured_meter_ids_{};
   struct MeterDriver { std::string id; std::string driver; };
   std::vector<MeterDriver> meter_drivers_{};
