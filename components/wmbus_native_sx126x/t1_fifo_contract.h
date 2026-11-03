@@ -28,6 +28,7 @@ class FifoContract {
   }
   RxState state() const { return state_; }
   const verified::Result &result() const { return receiver_.result(); }
+  const std::vector<uint8_t> &raw_encoded_bytes() const { return receiver_.raw_encoded_bytes(); }
  private:
   ProgressiveVerified receiver_{};
   RxState state_{RxState::Idle};
