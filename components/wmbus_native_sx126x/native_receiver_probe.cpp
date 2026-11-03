@@ -259,7 +259,7 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
         prefix[2 * i] = HEX[raw[i] >> 4];
         prefix[2 * i + 1] = HEX[raw[i] & 0x0F];
       }
-      prefix[2 * n] = '\\0';
+      prefix[2 * n] = 0;
       ESP_LOGD(TAG, "COMBINED C1 CRC probe prefix=%s rx=%u (local diagnostic only)",
                prefix, static_cast<unsigned>(raw.size()));
     }
