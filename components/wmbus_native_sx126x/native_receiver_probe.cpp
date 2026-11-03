@@ -1,6 +1,7 @@
 #include "native_receiver_probe.h"
 #include "native_frame_boundary.h"
 #include "native_verified_frame.h"
+#include "tpl_security_probe.h"
 #include "native_meter_registry.h"
 #include "c1_integrity.h"
 #include "esphome/core/log.h"
@@ -72,10 +73,21 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                static_cast<unsigned>(verified_frames), static_cast<unsigned>(rejected_frames));
       const auto &frame = self->t1_fifo_.result().frame;
       const auto kind = registry::classify(self->t1_fifo_.result(), self->configured_meter_ids_);
-      ESP_LOGI(TAG, "T1 FIFO VERIFIED id=%08u len=%u rssi=%.1f dBm configured=%s",
-               static_cast<unsigned>(frame.header.meter_id),
-               static_cast<unsigned>(frame.bytes.size()), rssi_dbm,
-               kind == registry::Kind::Configured ? "yes" : "no");
+      const auto security = wmbus_pure::tpl_security::inspect(frame.bytes.data(), frame.bytes.size());
+      if (security.has_config_word) {
+        ESP_LOGI(TAG, "T1 FIFO VERIFIED id=%08u len=%u rssi=%.1f dBm configured=%s tpl_encrypted=%s mode=%u",
+                 static_cast<unsigned>(frame.header.meter_id),
+                 static_cast<unsigned>(frame.bytes.size()), rssi_dbm,
+                 kind == registry::Kind::Configured ? "yes" : "no",
+                 wmbus_pure::tpl_security::label(security.state),
+                 static_cast<unsigned>(security.mode));
+      } else {
+        ESP_LOGI(TAG, "T1 FIFO VERIFIED id=%08u len=%u rssi=%.1f dBm configured=%s tpl_encrypted=unknown ci=0x%02X",
+                 static_cast<unsigned>(frame.header.meter_id),
+                 static_cast<unsigned>(frame.bytes.size()), rssi_dbm,
+                 kind == registry::Kind::Configured ? "yes" : "no",
+                 static_cast<unsigned>(frame.header.ci));
+      }
       self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
       if (kind == registry::Kind::Configured) {
         const auto meter_id = std::to_string(frame.header.meter_id);
