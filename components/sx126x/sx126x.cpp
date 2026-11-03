@@ -468,18 +468,28 @@ void SX126x::t1_stream_loop_() {
   size_t available = static_cast<uint8_t>(write_ptr - read_ptr);
   if (this->t1_stream_target_ != 0)
     available = std::min(available, this->t1_stream_target_ - this->t1_stream_received_);
-  else
-    available = std::min<size_t>(available, 2 - this->t1_stream_received_);
+  else {
+    // C1 uses a two-byte mode marker followed by the L field.
+    const bool c1_prefix = this->combined_t1_c1_stream_ && this->t1_stream_received_ >= 2 &&
+        this->t1_stream_prefix_[0] == 0x54 &&
+        (this->t1_stream_prefix_[1] == 0xCD || this->t1_stream_prefix_[1] == 0x3D);
+    const size_t minimum = c1_prefix ? 3 : 2;
+    available = std::min<size_t>(available, minimum - this->t1_stream_received_);
+  }
   if (available == 0) return;
   std::vector<uint8_t> fragment(available);
   this->read_fifo_(read_ptr, fragment);
-  if (this->t1_stream_received_ < 2) {
-    for (size_t i = 0; i < available && this->t1_stream_received_ + i < 2; ++i)
+  if (this->t1_stream_received_ < 3) {
+    for (size_t i = 0; i < available && this->t1_stream_received_ + i < 3; ++i)
       this->t1_stream_prefix_[this->t1_stream_received_ + i] = fragment[i];
   }
   this->t1_stream_received_ += available;
   this->t1_stream_callback_(this->t1_stream_context_, fragment.data(), fragment.size(), false, false, 0.0f);
   if (this->t1_stream_target_ == 0 && this->t1_stream_received_ >= 2) {
+    const bool combined_c1 = this->combined_t1_c1_stream_ &&
+        this->t1_stream_prefix_[0] == 0x54 &&
+        (this->t1_stream_prefix_[1] == 0xCD || this->t1_stream_prefix_[1] == 0x3D);
+    if (combined_c1 && this->t1_stream_received_ < 3) return;
     // Determine the L-field from the first two encoded bytes via validated
     // 3-of-6 symbols. Receiver callback collects full frame separately.
     static constexpr int8_t inverse[64] = {
@@ -491,8 +501,8 @@ void SX126x::t1_stream_loop_() {
     // The first two bytes are held in the radio-owned prefix buffer.
     const uint16_t first = (static_cast<uint16_t>(this->t1_stream_prefix_[0]) << 8) |
                            this->t1_stream_prefix_[1];
-    if (this->c1_stream_mode_) {
-      const size_t l = this->t1_stream_prefix_[0];
+    if (this->c1_stream_mode_ || combined_c1) {
+      const size_t l = combined_c1 ? this->t1_stream_prefix_[2] : this->t1_stream_prefix_[0];
       if (l < 10) {
         ++length_invalid;
         if (this->t1_stream_diagnostics_ && length_invalid <= 10)
@@ -502,7 +512,8 @@ void SX126x::t1_stream_loop_() {
       }
       // C1-B: L includes the frame CRC. C1-A: L excludes block CRCs.
       const size_t blocks = l < 26 ? 2 : ((l - 26) / 16 + 3);
-      const size_t target = this->c1_stream_format_b_ ? l + 1 : l + 1 + 2 * blocks;
+      const bool format_b = combined_c1 ? this->t1_stream_prefix_[1] == 0x3D : this->c1_stream_format_b_;
+      const size_t target = (format_b ? l + 1 : l + 1 + 2 * blocks) + (combined_c1 ? 2 : 0);
       if (target > 255) {
         ++length_oversize;
         this->t1_stream_reset_();
@@ -633,8 +644,8 @@ void SX126x::set_mode_rx() {
     // restart RX and reset both buffer bases before arming sync-word IRQ.
     // The official SX126x remains the sole owner of SPI, IRQ and RX state.
     this->set_mode_standby(STDBY_XOSC);
-    if (this->c1_stream_mode_) {
-      uint8_t sync[2] = {0x54, static_cast<uint8_t>(this->c1_stream_format_b_ ? 0x3D : 0xCD)};
+    if (this->c1_stream_mode_ || this->combined_t1_c1_stream_) {
+      uint8_t sync[2] = {0x54, static_cast<uint8_t>(this->combined_t1_c1_stream_ || this->c1_stream_format_b_ ? 0x3D : 0xCD)};
       this->write_register_(REG_GFSK_SYNCWORD, sync, sizeof(sync));
     }
     uint8_t bases[2] = {0x00, 0x00};
