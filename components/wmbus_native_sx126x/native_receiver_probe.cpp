@@ -3,6 +3,7 @@
 #include "native_verified_frame.h"
 #include "c1_block_diagnostics.h"
 #include "mkradio4a_plain.h"
+#include "xmq_auto_registry.h"
 #include "tpl_security_probe.h"
 #include "native_meter_registry.h"
 #include "c1_integrity.h"
@@ -289,6 +290,26 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.header.ci),
              kind == registry::Kind::Configured ? "yes" : "no",
              wmbus_pure::tpl_security::label(security.state));
+    // Identification-only auto catalog (generated from XMQ detect.mvt).
+    // A converter DLL signature is a candidate, NOT proof of the TPL's
+    // underlying meter driver, and never authorizes decryption/publication.
+    const auto dll_candidate = wmbus_pure::select_driver(
+        wmbus_pure::generated::signatures,
+        wmbus_pure::generated::signature_count,
+        checked.frame.header.manufacturer,
+        checked.frame.header.version,
+        checked.frame.header.device_type);
+    if (dll_candidate.status == wmbus_pure::DriverSelectionStatus::Found) {
+      static uint32_t identified = 0;
+      if (++identified <= 3 || identified % 100 == 0)
+        ESP_LOGI(TAG, "C1 XMQ auto DLL candidate=%s (metadata only; not a decoded meter)",
+                 dll_candidate.driver);
+    } else if (dll_candidate.status == wmbus_pure::DriverSelectionStatus::Ambiguous) {
+      static uint32_t ambiguous = 0;
+      if (++ambiguous <= 3 || ambiguous % 100 == 0)
+        ESP_LOGW(TAG, "C1 XMQ auto DLL ambiguous matches=%u; no driver selected",
+                 static_cast<unsigned>(dll_candidate.matches));
+    }
     // Trial of the pinned XMQ mkradio4a cleartext fields for configured
     // meters ONLY. No AES, no legacy decoding and no sensor publication.
     // A successful DLL CRC does not imply that the TPL payload is plaintext.
