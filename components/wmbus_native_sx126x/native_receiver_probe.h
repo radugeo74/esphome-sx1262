@@ -63,5 +63,12 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   uint32_t rejected_{0};
 };
 
+class VerifiedFrameTrigger : public Trigger<uint32_t, float, std::string, uint32_t> {
+ public:
+  explicit VerifiedFrameTrigger(NativeReceiverProbe *receiver) {
+    receiver->add_verified_trigger(this);
+  }
+};
+
 }  // namespace wmbus_native_sx126x
 }  // namespace esphome
