@@ -60,6 +60,8 @@ wmbus_native_sx126x:
   sx126x_id: native_sx1262
   c1_format: B  # ignored in T1
   link_mode: T1
+  # CI build-only: raw 3-of-6 diagnostics on all complete frames, even CRC rejects.
+  t1_raw_diagnostics: true
   # Optional native XMQ output, no wmbus_radio dependency.
   # No personal meter mappings stored in public repository.
   # Provide meter_drivers in a private, local configuration only.
