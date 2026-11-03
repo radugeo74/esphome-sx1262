@@ -41,7 +41,8 @@ inline Result inspect(const uint8_t *frame, size_t size) {
   result.mode = mode;
   result.has_config_word = true;
   if (mode == 0) result.state = State::NotEncrypted;
-  else result.state = State::Encrypted;
+  else if (mode == 4 || mode == 5) result.state = State::Encrypted;
+  // Other modes require their own security-aware interpretation.
   return result;
 }
 }  // namespace tpl_security
