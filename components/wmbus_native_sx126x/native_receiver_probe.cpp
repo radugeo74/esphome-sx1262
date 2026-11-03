@@ -215,6 +215,50 @@ void NativeReceiverProbe::on_c1_stream(void *context, const uint8_t *data,
   }
 }
 
+// The common 54 3D sync is consumed by SX126x. FIFO data starts with
+// 54 CD or 54 3D for C1; otherwise it contains T1 3-of-6 symbols.
+// C1 remains diagnostic-only; T1 retains existing configured sensor updates.
+void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
+                                              size_t count, bool begin, bool end, float rssi_dbm) {
+  auto *self = static_cast<NativeReceiverProbe *>(context);
+  if (begin) self->combined_encoded_frame_.clear();
+  if (data != nullptr && count != 0) {
+    if (self->combined_encoded_frame_.size() + count > 255) {
+      self->combined_encoded_frame_.clear();
+      ESP_LOGW(TAG, "Combined FIFO overflow: frame discarded");
+      return;
+    }
+    self->combined_encoded_frame_.insert(self->combined_encoded_frame_.end(), data, data + count);
+  }
+  if (!end) return;
+  const auto &raw = self->combined_encoded_frame_;
+  if (raw.size() < 2) return;
+  const bool is_c1 = raw[0] == 0x54 && (raw[1] == 0xCD || raw[1] == 0x3D);
+  if (!is_c1) {
+    self->on_t1_stream(self, nullptr, 0, true, false, 0.0f);
+    self->on_t1_stream(self, raw.data(), raw.size(), false, false, 0.0f);
+    self->on_t1_stream(self, nullptr, 0, false, true, rssi_dbm);
+    return;
+  }
+  const auto mode = raw[1] == 0xCD ? boundary::Mode::C1A : boundary::Mode::C1B;
+  const auto checked = verified::process(mode, raw.data() + 2, raw.size() - 2);
+  ESP_LOGI(TAG, "COMBINED C1-%c rx=%u verified=%s boundary=%u verify=%u rssi=%.1f (diagnostic only)",
+           raw[1] == 0xCD ? 'A' : 'B', static_cast<unsigned>(raw.size()),
+           checked.status == verified::Status::Ok ? "yes" : "no",
+           static_cast<unsigned>(checked.boundary_status),
+           static_cast<unsigned>(checked.verify_status), rssi_dbm);
+  if (checked.status == verified::Status::Ok) {
+    const auto security = wmbus_pure::tpl_security::inspect(
+        checked.frame.bytes.data(), checked.frame.bytes.size());
+    const auto kind = registry::classify(checked, self->configured_meter_ids_);
+    ESP_LOGI(TAG, "COMBINED C1 VERIFIED id=%08u ci=0x%02X configured=%s encrypted=%s",
+             static_cast<unsigned>(checked.frame.header.meter_id),
+             static_cast<unsigned>(checked.frame.header.ci),
+             kind == registry::Kind::Configured ? "yes" : "no",
+             wmbus_pure::tpl_security::label(security.state));
+  }
+}
+
 void NativeReceiverProbe::setup() {
   if (this->radio_ == nullptr) {
     ESP_LOGE(TAG, "Missing official SX126x instance");
@@ -222,7 +266,15 @@ void NativeReceiverProbe::setup() {
     return;
   }
   this->radio_->register_listener(this);
-  if (!this->t1_mode_) {
+  if (this->combined_mode_) {
+    this->radio_->set_c1_stream_format(false, false);
+    this->radio_->set_combined_t1_c1_stream(true);
+    this->radio_->set_t1_stream_diagnostics(this->t1_raw_diagnostics_);
+    this->radio_->set_t1_stream_callback(&NativeReceiverProbe::on_combined_stream, this);
+    this->radio_->set_mode_rx();
+    ESP_LOGI(TAG, "Combined T1/C1-A/C1-B RX enabled (C1 diagnostic only)");
+  }
+  if (!this->t1_mode_ && !this->combined_mode_) {
     this->radio_->set_c1_stream_format(true, this->c1_format_b_);
     this->radio_->set_t1_stream_diagnostics(this->t1_raw_diagnostics_);
     this->radio_->set_t1_stream_callback(&NativeReceiverProbe::on_c1_stream, this);
