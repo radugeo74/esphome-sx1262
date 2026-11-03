@@ -39,6 +39,12 @@ jobs:
             experimental/semtech-radio/test_native_c1_integrity.cpp \
             -o /tmp/test-native-c1-integrity
           /tmp/test-native-c1-integrity
+      - name: Build and test C1 block CRC failure locator
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \\
+            experimental/semtech-radio/test_c1_block_diagnostics.cpp \\
+            -o /tmp/test-c1-block-diagnostics
+          /tmp/test-c1-block-diagnostics
       - name: Build and test T1 3-of-6 decoder
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
