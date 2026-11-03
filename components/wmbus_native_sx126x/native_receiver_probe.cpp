@@ -175,6 +175,7 @@ void NativeReceiverProbe::setup() {
   }
   this->radio_->register_listener(this);
   if (this->t1_mode_) {
+    this->radio_->set_t1_stream_diagnostics(this->t1_raw_diagnostics_);
     this->radio_->set_t1_stream_callback(&NativeReceiverProbe::on_t1_stream, this);
     this->radio_->set_mode_rx();
     ESP_LOGI(TAG, "Official SX126x T1 progressive FIFO receiver enabled (diagnostic only)");
