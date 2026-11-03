@@ -22,9 +22,11 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
 #ifdef SX126X_EXPERIMENTAL_PROGRESS_PROBE
   static void on_rx_fifo_progress(uint8_t fifo_count, uint8_t fifo_start);
 #endif
+  static void on_combined_stream(void *context, const uint8_t *data, size_t count, bool begin, bool end, float rssi_dbm);
   static void on_c1_stream(void *context, const uint8_t *data, size_t count, bool begin, bool end, float rssi_dbm);
   static void on_t1_stream(void *context, const uint8_t *data, size_t count, bool begin, bool end, float rssi_dbm);
   void set_t1_mode(bool value) { this->t1_mode_ = value; }
+  void set_combined_mode(bool value) { this->combined_mode_ = value; }
   void set_t1_raw_diagnostics(bool value) { this->t1_raw_diagnostics_ = value; }
   void set_c1_format_b(bool value) { this->c1_format_b_ = value; }
   void add_configured_meter_id(const std::string &value) { this->configured_meter_ids_.push_back(value); }
@@ -47,12 +49,14 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   bool c1_format_b_{true};
   bool fifo_progress_probe_{false};
   bool t1_mode_{false};
+  bool combined_mode_{false};
   bool t1_raw_diagnostics_{false};
   std::vector<std::string> configured_meter_ids_{};
   struct MeterDriver { std::string id; std::string driver; };
   std::vector<MeterDriver> meter_drivers_{};
   t1::FifoContract t1_fifo_{};
   std::vector<uint8_t> c1_encoded_frame_{};
+  std::vector<uint8_t> combined_encoded_frame_{};
   struct XmqSensorBinding {
     std::string meter_id;
     std::string field;
