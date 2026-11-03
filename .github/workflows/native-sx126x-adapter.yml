@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - experimental/semtech-sx126x-sx127x
+      - experimental/semtech-sx126x-t1-c1-combined
     paths:
       - 'components/wmbus_native_sx126x/**'
       - 'components/sx126x/**'
