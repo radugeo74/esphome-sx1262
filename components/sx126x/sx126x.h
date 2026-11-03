@@ -106,6 +106,11 @@ class SX126x final : public Component,
   }
   // Opt-in T1 mode. Existing ESPHome packet reception stays unchanged otherwise.
   using T1StreamCallback = void (*)(void *context, const uint8_t *bytes, size_t size, bool start, bool end, float rssi_dbm);
+  // Only one PHY mode may own the stream at a time (T1 or C1).
+  void set_c1_stream_format(bool enabled, bool format_b) {
+    this->c1_stream_mode_ = enabled;
+    this->c1_stream_format_b_ = format_b;
+  }
   void set_t1_stream_diagnostics(bool enabled) { this->t1_stream_diagnostics_ = enabled; }
   void set_t1_stream_callback(T1StreamCallback callback, void *context) {
     this->t1_stream_callback_ = callback;
@@ -131,6 +136,8 @@ class SX126x final : public Component,
   std::vector<SX126xListener *> listeners_;
   T1StreamCallback t1_stream_callback_{nullptr};
   void *t1_stream_context_{nullptr};
+  bool c1_stream_mode_{false};
+  bool c1_stream_format_b_{false};
   bool t1_stream_diagnostics_{false};
   bool t1_stream_receiving_{false};
   size_t t1_stream_received_{0};
