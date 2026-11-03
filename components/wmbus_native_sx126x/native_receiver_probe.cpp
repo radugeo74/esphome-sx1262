@@ -167,6 +167,54 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
   }
 }
 
+// C1 laboratory path: only complete, CRC-verified frames are reported.
+// No XMQ, RSSI sensor publication or trigger dispatch in this diagnostic mode.
+void NativeReceiverProbe::on_c1_stream(void *context, const uint8_t *data,
+                                       size_t count, bool begin, bool end, float rssi_dbm) {
+  auto *self = static_cast<NativeReceiverProbe *>(context);
+  if (begin) self->c1_encoded_frame_.clear();
+  if (data != nullptr && count != 0) {
+    if (self->c1_encoded_frame_.size() + count > 255) {
+      self->c1_encoded_frame_.clear();
+      ESP_LOGW(TAG, "C1 RAW buffer overflow");
+      return;
+    }
+    self->c1_encoded_frame_.insert(self->c1_encoded_frame_.end(), data, data + count);
+  }
+  if (!end) return;
+  const auto &raw = self->c1_encoded_frame_;
+  const auto mode = self->c1_format_b_ ? boundary::Mode::C1B : boundary::Mode::C1A;
+  const auto checked = verified::process(mode, raw.data(), raw.size());
+  ESP_LOGI(TAG, "C1-%c FRAME rx=%u verified=%s boundary=%u verify=%u rssi=%.1f",
+           self->c1_format_b_ ? 'B' : 'A', static_cast<unsigned>(raw.size()),
+           checked.status == verified::Status::Ok ? "yes" : "no",
+           static_cast<unsigned>(checked.boundary_status),
+           static_cast<unsigned>(checked.verify_status), rssi_dbm);
+  if (checked.status == verified::Status::Ok) {
+    const auto security = wmbus_pure::tpl_security::inspect(
+        checked.frame.bytes.data(), checked.frame.bytes.size());
+    ESP_LOGI(TAG, "C1 VERIFIED id=%08u len=%u ci=0x%02X encrypted=%s (diagnostic only)",
+             static_cast<unsigned>(checked.frame.header.meter_id),
+             static_cast<unsigned>(checked.frame.bytes.size()),
+             static_cast<unsigned>(checked.frame.header.ci),
+             wmbus_pure::tpl_security::label(security.state));
+  }
+  if (self->t1_raw_diagnostics_) {
+    static constexpr char HEX[] = "0123456789ABCDEF";
+    for (size_t offset = 0; offset < raw.size(); offset += 32) {
+      char chunk[65];
+      const size_t n = std::min<size_t>(32, raw.size() - offset);
+      for (size_t i = 0; i < n; ++i) {
+        chunk[2*i] = HEX[raw[offset+i] >> 4];
+        chunk[2*i+1] = HEX[raw[offset+i] & 15];
+      }
+      chunk[2*n] = 0;
+      ESP_LOGD(TAG, "C1 RAW chunk offset=%u hex=%s",
+               static_cast<unsigned>(offset), chunk);
+    }
+  }
+}
+
 void NativeReceiverProbe::setup() {
   if (this->radio_ == nullptr) {
     ESP_LOGE(TAG, "Missing official SX126x instance");
@@ -174,6 +222,13 @@ void NativeReceiverProbe::setup() {
     return;
   }
   this->radio_->register_listener(this);
+  if (!this->t1_mode_) {
+    this->radio_->set_c1_stream_format(true, this->c1_format_b_);
+    this->radio_->set_t1_stream_diagnostics(this->t1_raw_diagnostics_);
+    this->radio_->set_t1_stream_callback(&NativeReceiverProbe::on_c1_stream, this);
+    this->radio_->set_mode_rx();
+    ESP_LOGI(TAG, "C1-%c progressive diagnostic receiver enabled", this->c1_format_b_ ? 'B' : 'A');
+  }
   if (this->t1_mode_) {
     this->radio_->set_t1_stream_diagnostics(this->t1_raw_diagnostics_);
     this->radio_->set_t1_stream_callback(&NativeReceiverProbe::on_t1_stream, this);
