@@ -327,9 +327,18 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
       telegram.push_back(HEX[value >> 4]);
       telegram.push_back(HEX[value & 0x0F]);
     }
-    ESP_LOGD(TAG, "C1-%c RSSI: %.1f dBm Telegram: %s (%u)",
-             mode == boundary::Mode::C1A ? 'A' : 'B', rssi_dbm,
-             telegram.c_str(), static_cast<unsigned>(bytes.size()));
+    // Append an encryption marker only when the supported TPL security
+    // configuration positively identifies encryption (modes 4 or 5).
+    // Unknown and manufacturer-specific formats are never guessed.
+    if (security.state == wmbus_pure::tpl_security::State::Encrypted) {
+      ESP_LOGD(TAG, "C1-%c RSSI: %.1f dBm Telegram: %s (%u) encrypted=yes",
+               mode == boundary::Mode::C1A ? 'A' : 'B', rssi_dbm,
+               telegram.c_str(), static_cast<unsigned>(bytes.size()));
+    } else {
+      ESP_LOGD(TAG, "C1-%c RSSI: %.1f dBm Telegram: %s (%u)",
+               mode == boundary::Mode::C1A ? 'A' : 'B', rssi_dbm,
+               telegram.c_str(), static_cast<unsigned>(bytes.size()));
+    }
   }
 }
 
