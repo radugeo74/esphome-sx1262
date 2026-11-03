@@ -1,0 +1,83 @@
+# Heltec COMBINED T1/C1-A/C1-B LAB; build-only; DO NOT FLASH until host tests and RX verification.
+# Build-only; can publish configured sensor after actual RF verification.
+# Confirm board revision and keep current firmware backup.
+# Import both the patched official sx126x and native adapter from GitHub.
+# Pin ESPHome to 2026.10.1 for this experimental build.
+esphome:
+  name: heltec-sx126x-combined-lab
+  friendly_name: Heltec SX126x Combined Lab
+
+esp32:
+  board: heltec_wifi_lora_32_V3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+    advanced:
+      loop_task_stack_size: 12288
+
+logger:
+  level: DEBUG
+
+spi:
+  clk_pin: GPIO9
+  mosi_pin: GPIO10
+  miso_pin: GPIO11
+
+external_components:
+  - source: github://radugeo74/esphome-sx1262@experimental/semtech-sx126x-t1-c1-combined
+    components: [sx126x, wmbus_native_sx126x]
+    refresh: always
+
+sx126x:
+  id: native_sx1262
+  hw_version: sx1262
+  modulation: FSK
+  frequency: 868950000
+  bitrate: 100000
+  deviation: 50000
+  bandwidth: 234_3kHz
+  shaping: NONE
+  crc_enable: false
+  whitening_enable: false
+  sync_value: [0x54, 0x3D]
+  preamble_size: 2
+  preamble_detect: 2
+  # GitHub-provided patched official SX126x streams FIFO from SYNCWORD_VALID;
+  # standard upstream RX_DONE packet listener is not used for T1.
+  payload_length: 255
+  rx_start: true
+  # RF switch/TCXO are assumptions for the board family, not taken from
+  # the previous custom driver's YAML. Verify them on hardware before flashing.
+  rf_switch: true
+  tcxo_voltage: 3_0V
+  tcxo_delay: 5ms
+  busy_pin: GPIO13
+  dio1_pin: GPIO14
+  rst_pin: GPIO12
+  cs_pin: GPIO8
+
+wmbus_native_sx126x:
+  sx126x_id: native_sx1262
+  c1_format: B  # ignored when link_mode is T1_C1
+  link_mode: T1_C1
+  # CI-only: record T1 diagnostics; never publish C1 sensor values.
+  t1_raw_diagnostics: true
+  # Optional native XMQ output, no wmbus_radio dependency.
+  # No personal meter mappings stored in public repository.
+  # Provide meter_drivers in a private, local configuration only.
+  # Configure xmq_sensors privately.
+  # Never commit real meter IDs or private HA configuration.
+
+  # This build uses the official SX126x T1 streaming patch; no legacy radio.
+  # No personal devices are configured in this public lab fixture.
+  # No MQTT/API network transport configured in this build-only fixture.
+  configured_meter_ids: []
+  # Synthetic ID exercises the RSSI YAML schema during CI compilation.
+  # It is not a real meter and receives no sensor updates.
+  rssi_sensors:
+    - meter_id: "00000000"
+      sensor:
+        name: "Lab T1 RSSI Schema Test"
+        entity_category: diagnostic
+
+
