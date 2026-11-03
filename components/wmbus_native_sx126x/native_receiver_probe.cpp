@@ -247,6 +247,23 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
            checked.status == verified::Status::Ok ? "yes" : "no",
            static_cast<unsigned>(checked.boundary_status),
            static_cast<unsigned>(checked.verify_status), rssi_dbm);
+  // Bounded local diagnostics for CRC failures in common-sync C1 reception.
+  // Never include real meter samples or IDs in repository fixtures.
+  if (self->t1_raw_diagnostics_ && checked.status != verified::Status::Ok) {
+    static uint32_t samples = 0;
+    if (samples++ < 12) {
+      static constexpr char HEX[] = "0123456789ABCDEF";
+      const size_t n = std::min<size_t>(raw.size(), 24);
+      char prefix[49];
+      for (size_t i = 0; i < n; ++i) {
+        prefix[2 * i] = HEX[raw[i] >> 4];
+        prefix[2 * i + 1] = HEX[raw[i] & 0x0F];
+      }
+      prefix[2 * n] = '\\0';
+      ESP_LOGD(TAG, "COMBINED C1 CRC probe prefix=%s rx=%u (local diagnostic only)",
+               prefix, static_cast<unsigned>(raw.size()));
+    }
+  }
   if (checked.status == verified::Status::Ok) {
     const auto security = wmbus_pure::tpl_security::inspect(
         checked.frame.bytes.data(), checked.frame.bytes.size());
