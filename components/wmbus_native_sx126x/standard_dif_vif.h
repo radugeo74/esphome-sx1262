@@ -191,6 +191,52 @@ inline Status records(const uint8_t *data, size_t size, Record *out,
   if (status != Status::Ok) count = 0;
   return status;
 }
+// Canonical units mirror the original wmbusmeters vifScale() rules.
+// Convert only known VIF families; do not silently assign units to unknown,
+// extended, manufacturer-specific, or date/time VIFs.
+enum class CanonicalUnit : uint8_t {
+  Unknown, CubicMeters, CubicMetersPerHour, Celsius, Hours, Bar
+};
+inline CanonicalUnit canonical_unit(uint8_t vif) {
+  if (vif >= 0x10 && vif <= 0x17) return CanonicalUnit::CubicMeters;
+  if (vif >= 0x38 && vif <= 0x4F) return CanonicalUnit::CubicMetersPerHour;
+  if ((vif >= 0x58 && vif <= 0x5F) ||
+      (vif >= 0x64 && vif <= 0x67)) return CanonicalUnit::Celsius;
+  if (vif >= 0x20 && vif <= 0x27) return CanonicalUnit::Hours;
+  if (vif >= 0x68 && vif <= 0x6B) return CanonicalUnit::Bar;
+  return CanonicalUnit::Unknown;
+}
+inline bool to_canonical(uint8_t vif, double raw, double &out) {
+  out=0;
+  if (!std::isfinite(raw) || canonical_unit(vif)==CanonicalUnit::Unknown)
+    return false;
+  double divisor=1;
+  if (vif >= 0x10 && vif <= 0x17) divisor=std::pow(10.0, 0x16-vif);
+  else if (vif >= 0x38 && vif <= 0x3F)
+    divisor=std::pow(10.0, 0x3E-vif);
+  else if (vif >= 0x40 && vif <= 0x47)
+    divisor=60.0*std::pow(10.0, 0x47-vif);
+  else if (vif >= 0x48 && vif <= 0x4F)
+    divisor=3600.0*std::pow(10.0, 0x4D-vif);
+  else if ((vif >= 0x58 && vif <= 0x5F) ||
+           (vif >= 0x64 && vif <= 0x67)) {
+    const int reference=vif<=0x5F ? (vif<=0x5B ? 0x5B : 0x5F) : 0x67;
+    divisor=std::pow(10.0, reference-vif);
+  } else if (vif >= 0x20 && vif <= 0x27) {
+    switch (vif & 3u) {
+      case 0: divisor=3600.0; break;
+      case 1: divisor=60.0; break;
+      case 2: divisor=1.0; break;
+      default: divisor=1.0/24.0; break;
+    }
+  } else if (vif>=0x68 && vif<=0x6B)
+    divisor=std::pow(10.0, 0x6B-vif);
+  else return false;
+  const double converted=raw/divisor;
+  if (!std::isfinite(converted)) return false;
+  out=converted;
+  return true;
+}
 inline double scale10(int power) {
   double v=1;
   while(power<0) { v/=10; ++power; }
