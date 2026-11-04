@@ -38,11 +38,13 @@ inline Status records(const uint8_t *data, size_t size, Record *out,
     r.function = (dif >> 4) & 3;
     r.storage = (dif >> 6) & 1;
     unsigned shift = 1;
+    unsigned tariff_shift = 0;
     while (dif & 0x80) {
       if (i >= size || shift > 13) return Status::Invalid;
       const uint8_t ext = data[i++];
       r.storage |= static_cast<uint16_t>(ext & 0x0F) << shift;
-      r.tariff |= static_cast<uint8_t>((ext >> 4) & 3) << (shift - 1);
+      r.tariff |= static_cast<uint8_t>((ext >> 4) & 3) << tariff_shift;
+      tariff_shift += 2;
       shift += 4;
       dif = ext;
     }
