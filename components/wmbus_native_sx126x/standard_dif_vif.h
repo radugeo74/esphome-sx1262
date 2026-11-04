@@ -128,10 +128,11 @@ inline Status records(const uint8_t *data, size_t size, Record *out,
         r.value = static_cast<double>(static_cast<int64_t>(
             raw | (~uint64_t{0} << bits)));
       else if (bits == 64) {
-        const double magnitude = static_cast<double>(
-            raw & ~(uint64_t{1} << 63));
+        // Convert magnitude *before* floating-point conversion. Subtracting
+        // two rounded 2^63-sized doubles loses small negatives such as -3.
         r.value = (raw & (uint64_t{1} << 63)) ?
-            magnitude - 9223372036854775808.0 : magnitude;
+            -static_cast<double>((~raw) + uint64_t{1}) :
+            static_cast<double>(raw);
       } else
         r.value = static_cast<double>(raw);
       r.numeric = true;
