@@ -58,7 +58,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   uint32_t combined_stats_last_ms_{0};
   void log_combined_stats_();
   std::vector<std::string> configured_meter_ids_{};
-  struct MeterDriver { std::string id; std::string driver; };
+  struct MeterDriver { std::string id; std::string driver; std::string logged_auto_driver; };
   std::vector<MeterDriver> meter_drivers_{};
   t1::FifoContract t1_fifo_{};
   std::vector<uint8_t> c1_encoded_frame_{};
