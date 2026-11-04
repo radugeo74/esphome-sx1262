@@ -109,9 +109,17 @@ inline Status parse_records(const uint8_t *data, size_t size, Record *out,
     if (fmt == 13) {
       if (i >= size) return Status::Invalid;
       const uint8_t lvar = data[i++];
-      n = lvar <= 0xBF ? lvar :
-          (lvar >= 0xC0 && lvar <= 0xC9) ? lvar-0xC0 :
-          (lvar >= 0xD0 && lvar <= 0xD9) ? lvar-0xD0 : SIZE_MAX;
+      // EN 13757-3 LVAR byte counts. Preserve variable-length records
+      // as opaque: knowing their length does not establish a numeric value.
+      if (lvar <= 0xBF) n = lvar; // 8-bit text
+      else if (lvar >= 0xC0 && lvar <= 0xC9) n = lvar - 0xC0; // positive BCD
+      else if (lvar >= 0xD0 && lvar <= 0xD9) n = lvar - 0xD0; // negative BCD
+      else if (lvar >= 0xE0 && lvar <= 0xEF) n = lvar - 0xE0; // binary 0..15
+      else if (lvar >= 0xF0 && lvar <= 0xF4)
+        n = static_cast<size_t>(lvar - 0xEC) * 4; // binary 16..32
+      else if (lvar == 0xF5) n = 48;
+      else if (lvar == 0xF6) n = 64;
+      else n = SIZE_MAX; // reserved code: fail closed
     }
     if (n == SIZE_MAX) return Status::Unsupported;
     if (n > size-i) return Status::Invalid;
