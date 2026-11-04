@@ -28,7 +28,7 @@ inline Status decode_clear_application(const uint8_t *application, size_t size,
     if (rec.storage!=1 || rec.function!=0 || rec.tariff!=0) continue;
     if (rec.numeric && rec.vif>=0x10 && rec.vif<=0x17 && rec.vif_extension_count==0) {
       if (found_volume) return Status::MissingFields;
-      volume=rec.value*standard::scale10(static_cast<int>(rec.vif)-0x16);
+      if (!standard::to_canonical(rec.vif,rec.value,volume)) return Status::MissingFields;
       found_volume=true;
     } else if (rec.vif==0x6C && rec.numeric) {
       if (found_date) return Status::MissingFields;
