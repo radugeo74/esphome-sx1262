@@ -128,8 +128,6 @@ static void log_verified_identities(
   if (parsed.has_ell_session || parsed.has_ell) {
     // A nested TPL identity is observable only after ELL CRC validation;
     // never promote it to a decode or publication binding.
-    if (info.source==wmbus_pure::identity::ConfiguredSource::None &&
-        !info.ell_matched && !nested_configured) return;
     const auto integrity=wmbus_pure::identity::inspect_ell_payload(
         frame.data(),frame.size(),parsed);
     const auto nested=wmbus_pure::identity::inspect_nested_tpl(
@@ -142,6 +140,8 @@ static void log_verified_identities(
           break;
         }
     }
+    if (info.source==wmbus_pure::identity::ConfiguredSource::None &&
+        !info.ell_matched && !nested_configured) return;
     static uint32_t ell_samples=0;
     if (++ell_samples<=5 || ell_samples%100==0)
       ESP_LOGI(TAG,
