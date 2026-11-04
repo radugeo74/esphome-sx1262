@@ -29,8 +29,11 @@ int main() {
   const auto hydrus = select_driver(signatures, signature_count, 0x11A5, 0x70, 0x07);
   assert(hydrus.status == DriverSelectionStatus::Found);
   assert(std::strcmp(hydrus.driver, "hydrus") == 0);
-  const auto pending = auto_driver::resolve("auto", signatures, signature_count, 0x4CAE, 0x68, 0x07);
-  assert(pending.status == auto_driver::Status::NotCompiled && pending.driver == nullptr);
+  const auto iperl_ready = auto_driver::resolve("auto", signatures, signature_count, 0x4CAE, 0x68, 0x07);
+  assert(iperl_ready.status == auto_driver::Status::Ready);
+  assert(std::strcmp(iperl_ready.driver, "iperl") == 0);
+  const auto hydrus_pending = auto_driver::resolve("auto", signatures, signature_count, 0x11A5, 0x70, 0x07);
+  assert(hydrus_pending.status == auto_driver::Status::NotCompiled && hydrus_pending.driver == nullptr);
   // A different TPL MVT must not silently be assigned to a DLL candidate.
   auto unknown = select_driver(signatures, signature_count, 0x11A4, 0xFE, 0x07);
   assert(unknown.status == DriverSelectionStatus::Unknown);
