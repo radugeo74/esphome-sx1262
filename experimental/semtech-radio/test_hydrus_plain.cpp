@@ -89,6 +89,19 @@ int main() {
   assert(decode_clear_application(modified_volume.data(),modified_volume.size(),
                                   fields,32,count)==Status::MissingFields);
   assert(count==0);
+  // Date with a combinable VIFE is not the ordinary billing date.
+  // The primary total is valid, but the modified date stays unexposed.
+  const auto modified_date=from_hex("04131217010042EC00BF23");
+  assert(decode_clear_application(modified_date.data(),modified_date.size(),
+                                  fields,32,count,dates,4,&date_count)==Status::Ok);
+  assert(count==1 && std::strcmp(fields[0].name,"total_m3")==0);
+  assert(date_count==0);
+  // A volume from subunit 1 must not override subunit 0.
+  const auto secondary_unit=from_hex("844013DDC00000041312170100");
+  assert(decode_clear_application(secondary_unit.data(),secondary_unit.size(),
+                                  fields,32,count)==Status::Ok);
+  assert(count==1 && std::strcmp(fields[0].name,"total_m3")==0);
+  assert(std::fabs(fields[0].value-71.442)<0.000001);
   // Incomplete/wrong records fail closed, never leave previous readings.
   auto broken=from_hex("0C1350340000");
   assert(decode_clear_application(broken.data(),broken.size()-1,fields,32,count)!=Status::Ok);
