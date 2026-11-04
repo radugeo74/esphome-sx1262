@@ -25,14 +25,14 @@ inline Decision inspect(const uint8_t *frame, size_t size,
     return Decision::Allowed;
   if (header.ci!=0x72 && header.ci!=0x7A)
     return Decision::UnsupportedTransport;
-  const auto identity=identity::inspect(frame,size);
-  if (identity.status!=identity::Status::Ok)
+  const auto parsed=identity::inspect(frame,size);
+  if (parsed.status!=identity::Status::Ok)
     return Decision::InvalidIdentity;
   // A long TPL header can describe a distinct meter behind a converter.
   // Do not publish anything under the DLL meter binding in that case.
   if (header.ci==0x72 &&
-      (!identity.has_tpl ||
-       !identity::same_address(identity.dll,identity.tpl)))
+      (!parsed.has_tpl ||
+       !identity::same_address(parsed.dll,parsed.tpl)))
     return Decision::ConflictingIdentity;
   // Fail closed for encrypted, unknown and incomplete standard TPL.
   const auto security=tpl_security::inspect(frame,size);
