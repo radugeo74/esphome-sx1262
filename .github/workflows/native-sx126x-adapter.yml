@@ -58,6 +58,12 @@ jobs:
             experimental/semtech-radio/test_xmq_auto_registry.cpp \
             -o /tmp/test-xmq-auto-registry
           /tmp/test-xmq-auto-registry
+      - name: Test official Sensus iPERL plaintext NOKEY fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x \\
+            experimental/semtech-radio/test_iperl_plain.cpp \\
+            -o /tmp/test-iperl-plain
+          /tmp/test-iperl-plain
       - name: Test official mkradio4a NOKEY examples (portable XMQ)
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
