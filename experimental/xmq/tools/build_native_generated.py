@@ -15,7 +15,7 @@ def build(root: Path):
     generated = generate(sources)
     outputs = {
         "xmq_generated.h": generated,
-        "xmq_native_descriptors.inc": catalog_fragment(),
+        "xmq_native_descriptors.h": catalog_fragment(),
         "xmq_native_compiled.h": compiled_fragment(),
     }
     for name, contents in outputs.items():
