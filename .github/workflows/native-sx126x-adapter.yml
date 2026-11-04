@@ -53,7 +53,6 @@ jobs:
           python3 experimental/xmq/tools/generate_driver_registry.py \
             experimental/xmq/drivers/*.xmq \
             --out components/wmbus_native_sx126x/xmq_auto_registry.h
-          cp components/wmbus_radio/pure_driver_registry.h components/wmbus_native_sx126x/pure_driver_registry.h
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
             experimental/semtech-radio/test_xmq_auto_registry.cpp \
             -o /tmp/test-xmq-auto-registry
