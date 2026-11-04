@@ -48,6 +48,8 @@ struct NestedTplResult {
   NestedTplStatus status{NestedTplStatus::NotVerified};
   Address address{};
   bool has_address{false};
+  bool has_config_word{false};
+  uint8_t tpl_security_mode{0xFF}; // advisory; never authorizes decoding
   size_t application_offset{0};
 };
 inline NestedTplResult inspect_nested_tpl(const uint8_t *frame,size_t size,
@@ -60,6 +62,10 @@ inline NestedTplResult inspect_nested_tpl(const uint8_t *frame,size_t size,
   if (at>=size) {out.status=NestedTplStatus::NoTpl;return out;}
   if (frame[at]==0x7A) {
     if (size-at<5) {out.status=NestedTplStatus::TooShort;return out;}
+    const uint16_t cw=static_cast<uint16_t>(frame[at+3]) |
+                      (static_cast<uint16_t>(frame[at+4])<<8);
+    out.has_config_word=true;
+    out.tpl_security_mode=static_cast<uint8_t>((cw>>8)&0x0F);
     out.status=NestedTplStatus::ShortHeader;
     out.application_offset=at+5;
     return out;
@@ -70,6 +76,10 @@ inline NestedTplResult inspect_nested_tpl(const uint8_t *frame,size_t size,
     if (!valid_manufacturer(out.address.manufacturer)) {
       out.status=NestedTplStatus::InvalidManufacturer;return out;
     }
+    const uint16_t cw=static_cast<uint16_t>(frame[at+11]) |
+                      (static_cast<uint16_t>(frame[at+12])<<8);
+    out.has_config_word=true;
+    out.tpl_security_mode=static_cast<uint8_t>((cw>>8)&0x0F);
     out.status=NestedTplStatus::LongHeader;
     out.has_address=true;
     out.application_offset=at+13;
