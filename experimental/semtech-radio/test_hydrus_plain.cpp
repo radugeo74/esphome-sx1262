@@ -40,9 +40,13 @@ int main() {
   const auto no_total=from_hex("023B0000");
   assert(decode_clear_application(no_total.data(),no_total.size(),fields,32,count)==Status::MissingFields);
   assert(count==0);
-  // No attempt to decode cipher text in transport guard.
-  auto raw=from_hex("1E44A5116464646470077AED0040052F2F01FD08300C1374110000");
-  raw[0]=static_cast<uint8_t>(raw.size()-1);
+  // Official cleartext frame: configuration 0x0540 means mode zero,
+  // despite nonzero configuration flags.
+  auto raw=from_hex("4E44A5116464646470077AED004005_2F2F01FD08300C13741100007C1300000000FC101300000000FC201300000000726C00000B3B00000002FD748713025A6800C4016D3B177F2ACC011300020000");
+  assert(decode_plain_frame(raw.data(),raw.size(),fields,32,count)==Status::Ok);
+  assert(std::fabs(value(fields,count,"total_m3")-1.174)<0.00001);
+  // A nonzero TPL security mode must never be decoded as cleartext.
+  raw[14]=0x05; // upper configuration byte: mode five
   assert(decode_plain_frame(raw.data(),raw.size(),fields,32,count)==Status::Encrypted);
   assert(count==0);
   return 0;
