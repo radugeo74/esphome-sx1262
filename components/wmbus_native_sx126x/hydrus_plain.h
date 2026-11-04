@@ -33,6 +33,13 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
     double value=r.value;
     if (v>=0x10 && v<=0x17) {
       value*=standard::scale10(v-0x16);
+      if (r.vif_extension == 0x3C && r.function==0 && storage==0) {
+        field="backward_m3";
+        if (!add(out,capacity,out_count,field,value)) { out_count=0; return Status::Capacity; }
+        continue;
+      }
+      // Any other volume VIFE is not a normal total measurement.
+      if (r.vif_extension != 0) continue;
       if(storage==0 && r.tariff==0 && r.function==0) { field="total_m3"; total=true; }
       else if(storage==1 && r.tariff==0 && r.function==0) field="total_at_date_m3";
       else if((storage==3 || storage==8) && r.tariff==0 && r.function==0) field="target_m3";
