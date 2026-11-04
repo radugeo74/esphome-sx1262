@@ -9,6 +9,7 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/sx126x/sx126x.h"
 #include "native_packet_input.h"
+#include "driver_runtime.h"
 #include "t1_fifo_contract.h"
 
 namespace esphome {
@@ -65,7 +66,8 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   uint32_t combined_stats_last_ms_{0};
   void log_combined_stats_();
   void publish_xmq_text_(const std::vector<uint8_t> &frame,
-                         const std::string &id, const char *driver);
+                         const std::string &id, const char *driver,
+                         const xmq_portable::DecodedPayload &decoded);
   void publish_c1_plaintext_(const std::vector<uint8_t> &frame, uint32_t meter_id,
                              float rssi_dbm);
   std::vector<std::string> configured_meter_ids_{};
