@@ -59,6 +59,25 @@ int main() {
   assert(std::fabs(value(fields,count,"min_flow_m3h"))<0.000001);
   assert(std::fabs(value(fields,count,"max_flow_m3h")-1.772)<0.000001);
   assert(std::fabs(value(fields,count,"backward_m3"))<0.000001);
+  // Typed date regressions from the same unchanged upstream Hydrus fixtures.
+  DateField dates[4]{};
+  size_t date_count=0;
+  assert(decode_clear_application(izar.data(),izar.size(),fields,32,count,
+                                  dates,4,&date_count)==Status::Ok);
+  assert(date_count==1);
+  assert(std::strcmp(dates[0].name,"at_date")==0);
+  assert(dates[0].value.year==2021 && dates[0].value.month==3 && dates[0].value.day==31);
+  assert(decode_clear_application(water.data(),water.size(),fields,32,count,
+                                  dates,4,&date_count)==Status::Ok);
+  assert(date_count==1);
+  assert(std::strcmp(dates[0].name,"target_datetime")==0);
+  assert(dates[0].value.year==2019 && dates[0].value.month==10 &&
+         dates[0].value.day==31 && dates[0].value.hour==23 &&
+         dates[0].value.minute==59);
+  assert(decode_clear_application(hydrus20.data(),hydrus20.size(),fields,32,count,
+                                  dates,4,&date_count)==Status::Ok);
+  assert(date_count==1 && dates[0].value.year==2026 &&
+         dates[0].value.month==8 && dates[0].value.day==31);
   // Incomplete/wrong records fail closed, never leave previous readings.
   auto broken=from_hex("0C1350340000");
   assert(decode_clear_application(broken.data(),broken.size()-1,fields,32,count)!=Status::Ok);
