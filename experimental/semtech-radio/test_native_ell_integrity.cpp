@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdint>
 #include <vector>
+#include <string>
 using namespace wmbus_pure::identity;
 static std::vector<uint8_t> make_ell(uint8_t ci,uint8_t mode) {
   // Synthetic converter DLL. No user IDs, keys or real telegrams.
@@ -89,6 +90,39 @@ int main() {
                         inspect(tpl_encrypted.data(),tpl_encrypted.size()));
   assert(tp.status==NestedTplStatus::LongHeader && tp.has_address);
   assert(tp.has_config_word && tp.tpl_security_mode==5);
+  // DLL converter and ELL address may differ from the nested TPL meter.
+  // Only the target TPL ID is configured: diagnostic preference is TPL.
+  auto target=identify_nested_candidate(nested.data(),nested.size(),
+      inspect(nested.data(),nested.size()),
+      std::vector<std::string>{"66953825"});
+  assert(target.candidate==CandidateSource::Tpl);
+  assert(target.configured_candidate && !target.multiple_configured_ids);
+  assert(!target.permits_publication);
+  // A configured DLL converter plus a distinct configured TPL target
+  // must be reported as a conflict, never assigned a driver.
+  target=identify_nested_candidate(nested.data(),nested.size(),
+      inspect(nested.data(),nested.size()),
+      std::vector<std::string>{"00464936","66953825"});
+  assert(target.candidate==CandidateSource::Conflict);
+  assert(target.multiple_configured_ids && !target.configured_candidate);
+  assert(!target.permits_publication);
+  // The same configured ID in ELL and TPL is not a conflict.
+  target=identify_nested_candidate(nested.data(),nested.size(),
+      inspect(nested.data(),nested.size()),
+      std::vector<std::string>{"66953825","12345678"});
+  assert(target.candidate==CandidateSource::Tpl && !target.multiple_configured_ids);
+  // If only the converter ID is configured, nested TPL does not
+  // inherit its binding.
+  target=identify_nested_candidate(nested.data(),nested.size(),
+      inspect(nested.data(),nested.size()),
+      std::vector<std::string>{"00464936"});
+  assert(target.candidate==CandidateSource::Tpl && !target.configured_candidate);
+  // Even if the TPL security word indicates encryption, metadata
+  // remains inspectable but cannot authorize publication.
+  target=identify_nested_candidate(tpl_encrypted.data(),tpl_encrypted.size(),
+      inspect(tpl_encrypted.data(),tpl_encrypted.size()),
+      std::vector<std::string>{"66953825"});
+  assert(target.candidate==CandidateSource::Tpl && !target.permits_publication);
   // A valid DLL CRC does not help if the ELL payload CRC is wrong.
   auto bad_nested=nested;
   bad_nested[original.application_offset-1]^=0x01;
@@ -96,6 +130,11 @@ int main() {
                          inspect(bad_nested.data(),bad_nested.size()));
   assert(tp.status==NestedTplStatus::NotVerified && !tp.has_address &&
          !tp.has_config_word);
+  target=identify_nested_candidate(bad_nested.data(),bad_nested.size(),
+      inspect(bad_nested.data(),bad_nested.size()),
+      std::vector<std::string>{"66953825"});
+  assert(target.candidate==CandidateSource::Unsupported &&
+         !target.configured_candidate && !target.permits_publication);
   // ELL encrypted/unknown sessions are never treated as plaintext.
   auto encrypted=make_ell(0x8F,1);
   encrypted.resize(original.application_offset);
