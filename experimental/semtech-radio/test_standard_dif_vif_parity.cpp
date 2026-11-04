@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <initializer_list>
 #include <vector>
+#include <utility>
+#include <limits>
 using namespace xmq_portable::standard;
 static Record single(std::initializer_list<uint8_t> bytes) {
   Record rec[4]{};
@@ -16,6 +18,46 @@ static void near(double actual,double wanted,double tolerance=1e-8) {
   assert(std::fabs(actual-wanted)<tolerance);
 }
 int main() {
+  // Compare canonical conversions against the original wmbus.cc
+  // vifScale() table: raw / divisor, never assume an unknown unit.
+  for (uint8_t vif=0x10; vif<=0x17; ++vif) {
+    double actual=0;
+    assert(to_canonical(vif,12345,actual));
+    near(actual,12345/std::pow(10.0,0x16-vif),1e-6);
+    assert(canonical_unit(vif)==CanonicalUnit::CubicMeters);
+  }
+  for (uint8_t vif=0x38; vif<=0x3F; ++vif) {
+    double actual=0;
+    assert(to_canonical(vif,-345,actual));
+    near(actual,-345/std::pow(10.0,0x3E-vif),1e-8);
+    assert(canonical_unit(vif)==CanonicalUnit::CubicMetersPerHour);
+  }
+  // Explicit numeric references from upstream extended flow table.
+  for (const auto &entry : std::initializer_list<std::pair<uint8_t,double>>{
+      {0x40,600000000.0},{0x47,60.0},{0x48,3600000000000.0},
+      {0x4E,3600000.0},{0x4F,360000.0}}) {
+    double actual=0;
+    assert(to_canonical(entry.first,entry.second,actual));
+    near(actual,1.0);
+  }
+  for (uint8_t vif : {uint8_t{0x58},uint8_t{0x5B},
+                       uint8_t{0x64},uint8_t{0x67}}) {
+    double actual=0;
+    assert(to_canonical(vif,-1000,actual));
+    near(actual,vif==0x58 || vif==0x64 ? -1.0 : -1000.0);
+    assert(canonical_unit(vif)==CanonicalUnit::Celsius);
+  }
+  for (const auto &entry : std::initializer_list<std::pair<uint8_t,double>>{
+      {0x20,3600.0},{0x21,60.0},{0x22,1.0},{0x23,1.0/24.0},
+      {0x68,1000.0},{0x6B,1.0}}) {
+    double actual=0;
+    assert(to_canonical(entry.first,entry.second,actual));
+    near(actual,1.0);
+  }
+  double unknown=77;
+  assert(!to_canonical(0x6C,123,unknown) && unknown==0);
+  assert(!to_canonical(0x7D,123,unknown) && unknown==0);
+  assert(!to_canonical(0x16,std::numeric_limits<double>::infinity(),unknown));
   // Original public Hydrus records: 0xFD's first VIFE must be consumed.
   auto battery=single({0x02,0xFD,0x74,0x87,0x13});
   assert(battery.vif==0x7D && battery.vif_extension==0x74);
