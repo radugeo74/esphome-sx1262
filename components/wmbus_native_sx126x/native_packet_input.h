@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace esphome {
-namespace wmbus_radio {
+namespace wmbus_native_sx126x {
 namespace native_radio {
 
 static constexpr size_t MAX_RAW_PACKET_SIZE = 255;
@@ -51,5 +51,5 @@ inline InputStatus copy_validated(const PacketView &incoming,
 }
 
 }  // namespace native_radio
-}  // namespace wmbus_radio
+}  // namespace wmbus_native_sx126x
 }  // namespace esphome
