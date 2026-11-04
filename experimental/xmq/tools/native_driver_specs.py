@@ -36,7 +36,7 @@ def validate(root: Path):
     return tuple(root / "drivers" / f"{name}.xmq" for name in names)
 
 def catalog_fragment():
-    lines = ["// Generated native XMQ descriptor entries. Do not edit."]
+    lines = ["#pragma once", "// Generated native XMQ descriptor entries. Do not edit."]
     for d in GENERATED:
         ns = f"generated_ixml::{d.name}"
         dates = (f"{ns}::date_calculations, {ns}::date_calculation_count"
@@ -48,7 +48,14 @@ def catalog_fragment():
             f'{ns}::field_keys, sizeof({ns}::field_keys)/sizeof(FieldKey), '
             f'{ns}::calculations, {ns}::calculation_count, {dates}}}}},'
         )
-    return "\n".join(lines) + "\n"
+    # ESPHome auto-includes all component .h files into main.cpp. A raw
+    # initializer fragment would break that translation unit. A macro is
+    # valid standalone and expands only where the catalog needs entries.
+    entries = lines[2:]
+    macro = ["#define XMQ_NATIVE_CATALOG_ENTRIES \\"]
+    for index, entry in enumerate(entries):
+        macro.append(entry + (" \\" if index + 1 < len(entries) else ""))
+    return "\\n".join(lines[:2] + macro) + "\\n"
 
 def compiled_fragment():
     lines = ["#pragma once", "// Generated from the single native driver manifest."]
