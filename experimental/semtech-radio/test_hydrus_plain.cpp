@@ -30,9 +30,14 @@ int main() {
   const auto s=decode_clear_application(water.data(),water.size(),fields,32,count);
   assert(s==Status::Ok);
   assert(std::fabs(value(fields,count,"total_m3")-1.174)<0.00001);
+  assert(std::fabs(value(fields,count,"flow_m3h")-0.0)<0.000001);
+  assert(std::fabs(value(fields,count,"flow_temperature_c")-10.4)<0.000001);
+  assert(std::fabs(value(fields,count,"remaining_battery_life_y")-13.686797)<0.000001);
+  assert(std::fabs(value(fields,count,"target_m3")-0.2)<0.000001);
   const auto warm=from_hex("2F2F0C13503400000DFD110A383731303134423032410B3B00000002FD74DC15C4016D3B178D29CC0113313400002F2F");
   assert(decode_clear_application(warm.data(),warm.size(),fields,32,count)==Status::Ok);
   assert(std::fabs(value(fields,count,"total_m3")-3.45)<0.00001);
+  assert(std::fabs(value(fields,count,"remaining_battery_life_y")-15.321328)<0.000001);
   // Incomplete/wrong records fail closed, never leave previous readings.
   auto broken=from_hex("0C1350340000");
   assert(decode_clear_application(broken.data(),broken.size()-1,fields,32,count)!=Status::Ok);
