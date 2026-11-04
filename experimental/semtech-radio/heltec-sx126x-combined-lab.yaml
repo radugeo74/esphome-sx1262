@@ -62,8 +62,6 @@ wmbus_native_sx126x:
   link_mode: T1_C1
   # CI-only: record T1 diagnostics; never publish C1 sensor values.
   t1_raw_diagnostics: true
-  # Test the optional CRC-verified discovery HEX path in a build-only fixture.
-  t1_unconfigured_hex: true
   # Optional native XMQ output, no wmbus_radio dependency.
   # No personal meter mappings stored in public repository.
   # Provide meter_drivers in a private, local configuration only.
