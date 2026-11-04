@@ -105,7 +105,7 @@ int main() {
   // A tariff-1 flow, temperature or battery value must not become the
   // primary reading. Existing main volume is preserved.
   const auto tariffed=from_hex(
-      "0C135034000082103BE80382105AC400821066DE000A"
+      "0C135034000082103BE80382105AC400821066DE00"
       "8210FD748713");
   assert(decode_clear_application(tariffed.data(),tariffed.size(),
                                   fields,32,count)==Status::Ok);
