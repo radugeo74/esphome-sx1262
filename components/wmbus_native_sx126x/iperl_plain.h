@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "pure_frame_header.h"
+#include "standard_dif_vif.h"
 
 namespace xmq_portable { namespace iperl {
 enum class Status : uint8_t { Ok, InvalidFrame, Unsupported, Encrypted, MissingFields };
@@ -32,40 +33,27 @@ inline Status decode(const uint8_t *frame, size_t size, Reading &out) {
   if (((config >> 8) & 0x0F) != 0) return Status::Encrypted;
   out.tpl_status = frame[12];
   out.power_low = (frame[12] & 0x04u) != 0; // upstream TPL 0x06 POWER_LOW fixture
+  // Shared DIF/VIF records interpret upstream iPERL fields; no hard-coded
+  // byte offsets, but strict quantity, storage, and function matching.
+  standard::Record rec[24]{};
+  size_t count = 0;
+  if (standard::records(frame + 15, size - 15, rec, 24, count) != standard::Status::Ok)
+    return Status::Unsupported;
   bool total = false;
   bool flow = false;
-  size_t i = 15;
-  while (i < size) {
-    const uint8_t dif = frame[i++];
-    if (dif == 0x2F) continue;
-    if ((dif & 0x80u) != 0) return Status::Unsupported; // DIFE not yet supported
-    const uint8_t format = dif & 0x0Fu;
-    if (format == 0x0F) return Status::Unsupported;
-    if (i >= size) return Status::InvalidFrame;
-    const uint8_t vif = frame[i++];
-    if ((vif & 0x80u) != 0) return Status::Unsupported; // VIFE extension
-    size_t count = 0;
-    switch (format) {
-      case 0x00: count = 0; break;
-      case 0x01: count = 1; break;
-      case 0x02: count = 2; break;
-      case 0x03: count = 3; break;
-      case 0x04: count = 4; break;
-      case 0x06: count = 6; break;
-      case 0x07: count = 8; break;
-      default: return Status::Unsupported;
-    }
-    if (count > size - i) return Status::InvalidFrame;
-    if (vif == 0x13 && format == 4) {
+  for (size_t i = 0; i < count; ++i) {
+    const auto &r = rec[i];
+    if (!r.numeric || r.function != 0 || r.storage != 0 || r.tariff != 0)
+      continue;
+    if (r.vif >= 0x10 && r.vif <= 0x17) {
       if (total) return Status::Unsupported;
-      out.total_m3 = static_cast<double>(u32le(frame + i)) / 1000.0;
+      out.total_m3 = r.value * standard::scale10(static_cast<int>(r.vif) - 0x16);
       total = true;
-    } else if (vif == 0x3B && format == 2) {
+    } else if (r.vif >= 0x38 && r.vif <= 0x3F) {
       if (flow) return Status::Unsupported;
-      out.max_flow_m3h = static_cast<double>(frame[i] | (uint16_t(frame[i+1]) << 8)) / 1000.0;
+      out.max_flow_m3h = r.value * standard::scale10(static_cast<int>(r.vif) - 0x3E);
       flow = true;
     }
-    i += count;
   }
   if (!total || !flow) {
     out = {};
