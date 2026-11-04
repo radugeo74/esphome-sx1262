@@ -88,4 +88,54 @@ inline NestedTplResult inspect_nested_tpl(const uint8_t *frame,size_t size,
   out.status=NestedTplStatus::NoTpl; // Could be NWL/AFL, never guess.
   return out;
 }
+// Diagnostic comparison across DLL, ELL and CRC-verified nested TPL.
+// A nested long TPL identity takes precedence, but only for observation.
+// Conflicting configured numeric IDs never yield a configured candidate.
+struct NestedIdentityDecision {
+  CandidateSource candidate{CandidateSource::Unsupported};
+  bool configured_candidate{false};
+  bool multiple_configured_ids{false};
+  bool permits_publication{false};
+};
+template<typename IdCollection>
+inline NestedIdentityDecision identify_nested_candidate(
+    const uint8_t *frame, size_t size, const Result &identity,
+    const IdCollection &configured_ids) {
+  NestedIdentityDecision out{};
+  if (!frame || identity.status!=Status::Ok ||
+      inspect_ell_payload(frame,size,identity).status!=EllIntegrity::Valid)
+    return out;
+  const auto nested=inspect_nested_tpl(frame,size,identity);
+  if (nested.status==NestedTplStatus::NotVerified ||
+      nested.status==NestedTplStatus::TooShort ||
+      nested.status==NestedTplStatus::InvalidManufacturer)
+    return out;
+  const Address &chosen=nested.has_address ? nested.address :
+                         identity.has_ell ? identity.ell : identity.dll;
+  out.candidate=nested.has_address ? CandidateSource::Tpl :
+                identity.has_ell ? CandidateSource::Ell : CandidateSource::Dll;
+  bool dll_match=false,ell_match=false,tpl_match=false;
+  for (const auto &id : configured_ids) {
+    const char *configured=id.c_str();
+    dll_match=dll_match || same_id(identity.dll,configured);
+    ell_match=ell_match || (identity.has_ell &&
+                            same_id(identity.ell,configured));
+    tpl_match=tpl_match || (nested.has_address &&
+                            same_id(nested.address,configured));
+    out.configured_candidate=out.configured_candidate ||
+                              same_id(chosen,configured);
+  }
+  out.multiple_configured_ids=
+      (dll_match && ell_match &&
+       !same_id_bytes(identity.dll,identity.ell)) ||
+      (dll_match && tpl_match &&
+       !same_id_bytes(identity.dll,nested.address)) ||
+      (ell_match && tpl_match &&
+       !same_id_bytes(identity.ell,nested.address));
+  if (out.multiple_configured_ids) {
+    out.candidate=CandidateSource::Conflict;
+    out.configured_candidate=false;
+  }
+  return out;
+}
 }} // namespace wmbus_pure::identity
