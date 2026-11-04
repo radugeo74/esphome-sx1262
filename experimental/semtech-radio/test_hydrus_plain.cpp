@@ -78,6 +78,17 @@ int main() {
                                   dates,4,&date_count)==Status::Ok);
   assert(date_count==1 && dates[0].value.year==2026 &&
          dates[0].value.month==8 && dates[0].value.day==31);
+  // A chained VIFE can describe a different physical quantity and must not
+  // inherit the simple remaining-battery field name from its first modifier.
+  const auto compound_battery=from_hex("0C135034000002FDF402DC15");
+  assert(decode_clear_application(compound_battery.data(),compound_battery.size(),
+                                  fields,32,count)==Status::Ok);
+  assert(count==1 && std::strcmp(fields[0].name,"total_m3")==0);
+  // Even a zero-valued VIFE makes the volume a modified field, not a total.
+  const auto modified_volume=from_hex("0C930050340000");
+  assert(decode_clear_application(modified_volume.data(),modified_volume.size(),
+                                  fields,32,count)==Status::MissingFields);
+  assert(count==0);
   // Incomplete/wrong records fail closed, never leave previous readings.
   auto broken=from_hex("0C1350340000");
   assert(decode_clear_application(broken.data(),broken.size()-1,fields,32,count)!=Status::Ok);
