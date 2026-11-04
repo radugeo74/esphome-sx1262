@@ -18,7 +18,11 @@ struct Result {
   Status status{Status::TooShort};
   Address dll{};
   Address tpl{};
+  Address ell{};
   bool has_tpl{false};
+  bool has_ell{false};
+  bool has_ell_session{false};
+  uint8_t ell_security_mode{0xFF};
   uint8_t ci{0};
   size_t application_offset{0};
 };
@@ -71,10 +75,39 @@ inline Result inspect(const uint8_t *frame,size_t size) {
     // TPL short header carries no second meter identity.
     if (size < 15) {result.status=Status::TooShort;return result;}
     result.application_offset=15;
+  } else if (result.ci==0x8C || result.ci==0x8D ||
+             result.ci==0x8E || result.ci==0x8F) {
+    // Same fixed ELL I-IV layouts as original wmbus.cc parseELL:
+    // CI+CC+ACC, optionally M(2)+ID(4)+V+T, then SN(4)+PL_CRC(2).
+    // Only inspect identities and session security bits. ELL payload CRC
+    // and downstream TPL have NOT been verified at this stage.
+    const bool address=(result.ci==0x8E || result.ci==0x8F);
+    const bool session=(result.ci==0x8D || result.ci==0x8F);
+    const size_t required=13+(address?8:0)+(session?6:0);
+    if (size < required) {result.status=Status::TooShort;return result;}
+    size_t offset=13; // Skip CI, CC and ACC.
+    if (address) {
+      copy_address(result.ell,frame+offset,true);
+      if (!valid_manufacturer(result.ell.manufacturer)) {
+        result.status=Status::InvalidTplManufacturer;return result;
+      }
+      result.has_ell=true;
+      offset+=8;
+    }
+    if (session) {
+      const uint32_t sn=static_cast<uint32_t>(frame[offset]) |
+          (static_cast<uint32_t>(frame[offset+1])<<8) |
+          (static_cast<uint32_t>(frame[offset+2])<<16) |
+          (static_cast<uint32_t>(frame[offset+3])<<24);
+      result.has_ell_session=true;
+      result.ell_security_mode=static_cast<uint8_t>(sn>>29);
+      offset+=6; // Session number + payload CRC.
+    }
+    result.application_offset=offset;
   } else if (result.ci==0xA0 || result.ci==0xA2) {
     // Manufacturer-specific plaintext protocols: only DLL is known.
   } else {
-    // ELL and other transports require separate framing and validation.
+    // ELL V (0x86), other variable layouts and unknown transports unsupported.
     result.status=Status::UnsupportedCi;
     return result;
   }
@@ -112,6 +145,7 @@ enum class ConfiguredSource : uint8_t {
 struct ConfiguredResult {
   ConfiguredSource source{ConfiguredSource::Unsupported};
   bool distinct_addresses{false};
+  bool ell_matched{false};
 };
 inline bool same_id_bytes(const Address &a,const Address &b) {
   for (unsigned i=0;i<4;++i)
@@ -135,6 +169,8 @@ inline ConfiguredResult diagnose(const Result &result,
     const char *text=id.c_str();
     dll=dll || same_id(result.dll,text);
     tpl=tpl || (result.has_tpl && same_id(result.tpl,text));
+    out.ell_matched=out.ell_matched ||
+                    (result.has_ell && same_id(result.ell,text));
   }
   if (dll && tpl) {
     out.source=!same_id_bytes(result.dll,result.tpl) ? ConfiguredSource::Conflict :
