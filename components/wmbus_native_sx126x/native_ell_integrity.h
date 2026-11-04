@@ -38,4 +38,44 @@ inline EllIntegrityResult inspect_ell_payload(
                 EllIntegrity::Valid : EllIntegrity::BadCrc;
   return result;
 }
+// Parse only an immediately following, unencrypted, explicit TPL CI.
+// No generic scan: unknown NWL/AFL, encrypted ELL, and unverified ELL
+// payloads must not be mistaken for a verified meter address.
+enum class NestedTplStatus : uint8_t {
+  NotVerified, NoTpl, TooShort, InvalidManufacturer, ShortHeader, LongHeader
+};
+struct NestedTplResult {
+  NestedTplStatus status{NestedTplStatus::NotVerified};
+  Address address{};
+  bool has_address{false};
+  size_t application_offset{0};
+};
+inline NestedTplResult inspect_nested_tpl(const uint8_t *frame,size_t size,
+                                          const Result &identity) {
+  NestedTplResult out{};
+  if (!frame || identity.status!=Status::Ok ||
+      inspect_ell_payload(frame,size,identity).status!=EllIntegrity::Valid)
+    return out;
+  const size_t at=identity.application_offset;
+  if (at>=size) {out.status=NestedTplStatus::NoTpl;return out;}
+  if (frame[at]==0x7A) {
+    if (size-at<5) {out.status=NestedTplStatus::TooShort;return out;}
+    out.status=NestedTplStatus::ShortHeader;
+    out.application_offset=at+5;
+    return out;
+  }
+  if (frame[at]==0x72) {
+    if (size-at<13) {out.status=NestedTplStatus::TooShort;return out;}
+    copy_address(out.address,frame+at+1,false);
+    if (!valid_manufacturer(out.address.manufacturer)) {
+      out.status=NestedTplStatus::InvalidManufacturer;return out;
+    }
+    out.status=NestedTplStatus::LongHeader;
+    out.has_address=true;
+    out.application_offset=at+13;
+    return out;
+  }
+  out.status=NestedTplStatus::NoTpl; // Could be NWL/AFL, never guess.
+  return out;
+}
 }} // namespace wmbus_pure::identity
