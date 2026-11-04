@@ -6,6 +6,7 @@
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
 #include "esphome/components/sensor/sensor.h"
+#include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/sx126x/sx126x.h"
 #include "native_packet_input.h"
 #include "t1_fifo_contract.h"
@@ -35,6 +36,10 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   void add_xmq_sensor(const std::string &meter_id, const std::string &field,
                       sensor::Sensor *output) {
     this->xmq_sensors_.push_back({meter_id, field, output});
+  }
+  void add_xmq_text_sensor(const std::string &meter_id, const std::string &field,
+                           text_sensor::TextSensor *output) {
+    this->xmq_text_sensors_.push_back({meter_id, field, output});
   }
   void add_rssi_sensor(const std::string &meter_id, sensor::Sensor *output) {
     this->rssi_sensors_.push_back({meter_id, output});
@@ -73,6 +78,13 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
     sensor::Sensor *output;
   };
   std::vector<XmqSensorBinding> xmq_sensors_{};
+  struct XmqTextSensorBinding {
+    std::string meter_id;
+    std::string field;
+    text_sensor::TextSensor *output;
+  };
+  std::vector<XmqTextSensorBinding> xmq_text_sensors_{};
+
   struct RssiSensorBinding { std::string meter_id; sensor::Sensor *output; };
   std::vector<RssiSensorBinding> rssi_sensors_{};
   std::vector<Trigger<uint32_t, float, std::string, uint32_t> *> verified_triggers_{};
