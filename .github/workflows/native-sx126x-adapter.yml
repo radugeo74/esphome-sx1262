@@ -205,6 +205,13 @@ jobs:
             -o /tmp/test-configured-plain-decode
           /tmp/test-configured-plain-decode
 
+      - name: End-to-end T1 and C1-A CRC to XMQ regression for official heat and water fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_rf_to_xmq_regression.cpp \
+            -o /tmp/test-rf-to-xmq-regression
+          /tmp/test-rf-to-xmq-regression
+
       - name: Check ESPHome probe Python syntax
         run: python3 -m py_compile components/wmbus_native_sx126x/__init__.py
 
