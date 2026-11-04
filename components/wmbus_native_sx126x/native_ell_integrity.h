@@ -27,6 +27,9 @@ inline EllIntegrityResult inspect_ell_payload(
       actual.application_offset!=identity.application_offset ||
       actual.has_ell_session!=identity.has_ell_session ||
       actual.ell_security_mode!=identity.ell_security_mode ||
+      actual.has_ell!=identity.has_ell ||
+      !same_address(actual.dll,identity.dll) ||
+      (actual.has_ell && !same_address(actual.ell,identity.ell)) ||
       (actual.ci!=0x8C && actual.ci!=0x8D &&
        actual.ci!=0x8E && actual.ci!=0x8F))
     return result;
