@@ -123,6 +123,21 @@ int main() {
       inspect(tpl_encrypted.data(),tpl_encrypted.size()),
       std::vector<std::string>{"66953825"});
   assert(target.candidate==CandidateSource::Tpl && !target.permits_publication);
+  // Never trust a stale parsed header if a frame's stated length changes.
+  auto mismatched_length=nested;
+  mismatched_length[0]=static_cast<uint8_t>(mismatched_length[0]-1);
+  const auto stale_identity=inspect(nested.data(),nested.size());
+  assert(inspect_ell_payload(mismatched_length.data(),
+          mismatched_length.size(),stale_identity).status==
+          EllIntegrity::Unsupported);
+  tp=inspect_nested_tpl(mismatched_length.data(),
+                        mismatched_length.size(),stale_identity);
+  assert(tp.status==NestedTplStatus::NotVerified && !tp.has_address);
+  target=identify_nested_candidate(mismatched_length.data(),
+       mismatched_length.size(),stale_identity,
+       std::vector<std::string>{"66953825"});
+  assert(target.candidate==CandidateSource::Unsupported &&
+         !target.configured_candidate && !target.permits_publication);
   // A valid DLL CRC does not help if the ELL payload CRC is wrong.
   auto bad_nested=nested;
   bad_nested[original.application_offset-1]^=0x01;
