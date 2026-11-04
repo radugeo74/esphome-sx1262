@@ -58,7 +58,7 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
     if (v>=0x10 && v<=0x17) {
       value*=standard::scale10(v-0x16);
       if (r.vif_extension_count == 1 && r.vif_extension == 0x3C &&
-          r.function==0 && storage==0) {
+          r.tariff==0 && r.function==0 && storage==0) {
         field="backward_m3";
         if (!add(out,capacity,out_count,field,value)) { out_count=0; return Status::Capacity; }
         continue;
@@ -70,19 +70,23 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
       else if((storage==3 || storage==8) && r.tariff==0 && r.function==0) field="target_m3";
       else if(storage==0 && r.tariff==1 && r.function==0) field="total_tariff1_m3";
       else if(storage==0 && r.tariff==2 && r.function==0) field="total_tariff2_m3";
-    } else if(v>=0x38 && v<=0x3F && r.vif_extension_count==0) {
+    } else if(v>=0x38 && v<=0x3F && r.vif_extension_count==0 &&
+              r.tariff==0) {
       value*=standard::scale10(v-0x3E);
       if(storage==0 && r.function==0) field="flow_m3h";
       else if(storage==8 && r.function==1) field="max_flow_m3h";
       else if(storage==8 && r.function==2) field="min_flow_m3h";
-    } else if(v>=0x58 && v<=0x5B && r.vif_extension_count==0) {
+    } else if(v>=0x58 && v<=0x5B && r.vif_extension_count==0 &&
+              r.tariff==0) {
       value*=standard::scale10(v-0x5B);
       if(storage==0 && r.function==0) field="flow_temperature_c";
-    } else if(v>=0x64 && v<=0x67 && r.vif_extension_count==0) {
+    } else if(v>=0x64 && v<=0x67 && r.vif_extension_count==0 &&
+              r.tariff==0) {
       value*=standard::scale10(v-0x67);
       if(storage==0 && r.function==0) field="external_temperature_c";
     } else if(v==0x7D && r.vif_extension_count==1 &&
-              r.vif_extension==0x74) {
+              r.vif_extension==0x74 && r.function==0 &&
+              r.tariff==0 && storage==0) {
       value/=365.2425;
       field="remaining_battery_life_y";
     }
