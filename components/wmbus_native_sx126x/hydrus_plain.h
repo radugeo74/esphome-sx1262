@@ -56,7 +56,7 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
     double value=r.value;
     if (r.subunit!=0) continue; // Do not map another subunit as the main meter.
     if (v>=0x10 && v<=0x17) {
-      value*=standard::scale10(v-0x16);
+      if (!standard::to_canonical(r.vif,r.value,value)) continue;
       if (r.vif_extension_count == 1 && r.vif_extension == 0x3C &&
           r.tariff==0 && r.function==0 && storage==0) {
         field="backward_m3";
@@ -72,17 +72,17 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
       else if(storage==0 && r.tariff==2 && r.function==0) field="total_tariff2_m3";
     } else if(v>=0x38 && v<=0x3F && r.vif_extension_count==0 &&
               r.tariff==0) {
-      value*=standard::scale10(v-0x3E);
+      if (!standard::to_canonical(r.vif,r.value,value)) continue;
       if(storage==0 && r.function==0) field="flow_m3h";
       else if(storage==8 && r.function==1) field="max_flow_m3h";
       else if(storage==8 && r.function==2) field="min_flow_m3h";
     } else if(v>=0x58 && v<=0x5B && r.vif_extension_count==0 &&
               r.tariff==0) {
-      value*=standard::scale10(v-0x5B);
+      if (!standard::to_canonical(r.vif,r.value,value)) continue;
       if(storage==0 && r.function==0) field="flow_temperature_c";
     } else if(v>=0x64 && v<=0x67 && r.vif_extension_count==0 &&
               r.tariff==0) {
-      value*=standard::scale10(v-0x67);
+      if (!standard::to_canonical(r.vif,r.value,value)) continue;
       if(storage==0 && r.function==0) field="external_temperature_c";
     } else if(v==0x7D && r.vif_extension_count==1 &&
               r.vif_extension==0x74 && r.function==0 &&
