@@ -29,6 +29,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   void set_combined_mode(bool value) { this->combined_mode_ = value; }
   void set_t1_raw_diagnostics(bool value) { this->t1_raw_diagnostics_ = value; }
   void set_c1_format_b(bool value) { this->c1_format_b_ = value; }
+  void set_c1_plaintext_publish(bool value) { this->c1_plaintext_publish_ = value; }
   void add_configured_meter_id(const std::string &value) { this->configured_meter_ids_.push_back(value); }
   void add_meter_driver(const std::string &id, const std::string &driver) { this->meter_drivers_.push_back({id, driver}); }
   void add_xmq_sensor(const std::string &meter_id, const std::string &field,
@@ -47,6 +48,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
  protected:
   sx126x::SX126x *radio_{nullptr};
   bool c1_format_b_{true};
+  bool c1_plaintext_publish_{false};
   bool fifo_progress_probe_{false};
   bool t1_mode_{false};
   bool combined_mode_{false};
@@ -57,6 +59,8 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   RxModeStats c1b_stats_{};
   uint32_t combined_stats_last_ms_{0};
   void log_combined_stats_();
+  void publish_c1_plaintext_(const std::vector<uint8_t> &frame, uint32_t meter_id,
+                             float rssi_dbm);
   std::vector<std::string> configured_meter_ids_{};
   struct MeterDriver { std::string id; std::string driver; std::string logged_auto_driver; };
   std::vector<MeterDriver> meter_drivers_{};
