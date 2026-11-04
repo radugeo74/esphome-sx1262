@@ -1,5 +1,4 @@
 #include "components/wmbus_native_sx126x/xmq_auto_registry.h"
-#include "components/wmbus_radio/pure_driver_registry.h"
 #include <cassert>
 #include <cstring>
 int main() {
