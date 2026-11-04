@@ -58,6 +58,7 @@ int main() {
   assert(std::fabs(value(fields,count,"external_temperature_c")-22.2)<0.000001);
   assert(std::fabs(value(fields,count,"min_flow_m3h"))<0.000001);
   assert(std::fabs(value(fields,count,"max_flow_m3h")-1.772)<0.000001);
+  assert(std::fabs(value(fields,count,"backward_m3"))<0.000001);
   // Incomplete/wrong records fail closed, never leave previous readings.
   auto broken=from_hex("0C1350340000");
   assert(decode_clear_application(broken.data(),broken.size()-1,fields,32,count)!=Status::Ok);
