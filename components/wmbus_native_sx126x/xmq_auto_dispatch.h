@@ -23,7 +23,8 @@ inline Result resolve(const char *requested, const DriverSignature *signatures,
     return {Status::Invalid, nullptr};
   // Only these decoders are currently generated and validated on Heltec.
   if (std::strcmp(match.driver, "mkradio4") != 0 &&
-      std::strcmp(match.driver, "fhkvdataiii") != 0)
+      std::strcmp(match.driver, "fhkvdataiii") != 0 &&
+      std::strcmp(match.driver, "iperl") != 0)
     return {Status::NotCompiled, nullptr};
   return {Status::Ready, match.driver};
 }
