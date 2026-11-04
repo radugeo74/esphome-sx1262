@@ -55,7 +55,7 @@ def catalog_fragment():
     macro = ["#define XMQ_NATIVE_CATALOG_ENTRIES \\"]
     for index, entry in enumerate(entries):
         macro.append(entry + (" \\" if index + 1 < len(entries) else ""))
-    return "\\n".join(lines[:2] + macro) + "\\n"
+    return "\n".join(lines[:2] + macro) + "\n"
 
 def compiled_fragment():
     lines = ["#pragma once", "// Generated from the single native driver manifest."]
