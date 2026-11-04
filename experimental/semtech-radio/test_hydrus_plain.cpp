@@ -102,6 +102,19 @@ int main() {
                                   fields,32,count)==Status::Ok);
   assert(count==1 && std::strcmp(fields[0].name,"total_m3")==0);
   assert(std::fabs(fields[0].value-71.442)<0.000001);
+  // A tariff-1 flow, temperature or battery value must not become the
+  // primary reading. Existing main volume is preserved.
+  const auto tariffed=from_hex(
+      "0C135034000082103BE80382105AC400821066DE000A"
+      "8210FD748713");
+  assert(decode_clear_application(tariffed.data(),tariffed.size(),
+                                  fields,32,count)==Status::Ok);
+  assert(count==1 && std::strcmp(fields[0].name,"total_m3")==0);
+  assert(std::fabs(fields[0].value-3.45)<0.000001);
+  const auto tariff_backward=from_hex("0C13503400008210933CE803");
+  assert(decode_clear_application(tariff_backward.data(),tariff_backward.size(),
+                                  fields,32,count)==Status::Ok);
+  assert(count==1 && std::strcmp(fields[0].name,"total_m3")==0);
   // Incomplete/wrong records fail closed, never leave previous readings.
   auto broken=from_hex("0C1350340000");
   assert(decode_clear_application(broken.data(),broken.size()-1,fields,32,count)!=Status::Ok);
