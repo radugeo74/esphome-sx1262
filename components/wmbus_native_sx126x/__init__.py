@@ -48,7 +48,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_T1_RAW_DIAGNOSTICS, default=False): cv.boolean,
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
-        cv.Required(CONF_DRIVER): cv.one_of("fhkvdataiii", "mkradio4", "iperl", "auto"),
+        cv.Required(CONF_DRIVER): cv.one_of("fhkvdataiii", "mkradio4", "iperl", "hydrus", "auto"),
     })),
     cv.Optional(CONF_RSSI_SENSORS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
