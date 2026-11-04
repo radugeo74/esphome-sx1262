@@ -190,6 +190,11 @@ int main() {
   tp=inspect_nested_tpl(unknown_layer.data(),unknown_layer.size(),
                         inspect(unknown_layer.data(),unknown_layer.size()));
   assert(tp.status==NestedTplStatus::NoTpl);
+  target=identify_nested_candidate(unknown_layer.data(),unknown_layer.size(),
+      inspect(unknown_layer.data(),unknown_layer.size()),
+      std::vector<std::string>{"66953825"});
+  assert(target.candidate==CandidateSource::Unsupported &&
+         !target.configured_candidate && !target.permits_publication);
   auto truncated_tpl=nested;
   truncated_tpl.resize(original.application_offset+2);
   truncated_tpl[0]=static_cast<uint8_t>(truncated_tpl.size()-1);
@@ -200,6 +205,35 @@ int main() {
   tp=inspect_nested_tpl(truncated_tpl.data(),truncated_tpl.size(),
                         inspect(truncated_tpl.data(),truncated_tpl.size()));
   assert(tp.status==NestedTplStatus::TooShort);
+  target=identify_nested_candidate(truncated_tpl.data(),truncated_tpl.size(),
+      inspect(truncated_tpl.data(),truncated_tpl.size()),
+      std::vector<std::string>{"66953825"});
+  assert(target.candidate==CandidateSource::Unsupported &&
+         !target.configured_candidate && !target.permits_publication);
+  // CRC-valid but malformed manufacturer in the nested long TPL.
+  auto invalid_mfct=nested;
+  invalid_mfct[original.application_offset+5]=0;
+  invalid_mfct[original.application_offset+6]=0;
+  const uint16_t mfct_crc=wmbus_pure::crc16_en13757(
+      invalid_mfct.data()+original.application_offset,
+      invalid_mfct.size()-original.application_offset);
+  invalid_mfct[original.application_offset-2]=static_cast<uint8_t>(mfct_crc);
+  invalid_mfct[original.application_offset-1]=static_cast<uint8_t>(mfct_crc>>8);
+  tp=inspect_nested_tpl(invalid_mfct.data(),invalid_mfct.size(),
+                        inspect(invalid_mfct.data(),invalid_mfct.size()));
+  assert(tp.status==NestedTplStatus::InvalidManufacturer && !tp.has_address);
+  target=identify_nested_candidate(invalid_mfct.data(),invalid_mfct.size(),
+      inspect(invalid_mfct.data(),invalid_mfct.size()),
+      std::vector<std::string>{"66953825"});
+  assert(target.candidate==CandidateSource::Unsupported &&
+         !target.configured_candidate && !target.permits_publication);
+  // Valid short TPL carries no separate meter identity: ELL remains
+  // an advisory address only and publication is always forbidden.
+  target=identify_nested_candidate(short_tpl.data(),short_tpl.size(),
+      inspect(short_tpl.data(),short_tpl.size()),
+      std::vector<std::string>{"66953825"});
+  assert(target.candidate==CandidateSource::Ell &&
+         target.configured_candidate && !target.permits_publication);
   const auto good=make_ell(0x8D,0);
   auto parsed=inspect(good.data(),good.size());
   assert(inspect_ell_payload(nullptr,0,parsed).status==EllIntegrity::Unsupported);
