@@ -157,6 +157,12 @@ jobs:
             experimental/semtech-radio/test_native_identity_probe.cpp \
             -o /tmp/test-native-identity
           /tmp/test-native-identity
+      - name: Test independent ELL payload CRC integrity
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_ell_integrity.cpp \
+            -o /tmp/test-native-ell-integrity
+          /tmp/test-native-ell-integrity
       - name: Test conservative TPL encryption classification
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
