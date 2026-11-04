@@ -88,13 +88,16 @@ async def to_code(config):
             xmq / "drivers" / "fhkvdataiii.xmq",
             xmq / "drivers" / "mkradio4a.xmq",
         ]
-        registry_header = generate_registry(registry_files).replace(
-            '#include "pure_driver_registry.h"',
-            '#include "esphome/components/wmbus_radio/pure_driver_registry.h"',
-        )
+        # Keep the generated include local to the native component. ESPHome
+        # copies this directory into build/src independently of wmbus_radio.
+        registry_header = generate_registry(registry_files)
         component_dir = Path(__file__).resolve().parent
         (component_dir / "xmq_auto_registry.h").write_text(
             registry_header, encoding="utf-8")
+        shutil.copyfile(
+            root / "components" / "wmbus_radio" / "pure_driver_registry.h",
+            component_dir / "pure_driver_registry.h",
+        )
         (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
         # ESPHome copies components into build/src; absolute source include paths
         # do not reliably survive the isolated ESP-IDF compilation stage.
