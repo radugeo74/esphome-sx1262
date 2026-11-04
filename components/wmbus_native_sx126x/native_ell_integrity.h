@@ -19,6 +19,13 @@ inline EllIntegrityResult inspect_ell_payload(
   if (!frame || size<1 || size!=static_cast<size_t>(frame[0])+1 ||
       identity.status!=Status::Ok)
     return result;
+  // Preserve precise structural diagnostics before comparing cached metadata.
+  // Invalid offsets must never be used for payload CRC or TPL inspection.
+  if (identity.has_ell_session &&
+      (identity.application_offset<2 || identity.application_offset>size)) {
+    result.status=EllIntegrity::Truncated;
+    return result;
+  }
   // A caller may have parsed a different telegram of the same size.
   // Derive ELL layout/security from this frame, not cached metadata.
   const auto actual=inspect(frame,size);
@@ -35,9 +42,6 @@ inline EllIntegrityResult inspect_ell_payload(
     return result;
   if (!identity.has_ell_session) {
     result.status=EllIntegrity::NoPayloadCrc;return result;
-  }
-  if (identity.application_offset<2 || identity.application_offset>size) {
-    result.status=EllIntegrity::Truncated;return result;
   }
   if (identity.ell_security_mode!=0) {
     result.status=EllIntegrity::EncryptedOrUnknown;return result;
