@@ -83,6 +83,23 @@ int main() {
   assert(std::fabs(get(result,"total_m3")-71.442)<1e-6);
   assert(std::fabs(get(result,"total_at_date_m3")-69.7)<1e-6);
   result.value_count=0;
+  // MK Radio 4a official NOKEY post-decryption application examples.
+  // This is deliberately NOT the raw configured RF decoder entrypoint.
+  auto mk4a_warm=hex("4315A10000426CBF2C0F542CF2DD8BEC869511B2DB8301C3ABA390FB4FDB6F1144DA1F3897DD55F2AD0D194F68510FF8FADFB9");
+  assert(decode_supplied_clear_mkradio4a_application(
+      mk4a_warm.data(),mk4a_warm.size(),result)==DriverStatus::Ok);
+  assert(std::fabs(get(result,"target_m3")-16.1)<1e-6);
+  assert(result.date_count==1 && result.dates[0].year==2021 &&
+         result.dates[0].month==12 && result.dates[0].day==31);
+  auto mk4a_cold=hex("4315F00200426CBF2C0FEE456BF6F802216503E25EB73E9377D54F672681B76C469696E4C7BCCC9072CC79F712360FC3F57D85");
+  assert(decode_supplied_clear_mkradio4a_application(
+      mk4a_cold.data(),mk4a_cold.size(),result)==DriverStatus::Ok);
+  assert(std::fabs(get(result,"target_m3")-75.2)<1e-6);
+  assert(result.date_count==1 && result.dates[0].year==2021 &&
+         result.dates[0].month==12 && result.dates[0].day==31);
+  assert(decode_supplied_clear_mkradio4a_application(
+      mk4a_cold.data(),1,result)!=DriverStatus::Ok);
+  assert(result.value_count==0 && result.date_count==0);
   // Official Hydrus Mode-5 NOKEY fixture represents already-clear
   // post-decryption data, not plaintext RF. Fail closed at RF boundary.
   auto mode5=hex("4E44A5116464646470077AED004005_2F2F01FD08300C13741100007C1300000000FC101300000000FC201300000000726C00000B3B00000002FD748713025A6800C4016D3B177F2ACC011300020000");
