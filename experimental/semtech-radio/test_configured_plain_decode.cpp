@@ -37,6 +37,15 @@ int main() {
   assert(result.value_count==0);
   // Official Hydrus IZAR RS unencrypted example.
   auto hydrus=hex("1E4424238B07797389607A8F00107D_041312170100426CBF23441344100100");
+  // The upstream IZAR RS fixture carries config 0x7D10 (security mode
+  // 13, unsupported by our present RF classifier). It can be decoded by
+  // the payload parser, but an RF frame must fail closed until classified.
+  assert(decode_configured_plain_frame(hydrus.data(),hydrus.size(),"60897379",
+      "hydrus",captures,12,result)==PureDecodeStatus::DecodeFailure);
+  assert(result.value_count==0);
+  // Synthetic transport-mode-zero variant built ONLY from the public
+  // fixture: verifies configured dispatch without weakening the RF guard.
+  hydrus[13]=0x00; hydrus[14]=0x00;
   assert(decode_configured_plain_frame(hydrus.data(),hydrus.size(),"60897379",
       "hydrus",captures,12,result)==PureDecodeStatus::Ok);
   assert(std::fabs(get(result,"total_m3")-71.442)<1e-6);
