@@ -10,14 +10,18 @@
 #include "calculate_subset.h"
 namespace xmq_portable { namespace hydrus {
 enum class Status : uint8_t { Ok, Invalid, Unsupported, Encrypted, MissingFields, Capacity };
+struct DateField { const char *name; standard::Calendar value; };
 inline bool add(CalcValue *out, size_t capacity, size_t &n, const char *name, double value) {
   if (n>=capacity) return false;
   out[n++] = {name,value};
   return true;
 }
 inline Status decode_clear_application(const uint8_t *payload, size_t size,
-                                       CalcValue *out, size_t capacity, size_t &out_count) {
+                                       CalcValue *out, size_t capacity, size_t &out_count,
+                                       DateField *dates = nullptr, size_t date_capacity = 0,
+                                       size_t *date_count = nullptr) {
   out_count = 0;
+  if (date_count) *date_count = 0;
   standard::Record rec[48]{};
   size_t n=0;
   auto result=standard::records(payload,size,rec,48,n);
@@ -27,6 +31,23 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
   for (size_t i=0;i<n;i++) {
     const auto &r=rec[i];
     if (!r.numeric) continue;
+    // Standard EN13757 Date G and DateTime fields. These are not
+    // floating-point sensor values and must remain typed dates.
+    if (r.vif==0x6C || r.vif==0x6D) {
+      const char *name = nullptr;
+      if (r.vif==0x6C && r.storage==1) name="at_date";
+      else if (r.vif==0x6D && (r.storage==3 || r.storage==8))
+        name="target_datetime";
+      else if (r.vif==0x6D && r.storage==0) name="meter_datetime";
+      if (name && dates && date_count) {
+        standard::Calendar calendar{};
+        if (standard::decode_calendar(r.raw, r.vif==0x6D, calendar)) {
+          if (*date_count >= date_capacity) { out_count=0; *date_count=0; return Status::Capacity; }
+          dates[(*date_count)++] = {name,calendar};
+        }
+      }
+      continue;
+    }
     const int v=r.vif;
     const int storage=r.storage;
     const char *field=nullptr;
