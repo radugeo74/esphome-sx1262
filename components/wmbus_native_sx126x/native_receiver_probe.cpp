@@ -319,6 +319,21 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                  static_cast<unsigned>(frame.header.device_type),
                  static_cast<unsigned>(frame.header.ci),
                  static_cast<unsigned>(frame.bytes.size()), rssi_dbm);
+        if (self->t1_unconfigured_hex_) {
+          // Already DLL/CRC verified, but never decoded or published.
+          // Local DEBUG logging only: IDs/payloads must not enter fixtures.
+          // Bounded by the RF frame limit (255 bytes) and logger buffer.
+          static constexpr char HEX[] = "0123456789ABCDEF";
+          char telegram_hex[511]{};
+          const size_t n = std::min<size_t>(frame.bytes.size(), 255);
+          for (size_t i = 0; i < n; ++i) {
+            telegram_hex[i * 2] = HEX[frame.bytes[i] >> 4];
+            telegram_hex[i * 2 + 1] = HEX[frame.bytes[i] & 0x0F];
+          }
+          telegram_hex[n * 2] = '\0';
+          ESP_LOGD(TAG, "T1 DISCOVERED Telegram: %s (%u) (local only)",
+                   telegram_hex, static_cast<unsigned>(n));
+        }
       }
       log_verified_identities(frame.bytes, self->configured_meter_ids_);
       const auto security = wmbus_pure::tpl_security::inspect(frame.bytes.data(), frame.bytes.size());
