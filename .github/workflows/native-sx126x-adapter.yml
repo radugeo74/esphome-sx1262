@@ -58,6 +58,8 @@ jobs:
             experimental/semtech-radio/test_xmq_auto_registry.cpp \
             -o /tmp/test-xmq-auto-registry
           /tmp/test-xmq-auto-registry
+      - name: Test native XMQ manifest and generated decoder parity
+        run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Test standard DIF VIF parity with original dvparser
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
