@@ -113,12 +113,14 @@ struct ConfiguredResult {
   ConfiguredSource source{ConfiguredSource::Unsupported};
   bool distinct_addresses{false};
 };
-inline bool same_address(const Address &a,const Address &b) {
-  if (a.manufacturer!=b.manufacturer || a.version!=b.version ||
-      a.device_type!=b.device_type) return false;
+inline bool same_id_bytes(const Address &a,const Address &b) {
   for (unsigned i=0;i<4;++i)
     if (a.id_le[i]!=b.id_le[i]) return false;
   return true;
+}
+inline bool same_address(const Address &a,const Address &b) {
+  return same_id_bytes(a,b) && a.manufacturer==b.manufacturer &&
+         a.version==b.version && a.device_type==b.device_type;
 }
 template<typename IdCollection>
 inline ConfiguredResult diagnose(const Result &result,
@@ -135,7 +137,7 @@ inline ConfiguredResult diagnose(const Result &result,
     tpl=tpl || (result.has_tpl && same_id(result.tpl,text));
   }
   if (dll && tpl) {
-    out.source=out.distinct_addresses ? ConfiguredSource::Conflict :
+    out.source=!same_id_bytes(result.dll,result.tpl) ? ConfiguredSource::Conflict :
                                         ConfiguredSource::Both;
   } else if (dll) out.source=ConfiguredSource::Dll;
   else if (tpl) out.source=ConfiguredSource::Tpl;
