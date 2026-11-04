@@ -57,7 +57,7 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
     if (r.subunit!=0) continue; // Do not map another subunit as the main meter.
     if (v>=0x10 && v<=0x17) {
       if (!standard::to_canonical(r.vif,r.value,value)) continue;
-      if (r.vif_extension_count == 1 && r.vif_extension == 0x3C &&
+      if (r.modifier_count == 1 && r.modifiers[0] == 0x3C &&
           r.tariff==0 && r.function==0 && storage==0) {
         field="backward_m3";
         if (!add(out,capacity,out_count,field,value)) { out_count=0; return Status::Capacity; }
@@ -84,8 +84,8 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
               r.tariff==0) {
       if (!standard::to_canonical(r.vif,r.value,value)) continue;
       if(storage==0 && r.function==0) field="external_temperature_c";
-    } else if(v==0x7D && r.vif_extension_count==1 &&
-              r.vif_extension==0x74 && r.function==0 &&
+    } else if(r.full_vif==0x7D74 && r.modifier_count==0 &&
+              r.function==0 &&
               r.tariff==0 && storage==0) {
       value/=365.2425;
       field="remaining_battery_life_y";
