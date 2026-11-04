@@ -51,8 +51,7 @@ def catalog_fragment():
     return "\n".join(lines) + "\n"
 
 def compiled_fragment():
-    lines = ["#pragma once", "#include <cstring>",
-             "// Generated from the single native driver manifest."]
+    lines = ["#pragma once", "// Generated from the single native driver manifest."]
     lines.append("inline bool native_xmq_driver_compiled(const char *name) {")
     lines.append("  return name && (")
     lines.append(" ||\n".join(
