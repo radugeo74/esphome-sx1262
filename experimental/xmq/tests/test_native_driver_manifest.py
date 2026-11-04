@@ -6,6 +6,8 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "experimental" / "xmq" / "tools"))
 from native_driver_specs import SUPPORTED, GENERATED, PORTABLE, validate, catalog_fragment, compiled_fragment
 from build_native_generated import build
+from tempfile import TemporaryDirectory
+from generate_ixml_cpp import generate
 
 def main():
     assert SUPPORTED == tuple(d.name for d in GENERATED) + PORTABLE
@@ -25,6 +27,20 @@ def main():
     native = (ROOT / "components" / "wmbus_native_sx126x" / "__init__.py").read_text()
     assert 'components" / "wmbus_radio' not in native
     assert "validate_driver_name" in native
+    # A new driver containing unsupported numeric operators must fail
+    # compilation rather than silently omit a measurement field.
+    official = (ROOT / "experimental/xmq/drivers/mkradio4.xmq").read_text()
+    assert "prev_raw_counter * 1m3" in official
+    with TemporaryDirectory() as tmp:
+        invalid = Path(tmp) / "mkradio4.xmq"
+        invalid.write_text(official.replace(
+            "prev_raw_counter * 1m3", "prev_raw_counter / 1m3"))
+        try:
+            generate([invalid])
+        except ValueError as exc:
+            assert "unsupported calculation" in str(exc)
+        else:
+            raise AssertionError("Unsupported XMQ arithmetic was silently accepted")
     print("PASS native driver manifest matches generated decode and AUTO catalog")
 
 if __name__ == "__main__":
