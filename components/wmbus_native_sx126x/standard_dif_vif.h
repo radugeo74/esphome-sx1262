@@ -55,7 +55,7 @@ inline size_t format_length(uint8_t f) {
     case 14: return 6; default: return SIZE_MAX;
   }
 }
-inline Status records(const uint8_t *data, size_t size, Record *out,
+inline Status parse_records(const uint8_t *data, size_t size, Record *out,
                       size_t capacity, size_t &count) {
   count = 0;
   if (!data || !out || !capacity) return Status::Invalid;
@@ -171,6 +171,15 @@ inline Status records(const uint8_t *data, size_t size, Record *out,
     out[count++] = r;
   }
   return Status::Ok;
+}
+// Transactional public API: malformed/truncated tails never leak a partial
+// record count to downstream meter drivers or Home Assistant publications.
+inline Status records(const uint8_t *data, size_t size, Record *out,
+                      size_t capacity, size_t &count) {
+  count = 0;
+  const Status status = parse_records(data,size,out,capacity,count);
+  if (status != Status::Ok) count = 0;
+  return status;
 }
 inline double scale10(int power) {
   double v=1;
