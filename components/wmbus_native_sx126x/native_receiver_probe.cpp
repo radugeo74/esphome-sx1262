@@ -7,6 +7,7 @@
 #include "tpl_security_probe.h"
 #include "native_meter_registry.h"
 #include "native_identity_probe.h"
+#include "native_ell_integrity.h"
 #include "c1_integrity.h"
 #include "esphome/core/log.h"
 #include <cmath>
@@ -127,12 +128,14 @@ static void log_verified_identities(
   if (parsed.has_ell_session || parsed.has_ell) {
     if (info.source==wmbus_pure::identity::ConfiguredSource::None &&
         !info.ell_matched) return;
+    const auto integrity=wmbus_pure::identity::inspect_ell_payload(
+        frame.data(),frame.size(),parsed);
     static uint32_t ell_samples=0;
     if (++ell_samples<=5 || ell_samples%100==0)
       ESP_LOGI(TAG,
         "ELL identity diagnostic ci=0x%02X dll_configured=%s ell_configured=%s "
-        "has_target=%s session_mode=%u candidate=%u conflict=%s "
-        "(metadata only; payload not verified)",
+        "has_target=%s session_mode=%u candidate=%u conflict=%s ell_crc=%u "
+        "(diagnostic only; never authorizes publication)",
         static_cast<unsigned>(parsed.ci),
         info.source!=wmbus_pure::identity::ConfiguredSource::None ? "yes" : "no",
         info.ell_matched ? "yes" : "no",
@@ -140,7 +143,8 @@ static void log_verified_identities(
         parsed.has_ell_session ?
             static_cast<unsigned>(parsed.ell_security_mode) : 0xFFu,
         static_cast<unsigned>(policy.candidate),
-        policy.multiple_configured_ids ? "yes" : "no");
+        policy.multiple_configured_ids ? "yes" : "no",
+        static_cast<unsigned>(integrity.status));
     return;
   }
   if (info.source==wmbus_pure::identity::ConfiguredSource::None ||
