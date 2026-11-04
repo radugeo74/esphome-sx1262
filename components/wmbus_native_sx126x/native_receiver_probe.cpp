@@ -6,6 +6,7 @@
 #include "xmq_auto_dispatch.h"
 #include "tpl_security_probe.h"
 #include "native_meter_registry.h"
+#include "native_identity_probe.h"
 #include "c1_integrity.h"
 #include "esphome/core/log.h"
 #include <cmath>
@@ -109,6 +110,29 @@ static std::string native_meter_id(uint32_t id) {
   char text[9]{};
   std::snprintf(text, sizeof(text), "%08u", static_cast<unsigned>(id));
   return std::string(text);
+}
+
+// Diagnostic only, after complete DLL/CRC verification. Do not use
+// TPL identity to authorize decoding, sensor bindings or radio actions.
+static void log_verified_identities(
+    const std::vector<uint8_t> &frame,
+    const std::vector<std::string> &configured_ids) {
+  const auto parsed=wmbus_pure::identity::inspect(frame.data(),frame.size());
+  const auto info=wmbus_pure::identity::diagnose(parsed,configured_ids);
+  if (info.source==wmbus_pure::identity::ConfiguredSource::None ||
+      info.source==wmbus_pure::identity::ConfiguredSource::Unsupported)
+    return; // Unconfigured meters remain silent in this diagnostic.
+  if (!info.distinct_addresses) return; // No noteworthy converter mismatch.
+  static uint32_t mismatch_samples=0;
+  if (++mismatch_samples<=5 || mismatch_samples%100==0)
+    ESP_LOGI(TAG,
+      "DLL/TPL identity diagnostic ci=0x%02X source=%u distinct=%s "
+      "dll_bcd=%s tpl_bcd=%s (observation only; no publication)",
+      static_cast<unsigned>(parsed.ci),
+      static_cast<unsigned>(info.source),
+      info.distinct_addresses ? "yes" : "no",
+      parsed.dll.decimal_bcd ? "yes" : "no",
+      parsed.has_tpl && parsed.tpl.decimal_bcd ? "yes" : "no");
 }
 
 // C1 publication is opt-in and accepts only CRC-verified, CRC-stripped
@@ -228,6 +252,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                static_cast<unsigned>(verified_frames), static_cast<unsigned>(rejected_frames));
       const auto &frame = self->t1_fifo_.result().frame;
       const auto kind = registry::classify(self->t1_fifo_.result(), self->configured_meter_ids_);
+      log_verified_identities(frame.bytes, self->configured_meter_ids_);
       const auto security = wmbus_pure::tpl_security::inspect(frame.bytes.data(), frame.bytes.size());
       if (security.has_config_word) {
         ESP_LOGI(TAG, "T1 FIFO VERIFIED id=%08u len=%u rssi=%.1f dBm configured=%s tpl_encrypted=%s mode=%u",
@@ -361,6 +386,7 @@ void NativeReceiverProbe::on_c1_stream(void *context, const uint8_t *data,
            static_cast<unsigned>(checked.boundary_status),
            static_cast<unsigned>(checked.verify_status), rssi_dbm);
   if (checked.status == verified::Status::Ok) {
+    log_verified_identities(checked.frame.bytes, self->configured_meter_ids_);
     const auto security = wmbus_pure::tpl_security::inspect(
         checked.frame.bytes.data(), checked.frame.bytes.size());
     ESP_LOGI(TAG, "C1 VERIFIED id=%08u len=%u ci=0x%02X encrypted=%s (diagnostic only)",
@@ -446,6 +472,7 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
     }
   }
   if (checked.status == verified::Status::Ok) {
+    log_verified_identities(checked.frame.bytes, self->configured_meter_ids_);
     const auto security = wmbus_pure::tpl_security::inspect(
         checked.frame.bytes.data(), checked.frame.bytes.size());
     const auto kind = registry::classify(checked, self->configured_meter_ids_);
