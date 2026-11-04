@@ -59,9 +59,41 @@ int main() {
   auto vendor=frame(0xA2);
   parsed=inspect(vendor.data(),vendor.size());
   assert(parsed.status==Status::Ok && !parsed.has_tpl);
-  // ELL is intentionally unclassified until its header is parsed safely.
+  // ELL I-IV fixed layouts from upstream parseELL. ELL identities are
+  // diagnostic ONLY: their presence cannot authorize a meter reading.
+  for (uint8_t ci : {uint8_t{0x8C},uint8_t{0x8D},
+                     uint8_t{0x8E},uint8_t{0x8F}}) {
+    auto ell_frame=frame(ci);
+    ell_frame.resize(13); // CI, CC, ACC
+    if (ci==0x8E || ci==0x8F)
+      ell_frame.insert(ell_frame.end(),{
+        0x24,0x23,0x25,0x38,0x95,0x66,0xFE,0x06});
+    if (ci==0x8D || ci==0x8F)
+      ell_frame.insert(ell_frame.end(),{
+        0x00,0x00,0x00,0x20,0x11,0x22}); // security-mode 1
+    ell_frame[0]=static_cast<uint8_t>(ell_frame.size()-1);
+    auto ell_result=inspect(ell_frame.data(),ell_frame.size());
+    assert(ell_result.status==Status::Ok);
+    assert(ell_result.has_ell==(ci==0x8E || ci==0x8F));
+    assert(ell_result.has_ell_session==(ci==0x8D || ci==0x8F));
+    assert(ell_result.application_offset==ell_frame.size());
+    assert(ell_result.ell_security_mode==
+           ((ci==0x8D || ci==0x8F) ? 1 : 0xFF));
+    if (ell_result.has_ell) {
+      assert(same_id(ell_result.ell,"66953825"));
+      auto classified=diagnose(ell_result,std::vector<std::string>{"66953825"});
+      assert(classified.ell_matched &&
+             classified.source==ConfiguredSource::None);
+    }
+    ell_frame.pop_back();
+    ell_frame[0]=static_cast<uint8_t>(ell_frame.size()-1);
+    assert(inspect(ell_frame.data(),ell_frame.size()).status==Status::TooShort);
+  }
+  auto ell_v=frame(0x86);
+  assert(inspect(ell_v.data(),ell_v.size()).status==Status::UnsupportedCi);
+  // ELL I requires CC and ACC, not just the CI byte.
   auto ell=frame(0x8C);
-  assert(inspect(ell.data(),ell.size()).status==Status::UnsupportedCi);
+  assert(inspect(ell.data(),ell.size()).status==Status::TooShort);
   // Non-BCD IDs are valid diagnostic addresses as in original wmbusmeters,
   // but never silently converted to numeric DLL IDs.
   raw[7]=0x8B;
