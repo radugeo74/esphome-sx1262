@@ -64,7 +64,7 @@ CONFIG_SCHEMA = cv.Schema({
     })),
     cv.Optional(CONF_XMQ_TEXT_SENSORS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
-        cv.Required(CONF_FIELD): cv.one_of("status", "at_date", "target_datetime", "meter_datetime"),
+        cv.Required(CONF_FIELD): cv.one_of("status", "at_date", "target_datetime", "meter_datetime", "current_date", "previous_date"),
         cv.Required("sensor"): text_sensor.text_sensor_schema(),
     })),
     cv.Optional(CONF_CONFIGURED_METER_IDS, default=[]): cv.ensure_list(cv.All(cv.string_strict, validate_meter_id)),
