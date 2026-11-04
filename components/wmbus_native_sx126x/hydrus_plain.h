@@ -1,0 +1,81 @@
+#pragma once
+// Diehl Hydrus standard-record interpretation from an already plaintext
+// application; the original hydrus.xmq is kept unchanged in drivers/.
+// No AES, manufacturer-specific transformations or implicit decryption.
+#include <cstddef>
+#include <cstdint>
+#include "standard_dif_vif.h"
+#include "pure_frame_header.h"
+#include "calculate_subset.h"
+namespace xmq_portable { namespace hydrus {
+enum class Status : uint8_t { Ok, Invalid, Unsupported, Encrypted, MissingFields, Capacity };
+inline bool add(CalcValue *out, size_t capacity, size_t &n, const char *name, double value) {
+  if (n>=capacity) return false;
+  out[n++] = {name,value};
+  return true;
+}
+inline Status decode_clear_application(const uint8_t *payload, size_t size,
+                                       CalcValue *out, size_t capacity, size_t &out_count) {
+  out_count = 0;
+  standard::Record rec[48]{};
+  size_t n=0;
+  auto result=standard::records(payload,size,rec,48,n);
+  if (result!=standard::Status::Ok)
+    return result==standard::Status::Capacity?Status::Capacity:Status::Invalid;
+  bool total=false;
+  for (size_t i=0;i<n;i++) {
+    const auto &r=rec[i];
+    if (!r.numeric || r.function!=0) continue;
+    const int v=r.vif;
+    const int storage=r.storage;
+    const char *field=nullptr;
+    double value=r.value;
+    if (v>=0x10 && v<=0x17) {
+      value*=standard::scale10(v-0x16);
+      if(storage==0 && r.tariff==0) { field="total_m3"; total=true; }
+      else if(storage==1 && r.tariff==0) field="total_at_date_m3";
+      else if(storage==3 && r.tariff==0) field="target_m3";
+      else if(storage==0 && r.tariff==1) field="total_tariff1_m3";
+      else if(storage==0 && r.tariff==2) field="total_tariff2_m3";
+    } else if(v>=0x38 && v<=0x3F) {
+      value*=standard::scale10(v-0x3E);
+      if(storage==0) field="flow_m3h";
+    } else if(v>=0x58 && v<=0x5B) {
+      value*=standard::scale10(v-0x5B);
+      if(storage==0) field="flow_temperature_c";
+    } else if(v>=0x60 && v<=0x63) {
+      value*=standard::scale10(v-0x63);
+      if(storage==0) field="external_temperature_c";
+    } else if(v==0x7D && r.vif_extension==0x74) {
+      value/=365.25;
+      field="remaining_battery_life_y";
+    }
+    if(field && !add(out,capacity,out_count,field,value)) {
+      out_count=0; return Status::Capacity;
+    }
+  }
+  if(!total) {out_count=0;return Status::MissingFields;}
+  return Status::Ok;
+}
+// Strict raw RF path: only cleartext CI=7A/72 with a documented security
+// configuration of zero. Official underscore fixtures may contain a clear
+// *post-decryption* payload and must be tested via decode_clear_application.
+inline Status decode_plain_frame(const uint8_t *frame, size_t size,
+                                 CalcValue *out, size_t capacity, size_t &count) {
+  count=0;
+  wmbus_pure::Header h{};
+  if(wmbus_pure::parse_header(frame,size,h)!=wmbus_pure::HeaderStatus::Ok)
+    return Status::Invalid;
+  const bool dme=h.manufacturer==0x11A5;
+  const bool hyd=h.manufacturer==0x2324;
+  if(!dme && !hyd) return Status::Unsupported;
+  size_t at=0;
+  if(h.ci==0x7A) at=15;
+  else if(h.ci==0x72) at=23;
+  else return Status::Unsupported;
+  if(size<at) return Status::Invalid;
+  const uint16_t config=uint16_t(frame[at-2])|(uint16_t(frame[at-1])<<8);
+  if(config!=0) return Status::Encrypted; // conservative: unknown modes fail closed
+  return decode_clear_application(frame+at,size-at,out,capacity,count);
+}
+} }
