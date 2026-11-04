@@ -33,7 +33,9 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
     if (!r.numeric) continue;
     // Standard EN13757 Date G and DateTime fields. These are not
     // floating-point sensor values and must remain typed dates.
-    if (r.vif==0x6C || r.vif==0x6D) {
+    if ((r.vif==0x6C || r.vif==0x6D) &&
+        r.vif_extension_count==0 && r.function==0 &&
+        r.tariff==0 && r.subunit==0) {
       const char *name = nullptr;
       if (r.vif==0x6C && r.storage==1) name="at_date";
       else if (r.vif==0x6D && (r.storage==3 || r.storage==8))
@@ -52,6 +54,7 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
     const int storage=r.storage;
     const char *field=nullptr;
     double value=r.value;
+    if (r.subunit!=0) continue; // Do not map another subunit as the main meter.
     if (v>=0x10 && v<=0x17) {
       value*=standard::scale10(v-0x16);
       if (r.vif_extension_count == 1 && r.vif_extension == 0x3C &&
