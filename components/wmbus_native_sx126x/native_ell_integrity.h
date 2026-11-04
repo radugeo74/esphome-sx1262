@@ -16,7 +16,8 @@ struct EllIntegrityResult {
 inline EllIntegrityResult inspect_ell_payload(
     const uint8_t *frame,size_t size,const Result &identity) {
   EllIntegrityResult result{};
-  if (!frame || identity.status!=Status::Ok ||
+  if (!frame || size<1 || size!=static_cast<size_t>(frame[0])+1 ||
+      identity.status!=Status::Ok ||
       (identity.ci!=0x8C && identity.ci!=0x8D &&
        identity.ci!=0x8E && identity.ci!=0x8F))
     return result;
@@ -55,7 +56,8 @@ struct NestedTplResult {
 inline NestedTplResult inspect_nested_tpl(const uint8_t *frame,size_t size,
                                           const Result &identity) {
   NestedTplResult out{};
-  if (!frame || identity.status!=Status::Ok ||
+  if (!frame || size<1 || size!=static_cast<size_t>(frame[0])+1 ||
+      identity.status!=Status::Ok ||
       inspect_ell_payload(frame,size,identity).status!=EllIntegrity::Valid)
     return out;
   const size_t at=identity.application_offset;
