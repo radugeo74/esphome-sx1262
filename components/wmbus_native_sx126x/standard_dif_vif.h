@@ -4,15 +4,19 @@
 #include <cstddef>
 #include <cstdint>
 #include <cmath>
+#include <cstring>
+#include <limits>
 #include "calculate_subset.h"
 namespace xmq_portable { namespace standard {
 enum class Status : uint8_t { Ok, Invalid, Unsupported, Capacity };
 struct Record {
   uint8_t dif{0}, vif{0}, vif_extension{0};
-  uint16_t storage{0};
-  uint8_t tariff{0}, function{0};
+  uint32_t storage{0};
+  uint16_t tariff{0};
+  uint8_t subunit{0}, function{0};
   double value{0};
-  uint32_t raw{0};
+  uint32_t raw{0}; // Low 32 bits, retained for date/time compatibility.
+  uint64_t raw64{0};
   bool numeric{false};
 };
 struct Calendar {
@@ -66,11 +70,15 @@ inline Status records(const uint8_t *data, size_t size, Record *out,
     r.storage = (dif >> 6) & 1;
     unsigned shift = 1;
     unsigned tariff_shift = 0;
+    unsigned subunit_shift = 0;
     while (dif & 0x80) {
-      if (i >= size || shift > 13) return Status::Invalid;
+      if (i >= size || shift > 29 || tariff_shift > 14 || subunit_shift > 7)
+        return Status::Unsupported;
       const uint8_t ext = data[i++];
-      r.storage |= static_cast<uint16_t>(ext & 0x0F) << shift;
-      r.tariff |= static_cast<uint8_t>((ext >> 4) & 3) << tariff_shift;
+      r.storage |= static_cast<uint32_t>(ext & 0x0F) << shift;
+      r.tariff |= static_cast<uint16_t>((ext >> 4) & 3) << tariff_shift;
+      r.subunit |= static_cast<uint8_t>((ext >> 6) & 1) << subunit_shift;
+      ++subunit_shift;
       tariff_shift += 2;
       shift += 4;
       dif = ext;
@@ -78,23 +86,23 @@ inline Status records(const uint8_t *data, size_t size, Record *out,
     if (i >= size) return Status::Invalid;
     uint8_t vif = data[i++];
     r.vif = vif & 0x7F;
-    if (r.vif == 0x7C) { // variable VIF label; validated length
+    if (r.vif == 0x7C) { // Variable-length VIF label (including extensions).
       if (i >= size) return Status::Invalid;
       const size_t label = data[i++];
       if (label > size-i) return Status::Invalid;
       i += label;
     }
-    if (vif & 0x80) {
+    // The high bit announces the VIFE chain. The previous implementation
+    // failed to consume the extension after a literal 0xFD or 0xFB, causing
+    // subsequent record bytes to be treated as new DIFs.
+    bool more = (vif & 0x80u) != 0;
+    unsigned extensions = 0;
+    while (more) {
       if (i >= size) return Status::Invalid;
-      r.vif_extension = data[i] & 0x7F;
-      do {
-        vif = data[i++];
-        if ((vif & 0x80) && i >= size) return Status::Invalid;
-      } while (vif & 0x80);
-    } else if (r.vif == 0x7D || r.vif == 0x7B) {
-      // 0xFD/FB extended VIF has its first extension octet even if
-      // higher-level matching is not yet supported.
-      if (i >= size) return Status::Invalid;
+      if (++extensions > 10) return Status::Unsupported;
+      const uint8_t ext = data[i++];
+      if (extensions == 1) r.vif_extension = ext & 0x7Fu;
+      more = (ext & 0x80u) != 0;
     }
     const uint8_t fmt = r.dif & 0x0F;
     size_t n = format_length(fmt);
@@ -107,18 +115,44 @@ inline Status records(const uint8_t *data, size_t size, Record *out,
     }
     if (n == SIZE_MAX) return Status::Unsupported;
     if (n > size-i) return Status::Invalid;
-    if (fmt >= 1 && fmt <= 4) {
-      uint32_t raw = 0;
-      for (size_t j = 0; j < n; ++j) raw |= uint32_t(data[i+j]) << (8*j);
-      r.raw = raw;
-      int32_t signed_value = static_cast<int32_t>(raw);
-      if (n < 4 && (data[i+n-1] & 0x80))
-        signed_value = static_cast<int32_t>(raw | (~uint32_t(0) << (8*n)));
-      r.value = signed_value; r.numeric = true;
-    } else if (fmt == 9 || fmt == 10 || fmt == 11 || fmt == 12 || fmt == 14) {
+    if ((fmt >= 1 && fmt <= 4) || fmt == 6 || fmt == 7) {
+      uint64_t raw = 0;
+      for (size_t j = 0; j < n; ++j)
+        raw |= static_cast<uint64_t>(data[i+j]) << (8*j);
+      r.raw = static_cast<uint32_t>(raw);
+      r.raw64 = raw;
+      // The old dvparser defaults to signed extraction. For unsigned
+      // measurements the calling field matcher can use raw64 explicitly.
+      const unsigned bits = static_cast<unsigned>(n*8);
+      if (bits < 64 && (raw & (uint64_t{1} << (bits-1))))
+        r.value = static_cast<double>(static_cast<int64_t>(
+            raw | (~uint64_t{0} << bits)));
+      else if (bits == 64) {
+        const double magnitude = static_cast<double>(
+            raw & ~(uint64_t{1} << 63));
+        r.value = (raw & (uint64_t{1} << 63)) ?
+            magnitude - 9223372036854775808.0 : magnitude;
+      } else
+        r.value = static_cast<double>(raw);
+      r.numeric = true;
+    } else if (fmt == 5) {
+      // IEEE 754 binary32, little-endian, as in the original dvparser.
+      uint32_t bits = 0;
+      for (size_t j=0; j<4; ++j)
+        bits |= static_cast<uint32_t>(data[i+j]) << (8*j);
+      float v=0;
+      static_assert(sizeof(v)==sizeof(bits), "binary32 required");
+      std::memcpy(&v,&bits,sizeof(v));
+      if (!std::isfinite(v)) return Status::Unsupported;
+      r.raw=bits; r.raw64=bits;
+      r.value=static_cast<double>(v); r.numeric=true;
+    } else if (fmt == 9 || fmt == 10 || fmt == 11 ||
+               fmt == 12 || fmt == 14) {
       double multiplier = 1, value = 0;
       bool negative = false;
-      for (size_t j=0;j<n;j++) {
+      // BCD bytes contain the least significant pair first. An F in the
+      // most significant nibble is a negative sign (upstream convention).
+      for (size_t j=0; j<n; ++j) {
         const uint8_t low=data[i+j]&15, high=data[i+j]>>4;
         if (low>9 || (high>9 && !(j==n-1 && high==0xF)))
           return Status::Unsupported;
@@ -127,8 +161,8 @@ inline Status records(const uint8_t *data, size_t size, Record *out,
         else { value += high*multiplier; multiplier *= 10; }
       }
       r.value = negative ? -value : value; r.numeric = true;
-    } else if (fmt==5 || fmt==6 || fmt==7 || fmt==13) {
-      // Future standard types: preserve bounds, do not invent values.
+    } else if (fmt == 13) {
+      // LVAR text/binary remains opaque. Do not publish invented numbers.
       r.numeric = false;
     }
     i += n;
