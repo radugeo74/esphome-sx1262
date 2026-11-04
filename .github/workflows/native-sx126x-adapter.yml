@@ -163,6 +163,12 @@ jobs:
             experimental/semtech-radio/test_native_ell_integrity.cpp \
             -o /tmp/test-native-ell-integrity
           /tmp/test-native-ell-integrity
+      - name: Test configured T1/C1 publication admission and identity gate
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \\
+            experimental/semtech-radio/test_native_publication_gate.cpp \\
+            -o /tmp/test-native-publication-gate
+          /tmp/test-native-publication-gate
       - name: Test conservative TPL encryption classification
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
