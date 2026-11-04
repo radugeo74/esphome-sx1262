@@ -46,6 +46,12 @@ int main() {
   assert(count==0);
   const uint8_t bad_float[]={0x05,0x13,0x00,0x00,0xC0,0x7F};
   assert(records(bad_float,sizeof(bad_float),records_out,2,count)==Status::Unsupported);
+  // One valid record followed by a truncated record must never yield
+  // partial values, even though the first record itself was valid.
+  const uint8_t partial[]={0x02,0x13,0x39,0x30,0x02,0xFD};
+  count=2;
+  assert(records(partial,sizeof(partial),records_out,2,count)==Status::Invalid);
+  assert(count==0);
   // LVAR stays opaque and cannot be mistaken for a numeric meter value.
   auto text=single({0x0D,0x7C,0x03,0x41,0x42,0x43,0x03,0x31,0x32,0x33});
   assert(!text.numeric);
