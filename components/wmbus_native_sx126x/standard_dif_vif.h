@@ -12,6 +12,10 @@ enum class Status : uint8_t { Ok, Invalid, Unsupported, Capacity };
 struct Record {
   uint8_t dif{0}, vif{0}, vif_extension{0};
   uint8_t vif_extension_count{0};
+  // dvparser.cc distinguishes extended base VIF from combinable modifiers.
+  uint16_t full_vif{0};
+  uint8_t modifier_count{0};
+  uint16_t modifiers[10]{};
   uint32_t storage{0};
   uint16_t tariff{0};
   uint8_t subunit{0}, function{0};
@@ -87,6 +91,11 @@ inline Status parse_records(const uint8_t *data, size_t size, Record *out,
     if (i >= size) return Status::Invalid;
     uint8_t vif = data[i++];
     r.vif = vif & 0x7F;
+    r.full_vif = r.vif;
+    const bool extended_base = (vif == 0xFB || vif == 0xFD ||
+                                vif == 0xEF || vif == 0xFF);
+    if (extended_base) r.full_vif = static_cast<uint16_t>(r.vif) << 8;
+    bool pending_modifier = false;
     if (r.vif == 0x7C) { // Variable-length VIF label (including extensions).
       if (i >= size) return Status::Invalid;
       const size_t label = data[i++];
@@ -104,8 +113,24 @@ inline Status parse_records(const uint8_t *data, size_t size, Record *out,
       const uint8_t ext = data[i++];
       if (extensions == 1) r.vif_extension = ext & 0x7Fu;
       r.vif_extension_count = static_cast<uint8_t>(extensions);
+      const uint16_t part = ext & 0x7Fu;
+      if (extended_base && extensions == 1) {
+        // The first VIFE after FB/FD/EF/FF selects the extended base VIF.
+        r.full_vif |= part;
+      } else if (pending_modifier) {
+        r.modifiers[r.modifier_count++] |= part;
+        pending_modifier = false;
+      } else if (part == 0x7C || part == 0x7F) {
+        if (r.modifier_count >= 10) return Status::Unsupported;
+        r.modifiers[r.modifier_count] = part << 8;
+        pending_modifier = true;
+      } else {
+        if (r.modifier_count >= 10) return Status::Unsupported;
+        r.modifiers[r.modifier_count++] = part;
+      }
       more = (ext & 0x80u) != 0;
     }
+    if (pending_modifier) return Status::Unsupported;
     const uint8_t fmt = r.dif & 0x0F;
     size_t n = format_length(fmt);
     if (fmt == 13) {
