@@ -40,6 +40,23 @@ int main() {
       "11776622","fhkvdataiii",captures,12,result)==PureDecodeStatus::Ok);
   assert(std::fabs(get(result,"current_hca")-131)<1e-6);
   assert(std::fabs(get(result,"previous_hca")-1026)<1e-6);
+  // Date formulas are produced by the same configured RF dispatch, not
+  // inferred from raw bytes or replaced by numeric sensor fields.
+  const auto *heat_descriptor=find_decode_descriptor("fhkvdataiii",0xA0);
+  assert(heat_descriptor && result.date_count==2);
+  bool current_date=false, previous_date=false;
+  for(size_t i=0;i<result.date_count;i++) {
+    const auto &date=result.dates[i];
+    const char *name=heat_descriptor->tables.date_calculations[i].field;
+    if(std::strcmp(name,"current")==0) {
+      assert(date.year==2020 && date.month==2 && date.day==8);
+      current_date=true;
+    } else if(std::strcmp(name,"previous")==0) {
+      assert(date.year==2019 && date.month==12 && date.day==31);
+      previous_date=true;
+    }
+  }
+  assert(current_date && previous_date);
   // Unmodified upstream iPERL T1 fixtures: explicit and resolved AUTO
   // ultimately enter this same configured-meter boundary.
   auto iperl=hex("1844AE4C4455223368077A55000000_041389E20100023B0000");
