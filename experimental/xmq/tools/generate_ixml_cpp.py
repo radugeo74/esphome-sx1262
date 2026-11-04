@@ -99,6 +99,10 @@ def compile_calculations(path):
             expr = values(entries, "calculate")
             if not expr:
                 continue
+            # PointInTime expressions have a separate strictly checked
+            # calendar compiler. Do not mistake them for numeric formulas.
+            if values(entries, "quantity") == ["PointInTime"]:
+                continue
             if len(name) != 1 or len(expr) != 1:
                 raise ValueError("Ambiguous calculate field")
             # Explicitly compile only an arithmetic subset; other formulas remain
@@ -108,8 +112,8 @@ def compile_calculations(path):
             expression = expression.replace("&&", " and ").replace("||", " or ")
             try:
                 tree = ast.parse(expression, mode="eval")
-            except SyntaxError:
-                continue
+            except SyntaxError as exc:
+                raise ValueError(f"{path}: unsupported numeric expression in {name[0]}: {expr[0]}") from exc
             steps = []
             def walk(node):
                 if isinstance(node, ast.Constant) and type(node.value) in (float, int):
@@ -145,8 +149,8 @@ def compile_calculations(path):
                     raise ValueError("Unsupported expression")
             try:
                 walk(tree.body)
-            except ValueError:
-                continue
+            except ValueError as exc:
+                raise ValueError(f"{path}: unsupported calculation in {name[0]}: {expr[0]}") from exc
             result.append((name[0], steps))
     return result
 
