@@ -51,9 +51,40 @@ static float round_for_sensor(float value, sensor::Sensor *output) {
 
 void NativeReceiverProbe::publish_xmq_text_(
     const std::vector<uint8_t> &frame, const std::string &id,
-    const char *driver) {
+    const char *driver, const xmq_portable::DecodedPayload &decoded) {
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
   if (this->xmq_text_sensors_.empty()) return;
+  // Generated XMQ date formulas are already evaluated by the successful
+  // configured frame decode. Publish typed dates without guessing an order
+  // or decoding the frame twice.
+  if (driver && std::strcmp(driver, "fhkvdataiii") == 0) {
+    const auto *descriptor =
+        xmq_portable::find_decode_descriptor("fhkvdataiii", 0xA0);
+    if (descriptor && decoded.dates &&
+        decoded.date_count <= descriptor->tables.date_calculation_count) {
+      for (size_t i = 0; i < decoded.date_count; ++i) {
+        const char *source = descriptor->tables.date_calculations[i].field;
+        const char *field =
+            source && std::strcmp(source, "current") == 0 ? "current_date" :
+            source && std::strcmp(source, "previous") == 0 ? "previous_date" :
+            nullptr;
+        if (!field) continue;
+        const auto &date = decoded.dates[i];
+        const int days = xmq_portable::days_in_month(date.year, date.month);
+        if (date.year < 1 || date.year > 9999 ||
+            date.day < 1 || date.day > days) continue;
+        char formatted[16]{};
+        std::snprintf(formatted, sizeof(formatted), "%04d-%02d-%02d",
+                      date.year, date.month, date.day);
+        for (const auto &binding : this->xmq_text_sensors_) {
+          if (binding.meter_id == id && binding.field == field &&
+              binding.output != nullptr)
+            binding.output->publish_state(formatted);
+        }
+      }
+    }
+    return;
+  }
   const auto values = xmq_portable::text_fields::decode(
       frame.data(), frame.size(), driver);
   for (const auto &binding : this->xmq_text_sensors_) {
@@ -69,6 +100,7 @@ void NativeReceiverProbe::publish_xmq_text_(
   (void)frame;
   (void)id;
   (void)driver;
+  (void)decoded;
 #endif
 }
 
@@ -114,7 +146,7 @@ void NativeReceiverProbe::publish_c1_plaintext_(
       bytes.data(), bytes.size(), id.c_str(), selected.driver,
       captures, 12, decoded);
   if (status != xmq_portable::PureDecodeStatus::Ok) return;
-  this->publish_xmq_text_(bytes, id, selected.driver);
+  this->publish_xmq_text_(bytes, id, selected.driver, decoded);
   for (const auto &binding : this->xmq_sensors_) {
     if (binding.meter_id != id || binding.output == nullptr) continue;
     for (size_t i=0; i<decoded.value_count; ++i) {
@@ -264,7 +296,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
               frame.bytes.data(), frame.bytes.size(), id.c_str(), selected_driver,
               captures, 12, decoded);
           if (status == xmq_portable::PureDecodeStatus::Ok) {
-             self->publish_xmq_text_(frame.bytes, id, selected_driver);
+             self->publish_xmq_text_(frame.bytes, id, selected_driver, decoded);
             if (configured_driver != nullptr && configured_driver->driver == "auto" &&
                 configured_driver->logged_auto_driver != selected_driver) {
               configured_driver->logged_auto_driver = selected_driver;
