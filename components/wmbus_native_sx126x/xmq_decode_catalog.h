@@ -5,6 +5,7 @@
 #include <cstring>
 #include "frame_bridge.h"
 #include "xmq_generated.h"
+#include "xmq_native_descriptors.h"
 #include "pure_frame_header.h"
 #include "pure_meter_match.h"
 #include "iperl_plain.h"
@@ -47,7 +48,7 @@ inline DriverStatus decode_descriptor_frame(const DecodeDescriptor &descriptor,
 
 inline const DecodeDescriptor *find_decode_descriptor(const char *name, uint8_t ci) {
   static const DecodeDescriptor catalog[] = {
-#include "xmq_native_descriptors.h"
+    XMQ_NATIVE_CATALOG_ENTRIES
   };
   if (!name) return nullptr;
   for (const auto &descriptor : catalog)
