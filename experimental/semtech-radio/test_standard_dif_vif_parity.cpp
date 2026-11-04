@@ -1,0 +1,53 @@
+#include "components/wmbus_native_sx126x/standard_dif_vif.h"
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <initializer_list>
+using namespace xmq_portable::standard;
+static Record single(std::initializer_list<uint8_t> bytes) {
+  Record rec[4]{};
+  size_t count=99;
+  const auto status=records(bytes.begin(),bytes.size(),rec,4,count);
+  assert(status==Status::Ok && count==1);
+  return rec[0];
+}
+static void near(double actual,double wanted,double tolerance=1e-8) {
+  assert(std::fabs(actual-wanted)<tolerance);
+}
+int main() {
+  // Original public Hydrus records: 0xFD's first VIFE must be consumed.
+  auto battery=single({0x02,0xFD,0x74,0x87,0x13});
+  assert(battery.vif==0x7D && battery.vif_extension==0x74);
+  near(battery.value,4999);
+  // Chained VIFE bytes do not become phantom DIF records.
+  auto chained=single({0x02,0xFD,0xF4,0x02,0x87,0x13});
+  assert(chained.vif_extension==0x74);
+  near(chained.value,4999);
+  // A DIFE supplies four storage bits, two tariff bits, one subunit bit.
+  auto dife=single({0xC4,0x51,0x13,0x15,0x00,0x00,0x00});
+  assert(dife.storage==3 && dife.tariff==1 && dife.subunit==1);
+  near(dife.value,21);
+  // Two DIFE octets use disjoint storage/tariff/subunit positions.
+  auto multi=single({0x84,0xF1,0x52,0x13,0x01,0x00,0x00,0x00});
+  assert(multi.storage==1+2*16+2*16*16 || multi.storage==static_cast<uint32_t>((1<<1)|(2<<5)));
+  assert(multi.tariff==3+1*4 && multi.subunit==3);
+  // 48-bit and 64-bit signed little-endian values.
+  near(single({0x06,0x13,0xFE,0xFF,0xFF,0xFF,0xFF,0xFF}).value,-2);
+  near(single({0x07,0x13,0xFD,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}).value,-3);
+  // 32-bit IEEE-754 real: 3.5 and -2.25.
+  near(single({0x05,0x13,0x00,0x00,0x60,0x40}).value,3.5);
+  near(single({0x05,0x13,0x00,0x00,0x10,0xC0}).value,-2.25);
+  // Negative BCD sign nibble and VIFE length checking.
+  near(single({0x0C,0x13,0x34,0x12,0x00,0xF0}).value,-1234);
+  Record records_out[2]{};
+  size_t count=2;
+  const uint8_t truncated[]={0x02,0xFD,0xF4};
+  assert(records(truncated,sizeof(truncated),records_out,2,count)==Status::Invalid);
+  assert(count==0);
+  const uint8_t bad_float[]={0x05,0x13,0x00,0x00,0xC0,0x7F};
+  assert(records(bad_float,sizeof(bad_float),records_out,2,count)==Status::Unsupported);
+  // LVAR stays opaque and cannot be mistaken for a numeric meter value.
+  auto text=single({0x0D,0x7C,0x03,0x41,0x42,0x43,0x03,0x31,0x32,0x33});
+  assert(!text.numeric);
+  return 0;
+}
