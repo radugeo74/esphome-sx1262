@@ -6,6 +6,7 @@
 #include <cstdint>
 #include "standard_dif_vif.h"
 #include "pure_frame_header.h"
+#include "tpl_security_probe.h"
 #include "calculate_subset.h"
 namespace xmq_portable { namespace hydrus {
 enum class Status : uint8_t { Ok, Invalid, Unsupported, Encrypted, MissingFields, Capacity };
@@ -74,8 +75,9 @@ inline Status decode_plain_frame(const uint8_t *frame, size_t size,
   else if(h.ci==0x72) at=23;
   else return Status::Unsupported;
   if(size<at) return Status::Invalid;
-  const uint16_t config=uint16_t(frame[at-2])|(uint16_t(frame[at-1])<<8);
-  if(config!=0) return Status::Encrypted; // conservative: unknown modes fail closed
+  const auto security = wmbus_pure::tpl_security::inspect(frame,size);
+  if (security.state != wmbus_pure::tpl_security::State::NotEncrypted)
+    return Status::Encrypted; // mode zero only, no key or AES supported
   return decode_clear_application(frame+at,size-at,out,capacity,count);
 }
 } }
