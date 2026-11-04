@@ -655,11 +655,11 @@ void NativeReceiverProbe::setup() {
 }
 
 void NativeReceiverProbe::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) {
-  const wmbus_radio::native_radio::PacketView view{
+  const native_radio::PacketView view{
     packet.data(), packet.size(), rssi, snr
   };
-  const auto status = wmbus_radio::native_radio::validate(view);
-  if (status != wmbus_radio::native_radio::InputStatus::Ok) {
+  const auto status = native_radio::validate(view);
+  if (status != native_radio::InputStatus::Ok) {
     ++this->rejected_;
     ESP_LOGW(TAG, "Native packet ignored status=%u size=%u rejected=%u",
              static_cast<unsigned>(status), static_cast<unsigned>(packet.size()),
