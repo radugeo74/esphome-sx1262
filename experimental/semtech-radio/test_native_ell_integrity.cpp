@@ -138,6 +138,41 @@ int main() {
        std::vector<std::string>{"66953825"});
   assert(target.candidate==CandidateSource::Unsupported &&
          !target.configured_candidate && !target.permits_publication);
+  // The old parsed identity must never be reused for a different
+  // same-length frame. Recompute metadata before trusting ELL/TPL.
+  auto changed_dll=nested;
+  changed_dll[4]^=1; // synthetically change converter ID
+  assert(inspect_ell_payload(changed_dll.data(),changed_dll.size(),
+          parsed_nested).status==EllIntegrity::Unsupported);
+  auto changed_ell=nested;
+  changed_ell[original.application_offset-14]^=1; // ELL address ID byte
+  assert(inspect_ell_payload(changed_ell.data(),changed_ell.size(),
+          parsed_nested).status==EllIntegrity::Unsupported);
+  auto changed_mode=nested;
+  changed_mode[original.application_offset-3]^=0x20; // ELL security mode
+  assert(inspect_ell_payload(changed_mode.data(),changed_mode.size(),
+          parsed_nested).status==EllIntegrity::Unsupported);
+  auto stale_target=identify_nested_candidate(changed_dll.data(),
+       changed_dll.size(),parsed_nested,
+       std::vector<std::string>{"66953825"});
+  assert(stale_target.candidate==CandidateSource::Unsupported &&
+         !stale_target.configured_candidate && !stale_target.permits_publication);
+  // No TPL following an otherwise valid ELL payload must not select DLL/ELL.
+  auto absent_tpl=nested;
+  absent_tpl.resize(original.application_offset);
+  absent_tpl[0]=static_cast<uint8_t>(absent_tpl.size()-1);
+  const uint16_t absent_crc=wmbus_pure::crc16_en13757(
+      absent_tpl.data()+original.application_offset,0);
+  absent_tpl[original.application_offset-2]=static_cast<uint8_t>(absent_crc);
+  absent_tpl[original.application_offset-1]=static_cast<uint8_t>(absent_crc>>8);
+  tp=inspect_nested_tpl(absent_tpl.data(),absent_tpl.size(),
+                        inspect(absent_tpl.data(),absent_tpl.size()));
+  assert(tp.status==NestedTplStatus::NoTpl && !tp.has_address);
+  stale_target=identify_nested_candidate(absent_tpl.data(),absent_tpl.size(),
+      inspect(absent_tpl.data(),absent_tpl.size()),
+      std::vector<std::string>{"66953825"});
+  assert(stale_target.candidate==CandidateSource::Unsupported &&
+         !stale_target.configured_candidate && !stale_target.permits_publication);
   // A valid DLL CRC does not help if the ELL payload CRC is wrong.
   auto bad_nested=nested;
   bad_nested[original.application_offset-1]^=0x01;
