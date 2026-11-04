@@ -56,6 +56,71 @@ int main() {
                                    inspect(frame.data(),frame.size()));
     assert(check.status==EllIntegrity::EncryptedOrUnknown);
   }
+  // Verified plaintext ELL IV with an immediately nested TPL long header.
+  auto nested=make_ell(0x8F,0);
+  const uint8_t tpl[]={0x72,0x25,0x38,0x95,0x66,0x24,0x23,
+                       0xFE,0x06,0x4E,0x00,0x00,0x00};
+  const auto original=inspect(nested.data(),nested.size());
+  assert(original.status==Status::Ok);
+  nested.resize(original.application_offset);
+  nested.insert(nested.end(),tpl,tpl+sizeof(tpl));
+  nested[0]=static_cast<uint8_t>(nested.size()-1);
+  const uint16_t nested_crc=wmbus_pure::crc16_en13757(
+      nested.data()+original.application_offset,
+      nested.size()-original.application_offset);
+  nested[original.application_offset-2]=static_cast<uint8_t>(nested_crc);
+  nested[original.application_offset-1]=static_cast<uint8_t>(nested_crc>>8);
+  auto parsed_nested=inspect(nested.data(),nested.size());
+  auto tp=inspect_nested_tpl(nested.data(),nested.size(),parsed_nested);
+  assert(tp.status==NestedTplStatus::LongHeader && tp.has_address);
+  assert(same_id(tp.address,"66953825") &&
+         tp.address.manufacturer==0x2324);
+  assert(tp.application_offset==nested.size());
+  // A valid DLL CRC does not help if the ELL payload CRC is wrong.
+  auto bad_nested=nested;
+  bad_nested[original.application_offset-1]^=0x01;
+  tp=inspect_nested_tpl(bad_nested.data(),bad_nested.size(),
+                         inspect(bad_nested.data(),bad_nested.size()));
+  assert(tp.status==NestedTplStatus::NotVerified && !tp.has_address);
+  // ELL encrypted/unknown sessions are never treated as plaintext.
+  auto encrypted=make_ell(0x8F,1);
+  encrypted.resize(original.application_offset);
+  encrypted.insert(encrypted.end(),tpl,tpl+sizeof(tpl));
+  encrypted[0]=static_cast<uint8_t>(encrypted.size()-1);
+  tp=inspect_nested_tpl(encrypted.data(),encrypted.size(),
+                        inspect(encrypted.data(),encrypted.size()));
+  assert(tp.status==NestedTplStatus::NotVerified);
+  // Short nested CI, unknown NWL/AFL and truncated header fail closed.
+  auto short_tpl=nested;
+  short_tpl.resize(original.application_offset);
+  short_tpl.insert(short_tpl.end(),{0x7A,0,0,0,0});
+  short_tpl[0]=static_cast<uint8_t>(short_tpl.size()-1);
+  const uint16_t short_crc=wmbus_pure::crc16_en13757(
+      short_tpl.data()+original.application_offset,5);
+  short_tpl[original.application_offset-2]=static_cast<uint8_t>(short_crc);
+  short_tpl[original.application_offset-1]=static_cast<uint8_t>(short_crc>>8);
+  tp=inspect_nested_tpl(short_tpl.data(),short_tpl.size(),
+                        inspect(short_tpl.data(),short_tpl.size()));
+  assert(tp.status==NestedTplStatus::ShortHeader && !tp.has_address);
+  auto unknown_layer=short_tpl;
+  unknown_layer[original.application_offset]=0x81;
+  const uint16_t other_crc=wmbus_pure::crc16_en13757(
+      unknown_layer.data()+original.application_offset,5);
+  unknown_layer[original.application_offset-2]=static_cast<uint8_t>(other_crc);
+  unknown_layer[original.application_offset-1]=static_cast<uint8_t>(other_crc>>8);
+  tp=inspect_nested_tpl(unknown_layer.data(),unknown_layer.size(),
+                        inspect(unknown_layer.data(),unknown_layer.size()));
+  assert(tp.status==NestedTplStatus::NoTpl);
+  auto truncated_tpl=nested;
+  truncated_tpl.resize(original.application_offset+2);
+  truncated_tpl[0]=static_cast<uint8_t>(truncated_tpl.size()-1);
+  const uint16_t truncated_crc=wmbus_pure::crc16_en13757(
+      truncated_tpl.data()+original.application_offset,2);
+  truncated_tpl[original.application_offset-2]=static_cast<uint8_t>(truncated_crc);
+  truncated_tpl[original.application_offset-1]=static_cast<uint8_t>(truncated_crc>>8);
+  tp=inspect_nested_tpl(truncated_tpl.data(),truncated_tpl.size(),
+                        inspect(truncated_tpl.data(),truncated_tpl.size()));
+  assert(tp.status==NestedTplStatus::TooShort);
   const auto good=make_ell(0x8D,0);
   auto parsed=inspect(good.data(),good.size());
   assert(inspect_ell_payload(nullptr,0,parsed).status==EllIntegrity::Unsupported);
