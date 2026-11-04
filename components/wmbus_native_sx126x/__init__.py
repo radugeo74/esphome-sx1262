@@ -29,7 +29,6 @@ CONF_FIELD = "field"
 CONF_METER_DRIVERS = "meter_drivers"
 CONF_ON_VERIFIED = "on_verified"
 CONF_T1_RAW_DIAGNOSTICS = "t1_raw_diagnostics"
-CONF_T1_UNCONFIGURED_HEX = "t1_unconfigured_hex"
 CONF_DRIVER = "driver"
 
 def validate_meter_id(value):
@@ -65,7 +64,6 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_LINK_MODE, default="C1"): cv.one_of("T1", "C1", "T1_C1", upper=True),
     cv.Optional(CONF_FIFO_PROGRESS_PROBE, default=False): cv.boolean,
     cv.Optional(CONF_T1_RAW_DIAGNOSTICS, default=False): cv.boolean,
-    cv.Optional(CONF_T1_UNCONFIGURED_HEX, default=False): cv.boolean,
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Required(CONF_DRIVER): cv.All(cv.string_strict, validate_driver_name),
@@ -99,7 +97,6 @@ async def to_code(config):
     cg.add(var.set_t1_mode(config[CONF_LINK_MODE] == "T1"))
     cg.add(var.set_combined_mode(config[CONF_LINK_MODE] == "T1_C1"))
     cg.add(var.set_t1_raw_diagnostics(config[CONF_T1_RAW_DIAGNOSTICS]))
-    cg.add(var.set_t1_unconfigured_hex(config[CONF_T1_UNCONFIGURED_HEX]))
     cg.add(var.set_fifo_progress_probe(config[CONF_FIFO_PROGRESS_PROBE]))
     # Reuse the existing XMQ generator; no wmbus_radio / legacy radio.
     root = Path(__file__).resolve().parents[2]
