@@ -1,6 +1,7 @@
 // Synthetic end-to-end C1-A/C1-B verification, including B's second CRC.
 // No real meter IDs, telegrams, or secrets. Format failures must fail closed.
 #include "../../components/wmbus_native_sx126x/native_verified_frame.h"
+#include "../../components/wmbus_native_sx126x/native_publication_gate.h"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -31,6 +32,11 @@ int main() {
   assert(a_ok.status == native::verified::Status::Ok);
   assert(a_ok.frame.bytes.size() == 55);
   assert(a_ok.frame.header.meter_id == 31000001u);
+  // CRC-valid C1-A is not enough for publication: synthetic CI=72 has
+  // incomplete/unverified transport security and must fail closed.
+  assert(wmbus_pure::publication::inspect(a_ok.frame.bytes.data(),
+      a_ok.frame.bytes.size(),31000001u)!=
+      wmbus_pure::publication::Decision::Allowed);
   a[40] ^= 0x01;
   const auto a_bad = native::verified::process(native::boundary::Mode::C1A, a.data(), a.size());
   assert(a_bad.status != native::verified::Status::Ok && a_bad.frame.bytes.empty());
@@ -47,6 +53,10 @@ int main() {
   assert(b_ok.status == native::verified::Status::Ok);
   assert(b_ok.frame.bytes.size() == 137);
   assert(b_ok.frame.header.meter_id == 31000001u);
+  // Same rule applies to CRC-verified C1 format B.
+  assert(wmbus_pure::publication::inspect(b_ok.frame.bytes.data(),
+      b_ok.frame.bytes.size(),31000001u)!=
+      wmbus_pure::publication::Decision::Allowed);
   b[second_start + 5] ^= 0x01;
   const auto b_bad = native::verified::process(native::boundary::Mode::C1B, b.data(), b.size());
   assert(b_bad.status != native::verified::Status::Ok && b_bad.frame.bytes.empty());
