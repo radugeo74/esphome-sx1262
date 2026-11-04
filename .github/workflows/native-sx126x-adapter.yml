@@ -161,6 +161,13 @@ jobs:
             -o /tmp/test-official-xmq-fixtures
           /tmp/test-official-xmq-fixtures
 
+      - name: Test typed text fields on official iPERL and Hydrus cleartext fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_xmq_plain_text_fields.cpp \
+            -o /tmp/test-xmq-text-fields
+          /tmp/test-xmq-text-fields
       - name: Test configured plaintext XMQ dispatch against official fixtures
         run: |
           python3 experimental/xmq/tools/generate_ixml_cpp.py \
