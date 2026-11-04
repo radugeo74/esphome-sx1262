@@ -9,6 +9,7 @@
 #include "pure_meter_match.h"
 #include "iperl_plain.h"
 #include "hydrus_plain.h"
+#include "mkradio4a_plain.h"
 
 namespace xmq_portable {
 enum class PayloadPolicy : uint8_t { Application, PreferManufacturer0f };
@@ -88,6 +89,26 @@ inline DriverStatus decode_mode5_plain_payload(
     return DriverStatus::BadArguments;
   return decode_driver_payload(descriptor.tables, plaintext + 2,
                                length - 2, captures, capture_capacity, output);
+}
+
+// Application bytes must be explicitly supplied as cleartext by a
+// trusted caller (official '_' fixture or a validated upstream decryptor).
+// This API MUST NOT be called directly with unknown live Mode-5 RF bytes.
+inline DriverStatus decode_supplied_clear_mkradio4a_application(
+    const uint8_t *application, size_t length, DecodedPayload &output) {
+  output.value_count = 0;
+  output.date_count = 0;
+  if (!output.values || output.value_capacity < 1 ||
+      !output.dates || output.date_capacity < 1)
+    return DriverStatus::BadArguments;
+  mkradio4a::Reading reading{};
+  if (mkradio4a::decode_clear_application(application,length,reading) !=
+      mkradio4a::Status::Ok) return DriverStatus::BadArguments;
+  output.values[0] = {"target_m3", reading.target_m3};
+  output.value_count = 1;
+  output.dates[0] = {reading.year, reading.month, reading.day};
+  output.date_count = 1;
+  return DriverStatus::Ok;
 }
 
 enum class PureDecodeStatus : uint8_t {
