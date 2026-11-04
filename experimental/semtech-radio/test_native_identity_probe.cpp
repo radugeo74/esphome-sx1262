@@ -42,6 +42,21 @@ int main() {
   assert(diag.source==ConfiguredSource::Conflict);
   diag=diagnose(parsed,std::vector<std::string>{"12345678"});
   assert(diag.source==ConfiguredSource::None);
+  // Identification preference is TPL > ELL > DLL, but metadata alone
+  // cannot grant decoding/publication and multiple IDs fail closed.
+  auto decision=identify_candidate(parsed,std::vector<std::string>{"66953825"});
+  assert(decision.candidate==CandidateSource::Tpl);
+  assert(decision.configured_candidate && !decision.multiple_configured_ids);
+  assert(decision.needs_payload_validation && !decision.permits_publication);
+  decision=identify_candidate(parsed,std::vector<std::string>{"00464936"});
+  assert(decision.candidate==CandidateSource::Tpl);
+  assert(!decision.configured_candidate && !decision.permits_publication);
+  decision=identify_candidate(parsed,std::vector<std::string>{"00464936","66953825"});
+  assert(decision.candidate==CandidateSource::Conflict);
+  assert(decision.multiple_configured_ids && !decision.configured_candidate);
+  decision=identify_candidate(parsed,std::vector<std::string>{});
+  assert(decision.candidate==CandidateSource::Tpl &&
+         !decision.configured_candidate && !decision.permits_publication);
   // TPL ID must not be accidentally interpreted as the DLL converter ID.
   assert(parsed.dll.manufacturer==0x5068);
   assert(parsed.tpl.manufacturer==0x2324);
@@ -56,6 +71,9 @@ int main() {
   parsed=inspect(short_header.data(),short_header.size());
   assert(parsed.status==Status::Ok && !parsed.has_tpl &&
          match(parsed,"00464936")==Source::Dll);
+  decision=identify_candidate(parsed,std::vector<std::string>{"00464936"});
+  assert(decision.candidate==CandidateSource::Dll);
+  assert(decision.configured_candidate && !decision.permits_publication);
   auto vendor=frame(0xA2);
   parsed=inspect(vendor.data(),vendor.size());
   assert(parsed.status==Status::Ok && !parsed.has_tpl);
@@ -79,11 +97,27 @@ int main() {
     assert(ell_result.application_offset==ell_frame.size());
     assert(ell_result.ell_security_mode==
            ((ci==0x8D || ci==0x8F) ? 1 : 0xFF));
+    if (!ell_result.has_ell) {
+      auto advisory=identify_candidate(ell_result,
+                          std::vector<std::string>{"00464936"});
+      assert(advisory.candidate==CandidateSource::Dll);
+      assert(advisory.configured_candidate && !advisory.permits_publication);
+    }
+
     if (ell_result.has_ell) {
       assert(same_id(ell_result.ell,"66953825"));
       auto classified=diagnose(ell_result,std::vector<std::string>{"66953825"});
       assert(classified.ell_matched &&
              classified.source==ConfiguredSource::None);
+      auto advisory=identify_candidate(ell_result,
+                        std::vector<std::string>{"66953825"});
+      assert(advisory.candidate==CandidateSource::Ell);
+      assert(advisory.configured_candidate && !advisory.permits_publication);
+      advisory=identify_candidate(ell_result,
+                        std::vector<std::string>{"00464936","66953825"});
+      assert(advisory.candidate==CandidateSource::Conflict);
+      assert(advisory.multiple_configured_ids && !advisory.permits_publication);
+
     }
     ell_frame.pop_back();
     ell_frame[0]=static_cast<uint8_t>(ell_frame.size()-1);
@@ -91,6 +125,11 @@ int main() {
   }
   auto ell_v=frame(0x86);
   assert(inspect(ell_v.data(),ell_v.size()).status==Status::UnsupportedCi);
+  decision=identify_candidate(inspect(ell_v.data(),ell_v.size()),
+                              std::vector<std::string>{"00464936"});
+  assert(decision.candidate==CandidateSource::Unsupported);
+  assert(!decision.permits_publication);
+
   // ELL I requires CC and ACC, not just the CI byte.
   auto ell=frame(0x8C);
   assert(inspect(ell.data(),ell.size()).status==Status::TooShort);
