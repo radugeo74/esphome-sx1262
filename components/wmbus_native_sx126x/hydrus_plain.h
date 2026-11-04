@@ -26,27 +26,29 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
   bool total=false;
   for (size_t i=0;i<n;i++) {
     const auto &r=rec[i];
-    if (!r.numeric || r.function!=0) continue;
+    if (!r.numeric) continue;
     const int v=r.vif;
     const int storage=r.storage;
     const char *field=nullptr;
     double value=r.value;
     if (v>=0x10 && v<=0x17) {
       value*=standard::scale10(v-0x16);
-      if(storage==0 && r.tariff==0) { field="total_m3"; total=true; }
-      else if(storage==1 && r.tariff==0) field="total_at_date_m3";
-      else if(storage==3 && r.tariff==0) field="target_m3";
-      else if(storage==0 && r.tariff==1) field="total_tariff1_m3";
-      else if(storage==0 && r.tariff==2) field="total_tariff2_m3";
+      if(storage==0 && r.tariff==0 && r.function==0) { field="total_m3"; total=true; }
+      else if(storage==1 && r.tariff==0 && r.function==0) field="total_at_date_m3";
+      else if((storage==3 || storage==8) && r.tariff==0 && r.function==0) field="target_m3";
+      else if(storage==0 && r.tariff==1 && r.function==0) field="total_tariff1_m3";
+      else if(storage==0 && r.tariff==2 && r.function==0) field="total_tariff2_m3";
     } else if(v>=0x38 && v<=0x3F) {
       value*=standard::scale10(v-0x3E);
-      if(storage==0) field="flow_m3h";
+      if(storage==0 && r.function==0) field="flow_m3h";
+      else if(storage==8 && r.function==1) field="min_flow_m3h";
+      else if(storage==8 && r.function==2) field="max_flow_m3h";
     } else if(v>=0x58 && v<=0x5B) {
       value*=standard::scale10(v-0x5B);
-      if(storage==0) field="flow_temperature_c";
-    } else if(v>=0x60 && v<=0x63) {
-      value*=standard::scale10(v-0x63);
-      if(storage==0) field="external_temperature_c";
+      if(storage==0 && r.function==0) field="flow_temperature_c";
+    } else if(v>=0x64 && v<=0x67) {
+      value*=standard::scale10(v-0x67);
+      if(storage==0 && r.function==0) field="external_temperature_c";
     } else if(v==0x7D && r.vif_extension==0x74) {
       value/=365.2425;
       field="remaining_battery_life_y";
