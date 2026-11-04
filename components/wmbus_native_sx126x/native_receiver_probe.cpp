@@ -334,7 +334,6 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                  t1_candidate.status == wmbus_pure::DriverSelectionStatus::Found
                      ? t1_candidate.driver : "unknown");
       }
-      self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
       const auto admission=wmbus_pure::publication::inspect(
           frame.bytes.data(),frame.bytes.size(),frame.header.meter_id);
       if (kind==registry::Kind::Configured &&
@@ -346,6 +345,9 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
       }
       if (kind == registry::Kind::Configured &&
           admission==wmbus_pure::publication::Decision::Allowed) {
+        // on_verified exposes telegram bytes to user automations. Keep it
+        // behind the same admission gate as native measurement publication.
+        self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
         const auto meter_id = native_meter_id(frame.header.meter_id);
         for (const auto &binding : self->rssi_sensors_) {
           if (binding.meter_id == meter_id && binding.output != nullptr)
