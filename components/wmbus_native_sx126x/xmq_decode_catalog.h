@@ -154,9 +154,28 @@ inline PureDecodeStatus decode_configured_plain_frame(
       header.application_length > 0 && header.application[0] == 0x0F)
     descriptor = find_decode_descriptor("fhkvdataiii", 0xA0);
   if (!descriptor) return PureDecodeStatus::UnknownDriver;
-  return decode_driver_payload(descriptor->tables, header.application,
-                               header.application_length, captures,
-                               capture_capacity, output) == DriverStatus::Ok
-      ? PureDecodeStatus::Ok : PureDecodeStatus::DecodeFailure;
+  if (decode_driver_payload(descriptor->tables, header.application,
+                            header.application_length, captures,
+                            capture_capacity, output) != DriverStatus::Ok)
+    return PureDecodeStatus::DecodeFailure;
+  // Preserve original XMQ output names, and expose the official
+  // wmbusmeters JSON names as optional aliases for ESPHome sensor bindings.
+  // Alias creation is bounded; existing readings are never overwritten.
+  if (driver_name && std::strcmp(driver_name, "mkradio4") == 0 && output.values) {
+    const size_t original_count = output.value_count;
+    for (size_t i = 0; i < original_count; ++i) {
+      const char *alias = nullptr;
+      if (output.values[i].name &&
+          std::strcmp(output.values[i].name, "total") == 0)
+        alias = "total_m3";
+      else if (output.values[i].name &&
+               std::strcmp(output.values[i].name, "target") == 0)
+        alias = "target_m3";
+      if (alias && output.value_count < output.value_capacity) {
+        output.values[output.value_count++] = {alias, output.values[i].value};
+      }
+    }
+  }
+  return PureDecodeStatus::Ok;
 }
 }  // namespace xmq_portable
