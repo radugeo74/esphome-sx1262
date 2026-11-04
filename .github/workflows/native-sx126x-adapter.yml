@@ -10,6 +10,8 @@ on:
       - 'components/wmbus_native_sx126x/**'
       - 'experimental/xmq/drivers/**'
       - 'experimental/xmq/tools/generate_driver_registry.py'
+      - 'experimental/xmq/tools/**'
+      - 'experimental/xmq/tests/**'
       - 'components/sx126x/**'
       - 'experimental/semtech-radio/**'
       - 'experimental/xmq/tests/test_pure_crc.cpp'
