@@ -179,4 +179,53 @@ inline ConfiguredResult diagnose(const Result &result,
   else if (tpl) out.source=ConfiguredSource::Tpl;
   return out;
 }
+// Identification policy is advisory only. The closest available target
+// address is preferred over a forwarding converter's DLL address.
+// ELL payload CRC, TPL security, and real driver binding remain separate.
+enum class CandidateSource : uint8_t {
+  None, Dll, Tpl, Ell, Conflict, Unsupported
+};
+struct CandidateDecision {
+  CandidateSource candidate{CandidateSource::Unsupported};
+  bool configured_candidate{false};
+  bool multiple_configured_ids{false};
+  bool needs_payload_validation{true};
+  bool permits_publication{false}; // Never authorize from metadata alone.
+};
+template<typename IdCollection>
+inline CandidateDecision identify_candidate(
+    const Result &result, const IdCollection &configured_ids) {
+  CandidateDecision decision{};
+  if (result.status!=Status::Ok) return decision;
+  decision.candidate=result.has_tpl ? CandidateSource::Tpl :
+      result.has_ell ? CandidateSource::Ell : CandidateSource::Dll;
+  const Address &chosen=result.has_tpl ? result.tpl :
+      result.has_ell ? result.ell : result.dll;
+  bool dll_match=false, tpl_match=false, ell_match=false;
+  for (const auto &id : configured_ids) {
+    const char *configured=id.c_str();
+    dll_match=dll_match || same_id(result.dll,configured);
+    tpl_match=tpl_match ||
+        (result.has_tpl && same_id(result.tpl,configured));
+    ell_match=ell_match ||
+        (result.has_ell && same_id(result.ell,configured));
+    decision.configured_candidate=decision.configured_candidate ||
+                                  same_id(chosen,configured);
+  }
+  // A single configured ID can legitimately occur in multiple headers.
+  // Only distinct configured addresses can create conflicting bindings.
+  const bool dll_tpl_conflict=dll_match && tpl_match &&
+      !same_id_bytes(result.dll,result.tpl);
+  const bool dll_ell_conflict=dll_match && ell_match &&
+      !same_id_bytes(result.dll,result.ell);
+  const bool tpl_ell_conflict=tpl_match && ell_match &&
+      !same_id_bytes(result.tpl,result.ell);
+  decision.multiple_configured_ids=dll_tpl_conflict ||
+      dll_ell_conflict || tpl_ell_conflict;
+  if (decision.multiple_configured_ids) {
+    decision.candidate=CandidateSource::Conflict;
+    decision.configured_candidate=false;
+  }
+  return decision;
+}
 }} // wmbus_pure::identity
