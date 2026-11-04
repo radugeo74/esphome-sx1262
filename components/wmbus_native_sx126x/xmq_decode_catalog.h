@@ -8,6 +8,7 @@
 #include "pure_frame_header.h"
 #include "pure_meter_match.h"
 #include "iperl_plain.h"
+#include "hydrus_plain.h"
 
 namespace xmq_portable {
 enum class PayloadPolicy : uint8_t { Application, PreferManufacturer0f };
@@ -120,6 +121,19 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[0] = {"total_m3", water.total_m3};
     output.values[1] = {"max_flow_m3h", water.max_flow_m3h};
     output.value_count = 2;
+    return PureDecodeStatus::Ok;
+  }
+  // Diehl Hydrus: receive only actual plaintext CI=72/7A with TPL
+  // security mode zero. The shared standard DIF/VIF parser must produce
+  // a complete valid reading before any sensor is updated.
+  if (driver_name && std::strcmp(driver_name, "hydrus") == 0) {
+    if (!output.values || output.value_capacity == 0)
+      return PureDecodeStatus::DecodeFailure;
+    size_t count = 0;
+    if (hydrus::decode_plain_frame(frame, length, output.values,
+                                   output.value_capacity, count) != hydrus::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.value_count = count;
     return PureDecodeStatus::Ok;
   }
   // This path accepts only the two supported Techem manufacturer CIs.
