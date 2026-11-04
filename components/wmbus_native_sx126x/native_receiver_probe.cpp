@@ -132,6 +132,8 @@ static void log_verified_identities(
         frame.data(),frame.size(),parsed);
     const auto nested=wmbus_pure::identity::inspect_nested_tpl(
         frame.data(),frame.size(),parsed);
+    const auto nested_policy=wmbus_pure::identity::identify_nested_candidate(
+        frame.data(),frame.size(),parsed,configured_ids);
     bool nested_configured=false;
     if (nested.has_address) {
       for (const auto &id : configured_ids)
@@ -147,7 +149,8 @@ static void log_verified_identities(
       ESP_LOGI(TAG,
         "ELL identity diagnostic ci=0x%02X dll_configured=%s ell_configured=%s "
         "has_target=%s session_mode=%u candidate=%u conflict=%s ell_crc=%u "
-        "nested_tpl=%u nested_configured=%s (diagnostic only; no publication)",
+        "nested_tpl=%u nested_configured=%s nested_candidate=%u "
+        "nested_conflict=%s nested_security_mode=%u (diagnostic only; no publication)",
         static_cast<unsigned>(parsed.ci),
         info.source!=wmbus_pure::identity::ConfiguredSource::None ? "yes" : "no",
         info.ell_matched ? "yes" : "no",
@@ -158,7 +161,10 @@ static void log_verified_identities(
         policy.multiple_configured_ids ? "yes" : "no",
         static_cast<unsigned>(integrity.status),
         static_cast<unsigned>(nested.status),
-        nested_configured ? "yes" : "no");
+        nested_configured ? "yes" : "no",
+        static_cast<unsigned>(nested_policy.candidate),
+        nested_policy.multiple_configured_ids ? "yes" : "no",
+        nested.has_config_word ? static_cast<unsigned>(nested.tpl_security_mode) : 0xFFu);
     return;
   }
   if (info.source==wmbus_pure::identity::ConfiguredSource::None ||
