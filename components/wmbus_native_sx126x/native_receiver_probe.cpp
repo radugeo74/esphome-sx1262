@@ -305,6 +305,21 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                static_cast<unsigned>(verified_frames), static_cast<unsigned>(rejected_frames));
       const auto &frame = self->t1_fifo_.result().frame;
       const auto kind = registry::classify(self->t1_fifo_.result(), self->configured_meter_ids_);
+      // Discovery is independent of configured sensor publication. Every
+      // CRC-verified T1 meter must remain visible, even without a YAML entry.
+      // Do not emit on_verified automation events or publish sensor values.
+      if (kind == registry::Kind::Discovered) {
+        ESP_LOGI(TAG,
+                 "T1 DISCOVERED id=%08u manufacturer=0x%04X version=0x%02X "
+                 "type=0x%02X ci=0x%02X length=%u rssi=%.1f dBm configured=no "
+                 "(diagnostic only)",
+                 static_cast<unsigned>(frame.header.meter_id),
+                 static_cast<unsigned>(frame.header.manufacturer),
+                 static_cast<unsigned>(frame.header.version),
+                 static_cast<unsigned>(frame.header.device_type),
+                 static_cast<unsigned>(frame.header.ci),
+                 static_cast<unsigned>(frame.bytes.size()), rssi_dbm);
+      }
       log_verified_identities(frame.bytes, self->configured_meter_ids_);
       const auto security = wmbus_pure::tpl_security::inspect(frame.bytes.data(), frame.bytes.size());
       if (security.has_config_word) {
