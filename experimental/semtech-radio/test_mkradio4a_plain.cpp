@@ -30,7 +30,7 @@ int main() {
   warm[23]=0x42;
   assert(decode(warm.data(),warm.size(),value)==Status::UnsupportedEnvelope);
   assert(value.target_m3==0);
-  warm[23]=0x2F; warm[26]=0x14;
+  warm[23]=0x2F; warm[26]=0x3B; // flow VIF cannot satisfy original Volume match
   assert(decode(warm.data(),warm.size(),value)==Status::MissingFields);
   assert(decode(cold.data(),30,value)==Status::TooShort);
   // A CRC-verified but encrypted 55-byte C1 frame has no proven clear records.
