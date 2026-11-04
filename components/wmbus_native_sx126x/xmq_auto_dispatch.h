@@ -6,6 +6,7 @@
 #include <cstring>
 #include "pure_driver_registry.h"
 namespace wmbus_pure { namespace auto_driver {
+#include "xmq_native_compiled.h"
 enum class Status : uint8_t { Ready, Unknown, Ambiguous, NotCompiled, Invalid };
 struct Result { Status status; const char *driver; };
 inline Result resolve(const char *requested, const DriverSignature *signatures,
@@ -21,11 +22,9 @@ inline Result resolve(const char *requested, const DriverSignature *signatures,
     return {Status::Unknown, nullptr};
   if (match.status != DriverSelectionStatus::Found || !match.driver)
     return {Status::Invalid, nullptr};
-  // Only these decoders are currently generated and validated on Heltec.
-  if (std::strcmp(match.driver, "mkradio4") != 0 &&
-      std::strcmp(match.driver, "fhkvdataiii") != 0 &&
-      std::strcmp(match.driver, "iperl") != 0 &&
-      std::strcmp(match.driver, "hydrus") != 0)
+  // The generated compiled-driver list is derived from the same manifest
+  // as XMQ descriptor generation and ESPHome schema validation.
+  if (!native_xmq_driver_compiled(match.driver))
     return {Status::NotCompiled, nullptr};
   return {Status::Ready, match.driver};
 }
