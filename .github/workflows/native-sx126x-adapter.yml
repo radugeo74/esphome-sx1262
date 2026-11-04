@@ -119,6 +119,8 @@ jobs:
           /tmp/test-native-t1-pure
       - name: Assert native fixture has no legacy radio owner
         run: python3 experimental/semtech-radio/ci/check_native_only.py
+      - name: Verify all CRC-valid T1 frames reach on_verified without enabling sensor publication
+        run: python3 experimental/semtech-radio/ci/test_t1_verified_trigger_contract.py
       - name: Test variable-length T1 packet framing
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
