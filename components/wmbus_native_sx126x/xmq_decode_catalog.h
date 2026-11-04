@@ -47,7 +47,7 @@ inline DriverStatus decode_descriptor_frame(const DecodeDescriptor &descriptor,
 
 inline const DecodeDescriptor *find_decode_descriptor(const char *name, uint8_t ci) {
   static const DecodeDescriptor catalog[] = {
-#include "xmq_native_descriptors.inc"
+#include "xmq_native_descriptors.h"
   };
   if (!name) return nullptr;
   for (const auto &descriptor : catalog)
