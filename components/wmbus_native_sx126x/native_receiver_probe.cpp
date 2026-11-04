@@ -4,7 +4,6 @@
 #include "c1_block_diagnostics.h"
 #include "mkradio4a_plain.h"
 #include "xmq_auto_registry.h"
-#include "xmq_auto_resolver.h"
 #include "tpl_security_probe.h"
 #include "native_meter_registry.h"
 #include "c1_integrity.h"
@@ -120,6 +119,19 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                  kind == registry::Kind::Configured ? "yes" : "no",
                  static_cast<unsigned>(frame.header.ci));
       }
+      // Global AUTO identification for every verified T1 frame; no decoding.
+      const auto t1_candidate = wmbus_pure::select_driver(
+          wmbus_pure::generated::signatures,
+          wmbus_pure::generated::signature_count,
+          frame.header.manufacturer, frame.header.version, frame.header.device_type);
+      static uint32_t t1_auto_samples = 0;
+      if (++t1_auto_samples <= 5 || t1_auto_samples % 100 == 0) {
+        ESP_LOGD(TAG, "T1 auto id=%08u status=%u candidate=%s (identify only)",
+                 static_cast<unsigned>(frame.header.meter_id),
+                 static_cast<unsigned>(t1_candidate.status),
+                 t1_candidate.status == wmbus_pure::DriverSelectionStatus::Found
+                     ? t1_candidate.driver : "unknown");
+      }
       self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
       if (kind == registry::Kind::Configured) {
         const auto meter_id = std::to_string(frame.header.meter_id);
@@ -134,23 +146,14 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
           if (entry.id == id) { driver = entry.driver.c_str(); break; }
         }
         if (driver != nullptr) {
-          const auto selection = wmbus_pure::xmq_auto::resolve(
-              driver, wmbus_pure::generated::signatures,
-              wmbus_pure::generated::signature_count,
-              frame.header.manufacturer, frame.header.version, frame.header.device_type);
-          if (selection.status != wmbus_pure::xmq_auto::Status::Selected) {
-            static uint32_t auto_skipped = 0;
-            if (++auto_skipped <= 5 || auto_skipped % 100 == 0)
-              ESP_LOGW(TAG, "Native XMQ meter=%s requested=%s auto_status=%u (no decode, no publish)",
-                       id.c_str(), driver, static_cast<unsigned>(selection.status));
-          } else {
-          const char *selected_driver = selection.driver;
+          // Explicit YAML binding is the only authorization for decoding.
+          // Global auto identification is diagnostics-only, never a dispatcher.
           xmq_portable::CalcValue values[24]{};
           xmq_portable::CalendarDate dates[2]{};
           xmq_portable::Capture captures[12]{};
           xmq_portable::DecodedPayload decoded{values, 24, 0, dates, 2, 0};
           const auto status = xmq_portable::decode_configured_plain_frame(
-              frame.bytes.data(), frame.bytes.size(), id.c_str(), selected_driver,
+              frame.bytes.data(), frame.bytes.size(), id.c_str(), driver,
               captures, 12, decoded);
           if (status == xmq_portable::PureDecodeStatus::Ok) {
             for (const auto &binding : self->xmq_sensors_) {
@@ -166,9 +169,8 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
             }
           }
           ESP_LOGI(TAG, "Native XMQ meter=%s driver=%s status=%u fields=%u (mapped sensors only)",
-                   id.c_str(), selected_driver, static_cast<unsigned>(status),
+                   id.c_str(), driver, static_cast<unsigned>(status),
                    static_cast<unsigned>(decoded.value_count));
-          }
         }
 #endif
       }
