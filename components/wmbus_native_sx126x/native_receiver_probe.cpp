@@ -13,6 +13,7 @@
 #include <cstdio>
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
 #include "xmq_decode_catalog.h"
+#include "xmq_plain_text_fields.h"
 #endif
 
 namespace esphome {
@@ -46,6 +47,29 @@ static float round_for_sensor(float value, sensor::Sensor *output) {
   for (int i = 0; i < decimals; ++i)
     scale *= 10.0f;
   return std::round(value * scale) / scale;
+}
+
+void NativeReceiverProbe::publish_xmq_text_(
+    const std::vector<uint8_t> &frame, const std::string &id,
+    const char *driver) {
+#ifdef WMBUS_NATIVE_XMQ_ENABLED
+  if (this->xmq_text_sensors_.empty()) return;
+  const auto values = xmq_portable::text_fields::decode(
+      frame.data(), frame.size(), driver);
+  for (const auto &binding : this->xmq_text_sensors_) {
+    if (binding.meter_id != id || binding.output == nullptr) continue;
+    for (size_t i=0; i<values.count; ++i) {
+      if (values.fields[i].name && binding.field == values.fields[i].name) {
+        binding.output->publish_state(values.fields[i].text);
+        break;
+      }
+    }
+  }
+#else
+  (void)frame;
+  (void)id;
+  (void)driver;
+#endif
 }
 
 // EN13757 DLL IDs are always eight decimal digits, including leading zeroes.
@@ -90,6 +114,7 @@ void NativeReceiverProbe::publish_c1_plaintext_(
       bytes.data(), bytes.size(), id.c_str(), selected.driver,
       captures, 12, decoded);
   if (status != xmq_portable::PureDecodeStatus::Ok) return;
+  this->publish_xmq_text_(bytes, id, selected.driver);
   for (const auto &binding : this->xmq_sensors_) {
     if (binding.meter_id != id || binding.output == nullptr) continue;
     for (size_t i=0; i<decoded.value_count; ++i) {
@@ -239,6 +264,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
               frame.bytes.data(), frame.bytes.size(), id.c_str(), selected_driver,
               captures, 12, decoded);
           if (status == xmq_portable::PureDecodeStatus::Ok) {
+             self->publish_xmq_text_(frame.bytes, id, selected_driver);
             if (configured_driver != nullptr && configured_driver->driver == "auto" &&
                 configured_driver->logged_auto_driver != selected_driver) {
               configured_driver->logged_auto_driver = selected_driver;
