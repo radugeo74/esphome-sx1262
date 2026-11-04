@@ -32,6 +32,9 @@ int main() {
       "02410120","mkradio4",captures,12,result)==PureDecodeStatus::Ok);
   assert(std::fabs(get(result,"total")-0.4)<1e-6);
   assert(std::fabs(get(result,"target")-0.1)<1e-6);
+  // Official output names and prior internal XMQ names both remain usable.
+  assert(std::fabs(get(result,"total_m3")-0.4)<1e-6);
+  assert(std::fabs(get(result,"target_m3")-0.1)<1e-6);
   auto heat=hex("34446850226677116980A0119F27020480048300C408F709143C003D341A2B0B2A0707000000000000062D114457563D71A1850000");
   assert(decode_configured_plain_frame(heat.data(),heat.size(),
       "11776622","fhkvdataiii",captures,12,result)==PureDecodeStatus::Ok);
