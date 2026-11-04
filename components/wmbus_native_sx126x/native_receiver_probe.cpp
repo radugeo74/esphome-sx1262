@@ -142,8 +142,13 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
         const auto id = std::to_string(frame.header.meter_id);
         const char *driver = nullptr;
-        for (const auto &entry : self->meter_drivers_) {
-          if (entry.id == id) { driver = entry.driver.c_str(); break; }
+        NativeReceiverProbe::MeterDriver *configured_driver = nullptr;
+        for (auto &entry : self->meter_drivers_) {
+          if (entry.id == id) {
+            driver = entry.driver.c_str();
+            configured_driver = &entry;
+            break;
+          }
         }
         if (driver != nullptr) {
           // A configured meter may opt into auto selection. Unknown,
@@ -167,6 +172,12 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
               frame.bytes.data(), frame.bytes.size(), id.c_str(), selected_driver,
               captures, 12, decoded);
           if (status == xmq_portable::PureDecodeStatus::Ok) {
+            if (configured_driver != nullptr && configured_driver->driver == "auto" &&
+                configured_driver->logged_auto_driver != selected_driver) {
+              configured_driver->logged_auto_driver = selected_driver;
+              ESP_LOGI(TAG, "Native XMQ AUTO configured meter=%s detected_driver=%s decode=ok (mapped sensors only)",
+                       id.c_str(), selected_driver);
+            }
             for (const auto &binding : self->xmq_sensors_) {
               if (binding.meter_id != id || binding.output == nullptr) continue;
               for (size_t i = 0; i < decoded.value_count; ++i) {
