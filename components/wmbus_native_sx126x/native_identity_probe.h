@@ -104,4 +104,41 @@ inline Source match(const Result &result, const char *configured) {
   if (tpl && !dll) return Source::Tpl;
   return Source::None;
 }
+// Pure, read-only configured-ID diagnostics. Never grant decode permission.
+// Multiple configured identities in one telegram represent an ambiguity.
+enum class ConfiguredSource : uint8_t {
+  None, Dll, Tpl, Both, Conflict, Unsupported
+};
+struct ConfiguredResult {
+  ConfiguredSource source{ConfiguredSource::Unsupported};
+  bool distinct_addresses{false};
+};
+inline bool same_address(const Address &a,const Address &b) {
+  if (a.manufacturer!=b.manufacturer || a.version!=b.version ||
+      a.device_type!=b.device_type) return false;
+  for (unsigned i=0;i<4;++i)
+    if (a.id_le[i]!=b.id_le[i]) return false;
+  return true;
+}
+template<typename IdCollection>
+inline ConfiguredResult diagnose(const Result &result,
+                                const IdCollection &configured_ids) {
+  ConfiguredResult out{};
+  if (result.status!=Status::Ok) return out;
+  out.source=ConfiguredSource::None;
+  out.distinct_addresses=result.has_tpl &&
+                         !same_address(result.dll,result.tpl);
+  bool dll=false, tpl=false;
+  for (const auto &id : configured_ids) {
+    const char *text=id.c_str();
+    dll=dll || same_id(result.dll,text);
+    tpl=tpl || (result.has_tpl && same_id(result.tpl,text));
+  }
+  if (dll && tpl) {
+    out.source=out.distinct_addresses ? ConfiguredSource::Conflict :
+                                        ConfiguredSource::Both;
+  } else if (dll) out.source=ConfiguredSource::Dll;
+  else if (tpl) out.source=ConfiguredSource::Tpl;
+  return out;
+}
 }} // wmbus_pure::identity
