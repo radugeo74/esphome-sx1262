@@ -7,6 +7,7 @@
 #include "xmq_generated.h"
 #include "pure_frame_header.h"
 #include "pure_meter_match.h"
+#include "iperl_plain.h"
 
 namespace xmq_portable {
 enum class PayloadPolicy : uint8_t { Application, PreferManufacturer0f };
@@ -108,6 +109,19 @@ inline PureDecodeStatus decode_configured_plain_frame(
   if (wmbus_pure::match_meter_id(header, configured_id) !=
       wmbus_pure::MatchStatus::Match)
     return PureDecodeStatus::InvalidMeterId;
+  // Strict CI=7A Sensus iPERL plaintext path, using official XMQ fixtures.
+  // Encrypted telegrams cannot enter this path before a validated decryptor.
+  if (driver_name && std::strcmp(driver_name, "iperl") == 0) {
+    if (!output.values || output.value_capacity < 2)
+      return PureDecodeStatus::DecodeFailure;
+    iperl::Reading water{};
+    if (iperl::decode(frame, length, water) != iperl::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0] = {"total_m3", water.total_m3};
+    output.values[1] = {"max_flow_m3h", water.max_flow_m3h};
+    output.value_count = 2;
+    return PureDecodeStatus::Ok;
+  }
   // This path accepts only the two supported Techem manufacturer CIs.
   // A valid DLL header does NOT prove that a TPL payload is plaintext.
   // In particular CI=72/7A must be processed by a separate, security-aware
