@@ -15,6 +15,33 @@ struct Record {
   uint32_t raw{0};
   bool numeric{false};
 };
+struct Calendar {
+  int year{0}, month{0}, day{0}, hour{0}, minute{0};
+  bool has_time{false};
+};
+inline bool leap(int year) {
+  return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+}
+inline bool decode_calendar(uint32_t raw, bool datetime, Calendar &out) {
+  out = {};
+  const uint8_t date0 = datetime ? static_cast<uint8_t>(raw >> 16)
+                                 : static_cast<uint8_t>(raw);
+  const uint8_t date1 = datetime ? static_cast<uint8_t>(raw >> 24)
+                                 : static_cast<uint8_t>(raw >> 8);
+  out.day = date0 & 31;
+  out.month = date1 & 15;
+  out.year = 2000 + (date0 >> 5) + ((date1 >> 4) << 3);
+  out.has_time = datetime;
+  if (datetime) {
+    out.minute = raw & 0x3F;
+    out.hour = (raw >> 8) & 0x1F;
+  }
+  static constexpr int days[] = {0,31,28,31,30,31,30,31,31,30,31,30,31};
+  if (out.month < 1 || out.month > 12) return false;
+  const int max_day = days[out.month] + (out.month == 2 && leap(out.year) ? 1 : 0);
+  if (out.day < 1 || out.day > max_day) return false;
+  return !datetime || (out.hour < 24 && out.minute < 60);
+}
 inline size_t format_length(uint8_t f) {
   switch(f) {
     case 0: return 0; case 1: return 1; case 2: return 2;
