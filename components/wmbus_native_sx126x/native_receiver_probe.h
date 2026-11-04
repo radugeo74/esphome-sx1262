@@ -30,6 +30,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   void set_t1_mode(bool value) { this->t1_mode_ = value; }
   void set_combined_mode(bool value) { this->combined_mode_ = value; }
   void set_t1_raw_diagnostics(bool value) { this->t1_raw_diagnostics_ = value; }
+  void set_t1_unconfigured_hex(bool value) { this->t1_unconfigured_hex_ = value; }
   void set_c1_format_b(bool value) { this->c1_format_b_ = value; }
   void set_c1_plaintext_publish(bool value) { this->c1_plaintext_publish_ = value; }
   void add_configured_meter_id(const std::string &value) { this->configured_meter_ids_.push_back(value); }
@@ -59,6 +60,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   bool t1_mode_{false};
   bool combined_mode_{false};
   bool t1_raw_diagnostics_{false};
+  bool t1_unconfigured_hex_{false};
   struct RxModeStats { uint32_t ok{0}; uint32_t rejected{0}; };
   RxModeStats t1_stats_{};
   RxModeStats c1a_stats_{};
