@@ -85,14 +85,14 @@ inline bool same_id(const Address &a,const char *configured) {
   if (!configured) return false;
   for (unsigned i=0;i<8;++i) {
     const char c=configured[i];
-    if (c=='\\0') return false;
+    if (c=='\0') return false;
     const unsigned nib=(i%2==0) ? (a.id_le[3-i/2] >> 4) :
                                   (a.id_le[3-i/2] & 15u);
     if (nib<10) {if (c != char('0'+nib)) return false;}
     else if (c != char('A'+nib-10) && c != char('a'+nib-10))
       return false;
   }
-  return configured[8]=='\\0';
+  return configured[8]=='\0';
 }
 enum class Source : uint8_t { None, Dll, Tpl, Both, Ambiguous };
 inline Source match(const Result &result, const char *configured) {
