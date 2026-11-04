@@ -23,13 +23,13 @@ int main() {
   for (uint8_t vif=0x10; vif<=0x17; ++vif) {
     double actual=0;
     assert(to_canonical(vif,12345,actual));
-    near(actual,12345/std::pow(10.0,0x16-vif),1e-6);
+    near(actual,12345/std::pow(10.0,0x16 - vif),1e-6);
     assert(canonical_unit(vif)==CanonicalUnit::CubicMeters);
   }
   for (uint8_t vif=0x38; vif<=0x3F; ++vif) {
     double actual=0;
     assert(to_canonical(vif,-345,actual));
-    near(actual,-345/std::pow(10.0,0x3E-vif),1e-8);
+    near(actual,-345/std::pow(10.0,0x3E - vif),1e-8);
     assert(canonical_unit(vif)==CanonicalUnit::CubicMetersPerHour);
   }
   // Explicit numeric references from upstream extended flow table.
