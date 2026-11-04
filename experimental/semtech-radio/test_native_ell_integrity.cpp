@@ -76,12 +76,26 @@ int main() {
   assert(same_id(tp.address,"66953825") &&
          tp.address.manufacturer==0x2324);
   assert(tp.application_offset==nested.size());
+  assert(tp.has_config_word && tp.tpl_security_mode==0);
+  // ELL integrity may be valid while the nested TPL is encrypted.
+  auto tpl_encrypted=nested;
+  tpl_encrypted[original.application_offset+12]=0x05;
+  const uint16_t tpl_encrypted_crc=wmbus_pure::crc16_en13757(
+      tpl_encrypted.data()+original.application_offset,
+      tpl_encrypted.size()-original.application_offset);
+  tpl_encrypted[original.application_offset-2]=static_cast<uint8_t>(tpl_encrypted_crc);
+  tpl_encrypted[original.application_offset-1]=static_cast<uint8_t>(tpl_encrypted_crc>>8);
+  tp=inspect_nested_tpl(tpl_encrypted.data(),tpl_encrypted.size(),
+                        inspect(tpl_encrypted.data(),tpl_encrypted.size()));
+  assert(tp.status==NestedTplStatus::LongHeader && tp.has_address);
+  assert(tp.has_config_word && tp.tpl_security_mode==5);
   // A valid DLL CRC does not help if the ELL payload CRC is wrong.
   auto bad_nested=nested;
   bad_nested[original.application_offset-1]^=0x01;
   tp=inspect_nested_tpl(bad_nested.data(),bad_nested.size(),
                          inspect(bad_nested.data(),bad_nested.size()));
-  assert(tp.status==NestedTplStatus::NotVerified && !tp.has_address);
+  assert(tp.status==NestedTplStatus::NotVerified && !tp.has_address &&
+         !tp.has_config_word);
   // ELL encrypted/unknown sessions are never treated as plaintext.
   auto encrypted=make_ell(0x8F,1);
   encrypted.resize(original.application_offset);
@@ -102,6 +116,17 @@ int main() {
   tp=inspect_nested_tpl(short_tpl.data(),short_tpl.size(),
                         inspect(short_tpl.data(),short_tpl.size()));
   assert(tp.status==NestedTplStatus::ShortHeader && !tp.has_address);
+  assert(tp.has_config_word && tp.tpl_security_mode==0);
+  auto short_encrypted=short_tpl;
+  short_encrypted[original.application_offset+4]=0x04;
+  const uint16_t short_encrypted_crc=wmbus_pure::crc16_en13757(
+      short_encrypted.data()+original.application_offset,5);
+  short_encrypted[original.application_offset-2]=static_cast<uint8_t>(short_encrypted_crc);
+  short_encrypted[original.application_offset-1]=static_cast<uint8_t>(short_encrypted_crc>>8);
+  tp=inspect_nested_tpl(short_encrypted.data(),short_encrypted.size(),
+                        inspect(short_encrypted.data(),short_encrypted.size()));
+  assert(tp.status==NestedTplStatus::ShortHeader && tp.has_config_word &&
+         tp.tpl_security_mode==4);
   auto unknown_layer=short_tpl;
   unknown_layer[original.application_offset]=0x81;
   const uint16_t other_crc=wmbus_pure::crc16_en13757(
