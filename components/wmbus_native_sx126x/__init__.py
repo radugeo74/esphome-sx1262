@@ -36,6 +36,21 @@ def validate_meter_id(value):
         raise cv.Invalid("Meter ID must contain exactly 8 ASCII digits")
     return value
 
+def validate_driver_name(value):
+    # The same reviewed capability manifest also owns YAML driver selection.
+    if value == "auto":
+        return value
+    root = Path(__file__).resolve().parents[2]
+    tool_dir = root / "experimental" / "xmq" / "tools"
+    sys.path.insert(0, str(tool_dir))
+    try:
+        from native_driver_specs import SUPPORTED
+        if value not in SUPPORTED:
+            raise cv.Invalid(f"Native XMQ driver {value!r} is not compiled")
+    finally:
+        sys.path.pop(0)
+    return value
+
 
 native_ns = cg.esphome_ns.namespace("wmbus_native_sx126x")
 NativeReceiverProbe = native_ns.class_("NativeReceiverProbe", cg.Component)
@@ -51,7 +66,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_T1_RAW_DIAGNOSTICS, default=False): cv.boolean,
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
-        cv.Required(CONF_DRIVER): cv.one_of("fhkvdataiii", "mkradio4", "iperl", "hydrus", "auto"),
+        cv.Required(CONF_DRIVER): cv.All(cv.string_strict, validate_driver_name),
     })),
     cv.Optional(CONF_RSSI_SENSORS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
