@@ -17,6 +17,7 @@ AUTO_LOAD = ["sensor"]
 CODEOWNERS = ["@SzczepanLeon", "@kubasaw"]
 CONF_SX126X_ID = "sx126x_id"
 CONF_C1_FORMAT = "c1_format"
+CONF_C1_PLAINTEXT_PUBLISH = "c1_plaintext_publish"
 CONF_LINK_MODE = "link_mode"
 CONF_CONFIGURED_METER_IDS = "configured_meter_ids"
 CONF_FIFO_PROGRESS_PROBE = "fifo_progress_probe"
@@ -43,6 +44,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(NativeReceiverProbe),
     cv.Required(CONF_SX126X_ID): cv.use_id(SX126x),
     cv.Optional(CONF_C1_FORMAT, default="B"): cv.one_of("A", "B", upper=True),
+    cv.Optional(CONF_C1_PLAINTEXT_PUBLISH, default=False): cv.boolean,
     cv.Optional(CONF_LINK_MODE, default="C1"): cv.one_of("T1", "C1", "T1_C1", upper=True),
     cv.Optional(CONF_FIFO_PROGRESS_PROBE, default=False): cv.boolean,
     cv.Optional(CONF_T1_RAW_DIAGNOSTICS, default=False): cv.boolean,
@@ -70,6 +72,7 @@ async def to_code(config):
     radio = await cg.get_variable(config[CONF_SX126X_ID])
     cg.add(var.set_radio(radio))
     cg.add(var.set_c1_format_b(config[CONF_C1_FORMAT] == "B"))
+    cg.add(var.set_c1_plaintext_publish(config[CONF_C1_PLAINTEXT_PUBLISH]))
     cg.add(var.set_t1_mode(config[CONF_LINK_MODE] == "T1"))
     cg.add(var.set_combined_mode(config[CONF_LINK_MODE] == "T1_C1"))
     cg.add(var.set_t1_raw_diagnostics(config[CONF_T1_RAW_DIAGNOSTICS]))
