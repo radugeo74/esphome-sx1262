@@ -22,10 +22,23 @@ int main() {
   assert(decode(warm.data(),warm.size(),value)==Status::Ok);
   assert(value.target_m3>16.09 && value.target_m3<16.11);
   assert(value.year==2021 && value.month==12 && value.day==31);
+  // Decode the explicit already-clear application independently of the
+  // original encrypted Mode-5 envelope, as upstream '_' fixtures intend.
+  assert(xmq_portable::mkradio4a::decode_clear_application(
+      warm.data()+25, warm.size()-25, value)==Status::Ok);
+  assert(value.target_m3>16.09 && value.target_m3<16.11);
+  assert(value.year==2021 && value.month==12 && value.day==31);
   auto cold=from_hex("4B4468508644710095377202007701A85CFE078A0030052F2F4315F00200426CBF2C0FEE456BF6F802216503E25EB73E9377D54F672681B76C469696E4C7BCCC9072CC79F712360FC3F57D85");
   assert(decode(cold.data(),cold.size(),value)==Status::Ok);
   assert(value.target_m3>75.19 && value.target_m3<75.21);
   assert(value.year==2021 && value.month==12 && value.day==31);
+  assert(xmq_portable::mkradio4a::decode_clear_application(
+      cold.data()+25, cold.size()-25, value)==Status::Ok);
+  assert(value.target_m3>75.19 && value.target_m3<75.21);
+  // Invalid application data must never reuse the preceding reading.
+  assert(xmq_portable::mkradio4a::decode_clear_application(
+      cold.data()+25, 1, value)!=Status::Ok);
+  assert(value.target_m3==0);
   // Prevent a ciphertext-only or corrupted envelope from becoming a reading.
   warm[23]=0x42;
   assert(decode(warm.data(),warm.size(),value)==Status::UnsupportedEnvelope);
