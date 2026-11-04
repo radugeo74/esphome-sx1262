@@ -24,6 +24,15 @@ int main() {
   auto chained=single({0x02,0xFD,0xF4,0x02,0x87,0x13});
   assert(chained.vif_extension==0x74);
   near(chained.value,4999);
+  assert(chained.vif_extension_count==2);
+  assert(battery.vif_extension_count==1);
+  // An explicit VIFE=0 is not interchangeable with an absent extension.
+  auto zero_vife=single({0x02,0x93,0x00,0x34,0x12});
+  assert(zero_vife.vif==0x13 && zero_vife.vif_extension==0 &&
+         zero_vife.vif_extension_count==1);
+  auto no_vife=single({0x02,0x13,0x34,0x12});
+  assert(no_vife.vif_extension_count==0);
+
   // A DIFE supplies four storage bits, two tariff bits, one subunit bit.
   auto dife=single({0xC4,0x51,0x13,0x15,0x00,0x00,0x00});
   assert(dife.storage==3 && dife.tariff==1 && dife.subunit==1);
