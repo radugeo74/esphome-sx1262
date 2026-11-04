@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <vector>
-using namespace esphome::wmbus_radio::native_radio;
+using namespace esphome::wmbus_native_sx126x::native_radio;
 
 int main() {
   const uint8_t frame[] = {0x54, 0x3d, 0x36, 0x44, 0x68, 0x50};
