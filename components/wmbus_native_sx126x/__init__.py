@@ -88,9 +88,9 @@ async def to_code(config):
     xmq = root / "experimental" / "xmq"
     sys.path.insert(0, str(xmq / "tools"))
     try:
+        from native_driver_specs import validate, catalog_fragment, compiled_fragment
         from generate_ixml_cpp import generate
-        generated = generate([xmq / "drivers" / "mkradio4.xmq",
-                              xmq / "drivers" / "fhkvdataiii.xmq"])
+        generated = generate(validate(xmq))
         from generate_driver_registry import generate as generate_registry
         # Auto detection indexes EVERY locally available XMQ signature.
         # It is independent of the decoders explicitly assigned in YAML.
@@ -104,6 +104,10 @@ async def to_code(config):
         (component_dir / "xmq_auto_registry.h").write_text(
             registry_header, encoding="utf-8")
         (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
+        (component_dir / "xmq_native_descriptors.inc").write_text(
+            catalog_fragment(), encoding="utf-8")
+        (component_dir / "xmq_native_compiled.h").write_text(
+            compiled_fragment(), encoding="utf-8")
         # ESPHome copies components into build/src; absolute source include paths
         # do not reliably survive the isolated ESP-IDF compilation stage.
         # Bundle all portable headers alongside the native component instead.
