@@ -2,7 +2,6 @@
 #include "native_frame_boundary.h"
 #include "native_verified_frame.h"
 #include "c1_block_diagnostics.h"
-#include "mkradio4a_plain.h"
 #include "xmq_auto_registry.h"
 #include "tpl_security_probe.h"
 #include "native_meter_registry.h"
@@ -325,33 +324,8 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
         ESP_LOGW(TAG, "C1 XMQ auto DLL ambiguous matches=%u; no driver selected",
                  static_cast<unsigned>(dll_candidate.matches));
     }
-    // Trial of the pinned XMQ mkradio4a cleartext fields for configured
-    // meters ONLY. No AES, no legacy decoding and no sensor publication.
-    // A successful DLL CRC does not imply that the TPL payload is plaintext.
-    if (kind == registry::Kind::Configured) {
-      bool mkradio4_family = false;
-      const auto id = std::to_string(checked.frame.header.meter_id);
-      for (const auto &entry : self->meter_drivers_) {
-        if (entry.id == id && (entry.driver == "mkradio4" || entry.driver == "mkradio4a")) {
-          mkradio4_family = true;
-          break;
-        }
-      }
-      if (mkradio4_family) {
-        xmq_portable::mkradio4a::Reading reading{};
-        const auto status = xmq_portable::mkradio4a::decode(
-            checked.frame.bytes.data(), checked.frame.bytes.size(), reading);
-        if (status == xmq_portable::mkradio4a::Status::Ok) {
-          ESP_LOGI(TAG, "C1 mkradio4a XMQ candidate target_m3=%.1f target_date=%04d-%02d-%02d (diagnostic, no publish)",
-                   reading.target_m3, reading.year, reading.month, reading.day);
-        } else {
-          static uint32_t unsuccessful = 0;
-          if (++unsuccessful <= 3 || unsuccessful % 100 == 0)
-            ESP_LOGD(TAG, "C1 mkradio4a XMQ unsupported plaintext layout status=%u (no publish)",
-                     static_cast<unsigned>(status));
-        }
-      }
-    }
+    // C1 global AUTO is identification-only. Never trial-decode a meter
+    // under another driver's name; decoding needs explicit YAML binding.
     // Mirror the existing T1 Telegram log for EVERY CRC-verified C1 frame,
     // including unconfigured meters. Display only: no sensor publication,
     // decryption, or trigger emission. Frame bytes have DLL CRC stripped.
