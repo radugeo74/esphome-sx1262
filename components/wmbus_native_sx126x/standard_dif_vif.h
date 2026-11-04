@@ -11,6 +11,7 @@ namespace xmq_portable { namespace standard {
 enum class Status : uint8_t { Ok, Invalid, Unsupported, Capacity };
 struct Record {
   uint8_t dif{0}, vif{0}, vif_extension{0};
+  uint8_t vif_extension_count{0};
   uint32_t storage{0};
   uint16_t tariff{0};
   uint8_t subunit{0}, function{0};
@@ -102,6 +103,7 @@ inline Status parse_records(const uint8_t *data, size_t size, Record *out,
       if (++extensions > 10) return Status::Unsupported;
       const uint8_t ext = data[i++];
       if (extensions == 1) r.vif_extension = ext & 0x7Fu;
+      r.vif_extension_count = static_cast<uint8_t>(extensions);
       more = (ext & 0x80u) != 0;
     }
     const uint8_t fmt = r.dif & 0x0F;
