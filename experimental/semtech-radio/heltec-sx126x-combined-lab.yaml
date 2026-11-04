@@ -1,4 +1,4 @@
-# Heltec COMBINED T1/C1-A/C1-B LAB; build-only; DO NOT FLASH until host tests and RX verification.
+# Heltec COMBINED T1/C1-A/C1-B LAB; build-only; DO NOT FLASH until live RF validation.
 # Build-only; can publish configured sensor after actual RF verification.
 # Confirm board revision and keep current firmware backup.
 # Import both the patched official sx126x and native adapter from GitHub.
@@ -24,7 +24,7 @@ spi:
   miso_pin: GPIO11
 
 external_components:
-  - source: github://radugeo74/esphome-sx1262@experimental/semtech-sx126x-t1-c1-combined
+  - source: github://radugeo74/esphome-sx1262@experimental/xmq-multidriver-auto
     components: [sx126x, wmbus_native_sx126x]
     refresh: always
 
