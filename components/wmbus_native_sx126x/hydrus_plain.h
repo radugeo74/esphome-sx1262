@@ -41,8 +41,8 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
     } else if(v>=0x38 && v<=0x3F) {
       value*=standard::scale10(v-0x3E);
       if(storage==0 && r.function==0) field="flow_m3h";
-      else if(storage==8 && r.function==1) field="min_flow_m3h";
-      else if(storage==8 && r.function==2) field="max_flow_m3h";
+      else if(storage==8 && r.function==1) field="max_flow_m3h";
+      else if(storage==8 && r.function==2) field="min_flow_m3h";
     } else if(v>=0x58 && v<=0x5B) {
       value*=standard::scale10(v-0x5B);
       if(storage==0 && r.function==0) field="flow_temperature_c";
