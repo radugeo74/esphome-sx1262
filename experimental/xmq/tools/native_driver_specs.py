@@ -18,13 +18,17 @@ GENERATED = (
     GeneratedDriver("fhkvdataiii", 0xA0, "PreferManufacturer0f", True),
     GeneratedDriver("mkradio4", 0xA2, "Application"),
 )
-# Separate, individually validated portable decoders (not generated IXML).
+# Portable live cleartext decoders, independently validated with official
+# upstream fixture records. These do not require a generated IXML grammar.
 PORTABLE = ("iperl", "hydrus")
+# A decoder for trusted, already-decrypted application bytes exists, but it
+# MUST NOT be selected for live RF without an authenticated decrypt stage.
+POST_DECRYPT_ONLY = ("mkradio4a",)
 SUPPORTED = tuple(d.name for d in GENERATED) + PORTABLE
 
 def validate(root: Path):
     names = [d.name for d in GENERATED]
-    if len(set(SUPPORTED)) != len(SUPPORTED):
+    if len(set(SUPPORTED + POST_DECRYPT_ONLY)) != len(SUPPORTED + POST_DECRYPT_ONLY):
         raise ValueError("Duplicate native XMQ driver")
     for d in GENERATED:
         if d.payload_policy not in ("Application", "PreferManufacturer0f"):
