@@ -307,7 +307,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
       const auto kind = registry::classify(self->t1_fifo_.result(), self->configured_meter_ids_);
       // Discovery is independent of configured sensor publication. Every
       // CRC-verified T1 meter must remain visible, even without a YAML entry.
-      // Do not emit on_verified automation events or publish sensor values.
+      // Discovery does not itself decode or publish sensor values.
       if (kind == registry::Kind::Discovered) {
         ESP_LOGI(TAG,
                  "T1 DISCOVERED id=%08u manufacturer=0x%04X version=0x%02X "
@@ -319,21 +319,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                  static_cast<unsigned>(frame.header.device_type),
                  static_cast<unsigned>(frame.header.ci),
                  static_cast<unsigned>(frame.bytes.size()), rssi_dbm);
-        if (self->t1_unconfigured_hex_) {
-          // Already DLL/CRC verified, but never decoded or published.
-          // Local DEBUG logging only: IDs/payloads must not enter fixtures.
-          // Bounded by the RF frame limit (255 bytes) and logger buffer.
-          static constexpr char HEX[] = "0123456789ABCDEF";
-          char telegram_hex[511]{};
-          const size_t n = std::min<size_t>(frame.bytes.size(), 255);
-          for (size_t i = 0; i < n; ++i) {
-            telegram_hex[i * 2] = HEX[frame.bytes[i] >> 4];
-            telegram_hex[i * 2 + 1] = HEX[frame.bytes[i] & 0x0F];
-          }
-          telegram_hex[n * 2] = '\0';
-          ESP_LOGD(TAG, "T1 DISCOVERED Telegram: %s (%u) (local only)",
-                   telegram_hex, static_cast<unsigned>(n));
-        }
+
       }
       log_verified_identities(frame.bytes, self->configured_meter_ids_);
       const auto security = wmbus_pure::tpl_security::inspect(frame.bytes.data(), frame.bytes.size());
@@ -364,6 +350,10 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                  t1_candidate.status == wmbus_pure::DriverSelectionStatus::Found
                      ? t1_candidate.driver : "unknown");
       }
+      // Restore the pre-refactor trigger contract: every CRC-verified T1
+      // frame is observable by on_verified, regardless of YAML meter IDs.
+      // This is a user-defined diagnostic event, not an XMQ sensor update.
+      self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
       const auto admission=wmbus_pure::publication::inspect(
           frame.bytes.data(),frame.bytes.size(),frame.header.meter_id);
       if (kind==registry::Kind::Configured &&
@@ -375,9 +365,6 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
       }
       if (kind == registry::Kind::Configured &&
           admission==wmbus_pure::publication::Decision::Allowed) {
-        // on_verified exposes telegram bytes to user automations. Keep it
-        // behind the same admission gate as native measurement publication.
-        self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
         const auto meter_id = native_meter_id(frame.header.meter_id);
         for (const auto &binding : self->rssi_sensors_) {
           if (binding.meter_id == meter_id && binding.output != nullptr)
