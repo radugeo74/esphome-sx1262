@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdint>
 #include <vector>
+#include <string>
 using namespace wmbus_pure::identity;
 static std::vector<uint8_t> frame(uint8_t ci) {
   // Synthetic DLL: TCH converter ID 00464936, with distinct TPL meter
@@ -32,6 +33,15 @@ int main() {
   assert(match(parsed,"12345678")==Source::None);
   assert(match(parsed,"6695382")==Source::None);
   assert(match(parsed,"6695382X")==Source::None);
+  // Read-only classification does not change the publication permission.
+  auto diag=diagnose(parsed,std::vector<std::string>{"66953825"});
+  assert(diag.source==ConfiguredSource::Tpl && diag.distinct_addresses);
+  diag=diagnose(parsed,std::vector<std::string>{"00464936"});
+  assert(diag.source==ConfiguredSource::Dll);
+  diag=diagnose(parsed,std::vector<std::string>{"00464936","66953825"});
+  assert(diag.source==ConfiguredSource::Conflict);
+  diag=diagnose(parsed,std::vector<std::string>{"12345678"});
+  assert(diag.source==ConfiguredSource::None);
   // TPL ID must not be accidentally interpreted as the DLL converter ID.
   assert(parsed.dll.manufacturer==0x5068);
   assert(parsed.tpl.manufacturer==0x2324);
@@ -39,6 +49,9 @@ int main() {
   for (int i=0;i<4;++i) same[11+i]=same[4+i];
   parsed=inspect(same.data(),same.size());
   assert(match(parsed,"00464936")==Source::Both);
+  diag=diagnose(parsed,std::vector<std::string>{"00464936"});
+  assert(diag.source==ConfiguredSource::Both && diag.distinct_addresses);
+
   auto short_header=frame(0x7A);
   parsed=inspect(short_header.data(),short_header.size());
   assert(parsed.status==Status::Ok && !parsed.has_tpl &&
