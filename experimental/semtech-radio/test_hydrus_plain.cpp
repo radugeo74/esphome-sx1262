@@ -38,6 +38,26 @@ int main() {
   assert(decode_clear_application(warm.data(),warm.size(),fields,32,count)==Status::Ok);
   assert(std::fabs(value(fields,count,"total_m3")-3.45)<0.00001);
   assert(std::fabs(value(fields,count,"remaining_battery_life_y")-15.321328)<0.000001);
+  // Public hydrus.xmq IZAR RS cold and warm fixtures; only application
+  // data following the original '_' delimiter is supplied to this parser.
+  const auto izar=from_hex("041312170100426CBF23441344100100");
+  assert(decode_clear_application(izar.data(),izar.size(),fields,32,count)==Status::Ok);
+  assert(std::fabs(value(fields,count,"total_m3")-71.442)<0.000001);
+  assert(std::fabs(value(fields,count,"total_at_date_m3")-69.7)<0.000001);
+  const auto izar_warm=from_hex("0413DDC00000426CBF23441382BB0000");
+  assert(decode_clear_application(izar_warm.data(),izar_warm.size(),fields,32,count)==Status::Ok);
+  assert(std::fabs(value(fields,count,"total_m3")-49.373)<0.000001);
+  assert(std::fabs(value(fields,count,"total_at_date_m3")-48.002)<0.000001);
+  // Public Hydrus 2.0 post-underscore payload: min/max flow, target
+  // and both water temperatures must match official JSON values.
+  const auto hydrus20=from_hex("0C13921920000B3B0000000A5A96010A6622020C933C0000000084046D3B375F388C041341102000AB043B0000009B043B72170004FD17000000002F2F2F");
+  assert(decode_clear_application(hydrus20.data(),hydrus20.size(),fields,32,count)==Status::Ok);
+  assert(std::fabs(value(fields,count,"total_m3")-201.992)<0.000001);
+  assert(std::fabs(value(fields,count,"target_m3")-201.041)<0.000001);
+  assert(std::fabs(value(fields,count,"flow_temperature_c")-19.6)<0.000001);
+  assert(std::fabs(value(fields,count,"external_temperature_c")-22.2)<0.000001);
+  assert(std::fabs(value(fields,count,"min_flow_m3h"))<0.000001);
+  assert(std::fabs(value(fields,count,"max_flow_m3h")-1.772)<0.000001);
   // Incomplete/wrong records fail closed, never leave previous readings.
   auto broken=from_hex("0C1350340000");
   assert(decode_clear_application(broken.data(),broken.size()-1,fields,32,count)!=Status::Ok);
