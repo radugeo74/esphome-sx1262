@@ -48,6 +48,13 @@ static float round_for_sensor(float value, sensor::Sensor *output) {
   return std::round(value * scale) / scale;
 }
 
+// EN13757 DLL IDs are always eight decimal digits, including leading zeroes.
+static std::string native_meter_id(uint32_t id) {
+  char text[9]{};
+  std::snprintf(text, sizeof(text), "%08u", static_cast<unsigned>(id));
+  return std::string(text);
+}
+
 // C1 publication is opt-in and accepts only CRC-verified, CRC-stripped
 // frames whose transport is unencrypted (or existing manufacturer-specific
 // plaintext protocol). A 2F2F marker is never used to bypass security.
@@ -64,9 +71,7 @@ void NativeReceiverProbe::publish_c1_plaintext_(
   } else if (header.ci != 0xA0 && header.ci != 0xA2) {
     return;
   }
-  char id_buffer[9]{};
-  std::snprintf(id_buffer, sizeof(id_buffer), "%08u", static_cast<unsigned>(meter_id));
-  const std::string id(id_buffer);
+  const std::string id = native_meter_id(meter_id);
   const char *requested = nullptr;
   for (const auto &entry : this->meter_drivers_) {
     if (entry.id == id) { requested = entry.driver.c_str(); break; }
@@ -196,13 +201,13 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
       }
       self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
       if (kind == registry::Kind::Configured) {
-        const auto meter_id = std::to_string(frame.header.meter_id);
+        const auto meter_id = native_meter_id(frame.header.meter_id);
         for (const auto &binding : self->rssi_sensors_) {
           if (binding.meter_id == meter_id && binding.output != nullptr)
             binding.output->publish_state(round_for_sensor(rssi_dbm, binding.output));
         }
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
-        const auto id = std::to_string(frame.header.meter_id);
+        const auto id = native_meter_id(frame.header.meter_id);
         const char *driver = nullptr;
         NativeReceiverProbe::MeterDriver *configured_driver = nullptr;
         for (auto &entry : self->meter_drivers_) {
