@@ -119,6 +119,7 @@ static void log_verified_identities(
     const std::vector<std::string> &configured_ids) {
   const auto parsed=wmbus_pure::identity::inspect(frame.data(),frame.size());
   const auto info=wmbus_pure::identity::diagnose(parsed,configured_ids);
+  const auto policy=wmbus_pure::identity::identify_candidate(parsed,configured_ids);
   if (info.source==wmbus_pure::identity::ConfiguredSource::Unsupported)
     return;
   // The read-only ELL target is not an authorization to decode. The ELL
@@ -130,13 +131,16 @@ static void log_verified_identities(
     if (++ell_samples<=5 || ell_samples%100==0)
       ESP_LOGI(TAG,
         "ELL identity diagnostic ci=0x%02X dll_configured=%s ell_configured=%s "
-        "has_target=%s session_mode=%u (metadata only; payload not verified)",
+        "has_target=%s session_mode=%u candidate=%u conflict=%s "
+        "(metadata only; payload not verified)",
         static_cast<unsigned>(parsed.ci),
         info.source!=wmbus_pure::identity::ConfiguredSource::None ? "yes" : "no",
         info.ell_matched ? "yes" : "no",
         parsed.has_ell ? "yes" : "no",
         parsed.has_ell_session ?
-            static_cast<unsigned>(parsed.ell_security_mode) : 0xFFu);
+            static_cast<unsigned>(parsed.ell_security_mode) : 0xFFu,
+        static_cast<unsigned>(policy.candidate),
+        policy.multiple_configured_ids ? "yes" : "no");
     return;
   }
   if (info.source==wmbus_pure::identity::ConfiguredSource::None ||
@@ -145,12 +149,15 @@ static void log_verified_identities(
   if (++mismatch_samples<=5 || mismatch_samples%100==0)
     ESP_LOGI(TAG,
       "DLL/TPL identity diagnostic ci=0x%02X source=%u distinct=%s "
-      "dll_bcd=%s tpl_bcd=%s (observation only; no publication)",
+      "dll_bcd=%s tpl_bcd=%s candidate=%u conflict=%s "
+      "(observation only; no publication)",
       static_cast<unsigned>(parsed.ci),
       static_cast<unsigned>(info.source),
       info.distinct_addresses ? "yes" : "no",
       parsed.dll.decimal_bcd ? "yes" : "no",
-      parsed.has_tpl && parsed.tpl.decimal_bcd ? "yes" : "no");
+      parsed.has_tpl && parsed.tpl.decimal_bcd ? "yes" : "no",
+      static_cast<unsigned>(policy.candidate),
+      policy.multiple_configured_ids ? "yes" : "no");
 }
 
 // C1 publication is opt-in and accepts only CRC-verified, CRC-stripped
