@@ -75,6 +75,25 @@ int main() {
   auto no_vife=single({0x02,0x13,0x34,0x12});
   assert(no_vife.vif_extension_count==0);
 
+  // Original dvparser: the first VIFE following FD/FB/EF/FF is the
+  // extended base, subsequent VIFEs are combinable modifiers.
+  assert(battery.full_vif==0x7D74 && battery.modifier_count==0);
+  assert(chained.full_vif==0x7D74 && chained.modifier_count==1 &&
+         chained.modifiers[0]==2);
+  auto secondary=single({0x02,0xFB,0x1A,0x34,0x12});
+  assert(secondary.full_vif==0x7B1A && secondary.modifier_count==0);
+  auto special=single({0x02,0xEF,0x02,0x34,0x12});
+  assert(special.full_vif==0x6F02 && special.modifier_count==0);
+  auto manufacturer=single({0x02,0xFF,0x02,0x34,0x12});
+  assert(manufacturer.full_vif==0x7F02 && manufacturer.modifier_count==0);
+  auto combinable=single({0x02,0x93,0xFC,0x03,0x34,0x12});
+  assert(combinable.full_vif==0x13 && combinable.modifier_count==1 &&
+         combinable.modifiers[0]==0x7C03);
+  const uint8_t unfinished_modifier[]={0x02,0x93,0x7C,0x34,0x12};
+  Record bad_mod[1]{}; size_t bad_count=9;
+  assert(records(unfinished_modifier,sizeof(unfinished_modifier),
+                 bad_mod,1,bad_count)==Status::Unsupported);
+  assert(bad_count==0);
   // A DIFE supplies four storage bits, two tariff bits, one subunit bit.
   auto dife=single({0xC4,0x51,0x13,0x15,0x00,0x00,0x00});
   assert(dife.storage==3 && dife.tariff==1 && dife.subunit==1);
