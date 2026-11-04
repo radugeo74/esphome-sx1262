@@ -48,7 +48,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_T1_RAW_DIAGNOSTICS, default=False): cv.boolean,
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
-        cv.Required(CONF_DRIVER): cv.one_of("fhkvdataiii", "mkradio4", "auto"),
+        cv.Required(CONF_DRIVER): cv.one_of("fhkvdataiii", "mkradio4"),
     })),
     cv.Optional(CONF_RSSI_SENSORS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
@@ -83,11 +83,11 @@ async def to_code(config):
         generated = generate([xmq / "drivers" / "mkradio4.xmq",
                               xmq / "drivers" / "fhkvdataiii.xmq"])
         from generate_driver_registry import generate as generate_registry
-        registry_files = [
-            xmq / "drivers" / "mkradio4.xmq",
-            xmq / "drivers" / "fhkvdataiii.xmq",
-            xmq / "drivers" / "mkradio4a.xmq",
-        ]
+        # Auto detection indexes EVERY locally available XMQ signature.
+        # It is independent of the decoders explicitly assigned in YAML.
+        registry_files = sorted((xmq / "drivers").glob("*.xmq"))
+        if not registry_files:
+            raise cv.Invalid("No XMQ driver metadata available")
         # Keep the generated include local to the native component. ESPHome
         # copies this directory into build/src independently of wmbus_radio.
         registry_header = generate_registry(registry_files)
