@@ -48,7 +48,7 @@ inline Status decode_clear_application(const uint8_t *payload, size_t size,
       value*=standard::scale10(v-0x63);
       if(storage==0) field="external_temperature_c";
     } else if(v==0x7D && r.vif_extension==0x74) {
-      value/=365.25;
+      value/=365.2425;
       field="remaining_battery_life_y";
     }
     if(field && !add(out,capacity,out_count,field,value)) {
