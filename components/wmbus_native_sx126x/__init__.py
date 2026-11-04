@@ -10,10 +10,10 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_TRIGGER_ID
 from esphome import automation
 from esphome.components.sx126x import SX126x
-from esphome.components import sensor
+from esphome.components import sensor, text_sensor
 
 DEPENDENCIES = ["sx126x"]
-AUTO_LOAD = ["sensor"]
+AUTO_LOAD = ["sensor", "text_sensor"]
 CODEOWNERS = ["@SzczepanLeon", "@kubasaw"]
 CONF_SX126X_ID = "sx126x_id"
 CONF_C1_FORMAT = "c1_format"
@@ -22,6 +22,7 @@ CONF_LINK_MODE = "link_mode"
 CONF_CONFIGURED_METER_IDS = "configured_meter_ids"
 CONF_FIFO_PROGRESS_PROBE = "fifo_progress_probe"
 CONF_XMQ_SENSORS = "xmq_sensors"
+CONF_XMQ_TEXT_SENSORS = "xmq_text_sensors"
 CONF_RSSI_SENSORS = "rssi_sensors"
 CONF_METER_ID = "meter_id"
 CONF_FIELD = "field"
@@ -60,6 +61,11 @@ CONFIG_SCHEMA = cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Required(CONF_FIELD): cv.string_strict,
         cv.Required("sensor"): sensor.sensor_schema(accuracy_decimals=2),
+    })),
+    cv.Optional(CONF_XMQ_TEXT_SENSORS, default=[]): cv.ensure_list(cv.Schema({
+        cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
+        cv.Required(CONF_FIELD): cv.one_of("status", "at_date", "target_datetime", "meter_datetime"),
+        cv.Required("sensor"): text_sensor.text_sensor_schema(),
     })),
     cv.Optional(CONF_CONFIGURED_METER_IDS, default=[]): cv.ensure_list(cv.All(cv.string_strict, validate_meter_id)),
     cv.Optional(CONF_ON_VERIFIED): automation.validate_automation(
@@ -121,6 +127,9 @@ async def to_code(config):
     for item in config[CONF_XMQ_SENSORS]:
         obj = await sensor.new_sensor(item["sensor"])
         cg.add(var.add_xmq_sensor(item[CONF_METER_ID], item[CONF_FIELD], obj))
+    for item in config[CONF_XMQ_TEXT_SENSORS]:
+        obj = await text_sensor.new_text_sensor(item["sensor"])
+        cg.add(var.add_xmq_text_sensor(item[CONF_METER_ID], item[CONF_FIELD], obj))
     await cg.register_component(var, config)
     for conf in config.get(CONF_ON_VERIFIED, []):
         trig = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
