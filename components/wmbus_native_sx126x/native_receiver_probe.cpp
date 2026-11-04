@@ -126,16 +126,28 @@ static void log_verified_identities(
   // The read-only ELL target is not an authorization to decode. The ELL
   // session/Payload CRC are not validated here; never imply plaintext.
   if (parsed.has_ell_session || parsed.has_ell) {
+    // A nested TPL identity is observable only after ELL CRC validation;
+    // never promote it to a decode or publication binding.
     if (info.source==wmbus_pure::identity::ConfiguredSource::None &&
-        !info.ell_matched) return;
+        !info.ell_matched && !nested_configured) return;
     const auto integrity=wmbus_pure::identity::inspect_ell_payload(
         frame.data(),frame.size(),parsed);
+    const auto nested=wmbus_pure::identity::inspect_nested_tpl(
+        frame.data(),frame.size(),parsed);
+    bool nested_configured=false;
+    if (nested.has_address) {
+      for (const auto &id : configured_ids)
+        if (wmbus_pure::identity::same_id(nested.address,id.c_str())) {
+          nested_configured=true;
+          break;
+        }
+    }
     static uint32_t ell_samples=0;
     if (++ell_samples<=5 || ell_samples%100==0)
       ESP_LOGI(TAG,
         "ELL identity diagnostic ci=0x%02X dll_configured=%s ell_configured=%s "
         "has_target=%s session_mode=%u candidate=%u conflict=%s ell_crc=%u "
-        "(diagnostic only; never authorizes publication)",
+        "nested_tpl=%u nested_configured=%s (diagnostic only; no publication)",
         static_cast<unsigned>(parsed.ci),
         info.source!=wmbus_pure::identity::ConfiguredSource::None ? "yes" : "no",
         info.ell_matched ? "yes" : "no",
@@ -144,7 +156,9 @@ static void log_verified_identities(
             static_cast<unsigned>(parsed.ell_security_mode) : 0xFFu,
         static_cast<unsigned>(policy.candidate),
         policy.multiple_configured_ids ? "yes" : "no",
-        static_cast<unsigned>(integrity.status));
+        static_cast<unsigned>(integrity.status),
+        static_cast<unsigned>(nested.status),
+        nested_configured ? "yes" : "no");
     return;
   }
   if (info.source==wmbus_pure::identity::ConfiguredSource::None ||
