@@ -119,10 +119,28 @@ static void log_verified_identities(
     const std::vector<std::string> &configured_ids) {
   const auto parsed=wmbus_pure::identity::inspect(frame.data(),frame.size());
   const auto info=wmbus_pure::identity::diagnose(parsed,configured_ids);
+  if (info.source==wmbus_pure::identity::ConfiguredSource::Unsupported)
+    return;
+  // The read-only ELL target is not an authorization to decode. The ELL
+  // session/Payload CRC are not validated here; never imply plaintext.
+  if (parsed.has_ell_session || parsed.has_ell) {
+    if (info.source==wmbus_pure::identity::ConfiguredSource::None &&
+        !info.ell_matched) return;
+    static uint32_t ell_samples=0;
+    if (++ell_samples<=5 || ell_samples%100==0)
+      ESP_LOGI(TAG,
+        "ELL identity diagnostic ci=0x%02X dll_configured=%s ell_configured=%s "
+        "has_target=%s session_mode=%u (metadata only; payload not verified)",
+        static_cast<unsigned>(parsed.ci),
+        info.source!=wmbus_pure::identity::ConfiguredSource::None ? "yes" : "no",
+        info.ell_matched ? "yes" : "no",
+        parsed.has_ell ? "yes" : "no",
+        parsed.has_ell_session ?
+            static_cast<unsigned>(parsed.ell_security_mode) : 0xFFu);
+    return;
+  }
   if (info.source==wmbus_pure::identity::ConfiguredSource::None ||
-      info.source==wmbus_pure::identity::ConfiguredSource::Unsupported)
-    return; // Unconfigured meters remain silent in this diagnostic.
-  if (!info.distinct_addresses) return; // No noteworthy converter mismatch.
+      !info.distinct_addresses) return;
   static uint32_t mismatch_samples=0;
   if (++mismatch_samples<=5 || mismatch_samples%100==0)
     ESP_LOGI(TAG,
