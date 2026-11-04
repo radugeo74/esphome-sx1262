@@ -35,26 +35,34 @@ int main() {
   assert(decode_configured_plain_frame(iperl.data(),iperl.size(),"33225545",
       "iperl",captures,12,result)==PureDecodeStatus::InvalidMeterId);
   assert(result.value_count==0);
-  // Official Hydrus IZAR RS unencrypted example.
-  auto hydrus=hex("1E4424238B07797389607A8F00107D_041312170100426CBF23441344100100");
-  // The upstream IZAR RS fixture carries config 0x7D10 (security mode
-  // 13, unsupported by our present RF classifier). It can be decoded by
-  // the payload parser, but an RF frame must fail closed until classified.
-  assert(decode_configured_plain_frame(hydrus.data(),hydrus.size(),"60897379",
-      "hydrus",captures,12,result)==PureDecodeStatus::DecodeFailure);
+  // The public IZAR RS 868 fixture has an 0x8B DLL identification
+  // octet, not a valid BCD digit. The original driver extracts the
+  // secondary id in another way, but our strict RF boundary cannot
+  // match this DLL as a configured 8-digit BCD ID. Its application
+  // records remain valid input to the common already-clear decoder.
+  auto izar=hex("1E4424238B07797389607A8F00107D_041312170100426CBF23441344100100");
+  assert(decode_configured_plain_frame(izar.data(),izar.size(),"60897379",
+      "hydrus",captures,12,result)==PureDecodeStatus::InvalidFrame);
   assert(result.value_count==0);
-  // Synthetic transport-mode-zero variant built ONLY from the public
-  // fixture: verifies configured dispatch without weakening the RF guard.
-  hydrus[13]=0x00; hydrus[14]=0x00;
-  assert(decode_configured_plain_frame(hydrus.data(),hydrus.size(),"60897379",
-      "hydrus",captures,12,result)==PureDecodeStatus::Ok);
+  size_t plain_count=0;
+  assert(hydrus::decode_clear_application(izar.data()+15,izar.size()-15,
+      values,24,plain_count)==hydrus::Status::Ok);
+  result.value_count=plain_count;
   assert(std::fabs(get(result,"total_m3")-71.442)<1e-6);
   assert(std::fabs(get(result,"total_at_date_m3")-69.7)<1e-6);
+  result.value_count=0;
   // Official Hydrus Mode-5 NOKEY fixture represents already-clear
   // post-decryption data, not plaintext RF. Fail closed at RF boundary.
   auto mode5=hex("4E44A5116464646470077AED004005_2F2F01FD08300C13741100007C1300000000FC101300000000FC201300000000726C00000B3B00000002FD748713025A6800C4016D3B177F2ACC011300020000");
   assert(decode_configured_plain_frame(mode5.data(),mode5.size(),"64646464",
       "hydrus",captures,12,result)==PureDecodeStatus::DecodeFailure);
   assert(result.value_count==0);
+  // Complete configured-frame path using public fixture data with a
+  // synthetic mode-zero TPL flag. The original mode-five frame above
+  // must remain rejected: no decryption is attempted.
+  mode5[14]=0x00;
+  assert(decode_configured_plain_frame(mode5.data(),mode5.size(),"64646464",
+      "hydrus",captures,12,result)==PureDecodeStatus::Ok);
+  assert(std::fabs(get(result,"total_m3")-1.174)<1e-6);
   return 0;
 }
