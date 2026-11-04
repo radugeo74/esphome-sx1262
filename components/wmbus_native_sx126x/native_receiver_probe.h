@@ -64,6 +64,8 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   RxModeStats c1b_stats_{};
   uint32_t combined_stats_last_ms_{0};
   void log_combined_stats_();
+  void publish_xmq_text_(const std::vector<uint8_t> &frame,
+                         const std::string &id, const char *driver);
   void publish_c1_plaintext_(const std::vector<uint8_t> &frame, uint32_t meter_id,
                              float rssi_dbm);
   std::vector<std::string> configured_meter_ids_{};
