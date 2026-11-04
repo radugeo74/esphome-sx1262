@@ -108,7 +108,10 @@ inline NestedIdentityDecision identify_nested_candidate(
       inspect_ell_payload(frame,size,identity).status!=EllIntegrity::Valid)
     return out;
   const auto nested=inspect_nested_tpl(frame,size,identity);
+  // Unknown intermediary layers can hide a different TPL meter ID.
+  // Do not fall back to an ELL/DLL identity as a presumed target.
   if (nested.status==NestedTplStatus::NotVerified ||
+      nested.status==NestedTplStatus::NoTpl ||
       nested.status==NestedTplStatus::TooShort ||
       nested.status==NestedTplStatus::InvalidManufacturer)
     return out;
