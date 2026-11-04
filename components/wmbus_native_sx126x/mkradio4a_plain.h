@@ -26,7 +26,7 @@ inline Status decode_clear_application(const uint8_t *application, size_t size,
   for (size_t i=0;i<count;i++) {
     const auto &rec=records[i];
     if (rec.storage!=1 || rec.function!=0 || rec.tariff!=0) continue;
-    if (rec.numeric && rec.vif>=0x10 && rec.vif<=0x17 && rec.vif_extension==0) {
+    if (rec.numeric && rec.vif>=0x10 && rec.vif<=0x17 && rec.vif_extension_count==0) {
       if (found_volume) return Status::MissingFields;
       volume=rec.value*standard::scale10(static_cast<int>(rec.vif)-0x16);
       found_volume=true;
