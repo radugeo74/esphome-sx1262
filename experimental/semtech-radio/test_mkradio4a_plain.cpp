@@ -35,6 +35,20 @@ int main() {
   assert(xmq_portable::mkradio4a::decode_clear_application(
       cold.data()+25, cold.size()-25, value)==Status::Ok);
   assert(value.target_m3>75.19 && value.target_m3<75.21);
+  // Date modified by VIFE is not the ordinary end-of-year date.
+  auto modified_date=std::vector<uint8_t>(warm.begin()+25,warm.end());
+  modified_date[6]=0xEC;
+  modified_date.insert(modified_date.begin()+7,0x00);
+  assert(xmq_portable::mkradio4a::decode_clear_application(
+      modified_date.data(),modified_date.size(),value)==Status::MissingFields);
+  assert(value.target_m3==0);
+  // The same primary storage number on another subunit is not target_m3.
+  auto other_subunit=std::vector<uint8_t>(warm.begin()+25,warm.end());
+  other_subunit[0]=0xC3; // DIFE follows, binary volume value remains 4 bytes.
+  other_subunit.insert(other_subunit.begin()+1,0x40); // subunit 1.
+  assert(xmq_portable::mkradio4a::decode_clear_application(
+      other_subunit.data(),other_subunit.size(),value)==Status::MissingFields);
+  assert(value.target_m3==0);
   // Invalid application data must never reuse the preceding reading.
   assert(xmq_portable::mkradio4a::decode_clear_application(
       cold.data()+25, 1, value)!=Status::Ok);
