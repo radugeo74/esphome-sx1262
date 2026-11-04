@@ -119,7 +119,7 @@ async def to_code(config):
         (component_dir / "xmq_auto_registry.h").write_text(
             registry_header, encoding="utf-8")
         (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
-        (component_dir / "xmq_native_descriptors.inc").write_text(
+        (component_dir / "xmq_native_descriptors.h").write_text(
             catalog_fragment(), encoding="utf-8")
         (component_dir / "xmq_native_compiled.h").write_text(
             compiled_fragment(), encoding="utf-8")
