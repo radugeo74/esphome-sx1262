@@ -8,6 +8,7 @@
 #include "native_meter_registry.h"
 #include "native_identity_probe.h"
 #include "native_ell_integrity.h"
+#include "native_publication_gate.h"
 #include "c1_integrity.h"
 #include "esphome/core/log.h"
 #include <cmath>
@@ -194,10 +195,13 @@ void NativeReceiverProbe::publish_c1_plaintext_(
   wmbus_pure::Header header{};
   if (wmbus_pure::parse_header(bytes.data(), bytes.size(), header) !=
       wmbus_pure::HeaderStatus::Ok) return;
-  const auto security = wmbus_pure::tpl_security::inspect(bytes.data(), bytes.size());
-  if (header.ci == 0x7A || header.ci == 0x72) {
-    if (security.state != wmbus_pure::tpl_security::State::NotEncrypted) return;
-  } else if (header.ci != 0xA0 && header.ci != 0xA2) {
+  const auto admission=wmbus_pure::publication::inspect(
+      bytes.data(),bytes.size(),meter_id);
+  if (admission!=wmbus_pure::publication::Decision::Allowed) {
+    static uint32_t rejected_publications=0;
+    if (++rejected_publications<=5 || rejected_publications%100==0)
+      ESP_LOGW(TAG,"C1 configured publication blocked reason=%u ci=0x%02X",
+               static_cast<unsigned>(admission),static_cast<unsigned>(header.ci));
     return;
   }
   const std::string id = native_meter_id(meter_id);
@@ -331,7 +335,17 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                      ? t1_candidate.driver : "unknown");
       }
       self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
-      if (kind == registry::Kind::Configured) {
+      const auto admission=wmbus_pure::publication::inspect(
+          frame.bytes.data(),frame.bytes.size(),frame.header.meter_id);
+      if (kind==registry::Kind::Configured &&
+          admission!=wmbus_pure::publication::Decision::Allowed) {
+        static uint32_t blocked_t1=0;
+        if (++blocked_t1<=5 || blocked_t1%100==0)
+          ESP_LOGW(TAG,"T1 configured publication blocked reason=%u ci=0x%02X",
+                   static_cast<unsigned>(admission),static_cast<unsigned>(frame.header.ci));
+      }
+      if (kind == registry::Kind::Configured &&
+          admission==wmbus_pure::publication::Decision::Allowed) {
         const auto meter_id = native_meter_id(frame.header.meter_id);
         for (const auto &binding : self->rssi_sensors_) {
           if (binding.meter_id == meter_id && binding.output != nullptr)
