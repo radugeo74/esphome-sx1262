@@ -17,9 +17,18 @@ inline EllIntegrityResult inspect_ell_payload(
     const uint8_t *frame,size_t size,const Result &identity) {
   EllIntegrityResult result{};
   if (!frame || size<1 || size!=static_cast<size_t>(frame[0])+1 ||
-      identity.status!=Status::Ok ||
-      (identity.ci!=0x8C && identity.ci!=0x8D &&
-       identity.ci!=0x8E && identity.ci!=0x8F))
+      identity.status!=Status::Ok)
+    return result;
+  // A caller may have parsed a different telegram of the same size.
+  // Derive ELL layout/security from this frame, not cached metadata.
+  const auto actual=inspect(frame,size);
+  if (actual.status!=Status::Ok ||
+      actual.ci!=identity.ci ||
+      actual.application_offset!=identity.application_offset ||
+      actual.has_ell_session!=identity.has_ell_session ||
+      actual.ell_security_mode!=identity.ell_security_mode ||
+      (actual.ci!=0x8C && actual.ci!=0x8D &&
+       actual.ci!=0x8E && actual.ci!=0x8F))
     return result;
   if (!identity.has_ell_session) {
     result.status=EllIntegrity::NoPayloadCrc;return result;
