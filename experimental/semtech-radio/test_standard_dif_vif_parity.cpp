@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <initializer_list>
+#include <vector>
 using namespace xmq_portable::standard;
 static Record single(std::initializer_list<uint8_t> bytes) {
   Record rec[4]{};
@@ -51,6 +52,32 @@ int main() {
   const uint8_t partial[]={0x02,0x13,0x39,0x30,0x02,0xFD};
   count=2;
   assert(records(partial,sizeof(partial),records_out,2,count)==Status::Invalid);
+  assert(count==0);
+  // Every recognized LVAR family must skip exactly its payload length,
+  // leaving the next numeric DIF/VIF aligned. None is published as numeric.
+  for (uint8_t lvar : {uint8_t{0xC2},uint8_t{0xD2},
+                       uint8_t{0xE2},uint8_t{0xF0},uint8_t{0xF5},
+                       uint8_t{0xF6}}) {
+    const size_t bytes = lvar == 0xF0 ? 16 :
+                         lvar == 0xF5 ? 48 :
+                         lvar == 0xF6 ? 64 : 2;
+    std::vector<uint8_t> frame{0x0D,0x13,lvar};
+    frame.insert(frame.end(),bytes,0);
+    frame.insert(frame.end(),{0x02,0x13,0x34,0x12});
+    Record entries[3]{};
+    size_t found=0;
+    assert(records(frame.data(),frame.size(),entries,3,found)==Status::Ok);
+    assert(found==2 && !entries[0].numeric && entries[1].numeric);
+    near(entries[1].value,4660);
+    frame.pop_back();
+    found=99;
+    assert(records(frame.data(),frame.size(),entries,3,found)==Status::Invalid);
+    assert(found==0);
+  }
+  // Reserved LVAR values are rejected rather than guessed.
+  const uint8_t reserved_lvar[]={0x0D,0x13,0xFA,0x02,0x13,0x34,0x12};
+  count=2;
+  assert(records(reserved_lvar,sizeof(reserved_lvar),records_out,2,count)==Status::Unsupported);
   assert(count==0);
   // LVAR stays opaque and cannot be mistaken for a numeric meter value.
   auto text=single({0x0D,0x7C,0x03,0x41,0x42,0x43,0x03,0x31,0x32,0x33});
