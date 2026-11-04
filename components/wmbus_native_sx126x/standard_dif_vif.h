@@ -217,7 +217,7 @@ inline bool to_canonical(uint8_t vif, double raw, double &out) {
   else if (vif >= 0x40 && vif <= 0x47)
     divisor=60.0*std::pow(10.0, 0x47-vif);
   else if (vif >= 0x48 && vif <= 0x4F)
-    divisor=3600.0*std::pow(10.0, 0x4D-vif);
+    divisor=360000.0*std::pow(10.0, 0x4F-vif);
   else if ((vif >= 0x58 && vif <= 0x5F) ||
            (vif >= 0x64 && vif <= 0x67)) {
     const int reference=vif<=0x5F ? (vif<=0x5B ? 0x5B : 0x5F) : 0x67;
