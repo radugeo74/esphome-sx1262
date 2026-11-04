@@ -10,6 +10,7 @@
 #include "esphome/core/log.h"
 #include <cmath>
 #include <algorithm>
+#include <cstdio>
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
 #include "xmq_decode_catalog.h"
 #endif
@@ -45,6 +46,67 @@ static float round_for_sensor(float value, sensor::Sensor *output) {
   for (int i = 0; i < decimals; ++i)
     scale *= 10.0f;
   return std::round(value * scale) / scale;
+}
+
+// C1 publication is opt-in and accepts only CRC-verified, CRC-stripped
+// frames whose transport is unencrypted (or existing manufacturer-specific
+// plaintext protocol). A 2F2F marker is never used to bypass security.
+void NativeReceiverProbe::publish_c1_plaintext_(
+    const std::vector<uint8_t> &bytes, uint32_t meter_id, float rssi_dbm) {
+  if (!this->c1_plaintext_publish_ || bytes.empty()) return;
+#ifdef WMBUS_NATIVE_XMQ_ENABLED
+  wmbus_pure::Header header{};
+  if (wmbus_pure::parse_header(bytes.data(), bytes.size(), header) !=
+      wmbus_pure::HeaderStatus::Ok) return;
+  const auto security = wmbus_pure::tpl_security::inspect(bytes.data(), bytes.size());
+  if (header.ci == 0x7A || header.ci == 0x72) {
+    if (security.state != wmbus_pure::tpl_security::State::NotEncrypted) return;
+  } else if (header.ci != 0xA0 && header.ci != 0xA2) {
+    return;
+  }
+  char id_buffer[9]{};
+  std::snprintf(id_buffer, sizeof(id_buffer), "%08u", static_cast<unsigned>(meter_id));
+  const std::string id(id_buffer);
+  const char *requested = nullptr;
+  for (const auto &entry : this->meter_drivers_) {
+    if (entry.id == id) { requested = entry.driver.c_str(); break; }
+  }
+  if (!requested) return; // Never publish unconfigured meters.
+  const auto selected = wmbus_pure::auto_driver::resolve(
+      requested, wmbus_pure::generated::signatures,
+      wmbus_pure::generated::signature_count,
+      header.manufacturer, header.version, header.device_type);
+  if (selected.status != wmbus_pure::auto_driver::Status::Ready) return;
+  xmq_portable::CalcValue values[24]{};
+  xmq_portable::CalendarDate dates[2]{};
+  xmq_portable::Capture captures[12]{};
+  xmq_portable::DecodedPayload decoded{values, 24, 0, dates, 2, 0};
+  const auto status = xmq_portable::decode_configured_plain_frame(
+      bytes.data(), bytes.size(), id.c_str(), selected.driver,
+      captures, 12, decoded);
+  if (status != xmq_portable::PureDecodeStatus::Ok) return;
+  for (const auto &binding : this->xmq_sensors_) {
+    if (binding.meter_id != id || binding.output == nullptr) continue;
+    for (size_t i=0; i<decoded.value_count; ++i) {
+      if (decoded.values[i].name != nullptr &&
+          binding.field == decoded.values[i].name &&
+          std::isfinite(decoded.values[i].value)) {
+        binding.output->publish_state(
+            round_for_sensor(decoded.values[i].value, binding.output));
+        break;
+      }
+    }
+  }
+  for (const auto &binding : this->rssi_sensors_) {
+    if (binding.meter_id == id && binding.output != nullptr)
+      binding.output->publish_state(round_for_sensor(rssi_dbm, binding.output));
+  }
+  ESP_LOGI(TAG, "C1 plaintext configured meter=%s driver=%s fields=%u (mapped only)",
+           id.c_str(), selected.driver, static_cast<unsigned>(decoded.value_count));
+#else
+  (void) meter_id;
+  (void) rssi_dbm;
+#endif
 }
 
 #ifdef SX126X_EXPERIMENTAL_PROGRESS_PROBE
@@ -243,6 +305,7 @@ void NativeReceiverProbe::on_c1_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.bytes.size()),
              static_cast<unsigned>(checked.frame.header.ci),
              wmbus_pure::tpl_security::label(security.state));
+    self->publish_c1_plaintext_(checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm);
   }
   if (self->t1_raw_diagnostics_) {
     static constexpr char HEX[] = "0123456789ABCDEF";
@@ -328,6 +391,7 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.header.ci),
              kind == registry::Kind::Configured ? "yes" : "no",
              wmbus_pure::tpl_security::label(security.state));
+    self->publish_c1_plaintext_(checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm);
     // Identification-only auto catalog (generated from XMQ detect.mvt).
     // A converter DLL signature is a candidate, NOT proof of the TPL's
     // underlying meter driver, and never authorizes decryption/publication.
