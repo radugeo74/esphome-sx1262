@@ -72,7 +72,7 @@ jobs:
           /tmp/test-iperl-plain
       - name: Test official mkradio4a NOKEY examples (portable XMQ)
         run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
             experimental/semtech-radio/test_mkradio4a_plain.cpp \
             -o /tmp/test-mkradio4a-plain
           /tmp/test-mkradio4a-plain
