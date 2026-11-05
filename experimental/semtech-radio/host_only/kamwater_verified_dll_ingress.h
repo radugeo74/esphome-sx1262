@@ -14,6 +14,15 @@ struct ExpectedMeter {
   uint8_t version{0};
   uint8_t device_type{0};
 };
+// Shared host-only exact configuration filter for clear/encrypted tests.
+// The caller must separately verify the DLL CRC before trusting this header.
+inline bool matches_expected(const wmbus_pure::Header &h,
+                             const ExpectedMeter &expected) {
+  return h.manufacturer==expected.manufacturer &&
+         h.meter_id==expected.meter_id &&
+         h.version==expected.version &&
+         h.device_type==expected.device_type;
+}
 enum class Status : uint8_t {
   Ok, DllRejected, IdentityMismatch, WrongCi, ClearPipelineRejected
 };
@@ -31,11 +40,7 @@ inline Status decode_verified_dll(
       raw,raw_length,frame_format,verified)!=wmbus_pure::CompleteStatus::Ok)
     return Status::DllRejected;
   const auto &h=verified.header;
-  if(h.manufacturer!=expected.manufacturer ||
-     h.meter_id!=expected.meter_id ||
-     h.version!=expected.version ||
-     h.device_type!=expected.device_type)
-    return Status::IdentityMismatch;
+  if(!matches_expected(h,expected)) return Status::IdentityMismatch;
   if(h.ci!=0x8D) return Status::WrongCi;
   // Header.application begins AFTER CI; the ELL parser needs CI itself.
   pipeline::Output decoded{};
