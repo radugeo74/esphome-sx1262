@@ -3,6 +3,7 @@
 // #10 authenticates and must exactly match original clear application bytes.
 // The decoder must never emit measurements from failed CCM authentication.
 #include "host_only/oms_tpl_ccm_openssl.h"
+#include "host_only/kamwater_numeric_semantics.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include <cassert>
 #include <cmath>
@@ -58,6 +59,15 @@ int main() {
          ==xmq_portable::kamwater::Status::Ok);
   assert(std::fabs(parsed.total_m3)<1e-9);
   assert(parsed.has_target && std::fabs(parsed.target_m3)<1e-9);
+  // The original #10 JSON also exposes a six-byte opaque diagnostic.
+  // Decode it only from the authenticated application; do not interpret
+  // FFFFFFFFFFFF as a numeric temperature or volume reading.
+  xmq_portable::kamwater::numeric_semantics::Reading diagnostic{};
+  assert(xmq_portable::kamwater::numeric_semantics::decode(
+      out.clear_application.data(),out.clear_application.size(),diagnostic)
+      ==xmq_portable::kamwater::numeric_semantics::Status::Ok);
+  assert(diagnostic.has_acoustic_noise &&
+         diagnostic.acoustic_noise=="FFFFFFFFFFFF");
   // Correct original tag is insufficient with wrong configured identity.
   auto wrong_id=std::vector<uint8_t>(id,id+sizeof(id));
   wrong_id[0]^=1;
