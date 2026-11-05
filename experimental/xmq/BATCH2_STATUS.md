@@ -18,6 +18,8 @@ golden cases (two genuine null target forms, a normal target, dates and
 malformed inputs). It does **not** decode proprietary history or authorize
 live RF. `kamwater` and `apator162` remain source/fixture-only.
 
+**Kamwater cleartext pilot:** `kamwater_clear_records.h` now uses the shared bounded DIF/VIF parser to decode the official already-clear application records for total, target, and raw status. Three upstream reference cases are exercised by `test_kamwater_clear_records.cpp` in CI. The pilot is transactional and deliberately excludes compact telegram expansion, ELL security/decryption, and live sensor publication.
+
 **Imported as source and regression fixtures, not yet compiled into live RF
 sensor decoding.** They are enumerated in `BATCH2_PENDING`, not `SUPPORTED`.
 The auto registry may identify their manufacturer/version/type metadata but
