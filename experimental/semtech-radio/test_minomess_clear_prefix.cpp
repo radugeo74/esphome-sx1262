@@ -84,7 +84,7 @@ int main() {
          ==Status::MissingFields);
   assert(reading.total_m3==0);
   bad_tail=upstream_rf;
-  bad_tail.pop_back();
+  bad_tail.resize(bad_tail.size()-4); // truncate the mandatory status
   bad_tail[0]=static_cast<uint8_t>(bad_tail.size()-1);
   assert(decode_clear_wireless_frame(bad_tail.data(),bad_tail.size(),reading)
          !=Status::Ok); // missing complete trailing DIF/VIF record or pad
