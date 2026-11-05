@@ -1,10 +1,12 @@
 #include "host_only/kamwater_ell_ctr_openssl.h"
+#include "host_only/kamwater_verified_dll_ingress.h"
 #include "components/wmbus_radio/pure_complete_frame.h"
 #include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include <cmath>
 #include <cassert>
 #include <cstdint>
+#include <initializer_list>
 #include <vector>
 int main() {
   using namespace xmq_portable::kamwater::ell_ctr;
@@ -119,6 +121,11 @@ int main() {
   assert(verified.header.meter_id==12345678u);
   assert(verified.header.version==0x01 && verified.header.device_type==0x07);
   assert(verified.header.ci==0x8D);
+  using xmq_portable::kamwater::ingress::ExpectedMeter;
+  using xmq_portable::kamwater::ingress::matches_expected;
+  const ExpectedMeter expected_meter{0x2C2D,12345678u,0x01,0x07};
+  assert(matches_expected(verified.header,expected_meter));
+  // The exact identity check is required BEFORE IV construction.
   // Derive the IV address and ELL data ONLY from CRC-verified DLL bytes.
   std::vector<uint8_t> from_dll{};
   assert(decrypt_ell_ii(
@@ -153,6 +160,23 @@ int main() {
       wmbus_pure::CrcFrameFormat::B,verified)
       ==wmbus_pure::CompleteStatus::Ok);
   assert(verified.header.meter_id!=12345678u);
+  assert(!matches_expected(verified.header,expected_meter));
+  // Independently vary each configured field while keeping a valid DLL.
+  // All four checks reject before reaching ELL processing.
+  for(const size_t pos : {size_t(2),size_t(4),size_t(8),size_t(9)}) {
+    tampered_dll=dll;
+    tampered_dll[pos]^=1;
+    const uint16_t renewed=wmbus_pure::crc16_en13757(
+        tampered_dll.data(),tampered_dll.size()-2);
+    tampered_dll[tampered_dll.size()-2]=static_cast<uint8_t>(renewed>>8);
+    tampered_dll.back()=static_cast<uint8_t>(renewed);
+    assert(wmbus_pure::verify_complete_frame(
+        tampered_dll.data(),tampered_dll.size(),
+        wmbus_pure::CrcFrameFormat::B,verified)
+        ==wmbus_pure::CompleteStatus::Ok);
+    assert(!matches_expected(verified.header,expected_meter));
+  }
+  assert(!matches_expected(verified.header,ExpectedMeter{}));
   // Identity mismatch must be denied by the caller before ELL processing.
   // Wrong key, corrupted payload, wrong mode and truncated ciphertext
   // must not publish any decrypted output.
