@@ -14,6 +14,8 @@ for filename in (
     "kamwater_ell_ctr_iv.h",
     "kamwater_ell_ctr_openssl.h",
     "kamwater_verified_dll_ingress.h",
+    "oms_tpl_ccm_openssl.h",
+    "kamwater_secure_ingress.h",
 ):
     assert (host_only / filename).is_file(), f"Host-only module missing: {filename}"
     assert not (components / filename).exists(), (
@@ -31,6 +33,12 @@ for path in components.rglob("*"):
         if stripped.startswith(("#include", "import ", "from ")):
             assert "kamwater_ell_ctr_openssl" not in stripped, (
                 f"Host OpenSSL AES CTR import in ESPHome component: {path}"
+            )
+            assert "oms_tpl_ccm_openssl" not in stripped, (
+                f"Host OpenSSL CCM import in ESPHome component: {path}"
+            )
+            assert "kamwater_secure_ingress" not in stripped, (
+                f"Host secure ingress imported by ESPHome component: {path}"
             )
             assert "host_only/" not in stripped, (
                 f"Host-only module included by ESPHome component: {path}"
