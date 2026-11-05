@@ -17,7 +17,9 @@ static int hex_digit(char c) {
   return -1;
 }
 int main(int argc,char **argv) {
-  if(argc!=3) return 2;
+  if(argc!=3 && argc!=4) return 2;
+  if(argc==4 && std::strcmp(argv[1],"kamwater_compact_ref")!=0)
+    return 2;
   const char *src=argv[2];
   const size_t n=std::strlen(src);
   if(n==0 || n%2 || n>1024) return 2;
@@ -52,6 +54,35 @@ int main(int argc,char **argv) {
         bytes.data(),bytes.size(),reading);
     if(result!=xmq_portable::apator162::Status::Ok) return 3;
     std::printf("total_m3=%.9f\n",reading.total_m3);
+    return 0;
+  }
+  if(std::strcmp(argv[1],"kamwater_compact_ref")==0) {
+    if(argc!=4) return 2;
+    const char *ref_hex=argv[3];
+    const size_t ref_len=std::strlen(ref_hex);
+    if(!ref_len || ref_len%2 || ref_len>1024) return 2;
+    std::vector<uint8_t> reference;
+    for(size_t i=0;i<ref_len;i+=2) {
+      const int hi=hex_digit(ref_hex[i]),lo=hex_digit(ref_hex[i+1]);
+      if(hi<0 || lo<0) return 2;
+      reference.push_back(static_cast<uint8_t>((hi<<4)|lo));
+    }
+    uint8_t expanded[160]{};
+    xmq_portable::kamwater::tpl79::Reading compact{};
+    const auto status=xmq_portable::kamwater::tpl79::verify_with_full_reference(
+        bytes.data(),bytes.size(),reference.data(),reference.size(),
+        expanded,sizeof(expanded),compact);
+    if(status==xmq_portable::kamwater::tpl79::Status::DataCrcMismatch)
+      return 4;
+    if(status!=xmq_portable::kamwater::tpl79::Status::Ok) return 3;
+    xmq_portable::kamwater::Reading reading{};
+    if(xmq_portable::kamwater::decode_clear_records(
+        expanded,compact.expanded_size,reading)
+        !=xmq_portable::kamwater::Status::Ok) return 3;
+    std::printf("total_m3=%.9f\n",reading.total_m3);
+    if(reading.has_target)
+      std::printf("target_m3=%.9f\n",reading.target_m3);
+    else std::puts("target_m3=null");
     return 0;
   }
   if(std::strcmp(argv[1],"kamwater_compact")==0) {
