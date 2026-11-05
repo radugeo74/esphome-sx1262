@@ -54,6 +54,15 @@ int main() {
   assert(compact::expand(bad.data(),bad.size(),application.data(),
                          application.size(),expanded,sizeof(expanded),used)
          ==compact::Status::Truncated);
+  // An incomplete DIF extension is also truncated, not unsupported.
+  bad=hex("8201");
+  assert(compact::expand(bad.data(),bad.size(),application.data(),
+                         application.size(),expanded,sizeof(expanded),used)
+         ==compact::Status::Truncated);
+  bad=hex("82");
+  assert(compact::expand(bad.data(),bad.size(),application.data(),
+                         application.size(),expanded,sizeof(expanded),used)
+         ==compact::Status::Truncated);
   assert(compact::expand(profile.data(),profile.size(),
                          application.data(),application.size(),
                          expanded,3,used)==compact::Status::Capacity);
