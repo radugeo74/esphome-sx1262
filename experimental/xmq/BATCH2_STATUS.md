@@ -413,7 +413,7 @@ expected readings in C++. It rejects any extra or missing decoded
 field in this test subset.
 
 Together with the previously confirmed 82 subset-field comparisons,
-the expected total becomes **112 compared fields across 31 distinct
+the expected total becomes **112 compared fields across 32 distinct
 original fixtures**, *pending the new CI run*. This is not full
 driver-output parity: other Kamwater status variants, history,
 manufacturer-specific fields and encrypted-radio fixtures remain.
