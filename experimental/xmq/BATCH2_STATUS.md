@@ -20,7 +20,7 @@ live RF. `kamwater` and `apator162` remain source/fixture-only.
 
 **Kamwater cleartext pilot:** `kamwater_clear_records.h` now uses the shared bounded DIF/VIF parser to decode the official already-clear application records for total, target, and raw status. Three upstream reference cases are exercised by `test_kamwater_clear_records.cpp` in CI. The pilot is transactional and deliberately excludes compact telegram expansion, ELL security/decryption, and live sensor publication.
 
-**Compact-profile pilot (host-only):** Added a shared, fixed-capacity `compact_dif_vif.h` expander which requires an explicitly supplied, validated DIF/VIF template. The first official Kamwater template (`02FF2004134413615B6167`) is paired with the public compact telegram and compared byte-for-byte with the upstream full-record example. The wrapper does not automatically choose a profile, validate format signatures, decrypt ELL, or publish sensors. Unknown and truncated compact content fails closed.
+**Compact-profile pilot (host-only):** Added a shared, fixed-capacity `compact_dif_vif.h` expander which requires an explicitly supplied, validated DIF/VIF template. Two official Kamwater templates (`02FF2004134413615B6167` and `02FF20041392013BA1015B8101E7FF0F`) are each compared byte-for-byte with paired public compact/full examples, with readings also checked where present. The wrapper does not automatically choose a profile, validate format signatures, decrypt ELL, or publish sensors. Unknown and truncated compact content fails closed.
 
 **Imported as source and regression fixtures, not yet compiled into live RF
 sensor decoding.** They are enumerated in `BATCH2_PENDING`, not `SUPPORTED`.
