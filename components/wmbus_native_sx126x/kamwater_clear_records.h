@@ -97,4 +97,26 @@ inline Status decode_known_clear_compact_profile_1(const uint8_t *payload,
     return Status::Invalid;
   return decode_clear_records(expanded,expanded_length,out);
 }
+// Third official profile: flowIQ 2200 records. The paired clear fixtures
+// contain different instantaneous flow readings (0 and 0.035 m3/h), so
+// compare stable total/target, not byte-for-byte identity across snapshots.
+// Caller MUST authenticate/identify the compact format and ELL security.
+// This helper only processes explicitly supplied clear compact bytes.
+inline Status decode_known_clear_compact_profile_2(const uint8_t *payload,
+                                                     size_t length,
+                                                     Reading &out) {
+  out={};
+  static constexpr uint8_t profile[] = {
+    0x04,0xFF,0x23, 0x44,0x13, 0x52,0x3B, 0x06,0xFF,0x1B,
+    0x42,0x6C, 0x61,0x67, 0x51,0x67, 0x02,0x3B,
+    0x04,0x13, 0x81,0x01,0xE7,0xFF,0x0F
+  };
+  uint8_t expanded[96]{};
+  size_t expanded_length=0;
+  if (compact::expand(profile,sizeof(profile),payload,length,
+                      expanded,sizeof(expanded),expanded_length)!=
+      compact::Status::Ok)
+    return Status::Invalid;
+  return decode_clear_records(expanded,expanded_length,out);
+}
 }} // namespace xmq_portable::kamwater
