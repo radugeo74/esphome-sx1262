@@ -116,7 +116,7 @@ real RF integration with source-derived fixtures.
 
 ## DLL-verified and configuration-matched ingress (host-only)
 
-`kamwater_verified_dll_ingress.h` now passes an untrusted raw DLL
+`experimental/semtech-radio/host_only/kamwater_verified_dll_ingress.h` now passes an untrusted raw DLL
 frame to the existing `wmbus_pure::verify_complete_frame` with explicit
 CRC frame format. The resulting decoded header is matched against an
 **independently configured** four-field meter identity (manufacturer,
