@@ -134,6 +134,21 @@ a CRC-recalculated forged frame can carry the configured address. No
 live radio registration, AES-CTR, or Home Assistant publication has
 been enabled. Existing driver behavior remains unchanged.
 
+## ELL AES-CTR IV preparation (host-only, no keys)
+
+The public `wmbusmeters` `decrypt_ELL_AES_CTR` implementation derives
+a 16-byte counter initialization vector from manufacturer (2 bytes,
+little endian), DLL address (6 bytes), ELL control byte with repeated
+and hop flags cleared (mask 0x12), the four ELL session bytes, and
+three zero bytes (FN[2], BC[1]). A new independent keyless helper
+`experimental/semtech-radio/host_only/kamwater_ell_ctr_iv.h` tests
+that exact construction using only synthetic header fields. The
+probe is limited to ELL II `0x8D` with AES-CTR security mode 1 and
+returns no decrypted bytes; it does **not** take keys, implement
+AES-CTR, perform counter increments, verify post-decryption ELL CRC,
+or permit any live publication. This file stays outside the
+ESPHome component include tree.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
