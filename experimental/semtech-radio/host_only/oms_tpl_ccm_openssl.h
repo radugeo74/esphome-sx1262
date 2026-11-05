@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <vector>
 #include <openssl/evp.h>
+#include <openssl/params.h>
+#include <utility>
 namespace xmq_portable { namespace oms_ccm {
 enum class Status : uint8_t {
   Ok, Invalid, UnsupportedCi, UnsupportedMode, UnsupportedKdf,
