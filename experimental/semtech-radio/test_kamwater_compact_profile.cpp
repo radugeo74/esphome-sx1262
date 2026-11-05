@@ -235,6 +235,38 @@ int main() {
   assert(kamwater::decode_known_clear_compact_profile_7(
       eighth_extra.data(),eighth_extra.size(),reading)!=kamwater::Status::Ok);
   assert(reading.total_m3==0);
+  // Ninth and final original XMQ KWM2231 profile: synthetic only.
+  // No upstream paired compact/full telegram is available for this format.
+  auto ninth_profile=hex(
+      "04FF2304134413426C023B92013BA2013B06FF1B"
+      "A1015B91015BA10167");
+  auto ninth_payload=hex(
+      "0000000039300000E02E0000812A7B0001000200"
+      "010203040506131415");
+  auto ninth_expected=hex(
+      "04FF23000000000413393000004413E02E0000426C812A"
+      "023B7B0092013B0100A2013B020006FF1B010203040506"
+      "A1015B1391015B14A1016715");
+  assert(compact::expand(ninth_profile.data(),ninth_profile.size(),
+                         ninth_payload.data(),ninth_payload.size(),
+                         expanded,sizeof(expanded),used)==compact::Status::Ok);
+  assert(used==ninth_expected.size());
+  for(size_t i=0;i<used;++i) assert(expanded[i]==ninth_expected[i]);
+  assert(kamwater::decode_known_clear_compact_profile_8(
+      ninth_payload.data(),ninth_payload.size(),reading)==kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-12.345)<1e-8);
+  assert(reading.has_target && std::fabs(reading.target_m3-12.0)<1e-8);
+  assert(reading.has_status && reading.status_bits==0);
+  auto ninth_short=ninth_payload;
+  ninth_short.pop_back();
+  assert(kamwater::decode_known_clear_compact_profile_8(
+      ninth_short.data(),ninth_short.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
+  auto ninth_extra=ninth_payload;
+  ninth_extra.push_back(0);
+  assert(kamwater::decode_known_clear_compact_profile_8(
+      ninth_extra.data(),ninth_extra.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
   // Truncated and overlong applications may never publish old readings.
   auto truncated=application;
   truncated.pop_back();
