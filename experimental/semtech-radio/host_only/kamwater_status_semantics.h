@@ -16,6 +16,7 @@ struct Reading {
   std::string time_low_ambient_temperature,time_high_ambient_temperature;
   std::string time_flow_above_q4;
   bool modern{false};
+  bool hot{false};
 };
 inline std::string bucket(uint32_t value,unsigned shift) {
   static const char *text[]={
@@ -62,6 +63,7 @@ inline Status decode(const uint8_t *data,size_t length,Reading &out) {
     const bool modern=r.full_vif!=0x7F20;
     const bool hot=r.full_vif==0x7F24;
     candidate.modern=modern;
+    candidate.hot=hot;
     candidate.status=common_flags(raw,modern,hot);
     if(candidate.status.empty()) candidate.status="OK";
     if(!modern) {
