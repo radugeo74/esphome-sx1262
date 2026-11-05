@@ -32,6 +32,18 @@ reject them as `meter_drivers` until their complete decode contracts pass.
 and blocks accidental enablement; CI also retains all established T1/C1 and
 old driver regressions.
 
+## Compact admission gate (host-only)
+
+The new `kamwater_compact_admission.h` provides an independently tested
+**evidence contract**, not a working RF verifier. It rejects requests unless
+the caller has already established all three separate facts: device identity,
+the compact format signature, and a verified-clear ELL application. The
+profile index must also be one of the nine registered templates.
+An encrypted, unknown, missing-signature, or guessed-profile telegram stays
+rejected. The current TPL security probe does not validate Kamstrup 8D20 ELL
+or its cryptographic mode. No live caller currently supplies these proofs,
+so this gate does not enable any firmware sensor publication.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
