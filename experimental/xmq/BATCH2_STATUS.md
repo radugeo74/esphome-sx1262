@@ -171,6 +171,18 @@ external W-MBus encrypted golden vector. Require independent upstream
 encrypted reference verification and later full end-to-end admission
 checks before any firmware use.
 
+## Regression guard: keep experimental decryption host-only
+
+`experimental/semtech-radio/ci/test_kamwater_host_only_isolation.py`
+is now executed in the native CI workflow. It checks that the synthetic
+ELL AES-CTR OpenSSL helper, keyless IV helper and the DLL ingress remain
+under `experimental/semtech-radio/host_only/`, not in the ESPHome
+component, and that the native component imports neither host-only
+modules nor OpenSSL headers. This guards against the previous build
+failure caused by a host-only header being auto-included by ESPHome.
+No AES-CTR or Kamwater dispatch is enabled in firmware. A passing CI
+only confirms code separation and existing tests, not real RF decoding.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
