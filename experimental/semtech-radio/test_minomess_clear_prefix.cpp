@@ -95,6 +95,48 @@ int main() {
                                     upstream_rf.size(),reading)==Status::Unsupported);
   assert(reading.total_m3==0 && !reading.has_target);
 
+  // All four official wireless Minomess golden fixtures, including
+  // both upstream missing-target encodings. Their original mode 5 is
+  // rejected; only synthetic mode zero exercises clear record parsing.
+  {
+    auto frame=unhex("6644496A1064035514377251345015496A0007EE0050052F2F0C1359000000026CBE2B82046CA12B8C0413FFFFFFFF8D0493132CFBFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF02FD1700002F2F");
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Unsupported);
+    assert(reading.total_m3==0);
+    frame[22]=0; // synthetic clear transport; never mutate the XMQ source
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Ok);
+    assert(std::fabs(reading.total_m3-0.059)<1e-8);
+    assert(!reading.has_target);
+    auto frame=unhex("6644496A4425155518377251413121496A0116360050052F2F0C1355000000026CEC2182046CE1218C0413000000808D0493132C33FE00008000008000008000008000008000008000008000008000008000008000008000008000008000008002FD1700002F2F");
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Unsupported);
+    assert(reading.total_m3==0);
+    frame[22]=0; // synthetic clear transport; never mutate the XMQ source
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Ok);
+    assert(std::fabs(reading.total_m3-0.055)<1e-8);
+    assert(!reading.has_target);
+    auto frame=unhex("6644496A8753155518377221314151496A0106300050052F2F0C1357000000026CEC2182046CE1218C0413000000808D0493132C33FE00008000008000008000008000008000008000008000008000008000008000008000008000008000008002FD1700002F2F");
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Unsupported);
+    assert(reading.total_m3==0);
+    frame[22]=0; // synthetic clear transport; never mutate the XMQ source
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Ok);
+    assert(std::fabs(reading.total_m3-0.057)<1e-8);
+    assert(!reading.has_target);
+    auto frame=unhex("6644496A7856341218377278563412496A01067D0050052F2F0C1354031400026C4F3A82046C413A8C0413F51C02008D0493132C33FEEE0F020D05021EFA018CED010CE0013ED401FFC601A9B701E2A2011B94014884011D7401FC6601EA5A0102FD1700002F2F");
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Unsupported);
+    assert(reading.total_m3==0);
+    frame[22]=0; // synthetic clear transport; never mutate the XMQ source
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Ok);
+    assert(std::fabs(reading.total_m3-140.354)<1e-8);
+    assert(reading.has_target && std::fabs(reading.target_m3-138.485)<1e-8);
+  }
+
   // Malformed DIF, invalid BCD and truncated value never keep old readings.
   populated[0]=0x0D;
   assert(decode_clear_prefix(populated.data(),populated.size(),reading)
