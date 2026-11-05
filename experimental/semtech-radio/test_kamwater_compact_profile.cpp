@@ -201,6 +201,40 @@ int main() {
   assert(kamwater::decode_known_clear_compact_profile_6(
       seventh_extra.data(),seventh_extra.size(),reading)!=kamwater::Status::Ok);
   assert(reading.total_m3==0 && !reading.has_target);
+  // Eighth source profile has status, total and historical flow (storage=1).
+  // Synthetic only: not a full upstream compact telegram.
+  auto eighth_profile=hex("02FF200413523B");
+  auto eighth_payload=hex("0000393000007B00");
+  auto eighth_expected=hex("02FF200000041339300000523B7B00");
+  assert(compact::expand(eighth_profile.data(),eighth_profile.size(),
+                         eighth_payload.data(),eighth_payload.size(),
+                         expanded,sizeof(expanded),used)==compact::Status::Ok);
+  assert(used==eighth_expected.size());
+  for(size_t i=0;i<used;++i) assert(expanded[i]==eighth_expected[i]);
+  assert(kamwater::decode_known_clear_compact_profile_7(
+      eighth_payload.data(),eighth_payload.size(),reading)==kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-12.345)<1e-8);
+  assert(!reading.has_target && reading.has_status && reading.status_bits==0);
+  standard::Record eighth_records[4]{};
+  size_t eighth_count=0;
+  assert(standard::records(expanded,used,eighth_records,4,eighth_count)
+         ==standard::Status::Ok);
+  assert(eighth_count==3 && eighth_records[2].storage==1);
+  assert(eighth_records[2].vif==0x3B);
+  double historical_flow=0;
+  assert(standard::to_canonical(eighth_records[2].vif,
+                                eighth_records[2].value,historical_flow));
+  assert(std::fabs(historical_flow-0.123)<1e-8);
+  auto eighth_short=eighth_payload;
+  eighth_short.pop_back();
+  assert(kamwater::decode_known_clear_compact_profile_7(
+      eighth_short.data(),eighth_short.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
+  auto eighth_extra=eighth_payload;
+  eighth_extra.push_back(0);
+  assert(kamwater::decode_known_clear_compact_profile_7(
+      eighth_extra.data(),eighth_extra.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0);
   // Truncated and overlong applications may never publish old readings.
   auto truncated=application;
   truncated.pop_back();
