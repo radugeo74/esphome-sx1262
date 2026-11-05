@@ -160,4 +160,23 @@ inline Status decode_known_clear_compact_profile_4(const uint8_t *payload,
     return Status::Invalid;
   return decode_clear_records(expanded,expanded_length,out);
 }
+// Sixth compact frame format from original kamwater.xmq: a status word,
+// current and stored volume, plus two one-byte temperature records.
+// No paired official compact/full telegram is supplied for this profile.
+// Host-only, synthetic-tested; never infer the profile from payload size.
+inline Status decode_known_clear_compact_profile_5(const uint8_t *payload,
+                                                    size_t length,
+                                                    Reading &out) {
+  out={};
+  static constexpr uint8_t profile[] = {
+    0x02,0xFF,0x20, 0x04,0x13, 0x44,0x13, 0x61,0x5B, 0x51,0x67
+  };
+  uint8_t expanded[64]{};
+  size_t expanded_length=0;
+  if (compact::expand(profile,sizeof(profile),payload,length,
+                      expanded,sizeof(expanded),expanded_length)!=
+      compact::Status::Ok)
+    return Status::Invalid;
+  return decode_clear_records(expanded,expanded_length,out);
+}
 }} // namespace xmq_portable::kamwater
