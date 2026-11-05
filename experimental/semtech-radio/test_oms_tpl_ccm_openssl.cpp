@@ -54,6 +54,16 @@ int main() {
      0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
      0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f
   };
+  // Independently computed with OpenSSL CLI CMAC over
+  // 00 || counter(04030201) || id(17352468) || seven 07 bytes.
+  uint8_t derived[16]{};
+  const uint8_t ctr[4]={4,3,2,1};
+  assert(xmq_portable::oms_ccm::derive_kenc(key,ctr,id,derived));
+  const uint8_t expected_kenc[16]={
+    0x95,0xF7,0x25,0xEE,0xF5,0x03,0xD9,0x27,
+    0xC1,0x31,0x2B,0x90,0x97,0x6C,0xE9,0x08
+  };
+  for(unsigned i=0;i<16;++i) assert(derived[i]==expected_kenc[i]);
   const auto good=synthetic_tpl(key,m,id);
   Output out{};
   const auto decode=[&](const std::vector<uint8_t> &tpl) {
