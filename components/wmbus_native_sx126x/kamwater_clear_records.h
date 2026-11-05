@@ -119,4 +119,26 @@ inline Status decode_known_clear_compact_profile_2(const uint8_t *payload,
     return Status::Invalid;
   return decode_clear_records(expanded,expanded_length,out);
 }
+// Fourth Kamstrup template, from the official XMQ compact_frame_formats.
+// No paired upstream compact telegram exists for this exact format yet.
+// This is a HOST-ONLY structural decoder tested with synthetic application
+// bytes; it must not be selected from RF by payload length or guesswork.
+inline Status decode_known_clear_compact_profile_3(const uint8_t *payload,
+                                                    size_t length,
+                                                    Reading &out) {
+  out={};
+  static constexpr uint8_t profile[] = {
+    0x02,0xFF,0x20, 0x04,0x13, 0x44,0x13,
+    0x42,0x6C, 0x52,0x3B, 0x61,0x5B, 0x61,0x67,
+    0x51,0x67, 0x81,0x01,0xE7,0xFF,0x0F,
+    0x06,0xFF,0x1B
+  };
+  uint8_t expanded[96]{};
+  size_t expanded_length=0;
+  if (compact::expand(profile,sizeof(profile),payload,length,
+                      expanded,sizeof(expanded),expanded_length)!=
+      compact::Status::Ok)
+    return Status::Invalid;
+  return decode_clear_records(expanded,expanded_length,out);
+}
 }} // namespace xmq_portable::kamwater
