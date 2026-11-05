@@ -80,6 +80,13 @@ jobs:
             experimental/semtech-radio/test_minomess_clear_prefix.cpp \
             -o /tmp/test-minomess-clear-prefix
           /tmp/test-minomess-clear-prefix
+      - name: Test host-only Kamwater ELL II to TPL79 to record decode pipeline
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_clear_pipeline.cpp \
+            -o /tmp/test-kamwater-clear-pipeline
+          /tmp/test-kamwater-clear-pipeline
       - name: Test Kamwater TPL79 compact reconstructed data CRC golden pairs
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
