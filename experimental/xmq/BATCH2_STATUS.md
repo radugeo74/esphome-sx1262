@@ -447,6 +447,25 @@ the existing 32-fixture / 112-field partial comparison count does
 not automatically become 34 field-parity PASS fixtures: #9 is a
 negative-security test and #10 is a partial numeric-field comparison.
 
+## Stage B Kamwater opaque acoustic field parity (pending CI)
+
+The Kamwater XMQ field `accoustic_noise` (the spelling in upstream JSON)
+is a **six-byte opaque text diagnostic** matched by `06FF1B`. The
+host-only numeric semantics parser retains its original uppercase
+hexadecimal bytes, never converts that field into a numeric reading,
+and rejects duplicate matches. The existing upstream-native field
+comparison now tests this text in clear/compact official fixtures
+**#5, #6, #7, #8**, adding **four** JSON field comparisons. The
+encrypted official `#10` test also checks its original
+`FFFFFFFFFFFF` value **only after** successful AES-CCM
+authentication; corrupted authenticated fixture `#9` produces no
+clear application and no measurements.
+
+Pending the new CI run, this would increase the existing confirmed
+112 subset-field comparisons to **117** (four clear/compact + one
+authenticated). These are additional checks on already-covered
+fixtures, so the distinct-fixture count remains unchanged.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
