@@ -8,6 +8,7 @@
 // It intentionally does not publish RF readings.
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 namespace xmq_portable { namespace apator162 {
 enum class Status : uint8_t {
   Ok, Invalid, MissingTotal, DuplicateTotal, UnknownField, Truncated
