@@ -5,6 +5,7 @@
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
 #include "host_only/apator162_ixml_fields.h"
+#include "host_only/kamwater_status_semantics.h"
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -104,6 +105,28 @@ int main(int argc,char **argv) {
     if(reading.has_target)
       std::printf("target_m3=%.9f\n",reading.target_m3);
     else std::puts("target_m3=null");
+    return 0;
+  }
+  if(std::strcmp(argv[1],"kamwater_status")==0) {
+    xmq_portable::kamwater::status_semantics::Reading status{};
+    if(xmq_portable::kamwater::status_semantics::decode(
+         bytes.data(),bytes.size(),status)
+         !=xmq_portable::kamwater::status_semantics::Status::Ok) return 3;
+    std::printf("status=%s\n",status.status.c_str());
+    std::printf("time_dry=%s\n",status.time_dry.c_str());
+    std::printf("time_reversed=%s\n",status.time_reversed.c_str());
+    std::printf("time_leaking=%s\n",status.time_leaking.c_str());
+    std::printf("time_bursting=%s\n",status.time_bursting.c_str());
+    if(status.has_current_status)
+      std::printf("current_status=%s\n",status.current_status.c_str());
+    if(status.modern) {
+      std::printf("time_flow_above_q4=%s\n",
+                  status.time_flow_above_q4.c_str());
+      std::printf("time_%s_ambient_temperature=%s\n",
+                  status.time_high_ambient_temperature.empty() &&
+                  !status.time_low_ambient_temperature.empty() ? "low" : "low",
+                  status.time_low_ambient_temperature.c_str());
+    }
     return 0;
   }
   if(std::strcmp(argv[1],"kamwater")==0) {
