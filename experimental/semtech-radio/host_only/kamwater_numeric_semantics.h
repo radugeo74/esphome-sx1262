@@ -8,6 +8,7 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <utility>
 #include "components/wmbus_native_sx126x/standard_dif_vif.h"
 namespace xmq_portable { namespace kamwater { namespace numeric_semantics {
 enum class Status : uint8_t { Ok, Invalid, Duplicate, InvalidDate };
