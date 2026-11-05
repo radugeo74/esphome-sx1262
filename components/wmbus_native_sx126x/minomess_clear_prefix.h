@@ -8,6 +8,11 @@
 #include <cstdint>
 #include "standard_dif_vif.h"
 
+#include "pure_frame_header.h"
+#include "tpl_security_probe.h"
+#include "native_identity_probe.h"
+
+
 namespace xmq_portable { namespace minomess {
 enum class Status : uint8_t { Ok, Truncated, Unsupported, InvalidBcd,
                               InvalidDate, MissingFields };
@@ -68,5 +73,36 @@ inline Status decode_clear_prefix(const uint8_t *data, size_t n, Reading &out) {
     out.has_target=true;
   }
   return Status::Ok;
+}
+// Read-only wrapper for a complete, CRC-stripped wireless frame.
+// The official wired M-Bus 0x68 frames use a different envelope and are not
+// accepted here. This host-stage decoder DOES NOT authorize sensor output.
+// Only a clear short/long TPL may reach the existing application parser.
+inline Status decode_clear_wireless_frame(const uint8_t *frame, size_t n,
+                                          Reading &out) {
+  out = {};
+  wmbus_pure::Header header{};
+  if (wmbus_pure::parse_header(frame,n,header)!=wmbus_pure::HeaderStatus::Ok)
+    return Status::Unsupported;
+  if (header.manufacturer!=0x6A49 || // ZRI
+      !((header.version==0x00 && header.device_type==0x07) ||
+        (header.version==0x01 &&
+         (header.device_type==0x06 || header.device_type==0x16)) ))
+    return Status::Unsupported;
+  const auto security=wmbus_pure::tpl_security::inspect(frame,n);
+  if (security.state!=wmbus_pure::tpl_security::State::NotEncrypted)
+    return Status::Unsupported;
+  const auto identity=wmbus_pure::identity::inspect(frame,n);
+  if (identity.status!=wmbus_pure::identity::Status::Ok)
+    return Status::Unsupported;
+  if (header.ci!=0x72 && header.ci!=0x7A)
+    return Status::Unsupported;
+  const size_t offset=identity.application_offset;
+  if (offset>=n) return Status::Truncated;
+  size_t start=offset;
+  while (start<n && frame[start]==0x2F) ++start;
+  if (start>=n) return Status::Truncated;
+  // Unverified proprietary remainder cannot be reused as another reading.
+  return decode_clear_prefix(frame+start,n-start,out);
 }
 }}  // namespace xmq_portable::minomess
