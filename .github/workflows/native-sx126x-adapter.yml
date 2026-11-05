@@ -199,6 +199,15 @@ jobs:
             experimental/semtech-radio/test_xmq_plain_text_fields.cpp \
             -o /tmp/test-xmq-text-fields
           /tmp/test-xmq-text-fields
+      - name: First driver batch contract - iPERL Hydrus MK Radio 4a
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_xmq_batch1_driver_contract.cpp \
+            -o /tmp/test-xmq-batch1-contract
+          /tmp/test-xmq-batch1-contract
+
       - name: Test configured plaintext XMQ dispatch against official fixtures
         run: |
           python3 experimental/xmq/tools/build_native_generated.py
