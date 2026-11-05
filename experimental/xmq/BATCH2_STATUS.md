@@ -314,6 +314,32 @@ no driver is released to firmware. The 39-case upstream ledger remains
 separately labeled NOT_RUN for *full-frame/full-output* parity. Until CI
 passes this new step, the 7-case subset is pending confirmation.
 
+## Stage B Apator162 official XMQ field-grammar parity
+
+The original `apator162.xmq` embeds an IXML grammar with a seven-byte
+status prefix, a repeated union of named tag+fixed-length fields,
+an optional run of `FF` pad bytes and a 2/4-byte checksum suffix.
+The host-only `apator162_ixml_fields.h` follows those IXML field
+**tag and length rules** and extracts the `total` tag's uint32
+little-endian liters as `total_m3` after consuming a structurally
+valid manufacturer-specific application. It does not depend on a
+single absolute byte offset, ignore unknown middle fields, guess a
+field length, validate the trailing checksum algorithm, or wire into
+firmware.
+
+`test_apator162_upstream_volume_parity.py` executes the compiled C++
+parser on all **18** original `NOKEY` clear manufacturer applications
+(#1-#18), after their original short TPL header and optional `2F`
+padding, and compares actual `total_m3` with each reference JSON.
+The **19th** fixture carries an encryption key and is explicitly
+rejected as clear/UNSUPPORTED. These 18 new actual output comparisons,
+plus the 22 earlier minomess/kamwater field comparisons, comprise
+**40 field comparisons across 25 original fixtures** (if CI green).
+This is **partial field parity only**: it does not validate the full
+XMQ status, radio CRC, keyed decoding, authenticated TPL or the
+complete manufacturer-specific semantic fields. Do not mark the 39
+full-output ledger entries PASS on the basis of subset checks.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
