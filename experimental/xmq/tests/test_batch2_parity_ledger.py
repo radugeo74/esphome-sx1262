@@ -36,7 +36,7 @@ def read_cases(driver):
         jsons = values(entry, "json")
         if len(telegrams) != 1 or len(jsons) != 1:
             raise AssertionError(f"{driver} #{index}: missing source or expected JSON")
-        encoded = re.sub(r"[|_\\s]", "", telegrams[0])
+        encoded = "".join(telegrams[0].replace("|", "").replace("_", "").split())
         if not re.fullmatch(r"[A-Fa-f0-9]+", encoded) or len(encoded)%2:
             raise AssertionError(f"{driver} #{index}: malformed fixture hex")
         expected = json.loads(jsons[0])
@@ -57,7 +57,7 @@ def read_cases(driver):
             "reason": "No production-equivalent replay output compared with expected JSON",
             "comment": comments[0] if comments else "",
             "requires_key": bool(args and re.search(
-                r"\\b[0-9A-Fa-f]{32}\\b", args[0])),
+                r"(?<![0-9A-Fa-f])[0-9A-Fa-f]{32}(?![0-9A-Fa-f])", args[0])),
             "post_decrypted_fixture": bool(args and "NOKEY" in args[0]),
         })
     return cases
