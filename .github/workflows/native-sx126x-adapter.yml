@@ -80,6 +80,12 @@ jobs:
             experimental/semtech-radio/test_minomess_clear_prefix.cpp \
             -o /tmp/test-minomess-clear-prefix
           /tmp/test-minomess-clear-prefix
+      - name: Test Kamwater compact profile admission requires identity format and ELL evidence
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_kamwater_compact_admission.cpp \
+            -o /tmp/test-kamwater-compact-admission
+          /tmp/test-kamwater-compact-admission
       - name: Test generic compact DIF VIF expansion against Kamwater public fixtures
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
