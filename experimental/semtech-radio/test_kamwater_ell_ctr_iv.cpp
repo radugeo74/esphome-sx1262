@@ -14,7 +14,7 @@ int main() {
   };
   for(unsigned i=0;i<16;++i) assert(iv.bytes[i]==expected[i]);
   // CC hop/repeated fields (0x10/0x02) have no impact on the IV.
-  auto changed_cc[9]={0x8D,0x20,0xE1,0x03,0x00,0x00,0x20,0,0};
+  uint8_t changed_cc[9]={0x8D,0x20,0xE1,0x03,0x00,0x00,0x20,0,0};
   assert(derive_iv(m,a,changed_cc,sizeof(changed_cc),iv)==Status::Ok);
   for(unsigned i=0;i<16;++i) assert(iv.bytes[i]==expected[i]);
   // A non-AES-CTR session is never admitted, output is cleared.
