@@ -6,6 +6,7 @@
 #include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
 #include "host_only/apator162_ixml_fields.h"
 #include "host_only/kamwater_status_semantics.h"
+#include "host_only/kamwater_numeric_semantics.h"
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -19,7 +20,8 @@ static int hex_digit(char c) {
 }
 int main(int argc,char **argv) {
   if(argc!=3 && argc!=4) return 2;
-  if(argc==4 && std::strcmp(argv[1],"kamwater_compact_ref")!=0)
+  if(argc==4 && std::strcmp(argv[1],"kamwater_compact_ref")!=0 &&
+     std::strcmp(argv[1],"kamwater_numeric_compact_ref")!=0)
     return 2;
   const char *src=argv[2];
   const size_t n=std::strlen(src);
@@ -29,6 +31,49 @@ int main(int argc,char **argv) {
     const int hi=hex_digit(src[i]),lo=hex_digit(src[i+1]);
     if(hi<0 || lo<0) return 2;
     bytes.push_back(static_cast<uint8_t>((hi<<4)|lo));
+  }
+  const bool numeric_plain=std::strcmp(argv[1],"kamwater_numeric")==0;
+  const bool numeric_compact=std::strcmp(argv[1],"kamwater_numeric_compact")==0;
+  const bool numeric_ref=std::strcmp(argv[1],"kamwater_numeric_compact_ref")==0;
+  if(numeric_plain || numeric_compact || numeric_ref) {
+    std::vector<uint8_t> application=bytes;
+    uint8_t expanded[160]{};
+    xmq_portable::kamwater::tpl79::Reading compact{};
+    if(numeric_compact || numeric_ref) {
+      xmq_portable::kamwater::tpl79::Status verified{};
+      if(numeric_ref) {
+        if(argc!=4) return 2;
+        const char *ref=argv[3];
+        const size_t count=std::strlen(ref);
+        if(!count || count%2 || count>1024) return 2;
+        std::vector<uint8_t> previous;
+        for(size_t i=0;i<count;i+=2) {
+          const int hi=hex_digit(ref[i]),lo=hex_digit(ref[i+1]);
+          if(hi<0 || lo<0) return 2;
+          previous.push_back(static_cast<uint8_t>((hi<<4)|lo));
+        }
+        verified=xmq_portable::kamwater::tpl79::verify_with_full_reference(
+            bytes.data(),bytes.size(),previous.data(),previous.size(),
+            expanded,sizeof(expanded),compact);
+      } else {
+        if(argc!=3) return 2;
+        verified=xmq_portable::kamwater::tpl79::verify(
+            bytes.data(),bytes.size(),expanded,sizeof(expanded),compact);
+      }
+      if(verified!=xmq_portable::kamwater::tpl79::Status::Ok) return 3;
+      application.assign(expanded,expanded+compact.expanded_size);
+    } else if(argc!=3) return 2;
+    xmq_portable::kamwater::numeric_semantics::Reading numeric{};
+    if(xmq_portable::kamwater::numeric_semantics::decode(
+         application.data(),application.size(),numeric)
+       !=xmq_portable::kamwater::numeric_semantics::Status::Ok) return 3;
+    for(const auto &field:numeric.fields)
+      std::printf("%s=%.9f\n",field.name.c_str(),field.value);
+    if(numeric.has_target_date)
+      std::printf("target_date=%04d-%02d-%02d\n",
+          numeric.target_date.year,numeric.target_date.month,
+          numeric.target_date.day);
+    return 0;
   }
   if(std::strcmp(argv[1],"minomess")==0) {
     xmq_portable::minomess::Reading reading{};
