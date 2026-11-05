@@ -84,16 +84,20 @@ inline Status decode_clear_wireless_frame(const uint8_t *frame, size_t n,
   wmbus_pure::Header header{};
   if (wmbus_pure::parse_header(frame,n,header)!=wmbus_pure::HeaderStatus::Ok)
     return Status::Unsupported;
-  if (header.manufacturer!=0x6A49 || // ZRI
-      !((header.version==0x00 && header.device_type==0x07) ||
-        (header.version==0x01 &&
-         (header.device_type==0x06 || header.device_type==0x16)) ))
-    return Status::Unsupported;
+  // The outer DLL can belong to a forwarding radio module. Validate the
+  // actual embedded TPL signature instead; this is not an authorization
+  // to publish under an unmatched DLL ID.
   const auto security=wmbus_pure::tpl_security::inspect(frame,n);
   if (security.state!=wmbus_pure::tpl_security::State::NotEncrypted)
     return Status::Unsupported;
   const auto identity=wmbus_pure::identity::inspect(frame,n);
   if (identity.status!=wmbus_pure::identity::Status::Ok)
+    return Status::Unsupported;
+  const auto &meter=(identity.has_tpl ? identity.tpl : identity.dll);
+  if (meter.manufacturer!=0x6A49 ||
+      !((meter.version==0x00 && meter.device_type==0x07) ||
+        (meter.version==0x01 &&
+         (meter.device_type==0x06 || meter.device_type==0x16))))
     return Status::Unsupported;
   if (header.ci!=0x72 && header.ci!=0x7A)
     return Status::Unsupported;
