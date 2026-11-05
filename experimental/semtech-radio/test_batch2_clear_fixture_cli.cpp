@@ -3,6 +3,7 @@
 // Does not accept/reinterpret a raw encrypted RF frame; no sensor publishing.
 #include "components/wmbus_native_sx126x/minomess_clear_prefix.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
+#include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
 #include "host_only/apator162_ixml_fields.h"
 #include <cstdint>
 #include <cstdio>
@@ -51,6 +52,22 @@ int main(int argc,char **argv) {
         bytes.data(),bytes.size(),reading);
     if(result!=xmq_portable::apator162::Status::Ok) return 3;
     std::printf("total_m3=%.9f\n",reading.total_m3);
+    return 0;
+  }
+  if(std::strcmp(argv[1],"kamwater_compact")==0) {
+    uint8_t expanded[160]{};
+    xmq_portable::kamwater::tpl79::Reading compact{};
+    if(xmq_portable::kamwater::tpl79::verify(
+        bytes.data(),bytes.size(),expanded,sizeof(expanded),compact)
+        !=xmq_portable::kamwater::tpl79::Status::Ok) return 3;
+    xmq_portable::kamwater::Reading reading{};
+    if(xmq_portable::kamwater::decode_clear_records(
+        expanded,compact.expanded_size,reading)
+        !=xmq_portable::kamwater::Status::Ok) return 3;
+    std::printf("total_m3=%.9f\n",reading.total_m3);
+    if(reading.has_target)
+      std::printf("target_m3=%.9f\n",reading.target_m3);
+    else std::puts("target_m3=null");
     return 0;
   }
   if(std::strcmp(argv[1],"kamwater")==0) {
