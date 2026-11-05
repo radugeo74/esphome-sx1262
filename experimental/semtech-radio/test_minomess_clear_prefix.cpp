@@ -70,6 +70,26 @@ int main() {
                                     upstream_rf.size(),reading)==Status::Ok);
   assert(std::fabs(reading.total_m3-140.354)<1e-8);
   assert(reading.has_target && std::fabs(reading.target_m3-138.485)<1e-8);
+  assert(reading.status_bits==0); // 02FD17 from the upstream fixture
+  // Preserve strict verification of the whole application; a correct
+  // first 22 bytes do not authorize a truncated or corrupt history tail.
+  auto bad_tail=upstream_rf;
+  bad_tail[25+22+4]=0xFF; // wrong monthly-history LVAR length
+  assert(decode_clear_wireless_frame(bad_tail.data(),bad_tail.size(),reading)
+         ==Status::Unsupported);
+  assert(reading.total_m3==0 && !reading.has_target);
+  bad_tail=upstream_rf;
+  bad_tail[25+22+5+44+2]=0x18; // 02FD17 status identity corrupted
+  assert(decode_clear_wireless_frame(bad_tail.data(),bad_tail.size(),reading)
+         ==Status::MissingFields);
+  assert(reading.total_m3==0);
+  bad_tail=upstream_rf;
+  bad_tail.pop_back();
+  bad_tail[0]=static_cast<uint8_t>(bad_tail.size()-1);
+  assert(decode_clear_wireless_frame(bad_tail.data(),bad_tail.size(),reading)
+         !=Status::Ok); // missing complete trailing DIF/VIF record or pad
+  assert(reading.total_m3==0);
+
   upstream_rf[18]=0x12; // TPL version is now not among official detects.
   assert(decode_clear_wireless_frame(upstream_rf.data(),
                                     upstream_rf.size(),reading)==Status::Unsupported);
