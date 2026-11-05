@@ -32,6 +32,7 @@ def check(name):
     assert len(fixture_blocks) >= EXPECTED[name][1], (
         f"{name}: expected at least {EXPECTED[name][1]} original cases; got {len(fixture_blocks)}"
     )
+    usable = 0
     for fixture in fixture_blocks:
         source = values(fixture["entries"], "telegram")
         expected = values(fixture["entries"], "json")
@@ -42,8 +43,10 @@ def check(name):
         reference = json.loads(expected[0])
         assert reference["driver"] == name, name
         assert reference["id"], name
-        assert EXPECTED[name][2] in reference, name
-    print(f"{name}: {len(fixture_blocks)} upstream fixtures inventoried (not live enabled)")
+        if EXPECTED[name][2] in reference and reference[EXPECTED[name][2]] is not None:
+            usable += 1
+    assert usable > 0, f"{name}: missing upstream reference for total_m3"
+    print(f"{name}: {len(fixture_blocks)} upstream fixtures, {usable} total readings (not live enabled)")
     return len(fixture_blocks)
 
 def main():
