@@ -122,6 +122,33 @@ int main() {
   assert(kamwater::decode_known_clear_compact_profile_3(
       fourth_extra.data(),fourth_extra.size(),reading)!=kamwater::Status::Ok);
   assert(reading.total_m3==0);
+  // Fifth upstream XMQ profile has no paired source telegram and is
+  // explicitly marked "Unknown if KamHeat or KamWater" in the source.
+  // Synthetic ONLY: decoding bytes must NOT resolve meter/driver identity.
+  auto fifth_profile=hex("02FF2004134413A1015B8101E7FF0F");
+  auto fifth_payload=hex("000039300000E02E00000013");
+  auto fifth_expected=hex(
+      "02FF2000000413393000004413E02E0000A1015B008101E7FF0F13");
+  assert(compact::expand(fifth_profile.data(),fifth_profile.size(),
+                         fifth_payload.data(),fifth_payload.size(),
+                         expanded,sizeof(expanded),used)==compact::Status::Ok);
+  assert(used==fifth_expected.size());
+  for(size_t i=0;i<used;++i) assert(expanded[i]==fifth_expected[i]);
+  assert(kamwater::decode_known_clear_compact_profile_4(
+      fifth_payload.data(),fifth_payload.size(),reading)==kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-12.345)<1e-8);
+  assert(reading.has_target && std::fabs(reading.target_m3-12.0)<1e-8);
+  assert(reading.has_status && reading.status_bits==0);
+  auto fifth_short=fifth_payload;
+  fifth_short.pop_back();
+  assert(kamwater::decode_known_clear_compact_profile_4(
+      fifth_short.data(),fifth_short.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
+  auto fifth_extra=fifth_payload;
+  fifth_extra.push_back(0);
+  assert(kamwater::decode_known_clear_compact_profile_4(
+      fifth_extra.data(),fifth_extra.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
   // Truncated and overlong applications may never publish old readings.
   auto truncated=application;
   truncated.pop_back();
