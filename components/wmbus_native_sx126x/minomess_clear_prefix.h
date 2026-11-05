@@ -24,6 +24,7 @@ struct Reading {
   bool has_target_date{false};
   standard::Calendar meter_date{};
   standard::Calendar target_date{};
+  uint16_t status_bits{0};
 };
 inline uint32_t u32le(const uint8_t *p) {
   return uint32_t(p[0]) | (uint32_t(p[1])<<8) |
@@ -74,6 +75,43 @@ inline Status decode_clear_prefix(const uint8_t *data, size_t n, Reading &out) {
   }
   return Status::Ok;
 }
+// Validate the complete remaining standard record sequence after the special
+// Minomess prefix. The 8D049313 record is an LVAR opaque monthly-history
+// blob, not a list of measurements. We validate its declared length without
+// interpreting its undocumented contents. The 02FD17 status is mandatory.
+inline Status decode_clear_application(const uint8_t *data, size_t n,
+                                       Reading &out) {
+  out={};
+  Reading parsed{};
+  const auto prefix=decode_clear_prefix(data,n,parsed);
+  if (prefix!=Status::Ok) return prefix;
+  size_t i=22;
+  if (n<i+5 || data[i]!=0x8D || data[i+1]!=0x04 ||
+      data[i+2]!=0x93 || data[i+3]!=0x13)
+    return Status::MissingFields;
+  // LVAR is byte count for opaque text. The actual upstream driver
+  // uses length 0x2C (44 bytes) for monthly history; never overread.
+  const size_t history_length=data[i+4];
+  if (history_length!=44 || history_length>n-(i+5))
+    return Status::Unsupported;
+  i+=5+history_length;
+  if (n-i<5 || data[i]!=0x02 || data[i+1]!=0xFD ||
+      data[i+2]!=0x17)
+    return Status::MissingFields;
+  parsed.status_bits=static_cast<uint16_t>(data[i+3]) |
+                     (static_cast<uint16_t>(data[i+4])<<8);
+  i+=5;
+  // The wired M-Bus upstream fixtures may carry a gateway RSSI and
+  // actuality records. Decode their shape with the shared bounded parser,
+  // without interpreting them as meter-owned readings.
+  standard::Record rest[8]{};
+  size_t rest_count=0;
+  if (standard::records(data+i,n-i,rest,8,rest_count)!=
+      standard::Status::Ok)
+    return Status::Unsupported;
+  out=parsed;
+  return Status::Ok;
+}
 // Read-only wrapper for a complete, CRC-stripped wireless frame.
 // The official wired M-Bus 0x68 frames use a different envelope and are not
 // accepted here. This host-stage decoder DOES NOT authorize sensor output.
@@ -107,6 +145,6 @@ inline Status decode_clear_wireless_frame(const uint8_t *frame, size_t n,
   while (start<n && frame[start]==0x2F) ++start;
   if (start>=n) return Status::Truncated;
   // Unverified proprietary remainder cannot be reused as another reading.
-  return decode_clear_prefix(frame+start,n-start,out);
+  return decode_clear_application(frame+start,n-start,out);
 }
 }}  // namespace xmq_portable::minomess
