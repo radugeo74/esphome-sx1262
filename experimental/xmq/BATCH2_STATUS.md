@@ -149,6 +149,28 @@ AES-CTR, perform counter increments, verify post-decryption ELL CRC,
 or permit any live publication. This file stays outside the
 ESPHome component include tree.
 
+## ELL AES-CTR host-only proof of concept
+
+The experimental `experimental/semtech-radio/host_only/kamwater_ell_ctr_openssl.h`
+implements the upstream blockwise ELL II (`0x8D`) AES-128 CTR
+transformation using OpenSSL AES-ECB keystream blocks and a big-endian
+128-bit incrementing counter. It derives the IV from the separately
+tested original field layout, decrypts from the two encrypted payload-CRC
+bytes onward, then compares the recovered EN13757 CRC to the recovered
+TPL application. Only TPL `0x78` and `0x79` are eligible; failures
+leave no output. CI tests a standard NIST AES-128 ECB known-answer
+vector and a synthetic encrypted ELL with synthetic key, plus negative
+tests for wrong keys, changed ciphertext, incorrect mode and truncation.
+
+**This is NOT production decryption**: no real keys, no decrypted RF
+captures, no replay protection, no cryptographic message authentication,
+and no integration into ESPHome or the live `kamwater` decoder. CRC is
+a non-cryptographic error detector. The example's AES ciphertext is
+constructed synthetically for this test and is not an independent
+external W-MBus encrypted golden vector. Require independent upstream
+encrypted reference verification and later full end-to-end admission
+checks before any firmware use.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
