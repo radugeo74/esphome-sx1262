@@ -23,6 +23,7 @@ static void refresh_ell_crc(std::vector<uint8_t> &frame) {
 int main() {
   using namespace xmq_portable::kamwater;
   using namespace xmq_portable::kamwater::pipeline;
+  using PipelineStatus = xmq_portable::kamwater::pipeline::Status;
   // Official compact TPL reference carried in a SYNTHETIC clear ELL II.
   auto tpl=hex("79EDA86AB6710008190000081900007F13");
   std::vector<uint8_t> frame={0x8D,0x20,0x01,0x03,0,0,0,0,0};
@@ -31,7 +32,7 @@ int main() {
   Preconditions trusted{true,true};
   Output result{};
   assert(decode_clear_ell_ii_tpl79(frame.data(),frame.size(),trusted,result)
-         ==Status::Ok);
+         ==PipelineStatus::Ok);
   assert(result.profile_index==0);
   assert(std::fabs(result.reading.total_m3-6.408)<1e-8);
   assert(result.reading.has_target &&
@@ -40,43 +41,43 @@ int main() {
   // Both independent external preconditions remain mandatory.
   assert(decode_clear_ell_ii_tpl79(frame.data(),frame.size(),
                                   Preconditions{false,true},result)
-         ==Status::UnverifiedDll);
+         ==PipelineStatus::UnverifiedDll);
   assert(result.profile_index==-1 && result.reading.total_m3==0);
   assert(decode_clear_ell_ii_tpl79(frame.data(),frame.size(),
                                   Preconditions{true,false},result)
-         ==Status::UnverifiedIdentity);
+         ==PipelineStatus::UnverifiedIdentity);
   assert(result.profile_index==-1 && !result.reading.has_target);
   // Corrupt ELL CRC.
   auto bad=frame;bad[7]^=1;
   assert(decode_clear_ell_ii_tpl79(bad.data(),bad.size(),trusted,result)
-         ==Status::EllRejected);
+         ==PipelineStatus::EllRejected);
   assert(result.profile_index==-1 && result.reading.total_m3==0);
   // ELL AES-CTR cannot be bypassed even if the payload looks valid.
   bad=frame;bad[6]=0x20;
   assert(decode_clear_ell_ii_tpl79(bad.data(),bad.size(),trusted,result)
-         ==Status::EllRejected);
+         ==PipelineStatus::EllRejected);
   // Corrupt TPL data CRC while recomputing ELL to isolate the TPL check.
   bad=frame;bad[12]^=1;refresh_ell_crc(bad);
   assert(decode_clear_ell_ii_tpl79(bad.data(),bad.size(),trusted,result)
-         ==Status::CompactRejected);
+         ==PipelineStatus::CompactRejected);
   assert(result.profile_index==-1 && result.reading.total_m3==0);
   // Corrupt the format signature; a recomputed ELL CRC must not help.
   bad=frame;bad[10]^=1;refresh_ell_crc(bad);
   assert(decode_clear_ell_ii_tpl79(bad.data(),bad.size(),trusted,result)
-         ==Status::CompactRejected);
+         ==PipelineStatus::CompactRejected);
   // Corrupt a value but preserve ELL CRC; TPL CRC still rejects.
   bad=frame;bad.back()^=1;refresh_ell_crc(bad);
   assert(decode_clear_ell_ii_tpl79(bad.data(),bad.size(),trusted,result)
-         ==Status::CompactRejected);
+         ==PipelineStatus::CompactRejected);
   // A truncated compact payload may have its ELL CRC recalculated, but
   // must not be reinterpreted as a successful shorter profile.
   bad=frame;bad.pop_back();refresh_ell_crc(bad);
   assert(decode_clear_ell_ii_tpl79(bad.data(),bad.size(),trusted,result)
-         ==Status::CompactRejected);
+         ==PipelineStatus::CompactRejected);
   // Unknown TPL: ELL probe refuses entry into compact decoding.
   bad=frame;bad[9]=0x72;refresh_ell_crc(bad);
   assert(decode_clear_ell_ii_tpl79(bad.data(),bad.size(),trusted,result)
-         ==Status::EllRejected);
+         ==PipelineStatus::EllRejected);
   assert(result.profile_index==-1 && !result.reading.has_status);
   return 0;
 }
