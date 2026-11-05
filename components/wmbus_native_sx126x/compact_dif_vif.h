@@ -23,7 +23,8 @@ inline Status expand(const uint8_t *profile, size_t profile_size,
     uint8_t dif=original_dif;
     unsigned dif_extensions=0;
     while (dif & 0x80u) {
-      if (p>=profile_size || ++dif_extensions>8) return Status::Unsupported;
+      if (p>=profile_size) return Status::Truncated;
+      if (++dif_extensions>8) return Status::Unsupported;
       dif=profile[p++];
     }
     if (p>=profile_size) return Status::Truncated;
@@ -32,7 +33,8 @@ inline Status expand(const uint8_t *profile, size_t profile_size,
     if ((vif&0x7Fu)==0x7C) return Status::Unsupported;
     unsigned vif_extensions=0;
     while (vif&0x80u) {
-      if (p>=profile_size || ++vif_extensions>10) return Status::Unsupported;
+      if (p>=profile_size) return Status::Truncated;
+      if (++vif_extensions>10) return Status::Unsupported;
       vif=profile[p++];
     }
     const size_t data_length=standard::format_length(original_dif&15u);
