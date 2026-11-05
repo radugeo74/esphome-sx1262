@@ -214,4 +214,26 @@ inline Status decode_known_clear_compact_profile_7(const uint8_t *payload,
     return Status::Invalid;
   return decode_clear_records(expanded,used,out);
 }
+// Ninth and final upstream compact profile, marked KWM2231 in kamwater.xmq.
+// Status, total and stored target volume are followed by date, flow, noise
+// and temperature-related records. The source has no matching compact/full
+// golden fixture; validate structure with synthetic clear bytes ONLY.
+// Upstream manufacturer/device identity and ELL security remain independent.
+inline Status decode_known_clear_compact_profile_8(const uint8_t *payload,
+                                                    size_t length,
+                                                    Reading &out) {
+  out={};
+  static constexpr uint8_t profile[] = {
+    0x04,0xFF,0x23, 0x04,0x13, 0x44,0x13, 0x42,0x6C,
+    0x02,0x3B, 0x92,0x01,0x3B, 0xA2,0x01,0x3B,
+    0x06,0xFF,0x1B, 0xA1,0x01,0x5B,
+    0x91,0x01,0x5B, 0xA1,0x01,0x67
+  };
+  uint8_t expanded[96]{};
+  size_t used=0;
+  if (compact::expand(profile,sizeof(profile),payload,length,
+                      expanded,sizeof(expanded),used)!=compact::Status::Ok)
+    return Status::Invalid;
+  return decode_clear_records(expanded,used,out);
+}
 }} // namespace xmq_portable::kamwater
