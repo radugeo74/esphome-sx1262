@@ -62,6 +62,37 @@ int main() {
   assert(kamwater::decode_known_clear_compact_profile_1(
       second_extra.data(),second_extra.size(),reading)!=kamwater::Status::Ok);
   assert(reading.total_m3==0);
+  // Third official flowIQ pair: full snapshot #6 vs compact snapshot #7.
+  // Their instantaneous flow legitimately differs (0 vs 0.035 m3/h).
+  // Compare the compact expansion against the reference with that field
+  // substituted, rather than falsely claiming identical snapshots.
+  auto flowiq_profile=hex(
+      "04FF234413523B06FF1B426C61675167023B04138101E7FF0F");
+  auto flowiq_compact=hex(
+      "0008000000000000000008900008F0FFC12B0A1B23001F0F000013");
+  auto flowiq_expanded=hex(
+      "04FF2300080000441300000000523B000006FF1B08900008F0FF"
+      "426CC12B61670A51671B023B230004131F0F00008101E7FF0F13");
+  assert(compact::expand(flowiq_profile.data(),flowiq_profile.size(),
+                         flowiq_compact.data(),flowiq_compact.size(),
+                         expanded,sizeof(expanded),used)==compact::Status::Ok);
+  assert(used==flowiq_expanded.size());
+  for(size_t i=0;i<used;++i) assert(expanded[i]==flowiq_expanded[i]);
+  assert(kamwater::decode_known_clear_compact_profile_2(
+      flowiq_compact.data(),flowiq_compact.size(),reading)==kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-3.871)<1e-8);
+  assert(reading.has_target && reading.target_m3==0);
+  assert(reading.has_status && reading.status_bits==0x800);
+  auto flowiq_short=flowiq_compact;
+  flowiq_short.pop_back();
+  assert(kamwater::decode_known_clear_compact_profile_2(
+      flowiq_short.data(),flowiq_short.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
+  auto flowiq_extra=flowiq_compact;
+  flowiq_extra.push_back(0);
+  assert(kamwater::decode_known_clear_compact_profile_2(
+      flowiq_extra.data(),flowiq_extra.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0);
   // Truncated and overlong applications may never publish old readings.
   auto truncated=application;
   truncated.pop_back();
