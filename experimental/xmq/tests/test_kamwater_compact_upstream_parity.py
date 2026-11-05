@@ -13,11 +13,12 @@ from portable_xmq import parse,validate_driver,blocks,values
 # These official NOKEY examples have an ELL II header and TPL 79 at
 # fixed, protocol-derived offset 10 DLL + 9 ELL bytes (not magic scan).
 INDEXES=(2,4,7,8)
-CRC_MISMATCH_CASE=7
-# Original upstream parse_TPL_79 does not enforce the compact data CRC.
-# Our stricter decoder correctly rejects this specific upstream snapshot.
+REFERENCE_CASE=7
+# The TPL79 data CRC for #7 references the immediately preceding full
+# telegram #6, whose measurement values differ from the current compact.
+# A reference frame must be separately validated before being trusted in
+# production; the original NOKEY application is a host-only parity fixture.
 EXPECTED_CRC=0x8054
-RECONSTRUCTED_CRC=0x335D
 def main():
     if len(sys.argv)!=2: raise SystemExit("expected path to compiled C++ decoder")
     tree=validate_driver(parse(
@@ -34,21 +35,19 @@ def main():
         assert wire[10]==0x8D and wire[19]==0x79, (
             f"kamwater #{number}: changed ELL/TPL structure")
         expected=json.loads(values(entry,"json")[0])
-        result=subprocess.run(
-            [sys.argv[1],"kamwater_compact",wire[19:].hex()],
-            capture_output=True,text=True)
-        if number==CRC_MISMATCH_CASE:
-            # This fixture has a legitimate upstream JSON value but an
-            # inconsistent compact-data CRC. It MUST NOT be marked PASS
-            # or accepted by the strict decoder merely to match upstream.
+        command=[sys.argv[1],"kamwater_compact",wire[19:].hex()]
+        if number==REFERENCE_CASE:
+            previous_full=values(entries[5],"telegram")[0]
+            assert previous_full.count("_")==1
+            previous_application=bytes.fromhex(previous_full.split("_",1)[1])
             assert wire[22] | (wire[23]<<8)==EXPECTED_CRC
-            assert result.returncode==4 and not result.stdout, (
-                "kamwater #7: expected strict TPL79 DataCrcMismatch "
-                f"(0x{EXPECTED_CRC:04X} on wire vs 0x{RECONSTRUCTED_CRC:04X} "
-                "on reconstructed records)")
-            print("EXPECTED_REJECT kamwater #7: upstream compact CRC "
-                  "0x8054 differs from reconstructed CRC 0x335D")
-            continue
+            # Regression proof: old current-record CRC interpretation
+            # rejects, but the actual referenced-full-frame CRC matches.
+            old_check=subprocess.run(command,capture_output=True,text=True)
+            assert old_check.returncode==4 and not old_check.stdout
+            command=[sys.argv[1],"kamwater_compact_ref",
+                     wire[19:].hex(),previous_application.hex()]
+        result=subprocess.run(command,capture_output=True,text=True)
         if result.returncode:
             raise AssertionError(
                 f"kamwater #{number}: existing C++ TPL79/DIFVIF rejected "
@@ -72,9 +71,9 @@ def main():
             checks+=1
         print(f"PARTIAL_PASS kamwater #{number}: compact TPL79 "
               "total_m3 / target_m3")
-    assert checks==6
-    print("PASS compact subset: 3 CRC-valid original TPL79 applications, "
-          "6 JSON field comparisons; 1 upstream CRC-inconsistent fixture "
-          "correctly rejected. Not authenticated RF/full parity.")
+    assert checks==8
+    print("PASS compact subset: 4 original TPL79 applications, "
+          "8 JSON field comparisons; #7 verified against preceding full "
+          "application #6. Not authenticated RF/full parity.")
 if __name__=="__main__":
     main()
