@@ -44,6 +44,19 @@ rejected. The current TPL security probe does not validate Kamstrup 8D20 ELL
 or its cryptographic mode. No live caller currently supplies these proofs,
 so this gate does not enable any firmware sensor publication.
 
+## Compact signature lookup (host-only)
+
+`kamwater_compact_signature.h` now computes EN13757 CRC16 over each of the
+nine original XMQ DIF/VIF templates (polynomial 0x3D65, initial 0x0000,
+final complement). Its fixed registry returns exactly one matching index or
+fails closed for unknown/ambiguous signatures. The first upstream compact
+example carries signature EDA8 (little endian), matching 0xA8ED. CI checks
+the nine signature values and the absence of authorization when only a
+signature is known. The registry does not accept a decoded value, guessed
+length, or device appearance as evidence, and it is not connected to RF.
+A CRC16 format signature identifies a layout; it is NOT cryptographic
+authentication, a data-integrity proof, or a substitute for ELL verification.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
