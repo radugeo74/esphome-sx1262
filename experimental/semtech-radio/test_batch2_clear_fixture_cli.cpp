@@ -3,6 +3,7 @@
 // Does not accept/reinterpret a raw encrypted RF frame; no sensor publishing.
 #include "components/wmbus_native_sx126x/minomess_clear_prefix.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
+#include "host_only/apator162_ixml_fields.h"
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -42,6 +43,14 @@ int main(int argc,char **argv) {
       std::printf("target_date=%04d-%02d-%02d\n",
           reading.target_date.year,reading.target_date.month,
           reading.target_date.day);
+    return 0;
+  }
+  if(std::strcmp(argv[1],"apator162")==0) {
+    xmq_portable::apator162::Reading reading{};
+    const auto result=xmq_portable::apator162::decode_clear_manufacturer(
+        bytes.data(),bytes.size(),reading);
+    if(result!=xmq_portable::apator162::Status::Ok) return 3;
+    std::printf("total_m3=%.9f\n",reading.total_m3);
     return 0;
   }
   if(std::strcmp(argv[1],"kamwater")==0) {
