@@ -82,6 +82,12 @@ jobs:
           /tmp/test-minomess-clear-prefix
       - name: Guard Kamwater OpenSSL AES CTR and DLL ingress host-only isolation
         run: python3 experimental/semtech-radio/ci/test_kamwater_host_only_isolation.py
+      - name: Test authenticated OMS TPL AES CCM profile D (synthetic only)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_oms_tpl_ccm_openssl.cpp \
+            -o /tmp/test-oms-tpl-ccm-openssl -lcrypto
+          /tmp/test-oms-tpl-ccm-openssl
       - name: Test host-only Kamwater ELL AES CTR decryption with synthetic key
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
