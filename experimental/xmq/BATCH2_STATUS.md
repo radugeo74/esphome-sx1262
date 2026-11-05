@@ -183,6 +183,19 @@ failure caused by a host-only header being auto-included by ESPHome.
 No AES-CTR or Kamwater dispatch is enabled in firmware. A passing CI
 only confirms code separation and existing tests, not real RF decoding.
 
+## Synthetic encrypted ELL to TPL79 and measurement regression (host-only)
+
+The existing OpenSSL host-only AES-CTR test now additionally verifies that
+the decrypted application passes the TPL 0x79 signature and expanded-data
+CRC checks and yields total, target, and status through the existing
+bounded Kamwater DIF/VIF reader. A second synthetic ciphertext deliberately
+contains a corrupted compact-data CRC but a recomputed valid outer ELL CRC:
+decryption succeeds, while the independent TPL check rejects it without
+emitting a profile. This is a **test-only composition**; no decrypting
+driver, active RF dispatch, real keys, or new ESPHome firmware behavior
+were added. Test success is not proof of a real encrypted Kamstrup
+telegram or cryptographic authentication.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
