@@ -12,6 +12,12 @@ regression fixtures, are present in `experimental/xmq/drivers`.
 
 ## Status
 
+**In progress:** `minomess_clear_prefix.h` now implements and independently
+tests the bounded original-XMQ clear-application prefix on four upstream
+golden cases (two genuine null target forms, a normal target, dates and
+malformed inputs). It does **not** decode proprietary history or authorize
+live RF. `kamwater` and `apator162` remain source/fixture-only.
+
 **Imported as source and regression fixtures, not yet compiled into live RF
 sensor decoding.** They are enumerated in `BATCH2_PENDING`, not `SUPPORTED`.
 The auto registry may identify their manufacturer/version/type metadata but
