@@ -197,4 +197,21 @@ inline Status decode_known_clear_compact_profile_6(const uint8_t *payload,
     return Status::Invalid;
   return decode_clear_records(expanded,expanded_length,out);
 }
+// Eighth XMQ compact format: status, total_m3, and historical flow
+// (DIF 52: storage=1, VIF 3B). No target_m3 is present. Host-only;
+// payload length is NOT a secure profile selector.
+inline Status decode_known_clear_compact_profile_7(const uint8_t *payload,
+                                                    size_t length,
+                                                    Reading &out) {
+  out={};
+  static constexpr uint8_t profile[] = {
+    0x02,0xFF,0x20, 0x04,0x13, 0x52,0x3B
+  };
+  uint8_t expanded[32]{};
+  size_t used=0;
+  if (compact::expand(profile,sizeof(profile),payload,length,
+                      expanded,sizeof(expanded),used)!=compact::Status::Ok)
+    return Status::Invalid;
+  return decode_clear_records(expanded,used,out);
+}
 }} // namespace xmq_portable::kamwater
