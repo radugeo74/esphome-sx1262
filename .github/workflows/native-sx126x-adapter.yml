@@ -83,6 +83,8 @@ jobs:
             /tmp/test-batch2-clear-fixture-cli
           python3 experimental/xmq/tests/test_kamwater_status_upstream_parity.py \
             /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_kamwater_numeric_upstream_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
       - name: Test standard DIF VIF parity with original dvparser
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
