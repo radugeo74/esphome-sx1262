@@ -197,6 +197,45 @@ int main() {
   assert(decrypt_ell_ii(m,a,nist_key,encrypted.data(),8,decoded)
          ==DecryptStatus::Invalid);
   assert(decoded.empty());
+  // Regression: every shortened ciphertext must be rejected without
+  // returning any previously decoded measurements.
+  // The two-byte recovered ELL CRC covers the entire recovered TPL.
+  for (size_t lost : {size_t(1),size_t(2),size_t(8)}) {
+    bad=encrypted;
+    bad.resize(bad.size()-lost);
+    decoded.assign(tpl,tpl+sizeof(tpl)); // deliberate stale output
+    assert(decrypt_ell_ii(m,a,nist_key,bad.data(),bad.size(),decoded)
+           ==DecryptStatus::BadCrc);
+    assert(decoded.empty());
+  }
+  // Unsupported ELL security modes, incorrect CI, and changed session
+  // number are not valid AES-CTR frames from the configured meter.
+  for (const uint8_t mode : {uint8_t(0x00),uint8_t(0x40),
+                             uint8_t(0x60),uint8_t(0xE0)}) {
+    bad=encrypted;
+    bad[6]=mode;
+    decoded.assign(tpl,tpl+sizeof(tpl));
+    assert(decrypt_ell_ii(m,a,nist_key,bad.data(),bad.size(),decoded)
+           ==DecryptStatus::Unsupported);
+    assert(decoded.empty());
+  }
+  bad=encrypted;bad[0]=0x8F;
+  assert(decrypt_ell_ii(m,a,nist_key,bad.data(),bad.size(),decoded)
+         ==DecryptStatus::Unsupported);
+  assert(decoded.empty());
+  bad=encrypted;bad[3]^=1; // ELL SN is part of the IV
+  assert(decrypt_ell_ii(m,a,nist_key,bad.data(),bad.size(),decoded)
+         ==DecryptStatus::BadCrc);
+  assert(decoded.empty());
+  // A missing key or missing frame pointer must never return stale data.
+  decoded.assign(tpl,tpl+sizeof(tpl));
+  assert(decrypt_ell_ii(m,a,nullptr,encrypted.data(),encrypted.size(),decoded)
+         ==DecryptStatus::Invalid);
+  assert(decoded.empty());
+  decoded.assign(tpl,tpl+sizeof(tpl));
+  assert(decrypt_ell_ii(m,a,nist_key,nullptr,encrypted.size(),decoded)
+         ==DecryptStatus::Invalid);
+  assert(decoded.empty());
   // Changed hop/repeated flags preserve the IV and valid decryption.
   bad=encrypted;bad[1]=0x20;
   assert(decrypt_ell_ii(m,a,nist_key,bad.data(),bad.size(),decoded)
