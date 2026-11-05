@@ -1,5 +1,6 @@
 #include "host_only/kamwater_ell_ctr_openssl.h"
 #include "host_only/kamwater_verified_dll_ingress.h"
+#include "host_only/kamwater_secure_ingress.h"
 #include "components/wmbus_radio/pure_complete_frame.h"
 #include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
@@ -125,6 +126,16 @@ int main() {
   using xmq_portable::kamwater::ingress::matches_expected;
   const ExpectedMeter expected_meter{0x2C2D,12345678u,0x01,0x07};
   assert(matches_expected(verified.header,expected_meter));
+  // Both ELL AES-CTR/TPL79 and OMS CCM/TPL7A now share this host-only
+  // verified-DLL, exact-identity, decode-and-publish-nothing ingress.
+  xmq_portable::kamwater::secure_ingress::Output secure{};
+  using SecureStatus=xmq_portable::kamwater::secure_ingress::Status;
+  assert(xmq_portable::kamwater::secure_ingress::decode(
+      dll.data(),dll.size(),wmbus_pure::CrcFrameFormat::B,
+      expected_meter,nist_key,secure)==SecureStatus::Ok);
+  assert(secure.profile_index==0);
+  assert(std::fabs(secure.reading.total_m3-6.408)<1e-8);
+  assert(secure.reading.has_target);
   // The exact identity check is required BEFORE IV construction.
   // Derive the IV address and ELL data ONLY from CRC-verified DLL bytes.
   std::vector<uint8_t> from_dll{};
