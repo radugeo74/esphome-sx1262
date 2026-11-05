@@ -1,4 +1,7 @@
 #include "host_only/kamwater_ell_ctr_openssl.h"
+#include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
+#include "components/wmbus_native_sx126x/kamwater_clear_records.h"
+#include <cmath>
 #include <cassert>
 #include <cstdint>
 #include <vector>
@@ -51,6 +54,51 @@ int main() {
          ==DecryptStatus::Ok);
   assert(decoded.size()==sizeof(tpl));
   for(size_t i=0;i<sizeof(tpl);++i)assert(decoded[i]==tpl[i]);
+  // Host-only composition: decrypted TPL79 signature + expanded-record
+  // CRC must pass BEFORE the DIF/VIF parser produces a reading.
+  uint8_t expanded[128]{};
+  xmq_portable::kamwater::tpl79::Reading compact_result{};
+  assert(xmq_portable::kamwater::tpl79::verify(
+      decoded.data(),decoded.size(),expanded,sizeof(expanded),compact_result)
+      ==xmq_portable::kamwater::tpl79::Status::Ok);
+  assert(compact_result.profile_index==0);
+  xmq_portable::kamwater::Reading reading{};
+  assert(xmq_portable::kamwater::decode_clear_records(
+      expanded,compact_result.expanded_size,reading)
+      ==xmq_portable::kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-6.408)<1e-8);
+  assert(reading.has_target && std::fabs(reading.target_m3-6.408)<1e-8);
+  assert(reading.has_status && reading.status_bits==0x71);
+  // A valid ELL CRC is insufficient: tampering with TPL data CRC is
+  // detected independently even after recomputing the outer ELL CRC.
+  auto altered_tpl=decoded;
+  altered_tpl[3]^=1;
+  const uint16_t new_ell_crc=xmq_portable::kamwater::signature::crc16_en13757(
+      altered_tpl.data(),altered_tpl.size());
+  auto altered_clear=std::vector<uint8_t>(2+altered_tpl.size());
+  altered_clear[0]=static_cast<uint8_t>(new_ell_crc);
+  altered_clear[1]=static_cast<uint8_t>(new_ell_crc>>8);
+  for(size_t i=0;i<altered_tpl.size();++i) altered_clear[i+2]=altered_tpl[i];
+  auto altered_encrypted=std::vector<uint8_t>(encrypted.begin(),encrypted.begin()+7);
+  assert(derive_iv(m,a,altered_encrypted.data(),altered_encrypted.size(),iv)
+         ==Status::Ok);
+  for(size_t offset=0;offset<altered_clear.size();offset+=16) {
+    uint8_t stream[16]{};
+    assert(aes_ecb_block(nist_key,iv.bytes,stream));
+    const size_t n=altered_clear.size()-offset<16?altered_clear.size()-offset:16;
+    for(size_t j=0;j<n;++j)
+      altered_encrypted.push_back(altered_clear[offset+j]^stream[j]);
+    increment_counter(iv.bytes);
+  }
+  std::vector<uint8_t> altered_decoded{};
+  assert(decrypt_ell_ii(m,a,nist_key,altered_encrypted.data(),
+                        altered_encrypted.size(),altered_decoded)
+         ==DecryptStatus::Ok);
+  assert(xmq_portable::kamwater::tpl79::verify(
+      altered_decoded.data(),altered_decoded.size(),
+      expanded,sizeof(expanded),compact_result)
+      ==xmq_portable::kamwater::tpl79::Status::DataCrcMismatch);
+  assert(compact_result.profile_index==-1 && compact_result.expanded_size==0);
   // Wrong key, corrupted payload, wrong mode and truncated ciphertext
   // must not publish any decrypted output.
   auto key_wrong=std::vector<uint8_t>(nist_key,nist_key+16);
