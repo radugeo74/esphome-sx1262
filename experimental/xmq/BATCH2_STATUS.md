@@ -72,6 +72,30 @@ message cryptographically, implement AES-CTR, validate compact TPL 0x79
 data CRC, or connect to the native runtime. In particular, upstream
 NOKEY/postdecrypted fixtures do not make their raw ELL frames clear.
 
+## TPL 0x79 compact-data integrity (host-only)
+
+`kamwater_tpl79_probe.h` now reads the compact TPL header
+(`79` + two-byte DIF/VIF format signature + two-byte data CRC) and
+looks up exactly one of the nine declared profiles by EN13757 CRC16.
+It reconstructs the complete DIF/VIF record stream and checks the
+transmitted data CRC **over the expanded stream**, not over the
+compressed value bytes. Both original public MULTICAL21 compact/full
+pairs establish this: signature `0xA8ED` / data CRC `0xB66A`,
+and signature `0xC412` / data CRC `0xFF0D`. CI rejects unknown
+signatures, malformed lengths, corrupt values and CRC, and also
+confirms a valid compact CRC cannot bypass ELL AES-CTR rejection.
+The output consists only of verified expanded bytes and a profile
+index; the driver is still not dispatched in live RF.
+
+The compact CRC provides **accidental-error detection, not
+cryptographic authentication**. Full acceptance additionally requires
+the DLL CRC, ELL security validation and verified meter identity.
+The original `wmbusmeters` parser reads the two-byte compact data
+CRC without independently checking it in `parse_TPL_79`; this
+stage explicitly verifies its meaning against the two public examples.
+Raw AES-CTR ELL frames remain unsupported without a separately
+validated cryptographic stage.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
