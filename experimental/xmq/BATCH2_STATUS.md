@@ -196,6 +196,20 @@ driver, active RF dispatch, real keys, or new ESPHome firmware behavior
 were added. Test success is not proof of a real encrypted Kamstrup
 telegram or cryptographic authentication.
 
+## Synthetic full DLL boundary for encrypted ELL regression
+
+The existing host-only AES-CTR test now builds a synthetic format-B
+DLL frame around the previously tested encrypted ELL sample. The
+unmodified shared `wmbus_pure::verify_complete_frame` must validate
+DLL CRC and extract the manufacturer, meter ID, version, type and ELL CI
+before the test derives AES-CTR IV bytes directly from the verified
+DLL frame. The decrypted TPL79 then passes through the existing compact
+CRC and DIF/VIF tests. DLL corruption is rejected; a DLL packet with
+a recalculated CRC but a changed meter ID must fail an independently
+configured identity comparison. This is a host-only regression test,
+not a wired production decryptor, not cryptographic authentication,
+and not a real encrypted radio capture.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
