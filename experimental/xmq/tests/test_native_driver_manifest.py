@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "experimental" / "xmq" / "tools"))
-from native_driver_specs import SUPPORTED, GENERATED, PORTABLE, validate, catalog_fragment, compiled_fragment
+from native_driver_specs import SUPPORTED, GENERATED, PORTABLE, POST_DECRYPT_ONLY, validate, catalog_fragment, compiled_fragment
 from build_native_generated import build
 from tempfile import TemporaryDirectory
 from generate_ixml_cpp import generate
@@ -23,7 +23,10 @@ def main():
     for driver in GENERATED:
         assert f'generated_ixml::{driver.name}::rules' in catalog
         assert f'namespace {driver.name} ' in generated["xmq_generated.h"]
-    assert "mkradio4a" not in compiled  # converter is identification-only
+    assert "mkradio4a" in POST_DECRYPT_ONLY
+    assert "mkradio4a" not in SUPPORTED
+    assert "mkradio4a" not in compiled  # post-decrypt only, never live RF
+    assert set(SUPPORTED).isdisjoint(POST_DECRYPT_ONLY)
     native = (ROOT / "components" / "wmbus_native_sx126x" / "__init__.py").read_text()
     assert 'components" / "wmbus_radio' not in native
     assert "validate_driver_name" in native
