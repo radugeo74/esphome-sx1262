@@ -77,6 +77,8 @@ jobs:
             -o /tmp/test-batch2-clear-fixture-cli
           python3 experimental/xmq/tests/test_batch2_clear_fixture_parity.py \
             /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_apator162_upstream_volume_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
       - name: Test standard DIF VIF parity with original dvparser
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
