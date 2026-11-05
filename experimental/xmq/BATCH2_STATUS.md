@@ -463,8 +463,11 @@ clear application and no measurements.
 
 Pending the new CI run, this would increase the existing confirmed
 112 subset-field comparisons to **117** (four clear/compact + one
-authenticated). These are additional checks on already-covered
-fixtures, so the distinct-fixture count remains unchanged.
+authenticated). The four clear/compact cases were already counted; the
+authenticated #10 now gains its first directly compared opaque field.
+Thus the number of distinct fixtures with at least one compared output
+field rises from **32 to 33** if CI passes. Fixture #9 remains a
+separately verified **negative authentication test**, not a field PASS.
 
 ## Next implementation steps
 
