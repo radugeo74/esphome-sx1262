@@ -24,12 +24,18 @@ PORTABLE = ("iperl", "hydrus")
 # A decoder for trusted, already-decrypted application bytes exists, but it
 # MUST NOT be selected for live RF without an authenticated decrypt stage.
 POST_DECRYPT_ONLY = ("mkradio4a",)
+# Imported official source definitions under active review; do not allow
+# YAML mapping or firmware runtime dispatch before passing decode fixtures.
+BATCH2_PENDING = ("minomess", "kamwater", "apator162")
 SUPPORTED = tuple(d.name for d in GENERATED) + PORTABLE
 
 def validate(root: Path):
     names = [d.name for d in GENERATED]
-    if len(set(SUPPORTED + POST_DECRYPT_ONLY)) != len(SUPPORTED + POST_DECRYPT_ONLY):
+    if len(set(SUPPORTED + POST_DECRYPT_ONLY + BATCH2_PENDING)) != len(SUPPORTED + POST_DECRYPT_ONLY + BATCH2_PENDING):
         raise ValueError("Duplicate native XMQ driver")
+    for name in BATCH2_PENDING:
+        if not (root / "drivers" / f"{name}.xmq").is_file():
+            raise ValueError(f"{name}: missing upstream batch-2 XMQ definition")
     for d in GENERATED:
         if d.payload_policy not in ("Application", "PreferManufacturer0f"):
             raise ValueError(f"{d.name}: unknown payload policy")
