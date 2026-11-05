@@ -62,6 +62,8 @@ jobs:
           /tmp/test-xmq-auto-registry
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
+      - name: Audit second driver batch official XMQ fixture inventory and fail-closed publication
+        run: python3 experimental/xmq/tests/test_batch2_upstream_fixtures.py
       - name: Test standard DIF VIF parity with original dvparser
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
