@@ -60,6 +60,9 @@ inline Status decode_clear_manufacturer(const uint8_t *app,size_t size,
   out={};
   // Original 'decode = -byte, status, field*, pad_FF?, checksum'.
   if(!app || size<1+7+2) return Status::Truncated;
+  // The reviewed NOKEY examples all carry the manufacturer-specific 0F
+  // marker. Reject unknown markers instead of assuming they are equivalent.
+  if(app[0]!=0x0F) return Status::Invalid;
   size_t pos=1+7;
   bool found=false;
   uint32_t total=0;
