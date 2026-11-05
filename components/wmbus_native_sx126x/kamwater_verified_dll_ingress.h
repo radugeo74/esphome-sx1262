@@ -37,9 +37,10 @@ inline Status decode_verified_dll(
      h.device_type!=expected.device_type)
     return Status::IdentityMismatch;
   if(h.ci!=0x8D) return Status::WrongCi;
+  // Header.application begins AFTER CI; the ELL parser needs CI itself.
   pipeline::Output decoded{};
   if(pipeline::decode_clear_ell_ii_tpl79(
-      verified.bytes.data()+11,verified.bytes.size()-11,
+      verified.bytes.data()+10,verified.bytes.size()-10,
       pipeline::Preconditions{true,true},decoded)!=pipeline::Status::Ok)
     return Status::ClearPipelineRejected;
   out.reading=decoded.reading;
