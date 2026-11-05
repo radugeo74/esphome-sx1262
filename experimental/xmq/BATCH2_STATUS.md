@@ -265,6 +265,26 @@ correctness for real encrypted telegrams. Next stage must use official
 upstream fixture parity rather than treating synthetic CI PASS as a
 release criterion.
 
+## Stage B fixture acceptance ledger — not yet parity
+
+`experimental/xmq/tests/test_batch2_parity_ledger.py` enumerates
+every official upstream golden test and its expected JSON measurement
+fields: minomess 6, kamwater 14, apator162 19 (39 total). It checks
+source JSON and frame structure, reports keyed and NOKEY cases without
+printing credentials or telegram bytes, and is included in CI.
+Its `NOT_RUN` result is intentional: previous independent C++ unit
+tests prove selected **subsets**, but there is not yet a replay driver
+that compares **every** expected field to a decoded result for a
+complete upstream frame. Consequently, the ledger is **not** a
+39/39 PASS claim and does not authorize firmware dispatch.
+
+Stage B acceptance requires a decoder-parity runner to produce the
+actual field outputs, compare them to each original JSON with suitable
+numeric tolerances, and classify each fixture as PASS, FAIL or
+UNSUPPORTED with an explicit cause. No pending case may silently count
+as PASS. Also track full status flags, dates, manufacturer-specific
+formats, encryption and incomplete/invalid test cases.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
