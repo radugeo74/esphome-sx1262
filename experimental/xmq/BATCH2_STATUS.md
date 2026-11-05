@@ -342,24 +342,29 @@ full-output ledger entries PASS on the basis of subset checks.
 
 ## Stage B original Kamwater TPL79 compact parity
 
-The first four original Kamwater compact applications with independently
-registered format signatures are now exercised directly in CI through
-`test_kamwater_compact_upstream_parity.py` and the native C++ fixture
-CLI. The selected official `kamwater.xmq` fixtures are **#2, #4,
-#7, #8**, with signature values `A8ED`, `C412`, `0905`, `36D4`.
-The test uses the original post-decryption TPL `0x79` application
-at the known ELL-II payload offset, verifies the compact signature,
-expands DIF/VIF, validates reconstructed-data CRC, decodes records,
-and compares `total_m3` and `target_m3` (or absence of target)
-with each official JSON. Neither length-based template guessing nor
-implicit treatment of encrypted RF as plaintext is permitted.
+The original Kamwater TPL79 `NOKEY` application examples #2, #4, #7,
+and #8 are exercised by `test_kamwater_compact_upstream_parity.py`.
+The strict C++ decoder verifies format signature, reconstructs DIF/VIF
+and checks the data CRC before decoding `total_m3`/`target_m3`.
 
-That adds **4 original fixtures / 8 compared fields** to the previous
-25 fixture-subset checks (subject to the CI run). The total distinct
-fixtures with some native C++ field comparison becomes **29/39**,
-with **48** tested expected-field values. These are still *partial
-field* comparisons: there is no full status, temperature, flow,
-history, authentication or all-fields parity claim.
+**Original fixture #7 has an inconsistent compact data CRC.** Its
+known upstream signature is `0x0905`, but the application carries
+`0x8054` while the expanded DIF/VIF record stream yields `0x335D`.
+Upstream `wmbusmeters::parse_TPL_79` reads this CRC but does not
+enforce its match. The local strict decoder must return
+`DataCrcMismatch` (dedicated fixture CLI exit code 4), with no
+measurements; the CI test treats that result as EXPECTED_REJECT,
+**not** a passing field comparison. Do not weaken the CRC check
+to make this fixture appear compatible.
+
+Only #2, #4 and #8 may count towards parity: **3 original fixtures,
+6 compared volume fields**. Together with the preceding 25
+distinct upstream fixtures / 40 compared fields, that yields
+**28/39 distinct fixtures with partial native C++ field comparisons,
+46 compared fields**, pending new CI confirmation. #7 is a separately
+verified integrity rejection, not a 29th PASS. The remaining
+status, temperature, flow, history, raw authenticated transport and
+complete JSON parity still require work.
 
 ## Next implementation steps
 
