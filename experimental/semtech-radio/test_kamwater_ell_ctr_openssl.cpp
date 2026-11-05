@@ -1,4 +1,5 @@
 #include "host_only/kamwater_ell_ctr_openssl.h"
+#include "components/wmbus_radio/pure_complete_frame.h"
 #include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include <cmath>
@@ -99,6 +100,60 @@ int main() {
       expanded,sizeof(expanded),compact_result)
       ==xmq_portable::kamwater::tpl79::Status::DataCrcMismatch);
   assert(compact_result.profile_index==-1 && compact_result.expanded_size==0);
+  // The precondition for a host-only encrypted application is a full
+  // verified DLL header, not independently trusted supplied IV address.
+  // Build a SYNTHETIC, short format-B DLL envelope around the ciphertext.
+  std::vector<uint8_t> dll={
+    0,0x44,0x2D,0x2C,0x78,0x56,0x34,0x12,0x01,0x07
+  };
+  dll.insert(dll.end(),encrypted.begin(),encrypted.end());
+  dll[0]=static_cast<uint8_t>(dll.size()+1);
+  const uint16_t dll_crc=wmbus_pure::crc16_en13757(dll.data(),dll.size());
+  dll.push_back(static_cast<uint8_t>(dll_crc>>8));
+  dll.push_back(static_cast<uint8_t>(dll_crc));
+  wmbus_pure::CompleteFrame verified{};
+  assert(wmbus_pure::verify_complete_frame(
+      dll.data(),dll.size(),wmbus_pure::CrcFrameFormat::B,verified)
+      ==wmbus_pure::CompleteStatus::Ok);
+  assert(verified.header.manufacturer==0x2C2D);
+  assert(verified.header.meter_id==12345678u);
+  assert(verified.header.version==0x01 && verified.header.device_type==0x07);
+  assert(verified.header.ci==0x8D);
+  // Derive the IV address and ELL data ONLY from CRC-verified DLL bytes.
+  std::vector<uint8_t> from_dll{};
+  assert(decrypt_ell_ii(
+      verified.bytes.data()+2,verified.bytes.data()+4,nist_key,
+      verified.bytes.data()+10,verified.bytes.size()-10,from_dll)
+      ==DecryptStatus::Ok);
+  assert(from_dll==std::vector<uint8_t>(tpl,tpl+sizeof(tpl)));
+  assert(xmq_portable::kamwater::tpl79::verify(
+      from_dll.data(),from_dll.size(),expanded,sizeof(expanded),
+      compact_result)==xmq_portable::kamwater::tpl79::Status::Ok);
+  assert(xmq_portable::kamwater::decode_clear_records(
+      expanded,compact_result.expanded_size,reading)
+      ==xmq_portable::kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-6.408)<1e-8);
+  // DLL corruption is rejected BEFORE decrypting or interpreting values.
+  auto tampered_dll=dll;
+  tampered_dll[5]^=1;
+  assert(wmbus_pure::verify_complete_frame(
+      tampered_dll.data(),tampered_dll.size(),
+      wmbus_pure::CrcFrameFormat::B,verified)
+      ==wmbus_pure::CompleteStatus::BadCrc);
+  assert(verified.bytes.empty());
+  // A valid re-CRC'd DLL is still not the configured meter identity.
+  tampered_dll=dll;
+  tampered_dll[4]=0x79;
+  const uint16_t recalc=wmbus_pure::crc16_en13757(
+      tampered_dll.data(),tampered_dll.size()-2);
+  tampered_dll[tampered_dll.size()-2]=static_cast<uint8_t>(recalc>>8);
+  tampered_dll.back()=static_cast<uint8_t>(recalc);
+  assert(wmbus_pure::verify_complete_frame(
+      tampered_dll.data(),tampered_dll.size(),
+      wmbus_pure::CrcFrameFormat::B,verified)
+      ==wmbus_pure::CompleteStatus::Ok);
+  assert(verified.header.meter_id!=12345678u);
+  // Identity mismatch must be denied by the caller before ELL processing.
   // Wrong key, corrupted payload, wrong mode and truncated ciphertext
   // must not publish any decrypted output.
   auto key_wrong=std::vector<uint8_t>(nist_key,nist_key+16);
