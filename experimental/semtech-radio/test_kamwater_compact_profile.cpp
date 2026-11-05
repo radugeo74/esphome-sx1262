@@ -149,6 +149,32 @@ int main() {
   assert(kamwater::decode_known_clear_compact_profile_4(
       fifth_extra.data(),fifth_extra.size(),reading)!=kamwater::Status::Ok);
   assert(reading.total_m3==0 && !reading.has_target);
+  // Sixth official XMQ profile has no compact/full golden pair.
+  // Synthetic-only format expansion, never a verified RF signature.
+  auto sixth_profile=hex("02FF2004134413615B5167");
+  auto sixth_payload=hex("000039300000E02E00001314");
+  auto sixth_expected=hex(
+      "02FF2000000413393000004413E02E0000615B13516714");
+  assert(compact::expand(sixth_profile.data(),sixth_profile.size(),
+                         sixth_payload.data(),sixth_payload.size(),
+                         expanded,sizeof(expanded),used)==compact::Status::Ok);
+  assert(used==sixth_expected.size());
+  for(size_t i=0;i<used;++i) assert(expanded[i]==sixth_expected[i]);
+  assert(kamwater::decode_known_clear_compact_profile_5(
+      sixth_payload.data(),sixth_payload.size(),reading)==kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-12.345)<1e-8);
+  assert(reading.has_target && std::fabs(reading.target_m3-12.0)<1e-8);
+  assert(reading.has_status && reading.status_bits==0);
+  auto sixth_short=sixth_payload;
+  sixth_short.pop_back();
+  assert(kamwater::decode_known_clear_compact_profile_5(
+      sixth_short.data(),sixth_short.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
+  auto sixth_extra=sixth_payload;
+  sixth_extra.push_back(0);
+  assert(kamwater::decode_known_clear_compact_profile_5(
+      sixth_extra.data(),sixth_extra.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
   // Truncated and overlong applications may never publish old readings.
   auto truncated=application;
   truncated.pop_back();
