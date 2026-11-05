@@ -141,4 +141,23 @@ inline Status decode_known_clear_compact_profile_3(const uint8_t *payload,
     return Status::Invalid;
   return decode_clear_records(expanded,expanded_length,out);
 }
+// Fifth upstream profile. Its XMQ comment says the device family may be
+// KamHeat or KamWater; the template alone is NOT a meter-type signature.
+// Structural host-only testing with synthetic clear application bytes.
+inline Status decode_known_clear_compact_profile_4(const uint8_t *payload,
+                                                    size_t length,
+                                                    Reading &out) {
+  out={};
+  static constexpr uint8_t profile[] = {
+    0x02,0xFF,0x20, 0x04,0x13, 0x44,0x13,
+    0xA1,0x01,0x5B, 0x81,0x01,0xE7,0xFF,0x0F
+  };
+  uint8_t expanded[64]{};
+  size_t expanded_length=0;
+  if (compact::expand(profile,sizeof(profile),payload,length,
+                      expanded,sizeof(expanded),expanded_length)!=
+      compact::Status::Ok)
+    return Status::Invalid;
+  return decode_clear_records(expanded,expanded_length,out);
+}
 }} // namespace xmq_portable::kamwater
