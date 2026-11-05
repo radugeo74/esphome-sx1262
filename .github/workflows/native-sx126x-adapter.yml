@@ -80,6 +80,13 @@ jobs:
             experimental/semtech-radio/test_minomess_clear_prefix.cpp \
             -o /tmp/test-minomess-clear-prefix
           /tmp/test-minomess-clear-prefix
+      - name: Test Kamwater TPL79 compact reconstructed data CRC golden pairs
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_tpl79_probe.cpp \
+            -o /tmp/test-kamwater-tpl79
+          /tmp/test-kamwater-tpl79
       - name: Test clear-only Kamwater ELL II security and CRC with AES CTR rejection
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
