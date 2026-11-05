@@ -210,6 +210,17 @@ configured identity comparison. This is a host-only regression test,
 not a wired production decryptor, not cryptographic authentication,
 and not a real encrypted radio capture.
 
+## AES-CTR negative-input regressions (host-only)
+
+The synthetic Kamwater ELL CTR CI test now rejects shortened ciphertexts,
+unsupported ELL security modes, an incorrect ELL CI, a modified
+session-number byte, and missing key/frame pointers. Assertions also
+require that every failed decode clears previously populated output.
+These checks extend the existing host-only OpenSSL test; no production
+decryption, real meter credentials, firmware changes, or RF publication
+are introduced. Passing tests are a necessary regression guard, not
+evidence that real encrypted telegrams have been validated.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
