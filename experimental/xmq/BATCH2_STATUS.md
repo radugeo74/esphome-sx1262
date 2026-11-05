@@ -340,31 +340,37 @@ XMQ status, radio CRC, keyed decoding, authenticated TPL or the
 complete manufacturer-specific semantic fields. Do not mark the 39
 full-output ledger entries PASS on the basis of subset checks.
 
-## Stage B original Kamwater TPL79 compact parity
+## Stage B original Kamwater TPL79 compact parity — reference CRC correction
 
-The original Kamwater TPL79 `NOKEY` application examples #2, #4, #7,
+The original compact `kamwater.xmq` TPL79 cases #2, #4, #7
 and #8 are exercised by `test_kamwater_compact_upstream_parity.py`.
-The strict C++ decoder verifies format signature, reconstructs DIF/VIF
-and checks the data CRC before decoding `total_m3`/`target_m3`.
+**The earlier conclusion that original #7 contained a broken compact CRC
+was incorrect.** Its on-wire `0x8054` matches the EN13757 CRC of
+the immediately preceding *full* application in official fixture #6.
+The reconstructed *current compact* application (which includes a
+changed instantaneous flow reading) instead hashes to `0x335D`.
+Comparing those two different generations was a protocol error in our
+implementation, not proof of a corrupt upstream telegram.
 
-**Original fixture #7 has an inconsistent compact data CRC.** Its
-known upstream signature is `0x0905`, but the application carries
-`0x8054` while the expanded DIF/VIF record stream yields `0x335D`.
-Upstream `wmbusmeters::parse_TPL_79` reads this CRC but does not
-enforce its match. The local strict decoder must return
-`DataCrcMismatch` (dedicated fixture CLI exit code 4), with no
-measurements; the CI test treats that result as EXPECTED_REJECT,
-**not** a passing field comparison. Do not weaken the CRC check
-to make this fixture appear compatible.
+`kamwater_tpl79_probe.h` now offers the explicit
+`verify_with_full_reference` path. It checks that a separately
+trusted prior full application matches the registered DIF/VIF
+template **byte by byte at every record header**, checks the
+transmitted TPL79 reference CRC against that complete prior
+application, and only then expands the current compact values.
+The host-only C++ parity CLI verifies #7 against the upstream full
+fixture #6. Without the trusted reference it retains the old strict
+self-comparison and demonstrably rejects #7. **Never invent or guess
+a reference for live RF.** The new path cannot by itself authenticate
+current compact data: independent DLL and ELL CRC or cryptographic
+verification is required at the radio ingress.
 
-Only #2, #4 and #8 may count towards parity: **3 original fixtures,
-6 compared volume fields**. Together with the preceding 25
-distinct upstream fixtures / 40 compared fields, that yields
-**28/39 distinct fixtures with partial native C++ field comparisons,
-46 compared fields**, pending new CI confirmation. #7 is a separately
-verified integrity rejection, not a 29th PASS. The remaining
-status, temperature, flow, history, raw authenticated transport and
-complete JSON parity still require work.
+The corrected upstream subset is **4 original compact applications
+and 8 JSON volume-field comparisons**; together with 25 previous
+fixtures / 40 fields, this gives **29 distinct fixtures / 48 partial
+field comparisons**, subject to CI confirmation. Full output parity,
+persistent trusted per-meter full-frame reference state, real RF
+admission and status/temperature/flow parity remain outstanding.
 
 ## Next implementation steps
 
