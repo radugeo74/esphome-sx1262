@@ -66,6 +66,8 @@ jobs:
         run: python3 experimental/xmq/tests/test_portable_xmq_block_comments.py
       - name: Audit second driver batch official XMQ fixture inventory and fail-closed publication
         run: python3 experimental/xmq/tests/test_batch2_upstream_fixtures.py
+      - name: Stage B upstream golden fixture parity ledger (NOT_RUN until actual JSON comparison)
+        run: python3 experimental/xmq/tests/test_batch2_parity_ledger.py
       - name: Test standard DIF VIF parity with original dvparser
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
