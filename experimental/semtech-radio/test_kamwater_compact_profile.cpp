@@ -175,6 +175,32 @@ int main() {
   assert(kamwater::decode_known_clear_compact_profile_5(
       sixth_extra.data(),sixth_extra.size(),reading)!=kamwater::Status::Ok);
   assert(reading.total_m3==0 && !reading.has_target);
+  // Seventh original XMQ compact format, no paired upstream fixture.
+  // Synthetic-only: explicit profile, status + total + target.
+  auto seventh_profile=hex("02FF2004134413");
+  auto seventh_payload=hex("000039300000E02E0000");
+  auto seventh_expected=hex(
+      "02FF2000000413393000004413E02E0000");
+  assert(compact::expand(seventh_profile.data(),seventh_profile.size(),
+                         seventh_payload.data(),seventh_payload.size(),
+                         expanded,sizeof(expanded),used)==compact::Status::Ok);
+  assert(used==seventh_expected.size());
+  for(size_t i=0;i<used;++i) assert(expanded[i]==seventh_expected[i]);
+  assert(kamwater::decode_known_clear_compact_profile_6(
+      seventh_payload.data(),seventh_payload.size(),reading)==kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-12.345)<1e-8);
+  assert(reading.has_target && std::fabs(reading.target_m3-12.0)<1e-8);
+  assert(reading.has_status && reading.status_bits==0);
+  auto seventh_short=seventh_payload;
+  seventh_short.pop_back();
+  assert(kamwater::decode_known_clear_compact_profile_6(
+      seventh_short.data(),seventh_short.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
+  auto seventh_extra=seventh_payload;
+  seventh_extra.push_back(0);
+  assert(kamwater::decode_known_clear_compact_profile_6(
+      seventh_extra.data(),seventh_extra.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
   // Truncated and overlong applications may never publish old readings.
   auto truncated=application;
   truncated.pop_back();
