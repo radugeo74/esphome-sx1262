@@ -419,6 +419,34 @@ driver-output parity: other Kamwater status variants, history,
 manufacturer-specific fields and encrypted-radio fixtures remain.
 The host-only source is not imported into production firmware.
 
+## Stage B original encrypted Kamwater OMS profile D regression
+
+`test_kamwater_upstream_ccm_openssl.cpp` executes the actual host-only
+OpenSSL AES-CMAC KDF and AES-CCM decoder against *original public*
+`kamwater.xmq` encrypted samples **#9 and #10**, not just a synthetic
+round-trip. It uses only the original upstream fixture key. With the
+official DLL manufacturer, meter ID, version and media as inputs,
+the malformed #9 fails CCM tag validation and MUST produce no clear
+application, while #10 authenticates, decrypts to the expected complete
+DIF/VIF bytes and yields `total_m3=0` and `target_m3=0` with TPL
+status byte `0x10` and counter `0x000E578C`.
+
+Additional negative checks enforce output clearing after altered AAD,
+ciphertext, tag or meter identity and missing key. The local independent
+Python `cryptography` AES-CMAC/AES-CCM check agreed with these outcomes;
+the GitHub Actions step compiles and exercises the *actual C++* code.
+These tests **do not** assert the original upstream's
+`FAILED_DECODE` fallback fabricated values: the secure local policy
+rejects unauthenticated content entirely. Likewise, public upstream
+test-frame representations are not full CRC-bearing RF frames, so
+no live reception or firmware admission is inferred.
+
+If the CI step passes, two more *distinct original fixtures* have
+cryptographic outcome coverage (#9 rejected, #10 authenticated), but
+the existing 32-fixture / 112-field partial comparison count does
+not automatically become 34 field-parity PASS fixtures: #9 is a
+negative-security test and #10 is a partial numeric-field comparison.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
