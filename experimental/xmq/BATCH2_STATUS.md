@@ -114,6 +114,26 @@ publication. Before enabling on Heltec, separately verify DLL header
 and identity provenance, encrypted ELL support where required, and
 real RF integration with source-derived fixtures.
 
+## DLL-verified and configuration-matched ingress (host-only)
+
+`kamwater_verified_dll_ingress.h` now passes an untrusted raw DLL
+frame to the existing `wmbus_pure::verify_complete_frame` with explicit
+CRC frame format. The resulting decoded header is matched against an
+**independently configured** four-field meter identity (manufacturer,
+BCD meter ID, version and medium/type); no caller-provided
+`dll_crc_verified=true` or `meter_identity_verified=true` can bypass
+this entry point. Only an exact match and ELL CI 0x8D proceed to the
+clear ELL II / compact TPL79 / records pipeline. Failures leave an
+empty result. CI exercises a fully synthetic format-B frame with CRC,
+the public compact application fixture, and negative tests for DLL CRC,
+mismatched manufacturer/ID/version/type, unexpected CI, ELL CRC,
+encrypted ELL and compact data CRC.
+
+The meter identity comparison is **not cryptographic authentication**:
+a CRC-recalculated forged frame can carry the configured address. No
+live radio registration, AES-CTR, or Home Assistant publication has
+been enabled. Existing driver behavior remains unchanged.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
