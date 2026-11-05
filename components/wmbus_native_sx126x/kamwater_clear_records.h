@@ -23,6 +23,7 @@ inline Status decode_clear_records(const uint8_t *application, size_t size,
   if (standard::records(application,size,records,48,count)!=
       standard::Status::Ok)
     return Status::Invalid;
+  Reading parsed{};
   bool has_total=false;
   for(size_t i=0;i<count;++i) {
     const auto &r=records[i];
@@ -30,9 +31,9 @@ inline Status decode_clear_records(const uint8_t *application, size_t size,
       continue;
     if ((r.full_vif==0x7F20 || r.full_vif==0x7F23 ||
          r.full_vif==0x7F24) && r.storage==0) {
-      if (out.has_status) return Status::Ambiguous;
-      out.has_status=true;
-      out.status_bits=static_cast<uint32_t>(r.raw64);
+      if (parsed.has_status) return Status::Ambiguous;
+      parsed.has_status=true;
+      parsed.status_bits=static_cast<uint32_t>(r.raw64);
       continue;
     }
     if (r.vif<0x10 || r.vif>0x17 || r.vif_extension_count!=0)
@@ -43,14 +44,15 @@ inline Status decode_clear_records(const uint8_t *application, size_t size,
     if (r.storage==0) {
       if (has_total) return Status::Ambiguous;
       has_total=true;
-      out.total_m3=volume;
+      parsed.total_m3=volume;
     } else if (r.storage==1) {
-      if (out.has_target) return Status::Ambiguous;
-      out.has_target=true;
-      out.target_m3=volume;
+      if (parsed.has_target) return Status::Ambiguous;
+      parsed.has_target=true;
+      parsed.target_m3=volume;
     }
   }
-  if (!has_total) {out={};return Status::MissingTotal;}
+  if (!has_total) return Status::MissingTotal;
+  out=parsed;
   return Status::Ok;
 }
 }} // namespace xmq_portable::kamwater
