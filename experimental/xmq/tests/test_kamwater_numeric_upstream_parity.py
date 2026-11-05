@@ -26,7 +26,7 @@ def run(command,number):
         field,sep,value=line.partition("=")
         if not sep or field in actual:
             raise AssertionError(f"kamwater #{number}: malformed native output")
-        actual[field]=value if field=="target_date" else float(value)
+        actual[field]=value if field in ("target_date","accoustic_noise") else float(value)
     return actual
 
 def main():
@@ -58,7 +58,7 @@ def main():
                          raw[19:].hex(),prior_full.hex()]
         actual=run(command,index)
         wanted={k:v for k,v in expected.items() if
-                k.endswith("_m3h") or k.endswith("_c") or k=="target_date"}
+                k.endswith("_m3h") or k.endswith("_c") or\n                k in ("target_date","accoustic_noise")}
         if not wanted:
             raise AssertionError(f"kamwater #{index}: no numeric expected fields")
         if set(actual)!=set(wanted):
@@ -67,7 +67,7 @@ def main():
                 f"{sorted(set(actual)^set(wanted))}")
         for field,reference in wanted.items():
             measured=actual[field]
-            if field=="target_date":
+            if field in ("target_date","accoustic_noise"):
                 assert measured==reference, (
                     f"kamwater #{index}: {field} mismatch")
             else:
@@ -78,8 +78,8 @@ def main():
             comparisons+=1
         print(f"PARTIAL_PASS kamwater #{index}: {len(wanted)} "
               "numeric/date fields from original JSON")
-    assert comparisons==30, f"unexpected comparison count {comparisons}"
+    assert comparisons==34, f"unexpected comparison count {comparisons}"
     print("PASS Kamwater numeric subset: 8 original applications, "
-          "30 real C++/XMQ comparisons. No radio/full-output parity.")
+          "34 real C++/XMQ comparisons. No radio/full-output parity.")
 
 if __name__=="__main__":main()
