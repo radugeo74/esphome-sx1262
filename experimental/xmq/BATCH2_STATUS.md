@@ -57,6 +57,21 @@ length, or device appearance as evidence, and it is not connected to RF.
 A CRC16 format signature identifies a layout; it is NOT cryptographic
 authentication, a data-integrity proof, or a substitute for ELL verification.
 
+## ELL II read-only proof (host-only)
+
+`kamwater_ell_ii_probe.h` now checks the original upstream ELL II
+(`0x8D`) layout: CC, access, four-byte session number, two-byte ELL
+payload CRC, and the following TPL bytes. The session security field
+(bits 29..31) is required to be **zero**. AES-CTR security mode 1 and
+reserved modes are rejected without trying to decrypt. For a clear-mode
+telegram the EN13757 CRC must match the entire following TPL payload,
+and the TPL CI must be 0x78 or 0x79. Tests cover a synthetic valid clear
+frame, changed payload or CRC, truncation, wrong CI/TPL and the upstream
+AES-CTR header. This probe does **not** validate DLL CRC, authenticate a
+message cryptographically, implement AES-CTR, validate compact TPL 0x79
+data CRC, or connect to the native runtime. In particular, upstream
+NOKEY/postdecrypted fixtures do not make their raw ELL frames clear.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
