@@ -1,4 +1,4 @@
-#include "components/wmbus_native_sx126x/kamwater_verified_dll_ingress.h"
+#include "host_only/kamwater_verified_dll_ingress.h"
 #include <cassert>
 #include <cmath>
 #include <cstdint>
