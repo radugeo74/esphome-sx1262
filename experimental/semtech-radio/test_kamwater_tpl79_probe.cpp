@@ -64,7 +64,9 @@ int main() {
   assert(signature::crc16_en13757(output,verified.expanded_size)==0x335D);
   // Wrong prior full data and unrelated format are rejected even if
   // the current compact frame has a valid format signature.
-  auto wrong_full=earlier_full;wrong_full[8]^=1;
+  // Byte 8 is a VIF header (0x13): changing it tests format rejection,
+  // not CRC mismatch. Corrupt byte 9, which is the stored volume value.
+  auto wrong_full=earlier_full;wrong_full[9]^=1;
   assert(tpl79::verify_with_full_reference(
       later_compact.data(),later_compact.size(),
       wrong_full.data(),wrong_full.size(),
