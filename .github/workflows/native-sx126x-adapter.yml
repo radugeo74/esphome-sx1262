@@ -85,6 +85,7 @@ jobs:
       - name: Test authenticated OMS TPL AES CCM profile D (synthetic only)
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
             experimental/semtech-radio/test_oms_tpl_ccm_openssl.cpp \
             -o /tmp/test-oms-tpl-ccm-openssl -lcrypto
           /tmp/test-oms-tpl-ccm-openssl
