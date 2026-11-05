@@ -1,4 +1,6 @@
 #include "host_only/oms_tpl_ccm_openssl.h"
+#include "components/wmbus_native_sx126x/kamwater_clear_records.h"
+#include <cmath>
 #include <cassert>
 #include <cstdint>
 #include <vector>
@@ -13,7 +15,7 @@ static std::vector<uint8_t> synthetic_tpl(const uint8_t key[16],
       0x7A,0x30,0x00,0xFF,0x2A,0x10,0x01,0x04,0x03,0x02,0x01
   };
   const uint8_t plaintext[]={
-      0x78,0x04,0x13,0x08,0x19,0,0,0,0x02,0xFF,0x20,0x00,0x00
+      0x04,0x13,0x08,0x19,0,0,0x02,0xFF,0x20,0x00,0x00
   };
   uint8_t kenc[16]{};
   assert(xmq_portable::oms_ccm::derive_kenc(key,tpl.data()+7,id,kenc));
@@ -60,7 +62,16 @@ int main() {
   assert(decode(good)==Status::Ok);
   assert(out.counter==0x01020304u && out.tpl_status==0x00);
   assert(out.clear_application==std::vector<uint8_t>(
-      {0x78,0x04,0x13,0x08,0x19,0,0,0,0x02,0xFF,0x20,0,0}));
+      {0x04,0x13,0x08,0x19,0,0,0x02,0xFF,0x20,0,0}));
+  // TPL 0x7A exposes a clear DIF/VIF application after tag verification,
+  // not another 0x78 TPL CI. The shared Kamwater record parser must run
+  // only on this authenticated output.
+  xmq_portable::kamwater::Reading reading{};
+  assert(xmq_portable::kamwater::decode_clear_records(
+      out.clear_application.data(),out.clear_application.size(),reading)
+      ==xmq_portable::kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-6.408)<1e-8);
+  assert(reading.has_status && reading.status_bits==0);
   auto bad=good;
   bad.back()^=1; // Invalid CCM authentication tag.
   assert(decode(bad)==Status::BadTag && out.clear_application.empty());
