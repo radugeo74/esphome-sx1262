@@ -40,7 +40,7 @@ inline bool bcd8(const uint8_t *p, uint32_t &out) {
 // 8C0413 target binary litres or upstream null sentinel.
 inline Status decode_clear_prefix(const uint8_t *data, size_t n, Reading &out) {
   out={};
-  if (!data || n<23) return Status::Truncated;
+  if (!data || n<22) return Status::Truncated;
   if (data[0]!=0x0C || data[1]!=0x13 ||
       data[6]!=0x02 || data[7]!=0x6C ||
       data[10]!=0x82 || data[11]!=0x04 || data[12]!=0x6C ||
