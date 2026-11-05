@@ -41,6 +41,40 @@ int main() {
   assert(verified.profile_index==1 && verified.expanded_size==second_full.size());
   for(size_t i=0;i<verified.expanded_size;++i) assert(output[i]==second_full[i]);
   assert(signature::crc16_en13757(output,verified.expanded_size)==0xFF0D);
+  // Third upstream pair proves that the TPL79 data CRC can refer to the
+  // *previous full telegram*, not CRC of current compact measurements.
+  // Official kamwater.xmq #6 full => 0x8054, followed by #7 compact
+  // (current flow differs), whose reconstruction CRC is 0x335D.
+  auto earlier_full=hex(
+    "04FF2300080000441300000000523B000006FF1B08900008F0FF"
+    "426CC12B61670A51671B023B000004131F0F00008101E7FF0F13");
+  auto later_compact=hex(
+    "79050954800008000000000000000008900008F0FFC12B0A1B23001F0F000013");
+  assert(signature::crc16_en13757(
+      earlier_full.data(),earlier_full.size())==0x8054);
+  // The old current-frame CRC assumption must not claim parity here.
+  assert(tpl79::verify(later_compact.data(),later_compact.size(),
+                       output,sizeof(output),verified)
+         ==tpl79::Status::DataCrcMismatch);
+  assert(tpl79::verify_with_full_reference(
+      later_compact.data(),later_compact.size(),
+      earlier_full.data(),earlier_full.size(),
+      output,sizeof(output),verified)==tpl79::Status::Ok);
+  assert(verified.profile_index==2 && verified.expanded_size==earlier_full.size());
+  assert(signature::crc16_en13757(output,verified.expanded_size)==0x335D);
+  // Wrong prior full data and unrelated format are rejected even if
+  // the current compact frame has a valid format signature.
+  auto wrong_full=earlier_full;wrong_full[8]^=1;
+  assert(tpl79::verify_with_full_reference(
+      later_compact.data(),later_compact.size(),
+      wrong_full.data(),wrong_full.size(),
+      output,sizeof(output),verified)==tpl79::Status::DataCrcMismatch);
+  assert(verified.expanded_size==0);
+  assert(tpl79::verify_with_full_reference(
+      later_compact.data(),later_compact.size(),
+      first_full.data(),first_full.size(),
+      output,sizeof(output),verified)==tpl79::Status::InvalidCompactData);
+  assert(verified.expanded_size==0);
   // Unknown format, bad format byte, wrong data CRC, truncated and extra
   // application data are all denied without returning a previous reading.
   auto bad=first;
