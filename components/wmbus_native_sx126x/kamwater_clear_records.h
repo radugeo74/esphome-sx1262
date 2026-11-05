@@ -75,4 +75,26 @@ inline Status decode_known_clear_compact_profile_0(const uint8_t *payload,
     return Status::Invalid;
   return decode_clear_records(expanded,expanded_length,out);
 }
+// Second original Kamwater compact template (MULTICAL21): status, total,
+// max flow and temperature records. Accept ONLY application data after a
+// caller has independently verified the format signature and ELL security.
+// The official compact fixture contains preceding bytes F4307912C40DFF;
+// they are not measurements and must never be silently consumed here.
+inline Status decode_known_clear_compact_profile_1(const uint8_t *payload,
+                                                     size_t length,
+                                                     Reading &out) {
+  out={};
+  static constexpr uint8_t profile[] = {
+    0x02,0xFF,0x20, 0x04,0x13,
+    0x92,0x01,0x3B, 0xA1,0x01,0x5B,
+    0x81,0x01,0xE7,0xFF,0x0F
+  };
+  uint8_t expanded[64]{};
+  size_t expanded_length=0;
+  if (compact::expand(profile,sizeof(profile),payload,length,
+                      expanded,sizeof(expanded),expanded_length)!=
+      compact::Status::Ok)
+    return Status::Invalid;
+  return decode_clear_records(expanded,expanded_length,out);
+}
 }} // namespace xmq_portable::kamwater
