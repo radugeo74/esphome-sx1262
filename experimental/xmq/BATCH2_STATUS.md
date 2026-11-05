@@ -96,6 +96,24 @@ stage explicitly verifies its meaning against the two public examples.
 Raw AES-CTR ELL frames remain unsupported without a separately
 validated cryptographic stage.
 
+## Clear ELL II to compact measurements, host-only
+
+`kamwater_clear_pipeline.h` composes the existing ELL II clear-mode
+inspection, TPL 0x79 format/data CRC verification, admission contract,
+and bounded DIF/VIF record decoder into one transactional host-only
+function. It requires **explicit external evidence** that DLL CRC and
+meter identity have both been verified; it does not itself establish
+either condition. The result is cleared on every failure. Its CI test
+uses the published compact application example inside a **synthetic**
+clear ELL II envelope and rejects absent DLL/identity proof, encrypted
+ELL, invalid ELL CRC, unknown format, changed compact CRC or measurement,
+truncation, and unsupported TPL. Successful host tests do not establish
+that the on-air Kamstrup frames, which may use AES-CTR, are decodable.
+There is no runtime dispatch, YAML support, decryption, or sensor
+publication. Before enabling on Heltec, separately verify DLL header
+and identity provenance, encrypted ELL support where required, and
+real RF integration with source-derived fixtures.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
