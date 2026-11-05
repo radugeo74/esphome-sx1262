@@ -372,6 +372,27 @@ field comparisons**, subject to CI confirmation. Full output parity,
 persistent trusted per-meter full-frame reference state, real RF
 admission and status/temperature/flow parity remain outstanding.
 
+## Stage B Kamwater XMQ status and alarm-duration parity
+
+Host-only `kamwater_status_semantics.h` implements the reviewed
+`kamwater.xmq` status field interpretations for `02FF20` (legacy
+16-bit flags, 4-bit first duration shift), `04FF23` (modern cold
+environment, 11-bit first duration shift), and `04FF24` (modern
+hot environment). Alarm durations use the eight original
+`duration_bucket` labels. The text is derived from bounded
+DIF/VIF records, with no radio dispatch.
+
+`test_kamwater_status_upstream_parity.py` runs the actual C++ parser
+on original NOKEY clear applications **#1, #5, #6, #11 and #12**
+and asserts **34 status / alarm-duration field values** against the
+source XMQ JSON, including both high and low environmental duration
+variants. These are additional field comparisons, not five newly
+full-decoded RF fixtures. The previously implemented batch2 subset
+covers 29 distinct fixtures / 48 values; with this test the expected
+field-comparison count is **82** across **31 distinct fixtures**,
+*only if CI passes*. Other Kamwater flags, numeric flow/temperature
+measurements, history and complete JSON parity remain pending.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
