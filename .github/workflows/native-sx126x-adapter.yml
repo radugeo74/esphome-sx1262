@@ -73,6 +73,13 @@ jobs:
             experimental/semtech-radio/test_standard_dif_vif_parity.cpp \
             -o /tmp/test-standard-dif-vif
           /tmp/test-standard-dif-vif
+      - name: Test public Minomess cleartext prefix and binary target sentinels
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_minomess_clear_prefix.cpp \
+            -o /tmp/test-minomess-clear-prefix
+          /tmp/test-minomess-clear-prefix
       - name: Test official Hydrus cleartext records (no decryption)
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
