@@ -93,6 +93,35 @@ int main() {
   assert(kamwater::decode_known_clear_compact_profile_2(
       flowiq_extra.data(),flowiq_extra.size(),reading)!=kamwater::Status::Ok);
   assert(reading.total_m3==0);
+  // Fourth official XMQ compact profile has NO paired upstream telegram.
+  // This is explicitly a synthetic structural contract, NOT RF validation.
+  auto fourth_profile=hex(
+      "02FF2004134413426C523B615B616751678101E7FF0F06FF1B");
+  auto fourth_payload=hex(
+      "000039300000E02E0000812A000000001300010203040506");
+  auto fourth_expected=hex(
+      "02FF2000000413393000004413E02E0000426C812A523B0000"
+      "615B006167005167138101E7FF0F0006FF1B010203040506");
+  assert(compact::expand(fourth_profile.data(),fourth_profile.size(),
+                         fourth_payload.data(),fourth_payload.size(),
+                         expanded,sizeof(expanded),used)==compact::Status::Ok);
+  assert(used==fourth_expected.size());
+  for(size_t i=0;i<used;++i) assert(expanded[i]==fourth_expected[i]);
+  assert(kamwater::decode_known_clear_compact_profile_3(
+      fourth_payload.data(),fourth_payload.size(),reading)==kamwater::Status::Ok);
+  assert(std::fabs(reading.total_m3-12.345)<1e-8);
+  assert(reading.has_target && std::fabs(reading.target_m3-12.0)<1e-8);
+  assert(reading.has_status && reading.status_bits==0);
+  auto fourth_truncated=fourth_payload;
+  fourth_truncated.pop_back();
+  assert(kamwater::decode_known_clear_compact_profile_3(
+      fourth_truncated.data(),fourth_truncated.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0 && !reading.has_target);
+  auto fourth_extra=fourth_payload;
+  fourth_extra.push_back(0);
+  assert(kamwater::decode_known_clear_compact_profile_3(
+      fourth_extra.data(),fourth_extra.size(),reading)!=kamwater::Status::Ok);
+  assert(reading.total_m3==0);
   // Truncated and overlong applications may never publish old readings.
   auto truncated=application;
   truncated.pop_back();
