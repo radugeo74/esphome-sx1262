@@ -340,6 +340,27 @@ XMQ status, radio CRC, keyed decoding, authenticated TPL or the
 complete manufacturer-specific semantic fields. Do not mark the 39
 full-output ledger entries PASS on the basis of subset checks.
 
+## Stage B original Kamwater TPL79 compact parity
+
+The first four original Kamwater compact applications with independently
+registered format signatures are now exercised directly in CI through
+`test_kamwater_compact_upstream_parity.py` and the native C++ fixture
+CLI. The selected official `kamwater.xmq` fixtures are **#2, #4,
+#7, #8**, with signature values `A8ED`, `C412`, `0905`, `36D4`.
+The test uses the original post-decryption TPL `0x79` application
+at the known ELL-II payload offset, verifies the compact signature,
+expands DIF/VIF, validates reconstructed-data CRC, decodes records,
+and compares `total_m3` and `target_m3` (or absence of target)
+with each official JSON. Neither length-based template guessing nor
+implicit treatment of encrypted RF as plaintext is permitted.
+
+That adds **4 original fixtures / 8 compared fields** to the previous
+25 fixture-subset checks (subject to the CI run). The total distinct
+fixtures with some native C++ field comparison becomes **29/39**,
+with **48** tested expected-field values. These are still *partial
+field* comparisons: there is no full status, temperature, flow,
+history, authentication or all-fields parity claim.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
