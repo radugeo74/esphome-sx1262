@@ -24,9 +24,9 @@ def check(name):
     p = ROOT / "experimental/xmq/drivers" / f"{name}.xmq"
     data = p.read_text(encoding="utf-8")
     driver = validate_driver(parse(data))
-    assert values(driver["entries"], "name") == [name], name
-    assert values(driver["entries"], "manufacturer") == [EXPECTED[name][0]], name
-    groups = blocks(driver["entries"], "tests")
+    assert values(driver, "name") == [name], name
+    assert values(driver, "manufacturer") == [EXPECTED[name][0]], name
+    groups = blocks(driver, "tests")
     assert groups, f"{name}: no upstream fixtures"
     fixture_blocks = [fixture for group in groups for fixture in blocks(group["entries"], "test")]
     assert len(fixture_blocks) >= EXPECTED[name][1], (
@@ -37,7 +37,7 @@ def check(name):
         source = values(fixture["entries"], "telegram")
         expected = values(fixture["entries"], "json")
         assert len(source) == 1 and len(expected) == 1, name
-        raw = re.sub(r"[|_\\s]", "", source[0])
+        raw = re.sub(r"[|_\s]", "", source[0])
         assert len(raw) >= 24 and len(raw) % 2 == 0, name
         assert re.fullmatch("[0-9A-Fa-f]+", raw), name
         reference = json.loads(expected[0])
