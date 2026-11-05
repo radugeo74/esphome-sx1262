@@ -221,6 +221,50 @@ decryption, real meter credentials, firmware changes, or RF publication
 are introduced. Passing tests are a necessary regression guard, not
 evidence that real encrypted telegrams have been validated.
 
+## Stage A consolidated transport implementation (host-only)
+
+The original `wmbusmeters` parser has separate ELL AES-CTR and OMS
+security-profile-D AES-CCM paths. The project now has the corresponding
+**host-only** code, with an integrated `kamwater_secure_ingress.h` gate:
+verify full DLL CRC/length, require the independently configured four-field
+identity, then dispatch *only* the supported secure transport shape.
+
+- ELL II `CI=0x8D`, AES-CTR mode 1: derive original 16-byte IV from
+  DLL M/A and ELL CC/SN, decrypt payload CRC and TPL; verify ELL CRC;
+  decode TPL `0x78` standard records or TPL `0x79` using the exact
+  known compact signature and expanded-data CRC.
+- ELL I `CI=0x8C`, followed by short TPL `0x7A`, OMS mode 10:
+  `oms_tpl_ccm_openssl.h` extracts CFG and CFE, requires KDF selection 1,
+  no partial encryption (CFG N=0xFF), supports declared 4/8/12/16-byte
+  tag sizes and optional key-version; derives Kenc by AES-CMAC from
+  DC=00, little-endian message counter, DLL ID, seven 07 bytes. Builds
+  nonce M(2)+ID(4)+version+type+00+counter(big-endian), validates the
+  AES-CCM tag over the TPL header AAD and decrypted DIF/VIF application,
+  and rejects all invalid tags before decoding or returning measurements.
+- Any unrecognized security mode, malformed header, bad CRC, different
+  configured identity, invalid compact signature or bad CCM tag is
+  **rejected with empty output**. No fallback to guesswork or plaintext.
+
+The host-only CI now includes synthetic encrypted TPL7A inside an ELL-I
+and DLL format-B envelope, a separate independent OpenSSL CLI CMAC golden
+value, corrupted-tag/wrong-identity/altered-AAD scenarios, and the
+existing synthetic ELL-II/CTR compact and clear probes. Both encrypted
+paths are composed in the same host-only ingress. The original
+`wmbusmeters` implementation may label an invalid-tag telegram with
+`FAILED_DECODE` for diagnostic output; this project deliberately
+refuses to publish measurements on tag failure.
+
+**Not yet passed as production compatibility:** the project's new
+secure ingress is NOT wired into native firmware, YAML, radio reception,
+MQTT or Home Assistant; no user AES key or private capture is stored.
+Independent replay of the original `kamwater.xmq` encrypted golden
+fixtures, supported partial-encryption variants, non-ELL-I/II transport
+forms, AES-CBC and model-specific complete status/field parity remain
+outside this stage. The preceding synthetic tests cannot prove
+correctness for real encrypted telegrams. Next stage must use official
+upstream fixture parity rather than treating synthetic CI PASS as a
+release criterion.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
