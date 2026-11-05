@@ -122,10 +122,12 @@ int main(int argc,char **argv) {
     if(status.modern) {
       std::printf("time_flow_above_q4=%s\n",
                   status.time_flow_above_q4.c_str());
-      std::printf("time_%s_ambient_temperature=%s\n",
-                  status.time_high_ambient_temperature.empty() &&
-                  !status.time_low_ambient_temperature.empty() ? "low" : "low",
-                  status.time_low_ambient_temperature.c_str());
+      if(status.hot)
+        std::printf("time_high_ambient_temperature=%s\n",
+                    status.time_high_ambient_temperature.c_str());
+      else
+        std::printf("time_low_ambient_temperature=%s\n",
+                    status.time_low_ambient_temperature.c_str());
     }
     return 0;
   }
