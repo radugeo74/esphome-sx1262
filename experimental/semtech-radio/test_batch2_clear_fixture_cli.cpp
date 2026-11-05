@@ -69,6 +69,8 @@ int main(int argc,char **argv) {
        !=xmq_portable::kamwater::numeric_semantics::Status::Ok) return 3;
     for(const auto &field:numeric.fields)
       std::printf("%s=%.9f\n",field.name.c_str(),field.value);
+    if(numeric.has_acoustic_noise)
+      std::printf("accoustic_noise=%s\n",numeric.acoustic_noise.c_str());
     if(numeric.has_target_date)
       std::printf("target_date=%04d-%02d-%02d\n",
           numeric.target_date.year,numeric.target_date.month,
