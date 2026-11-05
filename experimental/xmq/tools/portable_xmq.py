@@ -23,6 +23,14 @@ def tokens(source):
             i += 1
         elif c.isspace():
             i += 1
+        elif source.startswith("/*", i):
+            # Skip upstream C-style comments outside quoted values.
+            begin = line
+            close = source.find("*/", i + 2)
+            if close < 0:
+                raise ParseError(f"Unclosed block comment at line {begin}")
+            line += source[i:close + 2].count("\n")
+            i = close + 2
         elif source.startswith("//", i) or c == "#":
             while i < n and source[i] != "\n":
                 i += 1
@@ -51,7 +59,7 @@ def tokens(source):
         else:
             start = i
             while i < n and not source[i].isspace() and source[i] not in ("{", "}", "=", ",", chr(39), chr(34)):
-                if source.startswith("//", i):
+                if source.startswith("//", i) or source.startswith("/*", i):
                     break
                 i += 1
             if i == start:
