@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "standard_dif_vif.h"
+#include "compact_dif_vif.h"
 
 namespace xmq_portable { namespace kamwater {
 enum class Status : uint8_t { Ok, Invalid, Unsupported, MissingTotal, Ambiguous };
@@ -54,5 +55,24 @@ inline Status decode_clear_records(const uint8_t *application, size_t size,
   if (!has_total) return Status::MissingTotal;
   out=parsed;
   return Status::Ok;
+}
+// Host-only acceptance of the first explicitly known Kamstrup compact
+// template from original kamwater.xmq. This function MUST NOT be wired to
+// live RF without validating the telegram's compact-format signature and
+// the ELL security state first. Payload alone is not sufficient.
+inline Status decode_known_clear_compact_profile_0(const uint8_t *payload,
+                                                     size_t length,
+                                                     Reading &out) {
+  out={};
+  static constexpr uint8_t profile[] = {
+    0x02,0xFF,0x20, 0x04,0x13, 0x44,0x13, 0x61,0x5B, 0x61,0x67
+  };
+  uint8_t expanded[64]{};
+  size_t expanded_length=0;
+  if (compact::expand(profile,sizeof(profile),payload,length,
+                      expanded,sizeof(expanded),expanded_length)!=
+      compact::Status::Ok)
+    return Status::Invalid;
+  return decode_clear_records(expanded,expanded_length,out);
 }
 }} // namespace xmq_portable::kamwater
