@@ -11,7 +11,7 @@ enum class Decision : uint8_t {
   UnverifiedSecurity, UnsupportedProfile
 };
 enum class SecurityProof : uint8_t {
-  Unknown, Encrypted, AuthenticatedClearApplication
+  Unknown, Encrypted, VerifiedClearApplication
 };
 struct Evidence {
   bool manufacturer_and_model_verified{false};
@@ -26,7 +26,7 @@ inline Decision check(const Evidence &e) {
     return Decision::MissingIdentity;
   if (!e.compact_format_signature_verified)
     return Decision::UnverifiedFormat;
-  if (e.ell_security!=SecurityProof::AuthenticatedClearApplication)
+  if (e.ell_security!=SecurityProof::VerifiedClearApplication)
     return Decision::UnverifiedSecurity;
   if (e.profile_index<0 || e.profile_index>8)
     return Decision::UnsupportedProfile;
