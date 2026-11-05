@@ -285,6 +285,35 @@ UNSUPPORTED with an explicit cause. No pending case may silently count
 as PASS. Also track full status flags, dates, manufacturer-specific
 formats, encryption and incomplete/invalid test cases.
 
+## Stage B actual C++ to original XMQ JSON subset comparison
+
+`experimental/xmq/tests/test_batch2_clear_fixture_parity.py` now
+executes the existing C++ clear-application decoders through
+`test_batch2_clear_fixture_cli.cpp` and compares their output fields
+against original upstream XMQ fixture JSON. The first 7 specifically
+reviewed cases are:
+
+- **minomess #3–#6**: `total_m3`, `target_m3` (including
+  absent/null cases), `meter_date`, `target_date` — four
+  comparisons per case.
+- **kamwater #1, #5, #6**: `total_m3`, `target_m3` — two
+  comparisons per case.
+
+That totals **7 original example applications / 22 actual expected-field
+comparisons**. The executable consumes ONLY the post-decryption
+application after the original XMQ `_` boundary; it does not make
+assumptions about the raw RF encryption mode, status string/flags,
+unverified extra fields, compact decoding, or complete driver output.
+The suite fails CI on a missing expected field, changed native output
+shape, C++ decoder rejection or a wrong expected value. This is genuine
+cross-comparison, not a source inventory or synthetic round-trip.
+
+**Acceptance remains partial**: 32 other upstream cases, and additional
+fields even in these 7 cases, have not passed equivalent output parity;
+no driver is released to firmware. The 39-case upstream ledger remains
+separately labeled NOT_RUN for *full-frame/full-output* parity. Until CI
+passes this new step, the 7-case subset is pending confirmation.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
