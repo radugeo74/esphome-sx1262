@@ -58,7 +58,8 @@ def main():
                          raw[19:].hex(),prior_full.hex()]
         actual=run(command,index)
         wanted={k:v for k,v in expected.items() if
-                k.endswith("_m3h") or k.endswith("_c") or\n                k in ("target_date","accoustic_noise")}
+                k.endswith("_m3h") or k.endswith("_c") or
+                k in ("target_date","accoustic_noise")}
         if not wanted:
             raise AssertionError(f"kamwater #{index}: no numeric expected fields")
         if set(actual)!=set(wanted):
