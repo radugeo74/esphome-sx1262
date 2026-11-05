@@ -57,9 +57,14 @@ int main(int argc,char **argv) {
   if(std::strcmp(argv[1],"kamwater_compact")==0) {
     uint8_t expanded[160]{};
     xmq_portable::kamwater::tpl79::Reading compact{};
-    if(xmq_portable::kamwater::tpl79::verify(
-        bytes.data(),bytes.size(),expanded,sizeof(expanded),compact)
-        !=xmq_portable::kamwater::tpl79::Status::Ok) return 3;
+    const auto compact_status=xmq_portable::kamwater::tpl79::verify(
+        bytes.data(),bytes.size(),expanded,sizeof(expanded),compact);
+    // Separate a verified compact data-CRC mismatch (4) from other
+    // parsing failures (3); never expose any readings on either.
+    if(compact_status==xmq_portable::kamwater::tpl79::Status::DataCrcMismatch)
+      return 4;
+    if(compact_status!=xmq_portable::kamwater::tpl79::Status::Ok)
+      return 3;
     xmq_portable::kamwater::Reading reading{};
     if(xmq_portable::kamwater::decode_clear_records(
         expanded,compact.expanded_size,reading)
