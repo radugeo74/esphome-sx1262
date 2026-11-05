@@ -17,6 +17,8 @@ struct Reading {
   std::vector<Field> fields;
   bool has_target_date{false};
   standard::Calendar target_date{};
+  bool has_acoustic_noise{false};
+  std::string acoustic_noise{};
 };
 inline const char *period(uint32_t storage) {
   switch(storage) {
@@ -73,6 +75,25 @@ inline Status decode(const uint8_t *data,size_t length,Reading &out) {
   Reading parsed{};
   for(size_t i=0;i<count;++i) {
     const auto &rec=records[i];
+    // Original kamwater.xmq uses difvifkey=06FF1B for the six-byte
+    // acoustic-noise diagnostic. Preserve the original bytes in HEX;
+    // it is an opaque text payload, not a calibrated measurement.
+    if(rec.dif==0x06 && rec.full_vif==0x7F1B &&
+       rec.vif_extension_count==1 && rec.storage==0 &&
+       rec.function==0 && rec.tariff==0 && rec.subunit==0) {
+      if(parsed.has_acoustic_noise) return Status::Duplicate;
+      static constexpr char alphabet[]="0123456789ABCDEF";
+      std::string noise;
+      noise.reserve(12);
+      for(unsigned n=0;n<6;++n) {
+        const uint8_t byte=static_cast<uint8_t>(rec.raw64>>(8*n));
+        noise.push_back(alphabet[byte>>4]);
+        noise.push_back(alphabet[byte&0x0F]);
+      }
+      parsed.has_acoustic_noise=true;
+      parsed.acoustic_noise=std::move(noise);
+      continue;
+    }
     if(rec.numeric && rec.vif==0x6C && rec.vif_extension_count==0 &&
        rec.storage==1 && rec.function==0 &&
        rec.tariff==0 && rec.subunit==0) {
