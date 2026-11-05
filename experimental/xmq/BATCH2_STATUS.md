@@ -393,6 +393,32 @@ field-comparison count is **82** across **31 distinct fixtures**,
 *only if CI passes*. Other Kamwater flags, numeric flow/temperature
 measurements, history and complete JSON parity remain pending.
 
+## Stage B Kamwater original numeric field parity
+
+The HOST-ONLY `kamwater_numeric_semantics.h` uses the shared bounded
+EN13757 DIF/VIF record parser and original Kamwater XMQ field selectors
+(function, VIF family, storage number) to decode flow measurements,
+flow/external temperatures and the target date. Unknown/duplicate
+fields and invalid dates are rejected instead of assigning made-up
+values. Numeric scaling uses the shared `to_canonical` function.
+
+`test_kamwater_numeric_upstream_parity.py` now executes this native C++
+parser on **8 official NOKEY applications**, including full examples
+#1, #3, #5, #6 and compact #2, #4, #7, #8. The compact examples use
+their exact profile signature and TPL79 parsing; #7 supplies its
+previous validated full application #6 as a CRC reference, not a
+current-frame CRC. The test compares **30 flow/temperature/target-date
+values** against the official original XMQ JSON, without hardcoded
+expected readings in C++. It rejects any extra or missing decoded
+field in this test subset.
+
+Together with the previously confirmed 82 subset-field comparisons,
+the expected total becomes **112 compared fields across 31 distinct
+original fixtures**, *pending the new CI run*. This is not full
+driver-output parity: other Kamwater status variants, history,
+manufacturer-specific fields and encrypted-radio fixtures remain.
+The host-only source is not imported into production firmware.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
