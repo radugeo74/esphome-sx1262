@@ -36,6 +36,15 @@ int main() {
   using namespace xmq_portable::kamwater::ingress;
   using IngressStatus=xmq_portable::kamwater::ingress::Status;
   auto frame=make_frame();
+  // Header parser's application pointer is AFTER CI, but ELL parsing
+  // MUST include CI (the preceding byte at offset 10).
+  wmbus_pure::CompleteFrame dll_check{};
+  assert(wmbus_pure::verify_complete_frame(
+      frame.data(),frame.size(),wmbus_pure::CrcFrameFormat::B,dll_check)
+      ==wmbus_pure::CompleteStatus::Ok);
+  assert(dll_check.header.ci==0x8D);
+  assert(dll_check.header.application==dll_check.bytes.data()+11);
+  assert(dll_check.bytes[10]==0x8D && dll_check.bytes[11]==0x20);
   const ExpectedMeter expected{0x2C2D,12345678u,0x01,0x07};
   Output out{};
   assert(decode_verified_dll(frame.data(),frame.size(),
