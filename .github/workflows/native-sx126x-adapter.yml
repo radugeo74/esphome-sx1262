@@ -68,6 +68,15 @@ jobs:
         run: python3 experimental/xmq/tests/test_batch2_upstream_fixtures.py
       - name: Stage B upstream golden fixture parity ledger (NOT_RUN until actual JSON comparison)
         run: python3 experimental/xmq/tests/test_batch2_parity_ledger.py
+      - name: Stage B compare native C++ clear application outputs with 7 upstream XMQ fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Icomponents/wmbus_radio \
+            -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_batch2_clear_fixture_cli.cpp \
+            -o /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_batch2_clear_fixture_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
       - name: Test standard DIF VIF parity with original dvparser
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
