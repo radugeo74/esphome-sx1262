@@ -80,6 +80,12 @@ jobs:
             experimental/semtech-radio/test_minomess_clear_prefix.cpp \
             -o /tmp/test-minomess-clear-prefix
           /tmp/test-minomess-clear-prefix
+      - name: Test clear-only Kamwater ELL II security and CRC with AES CTR rejection
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_kamwater_ell_ii_probe.cpp \
+            -o /tmp/test-kamwater-ell-ii-probe
+          /tmp/test-kamwater-ell-ii-probe
       - name: Test Kamwater EN13757 compact format signatures and fail-closed matching
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
