@@ -98,30 +98,29 @@ int main() {
   const uint16_t crc=wmbus_pure::crc16_en13757(dll.data(),dll.size());
   dll.push_back(static_cast<uint8_t>(crc>>8));
   dll.push_back(static_cast<uint8_t>(crc));
-  using xmq_portable::kamwater::secure_ingress::decode;
   using IntegratedStatus=xmq_portable::kamwater::secure_ingress::Status;
   xmq_portable::kamwater::secure_ingress::Output integrated{};
   const xmq_portable::kamwater::ingress::ExpectedMeter expected{
       0x2C37,68243517u,0x3C,0x16};
-  assert(decode(dll.data(),dll.size(),wmbus_pure::CrcFrameFormat::B,
+  assert(xmq_portable::kamwater::secure_ingress::decode(dll.data(),dll.size(),wmbus_pure::CrcFrameFormat::B,
                 expected,key,integrated)==IntegratedStatus::Ok);
   assert(std::fabs(integrated.reading.total_m3-6.408)<1e-8);
   assert(integrated.reading.has_status);
   auto dll_bad=dll;
   dll_bad[14]^=1;
-  assert(decode(dll_bad.data(),dll_bad.size(),wmbus_pure::CrcFrameFormat::B,
+  assert(xmq_portable::kamwater::secure_ingress::decode(dll_bad.data(),dll_bad.size(),wmbus_pure::CrcFrameFormat::B,
                 expected,key,integrated)==IntegratedStatus::DllRejected);
   assert(integrated.reading.total_m3==0);
   dll_bad=dll;
   dll_bad[4]^=1;
   dll_recrc(dll_bad);
-  assert(decode(dll_bad.data(),dll_bad.size(),wmbus_pure::CrcFrameFormat::B,
+  assert(xmq_portable::kamwater::secure_ingress::decode(dll_bad.data(),dll_bad.size(),wmbus_pure::CrcFrameFormat::B,
                 expected,key,integrated)==IntegratedStatus::IdentityMismatch);
   assert(integrated.reading.total_m3==0);
   dll_bad=dll;
   dll_bad[dll_bad.size()-3]^=1; // Corrupt CCM tag, then renew DLL CRC.
   dll_recrc(dll_bad);
-  assert(decode(dll_bad.data(),dll_bad.size(),wmbus_pure::CrcFrameFormat::B,
+  assert(xmq_portable::kamwater::secure_ingress::decode(dll_bad.data(),dll_bad.size(),wmbus_pure::CrcFrameFormat::B,
                 expected,key,integrated)==IntegratedStatus::CryptoRejected);
   assert(integrated.reading.total_m3==0);
   auto bad=good;
