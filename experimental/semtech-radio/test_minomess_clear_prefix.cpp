@@ -50,6 +50,31 @@ int main() {
   assert(reading.target_date.year==2026 && reading.target_date.month==10 &&
          reading.target_date.day==1);
 
+  // Full public minomess.xmq RF envelope. Upstream NOKEY means the
+  // application following '_' is supplied clear after decryption; its
+  // actual TPL configuration (0x0550) is MODE 5. Reject it as live RF.
+  auto upstream_rf=unhex(
+    "6644496A7856341218377278563412496A01067D0050052F2F"
+    "0C1354031400026C4F3A82046C413A8C0413F51C0200"
+    "8D0493132C33FEEE0F020D05021EFA018CED010CE0013ED401"
+    "FFC601A9B701E2A2011B94014884011D7401FC6601EA5A01"
+    "02FD1700002F2F");
+  assert(decode_clear_wireless_frame(upstream_rf.data(),
+                                    upstream_rf.size(),reading)==Status::Unsupported);
+  assert(reading.total_m3==0 && !reading.has_target);
+  // Only a synthetic, MODE ZERO version may exercise the clear TPL path.
+  // The DLL radio version differs from the embedded TPL version; match
+  // the latter for identification, but DO NOT authorize publication.
+  upstream_rf[22]=0x00;
+  assert(decode_clear_wireless_frame(upstream_rf.data(),
+                                    upstream_rf.size(),reading)==Status::Ok);
+  assert(std::fabs(reading.total_m3-140.354)<1e-8);
+  assert(reading.has_target && std::fabs(reading.target_m3-138.485)<1e-8);
+  upstream_rf[18]=0x12; // TPL version is now not among official detects.
+  assert(decode_clear_wireless_frame(upstream_rf.data(),
+                                    upstream_rf.size(),reading)==Status::Unsupported);
+  assert(reading.total_m3==0 && !reading.has_target);
+
   // Malformed DIF, invalid BCD and truncated value never keep old readings.
   populated[0]=0x0D;
   assert(decode_clear_prefix(populated.data(),populated.size(),reading)
