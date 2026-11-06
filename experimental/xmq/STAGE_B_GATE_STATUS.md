@@ -1,8 +1,9 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
 Updated 2026-11-06 for branch `experimental/xmq-multidriver-auto`.
-This is an evidence ledger, not a release approval. The changes described
-here require a fresh successful `native-sx126x-adapter.yml` CI run.
+This is an evidence ledger, not a release approval. The 177/181 field
+and host CCM regression calup was owner-confirmed green. The newer ESP-IDF
+mbedTLS build-probe calup still requires a fresh CI run.
 
 ## Source-fixture parity: narrow substage ready for CI
 
@@ -36,6 +37,29 @@ track both classes without promoting the latter to a PASS. Running
 the ledger alone proves only consistency of test coverage metadata.
 The independently compiled C++ host parity and cryptographic tests
 must also be green.
+
+## ESP-IDF mbedTLS initial isolated build probe (CI pending)
+
+The native **ESP-IDF test application only** now contains
+`experimental/xmq/espidf_cpp_probe/main/oms_ccm_mbedtls_probe.h`.
+It implements the reviewed OMS short TPL 0x7A / security mode 10 / KDF1
+subset with ESP-IDF mbedTLS CMAC-derived key and authenticated AES-CCM
+decryption, modeled on the existing isolated host OpenSSL test backend.
+It clears output on errors and never admits partial plaintext. ESP-IDF
+CMake explicitly lists `mbedtls`. The probe translation unit includes
+this header and builds a synthetic invalid-tag exercise.
+
+**Evidence limitation:** a GitHub CI build proves compilation/linkage,
+**not runtime execution** of `app_main`, nor equivalence on the public
+valid #10 encrypted fixture. The attempted large source-fixture insertion
+into the ESP-IDF application was not applied. The original public #9
+bad-tag / #10 valid-tag fixture tests are green **on host OpenSSL only**;
+a dedicated ESP-IDF on-device equivalent remains necessary.
+
+No active `components/wmbus_native_sx126x` source includes this
+probe-only header. No radio dispatcher or firmware sensor is connected
+to its output, and no key or plaintext is logged. Host-only OpenSSL
+crypto remains host-only. **Not production cryptography approval.**
 
 ## Strict remaining Stage B acceptance gates
 
