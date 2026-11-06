@@ -25,6 +25,19 @@ historical intermediate checkpoint descriptions and their old
 "CI pending" wording; this latest checkpoint supersedes those
 dated statements.
 
+## Executable mbedTLS-to-fields integration — CI pending
+
+Commit `8449b62` extends the already-executed Linux host mbedTLS test
+with the **same shared native C++ Kamwater DIF/VIF record and numeric
+decoders** used in earlier independently scoped field tests. In one
+authenticated source #10 run it now compares `total_m3=0`,
+`target_m3=0`, `status=TEMPORARY_ERROR` and
+`accoustic_noise=FFFFFFFFFFFF`. Source #9 and corrupted tag/key/ID
+remain negative. This closes a concrete Linux **mbedTLS → four fields**
+integration gap, pending a new CI result; it does not include verified
+wireless DLL RX, production ESP-IDF execution, actual HA sensors, or
+live Kamwater admission.
+
 ## Source-fixture parity: narrow substage ready for CI
 
 Original public `wmbusmeters` XMQ fixtures from the unchanged imported
