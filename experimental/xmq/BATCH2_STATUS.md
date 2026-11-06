@@ -669,7 +669,12 @@ contains only a forwarding include, so every existing original XMQ
 host test uses the same parser. The ESP-IDF ESP32-S3 C++ probe now
 includes that shared header and embeds the original public
 already-clear #19 sample (7.512 m3), including a truncation check.
-The ESP-IDF CI **compiles/links** this test, but does not run
+The `native-sx126x-adapter.yml` workflow now has a dedicated
+`stage-a-espidf-s3-portable-link` job on our current branch using
+the ESP-IDF v5.5.6 ESP32-S3 toolchain. It generates only the unchanged
+live Techem XMQ tables, then compiles/links the existing portable
+C++ probe with the shared Apator162 application parser. This CI
+**compiles/links** the test, but does not run
 `app_main` on physical hardware. This is not full telemetry parity
 or an authorization to decode live encrypted frames.
 
