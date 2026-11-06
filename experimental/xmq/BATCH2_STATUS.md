@@ -562,6 +562,54 @@ case. Thus a blanket claim of 39/39 positive decoding would be
 misleading. Full JSON parity and real-firmware integration are
 still outstanding.
 
+## Stage B evidence-based complete-field and security gap audit
+
+`test_batch2_field_gap_audit.py` now enumerates **every original
+source JSON** for the 39 upstream fixtures. Excluding only identifying
+metadata, timestamp, source-driver name and the deprecation note,
+it discovers **181 distinct per-case functional JSON fields**.
+A field is credited only when a named existing C++-backed golden test
+explicitly compares that field. The count is **139 compared and
+42 NOT_COMPARED**; the test pins the per-case totals and keeps full
+driver parity and firmware enablement explicitly false.
+This is an **inventory of existing source/test contracts**, not an
+additional decoder replay or a passing 139-field integration suite.
+The 38/39 positive-fixture metric is also *partial field coverage*
+rather than 38 complete valid JSON results.
+
+**Key specific gaps** (machine-readable per-case in the new CI report):
+
+- Minomess #3-#6: four status JSON values not yet compared.
+- Kamwater #2/#3/#4/#7/#8: status and duration parity missing on
+  compact or alternate already-clear cases; **#3 total_m3** not
+  credited because no existing C++ golden test asserts that field.
+- Kamwater #10: `TEMPORARY_ERROR` from the TPL status is not
+  yet checked as complete field output, although CCM and volumes are.
+- Kamwater #13: `target_m3` still not compared via the TPL status path.
+- Kamwater #9: four JSON output fields deliberately NOT_COMPARED;
+  its source CCM tag is invalid, so publishing its fallback zeros
+  would violate the secure rejection policy.
+
+**Security/production gaps that cannot be settled by JSON field
+counting**: real wireless DLL CRC/identity before decrypting
+`apator162` CBC mode 5; no cryptographic authentication of that
+legacy mode; validation of the proprietary Apator application tail
+checksum; reliable per-meter compact template/reference lifecycle
+for Kamwater TPL79, including previous full-frame CRC and current
+transport integrity; T1/C1 RF-admission, unconfigured packet policy,
+bounded runtime/resource and end-to-end publication tests for
+batch2 drivers. All three remain **pending** in the native driver
+registry. Existing `mkradio4` and `fhkvdataiii` firmware paths
+stay unchanged.
+
+The standalone script additionally creates a JSON audit report
+in CI (not a user-meter report), makes no driver registry edits and
+blocks accidental inflation if an expected source field disappears.
+The previous **139 cumulative positive field checks** happen to
+equal **139 distinct functional fields** under this explicitly
+defined coverage model; these are not interchangeable metrics
+and should be tracked separately after additional test overlaps.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
