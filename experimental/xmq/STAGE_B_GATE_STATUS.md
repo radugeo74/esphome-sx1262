@@ -171,6 +171,42 @@ key-rotation/reset semantics, bounded per-meter state, synchronous
 delivery/failure behavior and real RF validation before enabling
 `BATCH2_PENDING`.
 
+## Restart-safe checkpoint *contract* for CCM counters — CI pending
+
+The new isolated host/ESP-IDF-probe-only
+`experimental/xmq/espidf_cpp_probe/main/kamwater_replay_checkpoint.h`
+defines a canonical 25-byte checkpoint: magic/format version, verified
+configured meter identity (manufacturer, ID, version, medium), **external
+nonzero key epoch**, last accepted authenticated CCM counter and CRC32.
+The CRC is **accidental-damage detection, not authentication, anti-rollback
+or a substitute for protected storage**.
+
+Restoration is fail-closed: missing, truncated, corrupted, wrong-version,
+wrong-meter or wrong-key-epoch checkpoint leaves the session unready.
+There is deliberately **no automatic watermark reset** after a missing
+or corrupt checkpoint. A production implementation would require an
+explicitly authorized provisioning/recovery policy and a trusted
+storage backend (e.g. validated NVS handling), neither is introduced
+here.
+
+A caller-provided synchronous delivery callback must first report
+success; a caller-provided **atomic/durable** checkpoint writer must
+then report success before the in-memory watermark advances. If the
+writer fails, the session is blocked until a trusted recovery. The
+new Linux test exercises original authenticated #10, bad-tag #9,
+simulated delivery failure, simulated restore after restart, duplicate
+suppression, incorrect epoch/identity, corrupt/truncated checkpoint,
+reentrant callback rejection and a failed checkpoint writer. These
+are **mock storage tests**; new CI not yet confirmed.
+
+**Inherent limitation:** sink side effects may occur before durable
+write. A crash in that interval can lead to repeated idempotent
+Home Assistant sensor updates after restart; this design cannot
+guarantee exactly-once delivery. The writer's atomicity/durability and
+security against malicious rollback are assumptions **not validated**
+by CI. No ESP32-S3 NVS, real RX hook, live YAML, driver promotion or
+`publish_state` change has been made.
+
 ## Source-fixture parity: narrow substage ready for CI
 
 Original public `wmbusmeters` XMQ fixtures from the unchanged imported
