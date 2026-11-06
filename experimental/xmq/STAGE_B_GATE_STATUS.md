@@ -1,9 +1,10 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
 Updated 2026-11-06 for branch `experimental/xmq-multidriver-auto`.
-This is an evidence ledger, not a release approval. The user confirmed CI green
-through `b11ebde` (including the portable host restart-checkpoint contract).
-The new real ESP-IDF NVS backend and host fake-NVS tests are **CI pending**.
+This is an evidence ledger, not a release approval. The owner confirmed
+CI green through `6bd4d98` (real NVS probe compiled/linked, host fake-NVS
+read/write/commit regressions). The new optional write-ahead counter
+reservation and power-loss behavioral test are **CI pending**.
 
 ## Latest verified checkpoint — 2026-11-06
 
@@ -244,6 +245,49 @@ storage policy has been approved. CRC32 does not detect malicious
 rollback; NVS encryption/anti-rollback, trusted epoch management,
 atomic HA delivery, real ESP32-S3 runtime and receiver integration
 are NOT proven. No batch-2 driver admission or installed YAML changes.
+
+## Counter persistence policy decision point — bounded write-ahead option, CI pending
+
+`experimental/xmq/espidf_cpp_probe/main/kamwater_replay_reservation.h`
+now defines an **opt-in experimental** write-ahead reservation policy;
+there is no runtime default and no production callback. The caller must
+restore a trusted configured-meter checkpoint first, then select a
+window of **1 through 8** CCM counter values. The policy authenticates
+and maps each complete frame, but before any downstream sink callback
+it atomically stores a checkpoint for the **upper end of the reserved
+counter range**. A storage failure blocks further delivery even if the
+underlying writer ambiguously committed. The exact previous replay
+counter remains checked in RAM for the running session.
+
+Two explicitly different availability / wear profiles:
+
+| Host-only policy | Expected checkpoint writes | Restart trade-off |
+| --- | --- | --- |
+| Window **1** (strict) | For each newly accepted counter | Restored watermark blocks repeats without deliberately skipping later counters; still needs successful flash write per distinct delivered counter |
+| Window **4** (example, NOT default) | On crossing a four-counter reservation boundary | Restart must reject ALL counters up to the durable reservation, including up to three unseen sequential counter values; fewer writes but potential delayed measurements |
+| Window **8** (maximum experimental cap) | At each new eight-counter reservation boundary | Up to seven future sequential counter values may be skipped after an early reboot; longer delay to fresh data |
+
+The actual bound is measured in **counter values**, not wall-clock
+time or a guaranteed number of radio telegrams. A counter can jump,
+and reporting intervals are not assumed. Values at `UINT32_MAX` do
+not wrap; a trusted independently authorized new key epoch would need
+a separately verified transition, never automatic reset.
+
+The executable original authenticated Kamwater #10 host test now checks
+window validity, durable write-before-sink, exact replay and bad-tag
+#9 rejection, forced writer failure with **zero sink calls**, sink
+failure and retry without another write, restore from the reserved
+ceiling after simulated power loss and conservative overflow
+handling. The portable header is also parsed by the real ESP-IDF
+`esp32s3` probe during CI build. **Current CI pending.**
+
+**No policy is selected for Heltec.** These tests cannot establish
+actual NVS power-loss durability, write endurance, HA delivery
+atomicity, persistence against malicious rollback, or trusted epoch
+provisioning. Before live implementation the owner must explicitly
+choose between more flash writes and possible post-restart gaps;
+infrastructure canary/rollback remain blocking. All three
+`BATCH2_PENDING` drivers remain disabled.
 
 ## Source-fixture parity: narrow substage ready for CI
 
