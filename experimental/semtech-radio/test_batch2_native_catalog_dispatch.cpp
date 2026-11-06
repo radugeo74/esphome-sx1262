@@ -57,12 +57,11 @@ int main() {
   assert(decode(minomess,"12345678","minomess")==Status::Ok);
   assert(std::fabs(value(result,"total_m3")-140.354)<1e-6);
   assert(std::fabs(value(result,"target_m3")-138.485)<1e-6);
-  minomess[22]=0x05; // proper mode5 configuration byte (low byte)
-  // Real source configuration is 0x0550: restore full mode-5 setting.
-  minomess[21]=0x00;minomess[22]=0x50;
+  // Restore source TPL 0x0550 (high byte 0x05): MODE 5 must reject.
+  minomess[22]=0x05;
   if(decode(minomess,"12345678","minomess")==Status::Ok) return 1;
   if(result.value_count!=0) return 2;
-  minomess[21]=0x00;minomess[22]=0x00;
+  minomess[22]=0x00;
   if(decode(minomess,"12345679","minomess")==Status::Ok ||
      result.value_count!=0) return 3;
 
