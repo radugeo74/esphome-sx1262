@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[3]
 sys.path.insert(0,str(ROOT/"experimental/xmq/tools"))
 from portable_xmq import parse,validate_driver,blocks,values
-INDEXES=(1,5,6,11,12)
+INDEXES=(1,3,5,6,11,12)
 OLD=("status","current_status","time_dry","time_reversed",
      "time_leaking","time_bursting")
 MODERN=("status","time_dry","time_reversed","time_leaking",
@@ -27,6 +27,12 @@ def main():
         assert "NOKEY" in values(case,"args")[0]
         telegram=values(case,"telegram")[0]
         application="".join(telegram.split("_")[-1].replace("|","").split())
+        if i==3:
+            # Original Kamwater #3 carries the reviewed clear-application
+            # prefix 46 88 78 ahead of the standard DIF/VIF records.
+            # Do not normalize arbitrary prefixes or relax the RF parser.
+            assert application.startswith("468878")
+            application=application[6:]
         expected=json.loads(values(case,"json")[0])
         result=subprocess.run([sys.argv[1],"kamwater_status",application],
                               capture_output=True,text=True)
@@ -38,7 +44,7 @@ def main():
             key,sep,val=line.partition("=")
             assert sep and key not in actual
             actual[key]=val
-        fields=OLD if i==1 else MODERN+(
+        fields=OLD if i in (1,3) else MODERN+(
             ("time_high_ambient_temperature",) if i==12
             else ("time_low_ambient_temperature",))
         assert set(actual)==set(fields), (
@@ -51,7 +57,7 @@ def main():
             total+=1
         print(f"PARTIAL_PASS kamwater #{i}: {len(fields)} original "
               "status/duration fields")
-    assert total==34
-    print(f"PASS 5 Kamwater original status/duration applications; "
+    assert total==40
+    print(f"PASS 6 Kamwater original status/duration applications; 
           f"{total} extra JSON field comparisons. No RF publication.")
 if __name__=="__main__": main()
