@@ -795,6 +795,29 @@ consolidation only** once the new CI passes. All earlier entries labeled
 decryptors or new drivers run in firmware. No live algorithm, SX126x
 radio, YAML or Heltec firmware changed as part of the closeout.
 
+## Stage B — fast evidence-first parity pass (CI pending)
+
+The previous Stage A consolidation is complete and user-confirmed green.
+The first Stage B change adds original upstream `kamwater.xmq` fixture #3
+to the **existing compiled native C++ clear-application status decoder**.
+The original already-clear application has an explicitly reviewed
+`46 88 78` prefix; only that exact prefix is removed in the host
+test. No generic RF prefix acceptance is enabled.
+
+The native CLI output now must match **six additional original JSON
+fields**: `status`, `current_status`, `time_dry`,
+`time_reversed`, `time_leaking`, and `time_bursting`.
+These checks extend `test_kamwater_status_upstream_parity.py`
+from 5 fixtures / 34 fields to **6 fixtures / 40 fields**. The
+audit of distinct source JSON field occurrences moves from
+**144/181** to **150/181** across 39 fixtures (38 positive partial,
+1 negative-only authentication). Those counts remain **partial**
+comparisons from separate decoders, not full driver parity.
+
+The Stage B drivers are still `BATCH2_PENDING` and unavailable for
+live YAML or ESPHome sensor publication. No AES decryption, radio code,
+ESP-IDF dispatch or existing Techem driver was changed.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
