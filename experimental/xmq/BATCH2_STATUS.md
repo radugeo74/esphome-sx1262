@@ -727,6 +727,39 @@ crypto-admission logic are a separate trust-boundary problem and must
 not be promoted as ordinary application decoding. Original
 `wmbusmeters` golden fixtures remain the compatibility reference.
 
+## Stage A — Kamwater TPL 0x7A and wired Minomess consolidation (CI pending)
+
+After the previous Stage A native/host shared status and numeric code passed
+CI, two further **unchanged** C++ algorithms now have one source in
+`components/wmbus_native_sx126x/`:
+
+- `kamwater_tpl_status_semantics.h` accepts only the reviewed already-clear
+  short TPL `CI=0x7A` with status byte `0x02` and zero configuration
+  from original Kamwater #13/#14. The original host header merely forwards
+  to this file. No arbitrary TPL status values or cryptography were enabled.
+- `minomess_wired_frame.h` validates original M-Bus `68` wired length,
+  SUM checksum, meter identity, clear application and gateway-side
+  RSSI/actuality. This checksum is **not wireless DLL CRC**. The old
+  host-only file forwards to the same implementation; the native radio
+  ingress **does not** route wireless traffic to it.
+
+The dedicated real ESP-IDF ESP32-S3 compile job now includes both headers
+and embeds original fixture Kamwater #14 (expected `DRY ERROR`) and
+original wired Minomess #1 (`total_m3=57.597`, gateway RSSI -86).
+Truncated TPL and corrupted M-Bus checksum must reject. As before, the
+CI compiles/links `app_main` but does not execute it on physical hardware;
+original-XMQ host golden parity executes independently.
+
+The Stage A CI boundary guard verifies that only the native files hold
+these algorithms and that they have **not** been added to live
+`NativeReceiverProbe` or `decode_configured_plain_frame`. The
+driver manifest remains unchanged and batch2 driver publication blocked.
+
+Remaining Stage A work: classify and extract reusable platform-independent
+crypto primitives and transport admission without copying OpenSSL into
+the firmware or altering the live Techem code. Maintain original
+`wmbusmeters` fixture behavior as the compatibility reference.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
