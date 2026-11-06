@@ -12,6 +12,7 @@ on:
       - 'experimental/xmq/tools/generate_driver_registry.py'
       - 'experimental/xmq/tools/**'
       - 'experimental/xmq/tests/**'
+      - 'experimental/xmq/espidf_cpp_probe/**'
       - 'components/sx126x/**'
       - 'experimental/semtech-radio/**'
       - 'experimental/xmq/tests/test_pure_crc.cpp'
