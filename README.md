@@ -13,7 +13,7 @@ The experimental firmware uses the **official ESPHome SX126x radio** (Heltec ESP
 | Already-decrypted-only experiment | `mkradio4a`; not automatically eligible for live encrypted RF |
 | **Pending, not selectable or publishing** | **`minomess`, `kamwater`, `apator162`** |
 | Stage A — shared-source consolidation | Completed; owner-confirmed CI green |
-| Stage B — source JSON fixture coverage | Last owner-confirmed CI: **168/181** partial field comparisons; subsequent **176/181** update is **pending CI confirmation** |
+| Stage B — source JSON fixture coverage | Last owner-confirmed CI: **168/181** partial comparisons; subsequent updates target **177/181** (4 intentionally rejected bad-CCM fields), **pending CI confirmation** |
 | Driver end-to-end parity / production readiness for batch 2 | **Not approved** — identity, CRC, security, transport, publication and real-device canary work remain |
 | Installed Heltec firmware and private YAML | **Unchanged by this branch's documentation and Stage A/B host parity commits** |
 
