@@ -51,10 +51,8 @@ def tested_fields(driver,index,reference):
     # test_batch2_clear_fixture_parity.py, compact variant of same.
     if index in (1,2,4,5,6,7,8):
         fields.update(("total_m3","target_m3"))
-    if index==3:
-        # source #3 has no stored target, but current volume is tested
-        # by clear records C++ tests; no false target null claim.
-        fields.add("total_m3")
+    # Source #3 volume exists, but current CI compares only its numeric
+    # flow/temperature extras. Never credit volume without a C++ assertion.
     # test_kamwater_upstream_ccm_openssl.cpp, original valid tag #10
     if index==10:
         fields.update(("total_m3","target_m3","accoustic_noise"))
@@ -110,7 +108,7 @@ def main():
     assert sum(map(len,output.values()))==39
     # Snapshot of *unique functional fields* derived from XMQ expected JSON.
     # NOT the cumulative number of assertions across overlapping test suites.
-    assert (total_expected,total_compared,positives)==(181,140,38)
+    assert (total_expected,total_compared,positives)==(181,139,38)
     assert output["kamwater"][8]["compared_partial"]==0
     assert output["kamwater"][8]["negative_security_only"]
     assert output["kamwater"][8]["not_compared"]==[
