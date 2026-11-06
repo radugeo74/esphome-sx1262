@@ -64,6 +64,11 @@ def tested_fields(driver,index,reference):
     # test_kamwater_upstream_ccm_openssl.cpp, original valid tag #10
     if index==10:
         fields.update(("total_m3","target_m3","accoustic_noise"))
+    # Source Kamwater #3 now has 6 strict old-style status/duration field
+    # comparisons against the SAME native status_semantics C++ CLI as #1.
+    # The historical 46 88 78 clear-prefix is stripped only in the test.
+    if index==3:
+        fields.update(STATUS_OLD)
     # test_kamwater_status_upstream_parity.py
     if index==1:
         fields.update(STATUS_OLD)
@@ -116,7 +121,7 @@ def main():
     assert sum(map(len,output.values()))==39
     # Snapshot of *unique functional fields* derived from XMQ expected JSON.
     # NOT the cumulative number of assertions across overlapping test suites.
-    assert (total_expected,total_compared,positives)==(181,144,38)
+    assert (total_expected,total_compared,positives)==(181,150,38)
     assert output["kamwater"][8]["compared_partial"]==0
     assert output["kamwater"][8]["negative_security_only"]
     assert output["kamwater"][8]["not_compared"]==[
