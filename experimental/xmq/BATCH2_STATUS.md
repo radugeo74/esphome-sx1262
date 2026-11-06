@@ -524,6 +524,44 @@ encrypted `apator162 #19` and the deliberately rejected
 `kamwater #9` whose CCM tag fails; the latter is already covered
 by a negative security regression.
 
+## Stage B original Apator162 #19 AES-CBC mode 5 regression (pending CI)
+
+Original public `apator162.xmq` fixture **#19** is a wireless
+short TPL `7A` telegram using **OMS AES-128-CBC mode 5**
+(`TPL CFG=0x8530`, three encrypted 16-byte blocks), with the
+public XMQ all-zero 16-byte test key. It is **not** AES-CCM,
+does not use a cryptographic authentication tag and must never
+be represented as cryptographically authenticated.
+
+The host-only `oms_tpl_cbc_mode5_openssl.h` derives the CBC IV
+from the original CRC-stripped DLL manufacturer, identifier,
+version, medium and repeated TPL access number; it checks the exact
+encrypted block count and `2F2F` decrypted plaintext marker.
+The separate `test_apator162_upstream_cbc_mode5.cpp` compares the
+**complete decrypted manufacturer application** byte for byte with
+independent original-fixture plaintext, then runs the existing
+bounded Apator IXML reader and checks **`total_m3=7.512`** from
+the original XMQ JSON. It also checks refusal on missing key,
+unsupported CI/configuration and corrupted first CBC block/IV.
+This is a **one-field source comparison pending GitHub CI**.
+
+**Security boundary:** `2F2F` is only a weak plausibility check.
+A later ciphertext modification may preserve this marker, and
+the current IXML parser does not validate the manufacturer-specific
+trailing checksum. The host-only CBC path must not be connected to
+any live sensor or RF publication. A fully verified wireless DLL,
+configured meter identity and independently justified application
+integrity/admission policy would still be required.
+
+If the CI is green, source fixture coverage with *some* positive
+output field becomes **38/39**, with **139 positive field
+comparisons** (previously confirmed 37/138). The remaining
+`kamwater #9` has a deliberately **invalid AES-CCM tag** and
+must remain a negative security test, never a positive decoding
+case. Thus a blanket claim of 39/39 positive decoding would be
+misleading. Full JSON parity and real-firmware integration are
+still outstanding.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
