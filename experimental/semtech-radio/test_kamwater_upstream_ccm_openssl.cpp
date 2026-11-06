@@ -128,24 +128,35 @@ int main() {
   assert(integrated.reading.has_target);
   assert(std::fabs(integrated.reading.target_m3)<1e-9);
   assert(integrated.profile_index==-1);
+  // All four original #10 functional source JSON fields now come from
+  // ONE authenticated, configured DLL-to-application replay.
+  assert(integrated.authenticated_status=="TEMPORARY_ERROR");
+  assert(integrated.acoustic_noise=="FFFFFFFFFFFF");
   // Preserve a previous successful output deliberately: rejection must
   // clear it transactionally rather than showing stale sensor values.
   assert(decode(full_invalid.data(),full_invalid.size(),
                 wmbus_pure::CrcFrameFormat::B,configured,
                 public_fixture_key,integrated)==IntegratedStatus::CryptoRejected);
   assert(!integrated.reading.has_target && integrated.profile_index==-1);
+  assert(integrated.reading.total_m3==0.0);
+  assert(integrated.authenticated_status.empty() &&
+         integrated.acoustic_noise.empty());
   auto tampered_full=full_valid;
   tampered_full[5]^=1;  // DLL data corruption without recomputed CRC
   assert(decode(tampered_full.data(),tampered_full.size(),
                 wmbus_pure::CrcFrameFormat::B,configured,
                 public_fixture_key,integrated)==IntegratedStatus::DllRejected);
   assert(!integrated.reading.has_target);
+  assert(integrated.authenticated_status.empty() &&
+         integrated.acoustic_noise.empty());
   auto wrong_meter=configured;
   wrong_meter.meter_id^=1u;
   assert(decode(full_valid.data(),full_valid.size(),
                 wmbus_pure::CrcFrameFormat::B,wrong_meter,
                 public_fixture_key,integrated)==IntegratedStatus::IdentityMismatch);
   assert(!integrated.reading.has_target);
+  assert(integrated.authenticated_status.empty() &&
+         integrated.acoustic_noise.empty());
   // Correct original tag is insufficient with wrong configured identity.
   auto wrong_id=std::vector<uint8_t>(id,id+sizeof(id));
   wrong_id[0]^=1;
