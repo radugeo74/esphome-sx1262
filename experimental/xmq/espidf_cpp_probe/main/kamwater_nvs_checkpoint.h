@@ -15,7 +15,7 @@ using Meter=checkpoint::Meter;
 using Session=checkpoint::Session;
 enum class Status : uint8_t {
   Ok, InvalidArgument, Missing, OpenFailed, ReadFailed,
-  CheckpointRejected, SetFailed, CommitFailed, ReadbackFailed
+  CheckpointRejected, StaleRecord, SetFailed, CommitFailed, ReadbackFailed
 };
 struct Result {
   Status status{Status::InvalidArgument};
