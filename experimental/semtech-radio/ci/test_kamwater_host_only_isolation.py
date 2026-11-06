@@ -10,8 +10,23 @@ host_only = root / "experimental" / "semtech-radio" / "host_only"
 assert components.is_dir(), "Missing ESPHome native component directory"
 assert host_only.is_dir(), "Missing host-only test directory"
 
+# The keyless IV/counter algorithm was deliberately promoted to shared
+# native C++ during Stage A. Its historical host path forwards to it.
+# A native IV calculator is NOT a decryptor or an RF admission path.
+iv_native = components / "kamwater_ell_ctr_iv.h"
+iv_host = host_only / "kamwater_ell_ctr_iv.h"
+assert iv_native.is_file() and iv_host.is_file()
+iv_source = iv_native.read_text(encoding="utf-8")
+iv_forwarder = iv_host.read_text(encoding="utf-8")
+assert "inline Status derive_iv(" in iv_source
+assert "inline void increment_counter(" in iv_source
+assert '#include "../../../components/wmbus_native_sx126x/kamwater_ell_ctr_iv.h"' in iv_forwarder
+assert "inline Status derive_iv(" not in iv_forwarder
+assert "inline void increment_counter(" not in iv_forwarder
+assert "#include <openssl/" not in iv_source
+assert "EVP_" not in iv_source
+
 for filename in (
-    "kamwater_ell_ctr_iv.h",
     "kamwater_ell_ctr_openssl.h",
     "kamwater_verified_dll_ingress.h",
     "oms_tpl_ccm_openssl.h",
@@ -46,4 +61,4 @@ for path in components.rglob("*"):
             assert "<openssl/" not in stripped, (
                 f"OpenSSL header included by ESPHome component: {path}"
             )
-print("PASS: Kamwater AES-CTR and DLL ingress remain host-only")
+print("PASS: portable keyless ELL IV/counter native; OpenSSL decrypt and verified DLL ingress remain host-only")
