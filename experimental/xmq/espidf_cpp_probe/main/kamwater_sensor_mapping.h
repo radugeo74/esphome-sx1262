@@ -31,7 +31,7 @@ struct Plan {
   size_t text_count{0};
 };
 inline Status stage(const configured_fields::Reading &reading, Plan &out) {
-  out={};
+  out=Plan{};
   if (!reading.has_total || !reading.has_target ||
       !std::isfinite(reading.total_m3) ||
       !std::isfinite(reading.target_m3) ||
