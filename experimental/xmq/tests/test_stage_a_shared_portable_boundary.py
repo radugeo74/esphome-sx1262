@@ -66,5 +66,20 @@ assert '"kamwater"' not in native_catalog.split("enum class PureDecodeStatus")[1
 assert '"minomess"' not in native_catalog.split("enum class PureDecodeStatus")[1]
 assert "kw_tpl.status!=\"DRY ERROR\"" in cpp
 assert "wired_reading.gateway_rssi_dbm!=-86" in cpp
+# Keyless ELL IV and counter have one shared source; OpenSSL stays host-only.
+iv=root/"components/wmbus_native_sx126x/kamwater_ell_ctr_iv.h"
+iv_alias=root/"experimental/semtech-radio/host_only/kamwater_ell_ctr_iv.h"
+openssl=root/"experimental/semtech-radio/host_only/kamwater_ell_ctr_openssl.h"
+iv_text=iv.read_text(encoding="utf-8")
+iv_alias_text=iv_alias.read_text(encoding="utf-8")
+openssl_text=openssl.read_text(encoding="utf-8")
+assert "inline Status derive_iv(" in iv_text
+assert "inline void increment_counter(" in iv_text
+assert '#include "../../../components/wmbus_native_sx126x/kamwater_ell_ctr_iv.h"' in iv_alias_text
+assert "inline Status derive_iv(" not in iv_alias_text
+assert "inline void increment_counter(" not in openssl_text
+assert '#include "kamwater_ell_ctr_iv.h"' in openssl_text
+assert "#include <openssl/" not in iv_text
+assert "kamwater_ell_ctr_openssl.h" not in native_runtime
 print("PASS stage A: same Apator162, Kamwater status/numeric/TPL and wired Minomess algorithms for host and ESP-IDF, "
       "pending driver remains unavailable for live YAML and RF publication")
