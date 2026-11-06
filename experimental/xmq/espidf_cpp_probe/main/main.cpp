@@ -10,6 +10,8 @@
 #include "apator162_ixml_fields.h"
 #include "kamwater_status_semantics.h"
 #include "kamwater_numeric_semantics.h"
+#include "kamwater_tpl_status_semantics.h"
+#include "minomess_wired_frame.h"
 #include "frame_bridge.h"
 #include <cstring>
 
@@ -228,6 +230,54 @@ extern "C" void app_main(void) {
   }
   ESP_LOGI(TAG, "Shared Kamwater clear application C++ regression PASS (not RF)");
 
+
+  // Stage A: real source Kamwater #14 already-clear TPL CI=7A application.
+  const uint8_t kw_tpl_fixture[] = {0x7A,0x44,0x02,0x00,0x00,
+                                     0x04,0xFF,0x23,0x01,0x00,0x00,0x00};
+  kamwater::tpl_status::Reading kw_tpl{};
+  if (kamwater::tpl_status::decode_clear_short_tpl(
+          kw_tpl_fixture,sizeof(kw_tpl_fixture),kw_tpl)
+          != kamwater::tpl_status::Status::Ok ||
+      kw_tpl.status!="DRY ERROR" || !kw_tpl.has_durations ||
+      kw_tpl.durations.status!="DRY" || !kw_tpl.durations.time_dry.empty()) {
+    ESP_LOGE(TAG, "Shared Kamwater source #14 TPL status mismatch");
+    abort();
+  }
+  const uint8_t truncated_tpl[]={0x7A,0x44,0x02,0x00,0x00};
+  if (kamwater::tpl_status::decode_clear_short_tpl(
+          truncated_tpl,sizeof(truncated_tpl),kw_tpl)
+          == kamwater::tpl_status::Status::Ok ||
+      !kw_tpl.status.empty()) {
+    ESP_LOGE(TAG, "Kamwater truncated TPL unexpectedly accepted");
+    abort();
+  }
+
+  // Original source Minomess wired #1: distinct 0x68 M-Bus envelope
+  // with SUM checksum, not a wireless T1/C1 DLL CRC!
+  const uint8_t wired_mino[] = {0x68,0x5F,0x5F,0x68,0x08,0x00,0x72,0x20,0x33,0x36,0x15,0x49,0x6A,0x01,0x16,0xA3,0x00,0x00,0x00,0x0C,0x13,0x97,0x75,0x05,0x00,0x02,0x6C,0x51,0x3A,0x82,0x04,0x6C,0x41,0x3A,0x8C,0x04,0x13,0xAA,0xDB,0x00,0x00,0x8D,0x04,0x93,0x13,0x2C,0x33,0xFE,0xD0,0xD2,0x00,0xA6,0xCD,0x00,0x7E,0xC8,0x00,0x9C,0xC1,0x00,0x48,0xBA,0x00,0xFA,0xB3,0x00,0x9B,0xAD,0x00,0xD2,0xA8,0x00,0x28,0xA2,0x00,0x4F,0x9B,0x00,0xF6,0x94,0x00,0x9B,0x8F,0x00,0xF9,0x89,0x00,0x48,0x86,0x00,0x02,0xFD,0x17,0x00,0x00,0x01,0xFD,0x71,0xAA,0xE7,0x16};
+  minomess::wired::Reading wired_reading{};
+  if (minomess::wired::decode(wired_mino,sizeof(wired_mino),wired_reading)
+          != minomess::wired::Status::Ok ||
+      std::fabs(wired_reading.meter.total_m3-57.597)>0.000001 ||
+      !wired_reading.has_gateway_rssi ||
+      wired_reading.gateway_rssi_dbm!=-86 ||
+      wired_reading.meter.status_bits!=0) {
+    ESP_LOGE(TAG, "Shared wired Minomess source #1 frame mismatch");
+    abort();
+  }
+  // Corrupt the checksum, not the data: the decoder must reject.
+  uint8_t bad_wired[sizeof(wired_mino)]{};
+  std::memcpy(bad_wired,wired_mino,sizeof(wired_mino));
+  bad_wired[sizeof(wired_mino)-2]^=1;
+  if (minomess::wired::decode(bad_wired,sizeof(bad_wired),wired_reading)
+          == minomess::wired::Status::Ok ||
+      wired_reading.has_gateway_rssi ||
+      wired_reading.meter.total_m3!=0.0) {
+    ESP_LOGE(TAG, "Wired M-Bus checksum fail-closed regression failed");
+    abort();
+  }
+  ESP_LOGI(TAG,"Shared Kamwater TPL + wired Minomess ESP-IDF checks PASS (not RF)");
+  
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
            static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
