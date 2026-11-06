@@ -324,6 +324,24 @@ extern "C" void app_main(void) {
     ESP_LOGE(TAG,"Original CCM #10 parity regression failed");
     abort();
   }
+  // Original #9 has an invalid tag. Reject it after the preceding
+  // successful #10 decode, clearing any previously obtained readings.
+  uint8_t golden_invalid[57]{};
+  if (!decode_hex(xmq_portable::oms_ccm_idf_probe::fixtures::invalid_tpl,
+                  golden_invalid,sizeof(golden_invalid))) {
+    ESP_LOGE(TAG,"Public invalid CCM fixture parse failed");
+    abort();
+  }
+  if (oms_ccm_idf_probe::decode_short_tpl(
+          ccm_dummy_m,ccm_dummy_id,0x3C,0x16,golden_key,
+          golden_invalid,sizeof(golden_invalid),ccm_probe_output)
+          != oms_ccm_idf_probe::Status::BadTag ||
+      !ccm_probe_output.clear_application.empty() ||
+      ccm_probe_output.tpl_status!=0 || ccm_probe_output.counter!=0) {
+    ESP_LOGE(TAG,"Original CCM #9 failed tag/stale-output regression");
+    abort();
+  }
+  ESP_LOGI(TAG,"Original CCM #9/#10 ESP-IDF parity self-test PASS (if executed)");
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
            static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
