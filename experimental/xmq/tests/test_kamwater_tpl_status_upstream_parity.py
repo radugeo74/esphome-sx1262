@@ -65,7 +65,7 @@ def main():
                 "kamwater #13 target_m3 differs from original source")
             checks+=1
             bad_volume=bytearray(tpl)
-            bad_volume[-1]=0xFF
+            bad_volume.pop()  # malformed four-byte target, not a new value
             rejected=subprocess.run(
                 [sys.argv[1],"kamwater_tpl_target",bad_volume.hex()],
                 capture_output=True,text=True)
