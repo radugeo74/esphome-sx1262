@@ -42,34 +42,33 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 
 ## Stage B CI checkpoint — 2026-11-06
 
-**Last owner-confirmed green: through `d0bb0d7`**, including original
-Kamwater #10 authenticated mbedTLS configured full synthetic-DLL replay,
-transactional four-field mapping, strict native field names, and the
-first single-meter CCM duplicate/stale test. Source JSON laboratory
-coverage is CLOSED at 177/177 valid functional fields; four nominal
-fields from source #9's invalid CCM tag are negative-only. The
-experimental driver is not live or approved for RF.
+**Last owner-confirmed green: through `01fe808`**, including Kamwater
+authenticated mbedTLS original public #10, configured DLL identity and
+CRC, full four-field host decode, staged numeric/text sensor mapping,
+duplicate suppression and a two-phase `prepare` /
+`confirm_delivery` contract with simulated delivery failures.
+The original 177/177 valid positive source JSON functional-field
+comparisons are complete; the four invalid-tag #9 fields are rejected.
+These are **host tests**, not live RF or actual HA sensor admission.
 
-**New work, CI PENDING (last docs commit `368e3e8`):** replaced the
-premature `kamwater_replay_gate::stage_once` counter advance with
-separate `prepare` / `confirm_delivery`, plus host-only synchronous
-`deliver_once`. The CCM counter does not advance if mapped values were
-only staged or if a simulated downstream sink reports failure. Only
-a successful callback allows monotonic state commit; duplicate and
-corrupt inputs must not call the sink. Two outstanding preparations
-are rechecked at confirmation. Tested with genuine public #10 crypto
-and #9 negative fixture, plus synthetic replay-state boundaries.
+**New increment, CI PENDING:** `espidf_cpp_probe/main/kamwater_replay_checkpoint.h`
+encodes a fixed 25-byte, meter-bound CCM watermark with external
+key-epoch and CRC32, rejects missing/corrupt/truncated/foreign
+checkpoints without automatically resetting the high watermark, and
+offers a callback-based durable-store contract. Host regressions
+simulate restart, successful restore, stale replay rejection, bad
+CRC/key epoch/identity, a failing HA-like sink, storage failure and
+reentrant admission. Latest documentation commit `616a0dd`;
+see `experimental/xmq/STAGE_B_GATE_STATUS.md`.
 
-**Still blocked:** this is RAM-only, not crash-safe or persistent.
-`deliver_once` cannot undo partially completed Home Assistant entity
-writes and makes no exactly-once delivery guarantee. It has no physical
-SX1262 runtime path, no firmware sensor dispatcher, no real on-air
-full-frame approval, and no safe key provisioning. Keep all three
-batch-2 drivers in `BATCH2_PENDING` (0/3 enabled) and the 39 source
-fixtures at 0/39 production-equivalent complete RF-to-sensor approvals.
-Do not change live Heltec firmware or existing Techem behavior.
-
-See `experimental/xmq/STAGE_B_GATE_STATUS.md` for detailed gate history.
+**Security and scope limits:** CRC32 cannot prevent malicious
+checkpoint rollback; real protected storage, atomic durable NVS and
+reprovision/reset/key rotation are NOT implemented or tested. A
+synchronous sink can partially publish or succeed before the
+watermark write; the design does not claim exactly-once delivery
+across reboot. None of the three `BATCH2_PENDING` drivers is enabled,
+no native receiver/YAML/live Heltec changes, and 0/39 original cases
+are approved as production-equivalent full frame-to-sensor RF replays.
 
 ## Next developer workflow
 
