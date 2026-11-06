@@ -1,3 +1,40 @@
+# Experimental native wM-Bus SX126x + XMQ — `experimental/xmq-multidriver-auto`
+
+> **Branch-specific status (6 November 2026).** This README contains historical material about `experimental/xmq-independent-pipeline` below. **For this branch, the native `wmbus_native_sx126x` pipeline and the instructions in [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) are authoritative.** The history is retained to explain earlier migrations, not as current YAML/build guidance.
+
+## Current branch in brief
+
+The experimental firmware uses the **official ESPHome SX126x radio** (Heltec ESP32-S3 / SX1262) for T1/C1 reception and our **native C++ wM-Bus parsing/decoding path**. The original *wmbusmeters* XMQ algorithms and their public expected JSON fixtures are a **compatibility reference**, not a second active radio driver.
+
+| Capability / state | `experimental/xmq-multidriver-auto` |
+| --- | --- |
+| Existing configured Techem meter decoding | `fhkvdataiii` (CI A0) and `mkradio4` (CI A2) — preserve established behavior |
+| Other native manifest-supported clear decoders | `iperl`, `hydrus` |
+| Already-decrypted-only experiment | `mkradio4a`; not automatically eligible for live encrypted RF |
+| **Pending, not selectable or publishing** | **`minomess`, `kamwater`, `apator162`** |
+| Stage A — shared-source consolidation | Completed; owner-confirmed CI green |
+| Stage B — source JSON fixture coverage | Last owner-confirmed CI: **168/181** partial field comparisons; subsequent **176/181** update is **pending CI confirmation** |
+| Driver end-to-end parity / production readiness for batch 2 | **Not approved** — identity, CRC, security, transport, publication and real-device canary work remain |
+| Installed Heltec firmware and private YAML | **Unchanged by this branch's documentation and Stage A/B host parity commits** |
+
+**Do not treat percentages of original source fields as overall decoding reliability or authorization to flash firmware.** Some original source fixtures are intentionally invalid authenticated frames. In particular, `kamwater #9` must stay rejected, not be counted as successful plaintext decode.
+
+### Branch documentation and testing
+
+- [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md): **read first** before any code change, including code assistants; development restrictions, architecture and milestone ledger.
+- [experimental/xmq/STAGE_A_CLOSEOUT.md](experimental/xmq/STAGE_A_CLOSEOUT.md): consolidated C++ implementations and isolation safeguards.
+- [experimental/xmq/BATCH2_STATUS.md](experimental/xmq/BATCH2_STATUS.md): detailed batch-2 implementation and test progress.
+- [experimental/xmq/tools/native_driver_specs.py](experimental/xmq/tools/native_driver_specs.py): executable source of truth for live vs pending driver selection.
+- [Native SX126x adapter CI](.github/workflows/native-sx126x-adapter.yml): regression tests, ESP-IDF build, security and host fixture checks.
+
+**Safe development rule:** make changes only on `experimental/xmq-multidriver-auto`; retain existing radio/Techem behavior; never commit real meter IDs, encryption keys, production telegrams or YAML; do not flash Heltec or enable batch-2 drivers without explicit permission and end-to-end evidence.
+
+---
+
+## Archived README — earlier `experimental/xmq-independent-pipeline` work
+
+The material below describes a **different experimental branch** and is preserved for historical reference. Its example `wmbus_radio`/`wmbus_meter` YAML, `xmq_only` options and legacy-path observations **must not be copied into the current native `wmbus_native_sx126x` configuration** without checking the actual current component schema.
+
 # ESPHome wM-Bus on Heltec SX1262 — experimental independent XMQ decoding
 
 ESPHome external components for receiving **wireless M-Bus (wM-Bus)** telegrams with an **SX1262** radio on an ESP32-S3 Heltec board, and decoding selected meter formats into Home Assistant sensors.
