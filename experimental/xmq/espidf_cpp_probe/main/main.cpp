@@ -341,6 +341,45 @@ extern "C" void app_main(void) {
     ESP_LOGE(TAG,"Original CCM #9 failed tag/stale-output regression");
     abort();
   }
+  // Wrong configured meter identity must fail authentication.
+  uint8_t wrong_ccm_id[4]{};
+  std::memcpy(wrong_ccm_id,ccm_dummy_id,sizeof(wrong_ccm_id));
+  wrong_ccm_id[0]^=1;
+  if (oms_ccm_idf_probe::decode_short_tpl(
+          ccm_dummy_m,wrong_ccm_id,0x3C,0x16,golden_key,
+          golden_valid,sizeof(golden_valid),ccm_probe_output)
+          != oms_ccm_idf_probe::Status::BadTag ||
+      !ccm_probe_output.clear_application.empty() ||
+      ccm_probe_output.counter!=0) {
+    ESP_LOGE(TAG,"Original CCM #10 wrong-meter reject failed");
+    abort();
+  }
+  // An incorrect public-fixture key must not expose authenticated data.
+  uint8_t wrong_ccm_key[16]{};
+  std::memcpy(wrong_ccm_key,golden_key,sizeof(wrong_ccm_key));
+  wrong_ccm_key[0]^=1;
+  if (oms_ccm_idf_probe::decode_short_tpl(
+          ccm_dummy_m,ccm_dummy_id,0x3C,0x16,wrong_ccm_key,
+          golden_valid,sizeof(golden_valid),ccm_probe_output)
+          != oms_ccm_idf_probe::Status::BadTag ||
+      !ccm_probe_output.clear_application.empty() ||
+      ccm_probe_output.tpl_status!=0) {
+    ESP_LOGE(TAG,"Original CCM #10 wrong-key reject failed");
+    abort();
+  }
+  // Change the last authenticated tag byte; no partial or stale output.
+  uint8_t tampered_ccm[sizeof(golden_valid)]{};
+  std::memcpy(tampered_ccm,golden_valid,sizeof(tampered_ccm));
+  tampered_ccm[sizeof(tampered_ccm)-1]^=1;
+  if (oms_ccm_idf_probe::decode_short_tpl(
+          ccm_dummy_m,ccm_dummy_id,0x3C,0x16,golden_key,
+          tampered_ccm,sizeof(tampered_ccm),ccm_probe_output)
+          != oms_ccm_idf_probe::Status::BadTag ||
+      !ccm_probe_output.clear_application.empty() ||
+      ccm_probe_output.counter!=0) {
+    ESP_LOGE(TAG,"Original CCM #10 tampered-tag reject failed");
+    abort();
+  }
   ESP_LOGI(TAG,"Original CCM #9/#10 ESP-IDF parity self-test PASS (if executed)");
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
