@@ -841,6 +841,36 @@ No RF decryption, ELL identity admission, C1/T1 publication, firmware
 driver manifest or live Techem decoding has changed. This is not
 full-driver parity and must not activate the three pending drivers.
 
+## Stage B — compact #7 and clear short TPL #13 (CI pending)
+
+Next evidence-first increment uses existing shared portable decoders, not
+new radio or plaintext assumptions:
+
+- **Kamwater #7:** expand the original already-clear TPL79 compact
+  application using the known format signature and the original #6
+  previously validated full application as the **CRC reference**.
+  Compare seven modern status/duration JSON fields using the existing
+  shared `kamwater_status_semantics.h`. Reject corrupted compact data
+  CRC or a mutated reference without emitting fields.
+- **Kamwater #13:** behind the original clear CI=7A / status=ERROR
+  short TPL, use the shared bounded standard DIF/VIF record reader
+  to compare `target_m3=0.001`. This original fixture has **no
+  current total** and no artificial total should be inferred. Truncated
+  target data fails closed.
+
+The corresponding host fixture CLI modes remain test-only and are
+not connected to the ESPHome native receiver. If CI passes, the
+distinct **partial** XMQ JSON field comparisons become **176/181**.
+The five fields without positive comparisons then consist of
+four fields from original **Kamwater #9** (an intentionally rejected
+invalid authenticated frame) and `status` from Kamwater **#10**
+(valid encrypted CCM source fixture). Neither group may be marked
+positive without the correct security-aware verification.
+
+**All three batch2 drivers stay pending.** Full-frame, firmware,
+cryptographic and publication parity have not been approved. The
+original Techem decoders and SX126x radio are unchanged.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
