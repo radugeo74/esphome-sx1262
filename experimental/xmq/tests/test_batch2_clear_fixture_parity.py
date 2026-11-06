@@ -105,7 +105,7 @@ def main():
             covered += 1
             print(f"PARTIAL_PASS {driver} fixture #{number}: "
                   f"{len(FIELDS[driver])} explicit field comparisons")
-    assert covered == 8 and compared == 27
+    assert covered == 8 and compared == 28
     print(f"PASS clear-app subset: {covered} upstream fixtures, "
           f"{compared} field comparisons. NOT full-frame parity; "
           f"not authorization for RF or firmware.")
