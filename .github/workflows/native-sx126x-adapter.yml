@@ -138,6 +138,15 @@ jobs:
             experimental/xmq/espidf_cpp_probe/test_kamwater_ccm_mbedtls_host.cpp \
             -o /tmp/test-kamwater-ccm-mbedtls-host -lmbedcrypto
           /tmp/test-kamwater-ccm-mbedtls-host
+      - name: Test real Kamwater ESP-IDF NVS adapter with host fake (no physical flash)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Iexperimental/xmq/espidf_cpp_probe/host_fake_nvs \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/espidf_cpp_probe/test_kamwater_nvs_host.cpp \
+            experimental/xmq/espidf_cpp_probe/main/kamwater_nvs_checkpoint.cpp \
+            -o /tmp/test-kamwater-nvs-host -lmbedcrypto
+          /tmp/test-kamwater-nvs-host
       - name: Test original Kamwater OMS CCM encrypted upstream fixtures (valid and corrupt)
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
