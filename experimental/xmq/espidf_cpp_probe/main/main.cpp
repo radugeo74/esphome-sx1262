@@ -13,11 +13,14 @@
 #include "kamwater_tpl_status_semantics.h"
 #include "minomess_wired_frame.h"
 #include "oms_ccm_mbedtls_probe.h"
+#include "kamwater_replay_reservation.h"
 #include "kamwater_nvs_checkpoint.h"
 #include "kamwater_ccm_original_fixtures.h"
 #include "frame_bridge.h"
 #include <cstring>
 
+static_assert(xmq_portable::kamwater::reservation::kMaxWindow==8,
+              "reviewed experimental counter reservation cap changed");
 static const char *TAG = "xmq_cpp_probe";
 
 extern "C" void app_main(void) {
