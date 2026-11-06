@@ -15,6 +15,7 @@
 #include "main/oms_ccm_verified_ingress.h"
 #include "main/kamwater_configured_fields.h"
 #include "main/kamwater_sensor_mapping.h"
+#include "main/kamwater_replay_gate.h"
 #include "main/kamwater_ccm_original_fixtures.h"
 
 using xmq_portable::oms_ccm_idf_probe::Output;
@@ -161,7 +162,7 @@ int main() {
      std::fabs(plan.numbers[0].value)>1e-9 ||
      std::fabs(plan.numbers[1].value)>1e-9 ||
      std::strcmp(plan.texts[0].name,"status")!=0 ||
-     std::strcmp(plan.texts[0].value,"TEMPORARY_ERROR")!=0)
+     plan.texts[0].value!="TEMPORARY_ERROR")
     return 33;
   // Staging must fail closed and discard an earlier successful plan.
   auto invalid_reading=sensors;
@@ -179,6 +180,71 @@ int main() {
   if(mapping::stage(invalid_reading,plan)!=mapping::Status::InvalidReading ||
      plan.number_count!=0 || plan.text_count!=0)
     return 36;
+  // This is the same authenticated public #10 frame, not a fabricated
+  // crypto counter. First accepted event stages all values and stores its
+  // counter only AFTER field mapping; the exact replay is rejected.
+  namespace replay=xmq_portable::kamwater::replay_gate;
+  replay::State counter_state{};
+  mapping::Plan once{};
+  if(replay::stage_once(full_valid.data(),full_valid.size(),
+                        configured,key,counter_state,once)!=replay::Status::Ok ||
+     !counter_state.initialized ||
+     counter_state.highest_counter!=0x000E578Cu ||
+     once.number_count!=2 || once.text_count!=1 ||
+     once.texts[0].value!="TEMPORARY_ERROR")
+    return 37;
+  // Own the staged text; it remains valid after the temporary decoded
+  // Reading used by stage_once() has already been destroyed.
+  const auto saved_plan=once;
+  if(saved_plan.texts[0].value!="TEMPORARY_ERROR") return 38;
+  if(replay::stage_once(full_valid.data(),full_valid.size(),
+                        configured,key,counter_state,once)!=
+        replay::Status::DuplicateOrStale ||
+     once.number_count!=0 || once.text_count!=0 ||
+     counter_state.highest_counter!=0x000E578Cu)
+    return 39;
+  // Invalid authentication and malformed DLL must not move the counter.
+  if(replay::stage_once(full_invalid.data(),full_invalid.size(),
+                        configured,key,counter_state,once)!=
+        replay::Status::DecodeRejected ||
+     once.number_count!=0 || once.text_count!=0 ||
+     counter_state.highest_counter!=0x000E578Cu)
+    return 40;
+  damaged=full_valid; damaged[5]^=1;
+  if(replay::stage_once(damaged.data(),damaged.size(),
+                        configured,key,counter_state,once)!=
+        replay::Status::DecodeRejected ||
+     once.number_count!=0 || once.text_count!=0 ||
+     counter_state.highest_counter!=0x000E578Cu)
+    return 41;
+  if(replay::stage_once(full_valid.data(),full_valid.size(),
+                        wrong_configured,key,counter_state,once)!=
+        replay::Status::IdentityChanged ||
+     once.number_count!=0 || once.text_count!=0 ||
+     counter_state.highest_counter!=0x000E578Cu)
+    return 42;
+  // Synthetic state boundaries validate monotonic semantics; no fake
+  // encrypted source fixture with a changed CCM counter is claimed.
+  replay::State older_state{true,configured,0x000E578Bu};
+  if(replay::stage_once(full_valid.data(),full_valid.size(),
+                        configured,key,older_state,once)!=replay::Status::Ok ||
+     older_state.highest_counter!=0x000E578Cu ||
+     once.texts[0].value!="TEMPORARY_ERROR")
+    return 43;
+  replay::State newer_state{true,configured,0x000E578Du};
+  if(replay::stage_once(full_valid.data(),full_valid.size(),
+                        configured,key,newer_state,once)!=
+        replay::Status::DuplicateOrStale ||
+     newer_state.highest_counter!=0x000E578Du ||
+     once.number_count!=0 || once.text_count!=0)
+    return 44;
+  replay::State wrapped_state{true,configured,0xFFFFFFFFu};
+  if(replay::stage_once(full_valid.data(),full_valid.size(),
+                        configured,key,wrapped_state,once)!=
+        replay::Status::DuplicateOrStale ||
+     wrapped_state.highest_counter!=0xFFFFFFFFu ||
+     once.number_count!=0 || once.text_count!=0)
+    return 45;
   // Previously accepted values must NEVER survive a bad authentication,
   // a wrong configured identity, a corrupt DLL or an unsupported transport.
   if(map_frame(full_invalid)!=mapped::Status::IngressRejected ||
@@ -276,6 +342,7 @@ int main() {
   std::cout << "PASS host mbedTLS: original Kamwater #10 exact authenticated "
                "38-byte payload; #9 bad tag and wrong identity/key/tag "
                "reject with no stale outputs; four source fields decoded "
-               "from authenticated mbedTLS plaintext. NOT ESP32-S3 runtime.\\n";
+               "from authenticated mbedTLS plaintext; staged one-shot "
+               "CCM counter gate. NOT ESP32-S3 runtime.\\n";
   return 0;
 }
