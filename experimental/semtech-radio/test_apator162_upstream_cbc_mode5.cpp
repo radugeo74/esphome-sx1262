@@ -6,7 +6,6 @@
 #include "components/wmbus_radio/pure_complete_frame.h"
 #include <cassert>
 #include <cmath>
-#include <cstring>
 #include <cstdint>
 #include <vector>
 static std::vector<uint8_t> hex(const char *s) {
@@ -59,12 +58,9 @@ int main() {
   assert(identity.manufacturer==0x0601);
   assert(identity.meter_id==1282096u);
   assert(identity.version==0x05 && identity.device_type==0x07);
-  // In format B the transmitted L includes two CRC bytes; unlike the
-  // upstream CRC-stripped test, its value is therefore two bytes larger.
-  assert(verified.bytes.size()==original.size());
-  assert(verified.bytes[0]==static_cast<uint8_t>(original[0]+2));
-  assert(std::memcmp(verified.bytes.data()+1,original.data()+1,
-                     original.size()-1)==0);
+  // The shared DLL verifier strips the on-air format-B CRC and
+  // normalizes L back to the original source's CRC-stripped value.
+  assert(verified.bytes==original);
   assert(xmq_portable::oms_cbc::decode_short_tpl(
       verified.bytes.data(),verified.bytes.size(),fixture_key,output)
       ==Status::Ok);
