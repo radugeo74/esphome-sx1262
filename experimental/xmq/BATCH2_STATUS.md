@@ -614,6 +614,29 @@ count as positive comparisons against existing JSON keys.
 The audit explicitly excludes both missing fields and retains
 per-driver totals: Minomess 28/32, Kamwater 92/130 and Apator162 19/19.
 
+## Stage B explicit Minomess status and Kamwater #3 total-volume regression
+
+The compiled batch2 clear-fixture C++ CLI now prints `status=OK`
+for Minomess **only when the already-decoded, mandatory `02FD17`
+status word is exactly zero**. Four original Minomess clear
+application fixtures **#3–#6** compare that value against source
+XMQ JSON. Nonzero status masks are not translated to invented text.
+
+The same test suite now compares **Kamwater #3 `total_m3`**
+directly from its original clear application against source JSON,
+instead of crediting a volume that had not been asserted. Test
+inventory expands from seven to eight clear-application examples
+and from 22 to 27 assertions, including the absence assertions
+that are not source JSON keys.
+
+This adds **five uniquely verified source JSON fields**, pending CI,
+raising the field-gap audit from **139/181** to **144/181**
+(**37 functional fields still without a positive match**, including
+four fields deliberately withheld for corrupted CCM sample #9).
+`minomess` would be **32/32**, `kamwater` **93/130** and
+`apator162` **19/19**. This is still only partial host-side
+parity. Firmware admission remains blocked.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
