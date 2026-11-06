@@ -12,6 +12,7 @@
 #include "kamwater_numeric_semantics.h"
 #include "kamwater_tpl_status_semantics.h"
 #include "minomess_wired_frame.h"
+#include "oms_ccm_mbedtls_probe.h"
 #include "frame_bridge.h"
 #include <cstring>
 
