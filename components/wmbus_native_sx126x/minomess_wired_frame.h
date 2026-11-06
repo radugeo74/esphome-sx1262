@@ -11,7 +11,8 @@
 namespace xmq_portable { namespace minomess { namespace wired {
 enum class Status : uint8_t {
   Ok, Invalid, BadLength, BadChecksum, UnsupportedEnvelope,
-  UnsupportedMeter, ApplicationRejected, UnsupportedGateway
+  UnsupportedMeter, ApplicationRejected, UnsupportedGateway,
+  IdentityMismatch
 };
 struct Reading {
   minomess::Reading meter{};
@@ -73,6 +74,31 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
     cursor+=4;
   }
   if(cursor!=app_len) return Status::UnsupportedGateway;
+  out=candidate;
+  return Status::Ok;
+}
+// Optional configured-ID admission for the wired gateway path only.
+// The eight BCD digits are the long-header meter ID (not the gateway
+// address, and not an authorization to interpret this as wireless T1/C1).
+// Caller supplies its own independently configured 8-digit decimal ID.
+inline Status decode_configured(const uint8_t *frame,size_t length,
+                                const char *configured_id,Reading &out) {
+  out={};
+  Reading candidate{};
+  const Status result=decode(frame,length,candidate);
+  if(result!=Status::Ok) return result;
+  if(!configured_id) return Status::IdentityMismatch;
+  // BCD ID is four bytes little-endian, high nibble then low nibble
+  // within each byte, displayed most significant byte first.
+  char id[9]{};
+  for(size_t i=0;i<4;++i) {
+    const uint8_t b=frame[10-i];
+    id[i*2]=static_cast<char>('0'+(b>>4));
+    id[i*2+1]=static_cast<char>('0'+(b&15u));
+  }
+  for(size_t i=0;i<8;++i)
+    if(configured_id[i]!=id[i]) return Status::IdentityMismatch;
+  if(configured_id[8]!='\\0') return Status::IdentityMismatch;
   out=candidate;
   return Status::Ok;
 }
