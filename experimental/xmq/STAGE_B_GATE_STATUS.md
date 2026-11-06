@@ -38,6 +38,25 @@ integration gap, pending a new CI result; it does not include verified
 wireless DLL RX, production ESP-IDF execution, actual HA sensors, or
 live Kamwater admission.
 
+## Executed host DLL-to-mbedTLS configured Kamwater replay — CI pending
+
+Commit `59125a9` extends the existing executable mbedTLS host regression
+by composing the **actual shared** format-B complete DLL/CRC verifier,
+independent four-field configured DLL identity filter (manufacturer, BCD
+ID, version and device type), ELL-I CI/CC/access-envelope structural
+checks, the unchanged public Kamwater #10 encrypted TPL, and the same
+mbedTLS CCM decoder compiled for the ESP-IDF probe. On success it checks
+the exact authenticated application, verified TPL status and counter;
+the executable also verifies original #10's four functional JSON fields.
+It rejects a damaged CRC, an identity change despite recalculated CRC,
+a wrong ELL CI and original #9's bad CCM tag, clearing previous output.
+This **new combined test has not yet been CI-confirmed**.
+
+The format-B DLL CRC is artificially reconstructed around the original
+public fixture. This is **not an on-air recorded RF frame**, not ESP32-S3
+execution, and not live sensor publication. All three batch-2 drivers
+remain pending; full Stage B remains OPEN.
+
 ## Source-fixture parity: narrow substage ready for CI
 
 Original public `wmbusmeters` XMQ fixtures from the unchanged imported
