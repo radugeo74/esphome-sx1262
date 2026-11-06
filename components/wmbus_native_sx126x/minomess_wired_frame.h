@@ -7,6 +7,7 @@
 // This is a deliberately narrow, non-publishing public-fixture contract.
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include "minomess_clear_prefix.h"
 namespace xmq_portable { namespace minomess { namespace wired {
 enum class Status : uint8_t {
@@ -87,7 +88,8 @@ inline Status decode_configured(const uint8_t *frame,size_t length,
   Reading candidate{};
   const Status result=decode(frame,length,candidate);
   if(result!=Status::Ok) return result;
-  if(!configured_id) return Status::IdentityMismatch;
+  if(!configured_id || std::strlen(configured_id)!=8)
+    return Status::IdentityMismatch;
   // BCD ID is four bytes little-endian, high nibble then low nibble
   // within each byte, displayed most significant byte first.
   char id[9]{};
