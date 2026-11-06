@@ -2,6 +2,7 @@
 // to the POST-DECRYPTED portions of original upstream XMQ test fixtures.
 // Does not accept/reinterpret a raw encrypted RF frame; no sensor publishing.
 #include "components/wmbus_native_sx126x/minomess_clear_prefix.h"
+#include "host_only/minomess_wired_frame.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
 #include "host_only/apator162_ixml_fields.h"
@@ -76,6 +77,31 @@ int main(int argc,char **argv) {
       std::printf("target_date=%04d-%02d-%02d\n",
           numeric.target_date.year,numeric.target_date.month,
           numeric.target_date.day);
+    return 0;
+  }
+  if(std::strcmp(argv[1],"minomess_wired")==0) {
+    xmq_portable::minomess::wired::Reading reading{};
+    if(xmq_portable::minomess::wired::decode(
+        bytes.data(),bytes.size(),reading)
+        !=xmq_portable::minomess::wired::Status::Ok) return 3;
+    const auto &m=reading.meter;
+    std::printf("total_m3=%.9f\n",m.total_m3);
+    if(m.has_target)
+      std::printf("target_m3=%.9f\n",m.target_m3);
+    else std::puts("target_m3=null");
+    if(m.has_meter_date)
+      std::printf("meter_date=%04d-%02d-%02d\n",
+                  m.meter_date.year,m.meter_date.month,m.meter_date.day);
+    if(m.has_target_date)
+      std::printf("target_date=%04d-%02d-%02d\n",
+                  m.target_date.year,m.target_date.month,m.target_date.day);
+    if(reading.has_gateway_rssi)
+      std::printf("rssi_dbm=%d\n",reading.gateway_rssi_dbm);
+    if(reading.has_actuality_duration)
+      std::printf("actuality_duration_s=%u\n",
+                  static_cast<unsigned>(reading.actuality_duration_s));
+    if(m.status_bits==0)
+      std::puts("status=OK");
     return 0;
   }
   if(std::strcmp(argv[1],"minomess")==0) {
