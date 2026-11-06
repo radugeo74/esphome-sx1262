@@ -23,7 +23,8 @@ static int hex_digit(char c) {
 int main(int argc,char **argv) {
   if(argc!=3 && argc!=4) return 2;
   if(argc==4 && std::strcmp(argv[1],"kamwater_compact_ref")!=0 &&
-     std::strcmp(argv[1],"kamwater_numeric_compact_ref")!=0)
+     std::strcmp(argv[1],"kamwater_numeric_compact_ref")!=0 &&
+     std::strcmp(argv[1],"kamwater_compact_status_ref")!=0)
     return 2;
   const char *src=argv[2];
   const size_t n=std::strlen(src);
@@ -133,6 +134,41 @@ int main(int argc,char **argv) {
         bytes.data(),bytes.size(),reading);
     if(result!=xmq_portable::apator162::Status::Ok) return 3;
     std::printf("total_m3=%.9f\n",reading.total_m3);
+    return 0;
+  }
+  if(std::strcmp(argv[1],"kamwater_compact_status_ref")==0) {
+    // Reviewed source #7: data CRC describes independently supplied
+    // preceding FULL application #6, not current compact measurements.
+    // Reference provenance must be verified separately before live use.
+    if(argc!=4) return 2;
+    const char *ref=argv[3];
+    const size_t count=std::strlen(ref);
+    if(!count || count%2 || count>1024) return 2;
+    std::vector<uint8_t> previous;
+    for(size_t i=0;i<count;i+=2) {
+      const int hi=hex_digit(ref[i]),lo=hex_digit(ref[i+1]);
+      if(hi<0 || lo<0) return 2;
+      previous.push_back(static_cast<uint8_t>((hi<<4)|lo));
+    }
+    uint8_t expanded[160]{};
+    xmq_portable::kamwater::tpl79::Reading compact{};
+    if(xmq_portable::kamwater::tpl79::verify_with_full_reference(
+           bytes.data(),bytes.size(),previous.data(),previous.size(),
+           expanded,sizeof(expanded),compact)
+       !=xmq_portable::kamwater::tpl79::Status::Ok) return 3;
+    xmq_portable::kamwater::status_semantics::Reading status{};
+    if(xmq_portable::kamwater::status_semantics::decode(
+           expanded,compact.expanded_size,status)
+       !=xmq_portable::kamwater::status_semantics::Status::Ok ||
+       !status.modern || status.hot) return 3;
+    std::printf("status=%s\n",status.status.c_str());
+    std::printf("time_dry=%s\n",status.time_dry.c_str());
+    std::printf("time_reversed=%s\n",status.time_reversed.c_str());
+    std::printf("time_leaking=%s\n",status.time_leaking.c_str());
+    std::printf("time_bursting=%s\n",status.time_bursting.c_str());
+    std::printf("time_flow_above_q4=%s\n",status.time_flow_above_q4.c_str());
+    std::printf("time_low_ambient_temperature=%s\n",
+                status.time_low_ambient_temperature.c_str());
     return 0;
   }
   if(std::strcmp(argv[1],"kamwater_compact_status")==0) {
