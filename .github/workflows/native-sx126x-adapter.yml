@@ -112,6 +112,14 @@ jobs:
             experimental/semtech-radio/test_oms_tpl_ccm_openssl.cpp \
             -o /tmp/test-oms-tpl-ccm-openssl -lcrypto
           /tmp/test-oms-tpl-ccm-openssl
+      - name: Test original Apator162 AES-CBC mode 5 encrypted upstream fixture
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Icomponents/wmbus_radio \
+            -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_apator162_upstream_cbc_mode5.cpp \
+            -o /tmp/test-apator162-upstream-cbc -lcrypto
+          /tmp/test-apator162-upstream-cbc
       - name: Test original Kamwater OMS CCM encrypted upstream fixtures (valid and corrupt)
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
