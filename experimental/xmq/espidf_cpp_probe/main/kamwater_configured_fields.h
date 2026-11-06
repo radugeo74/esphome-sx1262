@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include "oms_ccm_verified_ingress.h"
 #include "../../../../components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include "../../../../components/wmbus_native_sx126x/kamwater_numeric_semantics.h"
