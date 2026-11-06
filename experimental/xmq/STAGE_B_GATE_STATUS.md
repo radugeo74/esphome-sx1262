@@ -1,9 +1,8 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
 Updated 2026-11-06 for branch `experimental/xmq-multidriver-auto`.
-This is an evidence ledger, not a release approval. The 177/181 field
-and host CCM regression calup was owner-confirmed green. The newer ESP-IDF
-mbedTLS build-probe calup still requires a fresh CI run.
+This is an evidence ledger, not a release approval. The 177/181 source-field and executable host mbedTLS CCM regression
+calups were owner-confirmed green. New header-negative coverage is pending CI.
 
 ## Source-fixture parity: narrow substage ready for CI
 
@@ -97,6 +96,31 @@ counter. The structural guard checks those cases stay included.
 This still is not an ESP-IDF *executed* positive fixture test,
 a live native receiver admission path, or permission to promote
 `minomess`, `kamwater`, `apator162`.
+
+## Executed mbedTLS host milestone — owner-confirmed green
+
+The owner confirmed GitHub Actions green for commit `fb6044d`. The
+separately compiled and **executed** host regression
+`experimental/xmq/espidf_cpp_probe/test_kamwater_ccm_mbedtls_host.cpp`
+uses the same mbedTLS probe header compiled by ESP-IDF. It verifies the
+original authenticated #10 plaintext byte-for-byte, rejects original
+bad-tag #9, and checks wrong identity, wrong key and changed tag with
+fail-closed output. This advances evidence beyond OpenSSL-only and
+ESP-IDF compile/link-only tests.
+
+A subsequent host negative-input increment (commit `8a7977f`,
+**CI not yet owner-confirmed**) additionally checks malformed/unsupported
+TPL header, mode, partial encryption, KDF, missing key, short payload
+and null input, always after a successful decode to detect stale output.
+These are still host executions, **not** real ESP32-S3 `app_main`
+execution or complete frame-to-sensor replay.
+
+The original 177/181 positive partial source-field comparisons are
+owner-confirmed green; the remaining four fields belong solely to
+invalid authenticated Kamwater #9 and must remain negative-only.
+The **source-field coverage substage is complete**. Full Stage B remains
+**OPEN**: all 39 production-equivalent replay approvals and all three
+batch-2 live-driver admissions remain blocked.
 
 ## Strict remaining Stage B acceptance gates
 
