@@ -139,6 +139,38 @@ prototype means **staged in memory**, not delivered to HA. True
 cross-reboot anti-replay and exactly-once publication remain OPEN
 production acceptance requirements. No `BATCH2_PENDING` driver is enabled.
 
+## Delivery-confirmed replay-counter contract — CI pending
+
+**Latest owner-confirmed green:** through `d0bb0d7` (Kamwater
+authenticated host replay, transactional mapping, single-meter monotonic
+counter checks). The new code in `kamwater_replay_gate.h` corrects an
+important lifecycle limitation of the previous `stage_once` prototype:
+previously the counter advanced upon staging a plan in memory, **before**
+any delivery confirmation.
+
+The interface now uses `prepare` (authenticate DLL/TPL, configured
+identity, decode and build owned sensor fields **without mutating** replay
+state), `discard`, and `confirm_delivery` (advance the counter only
+after a synchronous downstream sink reports success). The host-only
+`deliver_once` composes these calls. It does not call real ESPHome
+`publish_state`.
+
+The executable mbedTLS regression now tests original Kamwater #10 with a
+**simulated failing sink** (counter unchanged, identical telegram can
+retry), followed by a successful sink (counter committed); then
+duplicates, source #9 bad authentication, changed DLL CRC, and mismatched
+configured identity are rejected without invoking the sink. Synthetic
+state-boundary tests cover stale/wrapped counters and rechecking two
+pending candidates at confirmation time. **New CI is pending.**
+
+**Limits:** this does not make separate Home Assistant entity updates
+atomic or guarantee exactly-once delivery. A sink can partially update
+entities then report failure, and crash/reboot still loses the RAM
+counter. Any production integration must define persistence,
+key-rotation/reset semantics, bounded per-meter state, synchronous
+delivery/failure behavior and real RF validation before enabling
+`BATCH2_PENDING`.
+
 ## Source-fixture parity: narrow substage ready for CI
 
 Original public `wmbusmeters` XMQ fixtures from the unchanged imported
