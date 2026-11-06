@@ -100,7 +100,6 @@ inline Status decode_configured(const uint8_t *frame,size_t length,
   }
   for(size_t i=0;i<8;++i)
     if(configured_id[i]!=id[i]) return Status::IdentityMismatch;
-  if(configured_id[8]!='\\0') return Status::IdentityMismatch;
   out=candidate;
   return Status::Ok;
 }
