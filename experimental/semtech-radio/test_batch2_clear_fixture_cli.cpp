@@ -135,6 +135,29 @@ int main(int argc,char **argv) {
     std::printf("total_m3=%.9f\n",reading.total_m3);
     return 0;
   }
+  if(std::strcmp(argv[1],"kamwater_compact_status")==0) {
+    // Only an already-clear compact application with validated TPL79
+    // format signature and reconstructed-data CRC may reach status parsing.
+    // This is a host parity adapter, not a live RF transport/ELL gate.
+    uint8_t expanded[160]{};
+    xmq_portable::kamwater::tpl79::Reading compact{};
+    if(xmq_portable::kamwater::tpl79::verify(
+           bytes.data(),bytes.size(),expanded,sizeof(expanded),compact)
+       !=xmq_portable::kamwater::tpl79::Status::Ok) return 3;
+    xmq_portable::kamwater::status_semantics::Reading status{};
+    if(xmq_portable::kamwater::status_semantics::decode(
+           expanded,compact.expanded_size,status)
+       !=xmq_portable::kamwater::status_semantics::Status::Ok) return 3;
+    // The reviewed #2/#4/#8 source fixtures use the legacy status profile.
+    if(status.modern || !status.has_current_status) return 3;
+    std::printf("status=%s\n",status.status.c_str());
+    std::printf("current_status=%s\n",status.current_status.c_str());
+    std::printf("time_dry=%s\n",status.time_dry.c_str());
+    std::printf("time_reversed=%s\n",status.time_reversed.c_str());
+    std::printf("time_leaking=%s\n",status.time_leaking.c_str());
+    std::printf("time_bursting=%s\n",status.time_bursting.c_str());
+    return 0;
+  }
   if(std::strcmp(argv[1],"kamwater_compact_ref")==0) {
     if(argc!=4) return 2;
     const char *ref_hex=argv[3];
