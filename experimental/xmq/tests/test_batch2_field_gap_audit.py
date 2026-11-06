@@ -80,6 +80,15 @@ def tested_fields(driver,index,reference):
     # TPL79 expansion and shared status decoder for original #2/#4/#8.
     if index in (2,4,8):
         fields.update(STATUS_OLD)
+    # Source #7's seven modern status/duration fields are now compared
+    # after the same CRC-checked TPL79 expansion against upstream #6.
+    if index==7:
+        fields.update(STATUS_MODERN)
+        fields.add("time_low_ambient_temperature")
+    # Source #13 has a target-only DIF/VIF record behind clear TPL ERROR,
+    # compared directly with the original JSON in the native C++ CLI.
+    if index==13:
+        fields.add("target_m3")
     # test_kamwater_numeric_upstream_parity.py matches exact output keys
     if index<=8:
         fields.update(key for key in reference if
@@ -125,7 +134,7 @@ def main():
     assert sum(map(len,output.values()))==39
     # Snapshot of *unique functional fields* derived from XMQ expected JSON.
     # NOT the cumulative number of assertions across overlapping test suites.
-    assert (total_expected,total_compared,positives)==(181,168,38)
+    assert (total_expected,total_compared,positives)==(181,176,38)
     assert output["kamwater"][8]["compared_partial"]==0
     assert output["kamwater"][8]["negative_security_only"]
     assert output["kamwater"][8]["not_compared"]==[
