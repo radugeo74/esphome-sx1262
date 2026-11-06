@@ -298,6 +298,32 @@ extern "C" void app_main(void) {
     ESP_LOGE(TAG,"ESP-IDF mbedTLS CCM fail-closed probe failed");
     abort();
   }
+  // Public upstream authenticated positive sample; test code stays in
+  // isolated ESP-IDF app_main, never the production radio receiver.
+  uint8_t golden_valid[57]{},golden_expected[38]{};
+  using xmq_portable::oms_ccm_idf_probe::fixtures::decode_hex;
+  if (!decode_hex(xmq_portable::oms_ccm_idf_probe::fixtures::valid_tpl,
+                  golden_valid,sizeof(golden_valid)) ||
+      !decode_hex(xmq_portable::oms_ccm_idf_probe::fixtures::expected_clear,
+                  golden_expected,sizeof(golden_expected))) {
+    ESP_LOGE(TAG,"Public CCM fixture parse failed");
+    abort();
+  }
+  const uint8_t golden_key[16]={
+      0xBF,0x90,0x2D,0xD6,0xDF,0xAD,0xAF,0xE8,
+      0x3E,0x4A,0xE6,0x83,0x2B,0x5F,0xA1,0x4C};
+  if (oms_ccm_idf_probe::decode_short_tpl(
+          ccm_dummy_m,ccm_dummy_id,0x3C,0x16,golden_key,
+          golden_valid,sizeof(golden_valid),ccm_probe_output)
+          != oms_ccm_idf_probe::Status::Ok ||
+      ccm_probe_output.clear_application.size()!=sizeof(golden_expected) ||
+      std::memcmp(ccm_probe_output.clear_application.data(),
+                  golden_expected,sizeof(golden_expected))!=0 ||
+      ccm_probe_output.tpl_status!=0x10 ||
+      ccm_probe_output.counter!=0x000E578Cu) {
+    ESP_LOGE(TAG,"Original CCM #10 parity regression failed");
+    abort();
+  }
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
            static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
