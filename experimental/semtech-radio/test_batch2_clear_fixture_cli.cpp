@@ -121,6 +121,10 @@ int main(int argc,char **argv) {
       std::printf("target_date=%04d-%02d-%02d\n",
           reading.target_date.year,reading.target_date.month,
           reading.target_date.day);
+    // Only claim OK for the verified empty status bits; no unreviewed
+    // bit-to-name translations for nonzero alarm masks.
+    if(reading.status_bits==0)
+      std::puts("status=OK");
     return 0;
   }
   if(std::strcmp(argv[1],"apator162")==0) {
