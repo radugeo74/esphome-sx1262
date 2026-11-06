@@ -493,6 +493,37 @@ this newly compared TPL-status contract. Other outstanding examples
 include minomess wired #1/#2 and encrypted apator162 #19; a
 positive partial-field result is not full JSON/transport parity.
 
+## Stage B original wired Minomess #1/#2 (pending CI)
+
+The remaining official Minomess fixture examples **#1 and #2** are
+complete **wired M-Bus long frames**, not wireless T1/C1 payloads.
+The new host-only `minomess_wired_frame.h` verifies the
+`68 L L 68 C A 72 ... checksum 16` envelope, its exact byte-sum
+checksum, bounded 12-byte variable-data header and supported
+Zenner manufacturer/version/media before passing the clear
+application to the existing bounded Minomess parser.
+The gateway-supplied `01FD71` signed RSSI and `0274` actuality
+duration, when present, are separately labelled metadata and never
+mistaken for meter-owned readings. Unknown trailing records are
+rejected, not silently skipped.
+
+`test_minomess_wired_upstream_parity.py` passes both **original
+complete source frames**, checking **13 original JSON values**
+(two volumes, two dates, status, RSSI for each; actuality duration
+only in #2). It also asserts rejection for mutated M-Bus length,
+checksum, end marker and changed manufacturer with recomputed
+checksum. The code is host-only and does not add a wired M-Bus
+receiver to ESPHome or change the Heltec's SX126x radio.
+
+With this new CI passing, **37 of the 39 original fixtures would
+have at least one directly compared output field**, with
+**138 partial-field comparisons** (previous 35/125 + 2/13).
+This is still not full-output parity or authorization to activate
+batch2 drivers. The remaining uncovered source examples are the
+encrypted `apator162 #19` and the deliberately rejected
+`kamwater #9` whose CCM tag fails; the latter is already covered
+by a negative security regression.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
