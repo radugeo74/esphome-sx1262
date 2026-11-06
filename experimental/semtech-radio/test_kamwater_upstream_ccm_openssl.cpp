@@ -49,6 +49,11 @@ int main() {
                           public_fixture_key,invalid.data(),invalid.size(),
                           out)==CcmStatus::BadTag);
   assert(out.clear_application.empty() && out.counter==0 && out.tpl_status==0);
+  // Upstream #9 expects FAILED_DECODE; this is a negative-security
+  // regression, NOT four positive decoded measurement comparisons.
+  // Reject an invalid CCM tag even when the TPL status byte is meaningful.
+  assert(invalid[2]==0x10);
+  assert(valid[2]==0x10);
   assert(decode_short_tpl(manufacturer,id,0x3C,0x16,
                           public_fixture_key,valid.data(),valid.size(),
                           out)==CcmStatus::Ok);
@@ -81,6 +86,15 @@ int main() {
       ==xmq_portable::kamwater::numeric_semantics::Status::Ok);
   assert(diagnostic.has_acoustic_noise &&
          diagnostic.acoustic_noise=="FFFFFFFFFFFF");
+  // The original positive fixture must also be denied with a wrong key,
+  // clearing previously successful status/counter/measurements transactionally.
+  auto wrong_key=std::vector<uint8_t>(
+      public_fixture_key,public_fixture_key+sizeof(public_fixture_key));
+  wrong_key[0]^=1;
+  assert(decode_short_tpl(manufacturer,id,0x3C,0x16,
+                          wrong_key.data(),valid.data(),valid.size(),
+                          out)==CcmStatus::BadTag);
+  assert(out.clear_application.empty() && out.counter==0 && out.tpl_status==0);
   // Correct original tag is insufficient with wrong configured identity.
   auto wrong_id=std::vector<uint8_t>(id,id+sizeof(id));
   wrong_id[0]^=1;
