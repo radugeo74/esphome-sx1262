@@ -51,6 +51,25 @@ def main():
             assert actual[key]==reference[key], (
                 f"kamwater #{index}: {key} differed from original JSON")
             checks+=1
+        if index==13:
+            # Source #13 contains a storage-one target volume, but no
+            # current total. Reuse the bounded shared DIF/VIF parser after
+            # the reviewed, clear short-TPL ERROR classification.
+            volume=subprocess.run(
+                [sys.argv[1],"kamwater_tpl_target",tpl.hex()],
+                capture_output=True,text=True)
+            assert volume.returncode==0, (
+                "kamwater #13: target-only volume rejected")
+            assert volume.stdout.strip()==(
+                f"target_m3={reference['target_m3']:.9f}"), (
+                "kamwater #13 target_m3 differs from original source")
+            checks+=1
+            bad_volume=bytearray(tpl)
+            bad_volume[-1]=0xFF
+            rejected=subprocess.run(
+                [sys.argv[1],"kamwater_tpl_target",bad_volume.hex()],
+                capture_output=True,text=True)
+            assert rejected.returncode!=0 and not rejected.stdout
         # Explicit regression: other TPL status values, changed config,
         # wrong CI and truncated payloads are never treated as ERROR.
         for bad in (
@@ -64,9 +83,10 @@ def main():
                 f"kamwater #{index}: unexpected acceptance of invalid TPL")
         print(f"PARTIAL_PASS kamwater #{index}: "
               f"{len(expected_keys)} original TPL status/alarms")
-    assert checks==8
-    print("PASS Kamwater #13/#14 TPL status partial JSON parity: "
-          "8 fields, malformed configs fail closed; not RF parity.")
+    assert checks==9
+    print("PASS Kamwater #13/#14 TPL partial JSON parity: "
+          "9 fields (including #13 target-only volume); malformed "
+          "configs fail closed; not RF parity.")
 
 if __name__=="__main__":
     main()
