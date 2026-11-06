@@ -61,6 +61,26 @@ probe-only header. No radio dispatcher or firmware sensor is connected
 to its output, and no key or plaintext is logged. Host-only OpenSSL
 crypto remains host-only. **Not production cryptography approval.**
 
+## Public original CCM parity compiled into ESP-IDF probe (CI pending)
+
+The isolated ESP-IDF `app_main` now includes the unmodified public
+Kamwater source #9/#10 encrypted TPL test vectors in
+`espidf_cpp_probe/main/kamwater_ccm_original_fixtures.h`.
+The mbedTLS code must return the exact 38-byte original #10
+plaintext, `tpl_status=0x10` and `counter=0x000E578C`
+with the original **public upstream fixture key**.
+It must then reject source #9's invalid CCM tag and clear all
+previous plaintext, status and counter output. The fixture parser
+checks exact expected byte lengths.
+
+**CI for this follow-up is pending.** The ESP-IDF job builds/links
+the test application; it does **not execute `app_main` on a device**.
+A successful compile cannot be reported as positive/negative
+cryptographic runtime parity until test execution is independently
+observed on ESP-IDF hardware (or an equivalent validated target
+runner). Neither these public fixtures nor the mbedTLS test
+implementation are wired to live radio/sensor publication.
+
 ## Strict remaining Stage B acceptance gates
 
 1. **Per-driver production-equivalent replay:** verify complete T1/C1
