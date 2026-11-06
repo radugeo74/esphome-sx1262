@@ -36,7 +36,9 @@ def tested_fields(driver,index,reference):
                     "status","rssi_dbm"} | (
                 {"actuality_duration_s"} if index==2 else set())
         # test_batch2_clear_fixture_parity.py + C++ prefix decoder
-        return {"total_m3","target_m3","meter_date","target_date"}
+        # #3 has no target_m3 JSON key; its negative/absence check in the
+        # other test is useful, but cannot count as a source JSON field.
+        return {"total_m3","meter_date","target_date"} | ({"target_m3"} if index!=3 else set())
     if driver=="apator162":
         # test_apator162_upstream_volume_parity.py covers #1..18.
         # test_apator162_upstream_cbc_mode5.cpp covers #19; its original
@@ -108,7 +110,7 @@ def main():
     assert sum(map(len,output.values()))==39
     # Snapshot of *unique functional fields* derived from XMQ expected JSON.
     # NOT the cumulative number of assertions across overlapping test suites.
-    assert (total_expected,total_compared,positives)==(181,139,38)
+    assert (total_expected,total_compared,positives)==(181,138,38)
     assert output["kamwater"][8]["compared_partial"]==0
     assert output["kamwater"][8]["negative_security_only"]
     assert output["kamwater"][8]["not_compared"]==[
