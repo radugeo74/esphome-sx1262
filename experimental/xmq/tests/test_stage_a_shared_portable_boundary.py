@@ -81,5 +81,18 @@ assert "inline void increment_counter(" not in openssl_text
 assert '#include "kamwater_ell_ctr_iv.h"' in openssl_text
 assert "#include <openssl/" not in iv_text
 assert "kamwater_ell_ctr_openssl.h" not in native_runtime
+# Final Stage A boundary: shared keyless primitives are not linked to live RF.
+assert "kamwater::ell_ctr::derive_iv" not in native_runtime
+assert "kamwater::ell_ctr::increment_counter" not in native_runtime
+assert "kamwater::ell_ctr::decrypt_ell_ii" not in native_runtime
+assert "kamwater::ell_ctr::decrypt_ell_ii" not in native_catalog
+# The ESP-IDF build explicitly checks host/source sharing for application
+# parsers. IV remains guarded by its original host golden reference tests;
+# no end-to-end on-device encrypted-frame validation is claimed.
+native_manifest=(root/"experimental/xmq/tools/native_driver_specs.py").read_text(encoding="utf-8")
+assert 'BATCH2_PENDING = ("minomess", "kamwater", "apator162")' in native_manifest
+assert 'GENERATED = (' in native_manifest
+assert "kamwater_ell_ctr_iv.h" not in native_runtime
+
 print("PASS stage A: same Apator162, Kamwater status/numeric/TPL and wired Minomess algorithms for host and ESP-IDF, "
       "pending driver remains unavailable for live YAML and RF publication")
