@@ -693,6 +693,40 @@ and explicit integrity/admission gates. Keep original
 `wmbusmeters` behavior as the reference, not a copied second
 radio stack. New drivers remain disabled until end-to-end checks.
 
+## Stage A — Kamwater shared status/numeric application algorithms (CI pending)
+
+Following the green first Stage A ESP-IDF build, the original
+`kamwater_status_semantics.h` and `kamwater_numeric_semantics.h`
+implementations were moved **without changing decoding semantics** into
+`components/wmbus_native_sx126x/`. Their old paths under
+`experimental/semtech-radio/host_only/` are **forwarding includes**,
+so existing upstream XMQ host golden tests now exercise the exact native
+header implementations rather than duplicate copies.
+
+The ESP-IDF ESP32-S3 C++ probe includes both native headers using an
+explicit CMake include directory. It embeds upstream clear-application
+sample #1 to assert `status=DRY` and `time_dry=22-31 days`; the
+already-clear DIF/VIF portion of sample #3 asserts
+`max_flow_last_day_m3h=0.317` and
+`min_flow_temperature_last_day_c=2`. A truncated status sample
+must fail and leave the reading empty. These checks are compiled into
+the ESP-IDF `app_main` probe, **not executed on the Heltec by CI**.
+The standalone host goldens compare more fields in the same shared
+decoders. Neither test authorizes radio publication.
+
+The extended Stage A structural CI guard checks that each algorithm
+has just one native source, the old paths only redirect, ESP-IDF build
+paths include the native component, and the meter driver manifest
+**still excludes all three Stage B drivers** from production dispatch.
+No `NativeReceiverProbe` decode paths, YAML selectors, T1/C1 radio
+ownership or live `fhkvdataiii`/`mkradio4` logic changed.
+
+**Remaining in Stage A:** host-only TPL status interpretation and
+Minomess wired-envelope code; host OpenSSL AES-CBC/CTR/CCM plus
+crypto-admission logic are a separate trust-boundary problem and must
+not be promoted as ordinary application decoding. Original
+`wmbusmeters` golden fixtures remain the compatibility reference.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
