@@ -18,9 +18,9 @@ from portable_xmq import parse, validate_driver, blocks, values
 # kamwater 1, 5, 6: ELL 8D20 NOKEY fixtures with pre-decrypted application.
 # Other cases need wired M-Bus, compact profile handling, authenticated
 # decryption, manufacturer-specific records or additional fields.
-CASES = {"minomess": (3, 4, 5, 6), "kamwater": (1, 5, 6)}
+CASES = {"minomess": (3, 4, 5, 6), "kamwater": (1, 3, 5, 6)}
 FIELDS = {
-    "minomess": ("total_m3", "target_m3", "meter_date", "target_date"),
+    "minomess": ("total_m3", "target_m3", "meter_date", "target_date", "status"),
     "kamwater": ("total_m3", "target_m3"),
 }
 
@@ -93,7 +93,7 @@ def main():
             covered += 1
             print(f"PARTIAL_PASS {driver} fixture #{number}: "
                   f"{len(FIELDS[driver])} explicit field comparisons")
-    assert covered == 7 and compared == 22
+    assert covered == 8 and compared == 27
     print(f"PASS clear-app subset: {covered} upstream fixtures, "
           f"{compared} field comparisons. NOT full-frame parity; "
           f"not authorization for RF or firmware.")
