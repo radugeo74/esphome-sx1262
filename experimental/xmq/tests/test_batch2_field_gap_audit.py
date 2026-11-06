@@ -61,9 +61,11 @@ def tested_fields(driver,index,reference):
     # C++ CLI and original XMQ JSON in the primary fixture parity test.
     if index==3:
         fields.add("total_m3")
-    # test_kamwater_upstream_ccm_openssl.cpp, original valid tag #10
+    # test_kamwater_upstream_ccm_openssl.cpp, original valid tag #10.
+    # Only after CCM authentication, the reviewed TPL 0x10 status maps
+    # to TEMPORARY_ERROR; unsupported flags fail closed.
     if index==10:
-        fields.update(("total_m3","target_m3","accoustic_noise"))
+        fields.update(("total_m3","target_m3","accoustic_noise","status"))
     # Source Kamwater #3 now has 6 strict old-style status/duration field
     # comparisons against the SAME native status_semantics C++ CLI as #1.
     # The historical 46 88 78 clear-prefix is stripped only in the test.
@@ -134,7 +136,13 @@ def main():
     assert sum(map(len,output.values()))==39
     # Snapshot of *unique functional fields* derived from XMQ expected JSON.
     # NOT the cumulative number of assertions across overlapping test suites.
-    assert (total_expected,total_compared,positives)==(181,176,38)
+    assert (total_expected,total_compared,positives)==(181,177,38)
+    # Explicit source/evidence alignment; the host C++ test must also pass.
+    source10=source_cases("kamwater")[9]
+    assert source10["status"]=="TEMPORARY_ERROR"
+    crypto_test=(ROOT/"experimental/semtech-radio/test_kamwater_upstream_ccm_openssl.cpp").read_text(encoding="utf-8")
+    assert 'original_status=="TEMPORARY_ERROR"' in crypto_test
+    assert 'decode_original_ccm_status(out.tpl_status,original_status)' in crypto_test
     assert output["kamwater"][8]["compared_partial"]==0
     assert output["kamwater"][8]["negative_security_only"]
     assert output["kamwater"][8]["not_compared"]==[
