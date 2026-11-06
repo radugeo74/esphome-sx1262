@@ -42,41 +42,41 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 
 ## Stage B CI checkpoint — 2026-11-06
 
-**Last owner-confirmed green: through `b11ebde`**, including the
-portable one-meter 25-byte authenticated-counter checkpoint codec,
-simulated host restart/restore, corrupt/foreign/mismatched-epoch
-record rejection, and mock storage failure after a successful delivery.
-The source-field laboratory subset remains closed at 177/177 positive
-functional JSON fields; original invalid-tag Kamwater #9 remains
-negative-only. Neither ESP32-S3 runtime nor real RF-to-HA sensor
-publication is proven.
+**Last owner-confirmed CI green: through `6bd4d98`**, including the
+portable Kamwater replay checkpoint, compilation/linking of actual
+ESP-IDF NVS APIs in the experimental ESP32-S3 probe, and Linux host
+fake-NVS open/read/set/commit/readback failure simulations.
+Earlier original #10 authenticated mbedTLS DLL-to-mapped-fields, #9
+bad-tag rejection and 177/177 source-field host comparisons remain
+green. These are **not** authentic live RF-to-HA approvals.
 
-**Current work, CI PENDING (latest code commit `d528273`):**
-An inert **real ESP-IDF NVS** adapter was added under
-`experimental/xmq/espidf_cpp_probe/main/kamwater_nvs_checkpoint.{h,cpp}`,
-compiled/linked in the isolated ESP-IDF esp32s3 target with
-`nvs_flash`. Only a harmless `backend_name()` anchor is invoked by
-`app_main`, with volatile function pointers retaining the real load/store
-implementations for link verification; it does not initialize, open,
-read, write, or erase NVS.
-The adapter's explicit read/write APIs use a meter-bound 14-character
-key in namespace `kw_ccm_probe`; read-only restore fails on missing/
-invalid checkpoints, and writing requires a pre-existing valid,
-strictly lower watermark, successful `nvs_set_blob` + `nvs_commit`
-and an independent readback. No implicit provisioning or flash erase.
-A new compiled Linux **fake NVS** test exercises these C++ methods
-with simulated read/write/commit/corruption failures, independently
-from the ESP-IDF compile/link job.
+**Current code, CI PENDING (last code commit `fa014c4`):** separate
+`espidf_cpp_probe/main/kamwater_replay_reservation.h` offers an
+explicitly opt-in, bounded **write-ahead** checkpoint policy with a
+configurable 1..8 CCM-counter range. It persists a reserved upper
+watermark *before* the synchronous sink callback, so a crash cannot
+replay an unreserved delivered counter if the durable-store callback
+behaves as specified. Window 1 requires a persistent write for every
+new accepted counter. Window 4/8 may reduce writes, but reboot
+intentionally skips up to 3/7 subsequent **counter values** that have
+not been delivered. The existing public #10 mbedTLS host test adds
+failed-store / failed-sink / retry / duplicate / simulated reboot
+checks; the header also participates in the actual ESP-IDF probe
+compile. No policy is active on hardware.
 
-**Remaining blockers:** NVS writes per received telegram would cause
-unnecessary flash wear; no approved rate-limit / guaranteed
-non-volatile anti-replay policy, malicious rollback protection, trusted
-key-epoch provisioning, physical power-cut tests, real app delivery
-semantics, live radio/HA hook or ESP32-S3 execution. Continue to keep
+**Decision still OPEN:** the owner has not selected a write frequency
+vs post-restart reporting-gap tradeoff. Real NVS power-loss recovery,
+flash endurance, malicious anti-rollback protections, genuine epoch
+provisioning, real radio transport, physical ESP32-S3 execution,
+atomicity of individual HA sensor updates and rollback are not
+proved. There is **no** auto-provisioning or key reset. Keep
 `BATCH2_PENDING` (minomess/kamwater/apator162) excluded from
-`SUPPORTED` and production YAML. 0/39 complete RF-to-HA approvals and
-0/3 new driver admissions. Installed Heltec firmware remains
-untouched. Details: `experimental/xmq/STAGE_B_GATE_STATUS.md`.
+`SUPPORTED`, sensor publishing and live YAML: still **0/39** complete
+production-equivalent source-frame-to-sensor approvals and **0/3**
+driver admissions. Live Heltec remains untouched.
+
+See `experimental/xmq/STAGE_B_GATE_STATUS.md` for gate history and
+the explicit strict-vs-reservation tradeoff table.
 
 ## Next developer workflow
 
