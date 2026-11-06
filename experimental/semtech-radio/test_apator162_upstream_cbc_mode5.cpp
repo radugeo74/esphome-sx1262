@@ -3,6 +3,7 @@
 // This regression proves decryption + IXML volume parity only.
 #include "host_only/oms_tpl_cbc_mode5_openssl.h"
 #include "host_only/apator162_ixml_fields.h"
+#include "components/wmbus_radio/pure_complete_frame.h"
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -38,6 +39,53 @@ int main() {
       output.application.data(),output.application.size(),meter)
       ==xmq_portable::apator162::Status::Ok);
   assert(std::fabs(meter.total_m3-7.512)<1e-9);
+  // Full wireless DLL format-B replay around ORIGINAL upstream #19
+  // bytes, which omit on-air DLL CRC. Only the CRC envelope is synthetic;
+  // original encrypted TPL bytes and expected plaintext are unchanged.
+  auto full=original;
+  full[0]=static_cast<uint8_t>(full.size()+1u);
+  const uint16_t dll_crc=wmbus_pure::crc16_en13757(
+      full.data(),full.size());
+  full.push_back(static_cast<uint8_t>(dll_crc>>8));
+  full.push_back(static_cast<uint8_t>(dll_crc));
+  wmbus_pure::CompleteFrame verified{};
+  using FrameStatus=wmbus_pure::CompleteStatus;
+  assert(wmbus_pure::verify_complete_frame(
+      full.data(),full.size(),wmbus_pure::CrcFrameFormat::B,verified)
+      ==FrameStatus::Ok);
+  // Independent configured identity: never infer it from an incoming frame.
+  const auto &identity=verified.header;
+  assert(identity.manufacturer==0x0601);
+  assert(identity.meter_id==1282096u);
+  assert(identity.version==0x05 && identity.device_type==0x07);
+  assert(verified.bytes==original);
+  assert(xmq_portable::oms_cbc::decode_short_tpl(
+      verified.bytes.data(),verified.bytes.size(),fixture_key,output)
+      ==Status::Ok);
+  assert(output.application==expected_clear);
+  assert(xmq_portable::apator162::decode_clear_manufacturer(
+      output.application.data(),output.application.size(),meter)
+      ==xmq_portable::apator162::Status::Ok);
+  assert(std::fabs(meter.total_m3-7.512)<1e-9);
+  // A failed full-frame check cannot reach decrypted measurements.
+  auto broken=full;
+  broken[6]^=1; // DLL identity byte changed, CRC not recomputed
+  assert(wmbus_pure::verify_complete_frame(
+      broken.data(),broken.size(),wmbus_pure::CrcFrameFormat::B,verified)
+      !=FrameStatus::Ok);
+  // Even a recalculated DLL CRC does not authorize another configured ID.
+  broken=full;
+  broken[6]^=1;
+  const uint16_t forged_crc=wmbus_pure::crc16_en13757(
+      broken.data(),broken.size()-2);
+  broken[broken.size()-2]=static_cast<uint8_t>(forged_crc>>8);
+  broken.back()=static_cast<uint8_t>(forged_crc);
+  assert(wmbus_pure::verify_complete_frame(
+      broken.data(),broken.size(),wmbus_pure::CrcFrameFormat::B,verified)
+      ==FrameStatus::Ok);
+  assert(verified.header.meter_id!=1282096u);
+  // CBC mode 5 has no MAC: marker checks cannot establish authenticity.
+  // This host replay is NOT approval for RF admission or HA publication.
   // Missing key, unexpected mode, wrong CI, unsupported block sizing,
   // and bad initial plaintext markers must never produce a reading.
   assert(xmq_portable::oms_cbc::decode_short_tpl(
