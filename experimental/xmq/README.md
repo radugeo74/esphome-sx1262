@@ -12,8 +12,9 @@ restrictions, and verified vs pending CI milestones.
 - **Stage A:** shared-source consolidation complete, CI owner-confirmed green;
   see [`STAGE_A_CLOSEOUT.md`](STAGE_A_CLOSEOUT.md).
 - **Stage B:** batch-2 source-fixture parity ongoing; source JSON subset
-  coverage is **168/181 last confirmed green**, with **176/181 proposed
-  pending CI confirmation** at this update. This is partial field evidence,
+  coverage is **168/181 last confirmed green**, with **177/181 proposed
+  pending CI confirmation** at this update (four remaining fields belong
+  to an intentionally invalid CCM-tag fixture). This is partial evidence,
   **not** full-frame or per-driver production parity.
 - **Live/pending manifest:** `tools/native_driver_specs.py`.
   `fhkvdataiii` and `mkradio4` remain the established active baseline;
