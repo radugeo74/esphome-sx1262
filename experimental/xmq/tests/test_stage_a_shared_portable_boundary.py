@@ -122,6 +122,10 @@ assert "expected_clear[]" in golden_text
 assert '#include "kamwater_ccm_original_fixtures.h"' in ccm_probe_cpp
 assert "golden_expected" in ccm_probe_cpp
 assert "golden_invalid" in ccm_probe_cpp
+assert "wrong_ccm_id" in ccm_probe_cpp
+assert "wrong_ccm_key" in ccm_probe_cpp
+assert "tampered_ccm" in ccm_probe_cpp
+assert "Status::BadTag" in ccm_probe_cpp
 assert "Status::BadTag" in ccm_probe_cpp
 print("PASS stage A: same Apator162, Kamwater status/numeric/TPL and wired Minomess algorithms for host and ESP-IDF, "
       "pending driver remains unavailable for live YAML and RF publication")
