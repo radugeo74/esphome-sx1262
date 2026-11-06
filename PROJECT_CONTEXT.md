@@ -51,12 +51,14 @@ functional JSON fields; original invalid-tag Kamwater #9 remains
 negative-only. Neither ESP32-S3 runtime nor real RF-to-HA sensor
 publication is proven.
 
-**Current work, CI PENDING (latest checkpoint `1e50ab1`):**
+**Current work, CI PENDING (latest code commit `d528273`):**
 An inert **real ESP-IDF NVS** adapter was added under
 `experimental/xmq/espidf_cpp_probe/main/kamwater_nvs_checkpoint.{h,cpp}`,
 compiled/linked in the isolated ESP-IDF esp32s3 target with
 `nvs_flash`. Only a harmless `backend_name()` anchor is invoked by
-`app_main`; it does not initialize, open, read, write, or erase NVS.
+`app_main`, with volatile function pointers retaining the real load/store
+implementations for link verification; it does not initialize, open,
+read, write, or erase NVS.
 The adapter's explicit read/write APIs use a meter-bound 14-character
 key in namespace `kw_ccm_probe`; read-only restore fails on missing/
 invalid checkpoints, and writing requires a pre-existing valid,
