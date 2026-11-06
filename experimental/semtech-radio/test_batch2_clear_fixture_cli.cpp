@@ -24,7 +24,8 @@ int main(int argc,char **argv) {
   if(argc!=3 && argc!=4) return 2;
   if(argc==4 && std::strcmp(argv[1],"kamwater_compact_ref")!=0 &&
      std::strcmp(argv[1],"kamwater_numeric_compact_ref")!=0 &&
-     std::strcmp(argv[1],"kamwater_compact_status_ref")!=0)
+     std::strcmp(argv[1],"kamwater_compact_status_ref")!=0 &&
+     std::strcmp(argv[1],"minomess_wired_configured")!=0)
     return 2;
   const char *src=argv[2];
   const size_t n=std::strlen(src);
@@ -80,11 +81,18 @@ int main(int argc,char **argv) {
           numeric.target_date.day);
     return 0;
   }
-  if(std::strcmp(argv[1],"minomess_wired")==0) {
+  if(std::strcmp(argv[1],"minomess_wired")==0 ||
+     std::strcmp(argv[1],"minomess_wired_configured")==0) {
+    const bool configured=
+        std::strcmp(argv[1],"minomess_wired_configured")==0;
+    if(configured != (argc==4)) return 2;
     xmq_portable::minomess::wired::Reading reading{};
-    if(xmq_portable::minomess::wired::decode(
-        bytes.data(),bytes.size(),reading)
-        !=xmq_portable::minomess::wired::Status::Ok) return 3;
+    const auto result=configured
+        ? xmq_portable::minomess::wired::decode_configured(
+              bytes.data(),bytes.size(),argv[3],reading)
+        : xmq_portable::minomess::wired::decode(
+              bytes.data(),bytes.size(),reading);
+    if(result!=xmq_portable::minomess::wired::Status::Ok) return 3;
     const auto &m=reading.meter;
     std::printf("total_m3=%.9f\n",m.total_m3);
     if(m.has_target)
