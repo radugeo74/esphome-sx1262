@@ -1,3 +1,35 @@
+# XMQ — active context on `experimental/xmq-multidriver-auto`
+
+> **Branch update 2026-11-06:** The prior 2026-11-01 text below is archived background for `experimental/xmq-independent-pipeline`. Do not use its claim that native XMQ-only still invokes legacy `handleTelegram` as a description of this branch's `components/wmbus_native_sx126x` implementation.
+
+The active branch uses the official ESPHome SX126x radio with our native
+C++ wM-Bus decoder; `wmbusmeters` original XMQ rules and source JSON
+fixtures are compatibility evidence. **Read the root
+[`PROJECT_CONTEXT.md`](../../PROJECT_CONTEXT.md) first** for the
+branch-specific architecture, read-first instructions, security/admission
+restrictions, and verified vs pending CI milestones.
+
+- **Stage A:** shared-source consolidation complete, CI owner-confirmed green;
+  see [`STAGE_A_CLOSEOUT.md`](STAGE_A_CLOSEOUT.md).
+- **Stage B:** batch-2 source-fixture parity ongoing; source JSON subset
+  coverage is **168/181 last confirmed green**, with **176/181 proposed
+  pending CI confirmation** at this update. This is partial field evidence,
+  **not** full-frame or per-driver production parity.
+- **Live/pending manifest:** `tools/native_driver_specs.py`.
+  `fhkvdataiii` and `mkradio4` remain the established active baseline;
+  `iperl`/`hydrus` are manifest-supported native cleartext decoders;
+  **`minomess`, `kamwater`, `apator162` remain blocked in
+  `BATCH2_PENDING`**. No YAML activation, flashing, experimental OpenSSL
+  integration, or unknown-meter sensor auto-publication.
+- **Detailed Stage B gates:** [`BATCH2_STATUS.md`](BATCH2_STATUS.md),
+  host XMQ fixture comparisons, native CI and security isolation checks.
+  CRC alone does not prove cryptographic authenticity; an intentionally
+  invalid CCM-tag source fixture must remain rejected.
+
+---
+
+## Historical 2026-11-01 note (different branch)
+
 # XMQ / IXML decoding on ESPHome SX1262
 
 ## Current status (2026-11-01)
