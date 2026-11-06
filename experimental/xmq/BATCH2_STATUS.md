@@ -569,8 +569,8 @@ source JSON** for the 39 upstream fixtures. Excluding only identifying
 metadata, timestamp, source-driver name and the deprecation note,
 it discovers **181 distinct per-case functional JSON fields**.
 A field is credited only when a named existing C++-backed golden test
-explicitly compares that field. The count is **138 compared and
-43 NOT_COMPARED**; the test pins the per-case totals and keeps full
+explicitly compares that field. The count is **139 compared and
+42 NOT_COMPARED**; the test pins the per-case totals and keeps full
 driver parity and firmware enablement explicitly false.
 This is an **inventory of existing source/test contracts**, not an
 additional decoder replay or a passing 139-field integration suite.
@@ -606,12 +606,13 @@ The standalone script additionally creates a JSON audit report
 in CI (not a user-meter report), makes no driver registry edits and
 blocks accidental inflation if an expected source field disappears.
 The previous The previously reported **139 cumulative positive field checks**
-are a different metric from the **138 distinct functional JSON
-fields** credited here. In particular, upstream Minomess #3 omits
-`target_m3`: a native assertion that a field is absent is useful,
-but it cannot count as a positive comparison against an existing
-JSON field. Keep absence assertions and distinct expected-key counts
-separate.
+are a different metric from the **139 distinct functional JSON
+fields** credited here; the identical totals are coincidental.
+Upstream Minomess #3 and Kamwater #4 omit `target_m3` from JSON:
+native checks of absence are useful negative assertions, but cannot
+count as positive comparisons against existing JSON keys.
+The audit explicitly excludes both missing fields and retains
+per-driver totals: Minomess 28/32, Kamwater 92/130 and Apator162 19/19.
 
 ## Next implementation steps
 
