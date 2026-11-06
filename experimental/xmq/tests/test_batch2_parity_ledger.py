@@ -15,10 +15,10 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "experimental/xmq/tools"))
 from native_driver_specs import BATCH2_PENDING, SUPPORTED
 from portable_xmq import parse, validate_driver, blocks, values
-from test_batch2_field_gap_audit import tested_fields, META
+from test_batch2_field_gap_audit import tested_fields
 
 EXPECTED_COUNTS = {"minomess": 6, "kamwater": 14, "apator162": 19}
-VOLATILE = {"timestamp", "name", "_"}
+VOLATILE = {"timestamp", "name", "_", "current_status_deprecated_by"}
 SUPPORTED_BASELINE = {"minomess": "experimental clear-prefix only",
                       "kamwater": "experimental clear records / compact / encrypted transport",
                       "apator162": "experimental source / parser grammar"}
