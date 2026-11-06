@@ -12,6 +12,7 @@
 #include "../../../components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include "../../../components/wmbus_native_sx126x/kamwater_numeric_semantics.h"
 #include "main/oms_ccm_mbedtls_probe.h"
+#include "main/oms_ccm_verified_ingress.h"
 #include "main/kamwater_ccm_original_fixtures.h"
 
 using xmq_portable::oms_ccm_idf_probe::Output;
@@ -96,23 +97,12 @@ int main() {
     frame.back()=static_cast<uint8_t>(crc);
   };
   Output admitted{};
+  const xmq_portable::oms_ccm_idf_probe::ingress::ConfiguredMeter configured{
+      0x2C37,53820306u,0x3C,0x16};
   const auto ingress = [&](const std::vector<uint8_t> &frame) {
-    admitted={};
-    wmbus_pure::CompleteFrame verified{};
-    if(wmbus_pure::verify_complete_frame(
-           frame.data(),frame.size(),wmbus_pure::CrcFrameFormat::B,
-           verified)!=wmbus_pure::CompleteStatus::Ok)
-      return false;
-    const auto &h=verified.header;
-    if(h.manufacturer!=0x2C37 || h.meter_id!=53820306u ||
-       h.version!=0x3C || h.device_type!=0x16 || h.ci!=0x8C ||
-       verified.bytes.size()<14 || verified.bytes[11]!=0x20 ||
-       verified.bytes[12]!=0x30 || verified.bytes[13]!=0x7A)
-      return false;
-    const auto &b=verified.bytes;
-    return decode_short_tpl(b.data()+2,b.data()+4,h.version,
-                            h.device_type,key,b.data()+13,
-                            b.size()-13,admitted)==Status::Ok;
+    return xmq_portable::oms_ccm_idf_probe::ingress::decode_format_b(
+        frame.data(),frame.size(),configured,key,admitted)
+        == xmq_portable::oms_ccm_idf_probe::ingress::Status::Ok;
   };
   if(!ingress(full_valid) ||
      admitted.clear_application.size()!=expected.size() ||
@@ -131,6 +121,14 @@ int main() {
   damaged[10]=0x8D;renew_crc(damaged); // valid DLL, unsupported ELL CI
   if(ingress(damaged) || !cleared(admitted)) return 22;
   if(ingress(full_invalid) || !cleared(admitted)) return 23;
+  // The reusable ingress must additionally reject a different configured
+  // identity even when the raw frame itself is unmodified and CRC-valid.
+  auto wrong_configured=configured;
+  wrong_configured.id^=1u;
+  if(xmq_portable::oms_ccm_idf_probe::ingress::decode_format_b(
+         full_valid.data(),full_valid.size(),wrong_configured,key,admitted)
+       != xmq_portable::oms_ccm_idf_probe::ingress::Status::IdentityMismatch ||
+     !cleared(admitted)) return 25;
   if(!ingress(full_valid) || admitted.clear_application!=
        std::vector<uint8_t>(expected.begin(),expected.end())) return 24;
   // A later bad tag must clear the authenticated transport output,
