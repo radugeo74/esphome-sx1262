@@ -62,8 +62,22 @@ native_runtime=(root/"components/wmbus_native_sx126x/native_receiver_probe.cpp")
 native_catalog=(root/"components/wmbus_native_sx126x/xmq_decode_catalog.h").read_text(encoding="utf-8")
 assert "kamwater::tpl_status::decode_clear_short_tpl" not in native_runtime
 assert "minomess::wired::decode" not in native_runtime
-assert '"kamwater"' not in native_catalog.split("enum class PureDecodeStatus")[1]
-assert '"minomess"' not in native_catalog.split("enum class PureDecodeStatus")[1]
+# Stage B now has explicit *clear-transport-only* application branches
+# in the actual native decode catalog. Preserve the Stage A isolation:
+# no decrypt-by-guessing and no production auto-registration.
+catalog_branch=native_catalog.split("enum class PureDecodeStatus",1)[1]
+for driver in ("kamwater","minomess","apator162"):
+    assert f'std::strcmp(driver_name,"{driver}")==0' in catalog_branch, driver
+assert "decode_clear_ell_ii_tpl79(" in catalog_branch
+assert "wmbus_pure::publication::inspect(" in catalog_branch
+assert "minomess::decode_clear_application(" in catalog_branch
+assert "apator162::decode_clear_manufacturer(" in catalog_branch
+assert "kamwater::ell_ctr::decrypt" not in catalog_branch
+assert "oms_ccm_mbedtls_probe" not in native_catalog
+assert "oms_tpl_cbc" not in native_catalog
+assert "BATCH2_PENDING = (\"minomess\", \"kamwater\", \"apator162\")" in names
+assert "PORTABLE = (\"iperl\", \"hydrus\")" in names
+assert "kamwater" not in native_runtime and "minomess::wired::decode" not in native_runtime
 assert "kw_tpl.status!=\"DRY ERROR\"" in cpp
 assert "wired_reading.gateway_rssi_dbm!=-86" in cpp
 # Keyless ELL IV and counter have one shared source; OpenSSL stays host-only.
