@@ -13,6 +13,7 @@
 #include "kamwater_tpl_status_semantics.h"
 #include "minomess_wired_frame.h"
 #include "oms_ccm_mbedtls_probe.h"
+#include "kamwater_nvs_checkpoint.h"
 #include "kamwater_ccm_original_fixtures.h"
 #include "frame_bridge.h"
 #include <cstring>
@@ -21,6 +22,9 @@ static const char *TAG = "xmq_cpp_probe";
 
 extern "C" void app_main(void) {
   using namespace xmq_portable;
+  // Force real NVS backend object into the ESP-IDF link; this call is
+  // deliberately inert. No NVS initialization, open, read or write.
+  ESP_LOGI(TAG,"%s",kamwater::nvs_probe::backend_name());
   const uint8_t raw[2] = {0xBD, 0x08};
   Record record{};
   const Status result = decode_record("0265", 4, raw, 2, record);
