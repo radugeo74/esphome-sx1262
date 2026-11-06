@@ -94,5 +94,23 @@ assert 'BATCH2_PENDING = ("minomess", "kamwater", "apator162")' in native_manife
 assert 'GENERATED = (' in native_manifest
 assert "kamwater_ell_ctr_iv.h" not in native_runtime
 
+# Stage B crypto boundary: ESP-IDF mbedTLS probe can compile and link,
+# but the production radio shall not import or select the probe implementation.
+ccm_probe=root/"experimental/xmq/espidf_cpp_probe/main/oms_ccm_mbedtls_probe.h"
+ccm_probe_cpp=(root/"experimental/xmq/espidf_cpp_probe/main/main.cpp").read_text(encoding="utf-8")
+ccm_probe_build=(root/"experimental/xmq/espidf_cpp_probe/main/CMakeLists.txt").read_text(encoding="utf-8")
+ccm_probe_code=ccm_probe.read_text(encoding="utf-8")
+assert '#include "oms_ccm_mbedtls_probe.h"' in ccm_probe_cpp
+assert "REQUIRES log esp_system heap mbedtls" in ccm_probe_build
+assert "mbedtls_cipher_cmac(" in ccm_probe_code
+assert "mbedtls_ccm_auth_decrypt(" in ccm_probe_code
+assert "out={};" in ccm_probe_code
+for native in (root/"components/wmbus_native_sx126x").rglob("*"):
+    if native.is_file() and native.suffix in (".cpp",".cc",".h",".hpp",".py"):
+        lines=native.read_text(encoding="utf-8",errors="replace").splitlines()
+        assert not any(
+            line.lstrip().startswith(("#include","from ","import ")) and
+            "oms_ccm_mbedtls_probe" in line for line in lines
+        ), f"probe-only CCM imported in active ESPHome: {native}"
 print("PASS stage A: same Apator162, Kamwater status/numeric/TPL and wired Minomess algorithms for host and ESP-IDF, "
       "pending driver remains unavailable for live YAML and RF publication")
