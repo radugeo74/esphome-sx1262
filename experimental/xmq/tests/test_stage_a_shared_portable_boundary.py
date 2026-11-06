@@ -25,5 +25,24 @@ assert "PORTABLE = (\"iperl\", \"hydrus\")" in names
 assert "for header in (xmq / \"portable_cpp\").glob(\"*.h\")" in component.read_text(encoding="utf-8")
 assert not (root/"components/wmbus_native_sx126x/apator162_ixml_fields.h").exists(), (
     "Shared module should be copied at build time only, not committed as a second source")
-print("PASS stage A: same Apator162 application decoder for host and ESP-IDF, "
+# Kamwater status/numeric algorithms now have exactly one native header each.
+cmake=(root/"experimental/xmq/espidf_cpp_probe/main/CMakeLists.txt").read_text(encoding="utf-8")
+assert '"../../../../components/wmbus_native_sx126x"' in cmake
+for name, symbol in (
+    ("kamwater_status_semantics.h", "inline Status decode("),
+    ("kamwater_numeric_semantics.h", "inline Status decode("),
+):
+    target=root/"components/wmbus_native_sx126x"/name
+    alias=root/"experimental/semtech-radio/host_only"/name
+    target_text=target.read_text(encoding="utf-8")
+    alias_text=alias.read_text(encoding="utf-8")
+    assert symbol in target_text
+    assert '#include "standard_dif_vif.h"' in target_text
+    assert f'#include "../../../components/wmbus_native_sx126x/{name}"' in alias_text
+    assert "inline Status decode(" not in alias_text
+    assert f'#include "{name}"' in cpp
+assert "kw_status.status != \"DRY\"" in cpp
+assert 'field.name=="max_flow_last_day_m3h"' in cpp
+assert 'field.name=="min_flow_temperature_last_day_c"' in cpp
+print("PASS stage A: same Apator162 plus Kamwater status/numeric parsers for host and ESP-IDF, "
       "pending driver remains unavailable for live YAML and RF publication")
