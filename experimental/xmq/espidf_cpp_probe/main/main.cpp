@@ -279,6 +279,24 @@ extern "C" void app_main(void) {
   }
   ESP_LOGI(TAG,"Shared Kamwater TPL + wired Minomess ESP-IDF checks PASS (not RF)");
   
+  // Stage B: compile/link the ESP-IDF mbedTLS AES-CMAC + CCM code.
+  // Dummy ciphertext has an invalid tag, so no plaintext may emerge.
+  // CI builds this app_main; it does NOT run on hardware in Actions.
+  const uint8_t ccm_dummy_m[2]={0x37,0x2C};
+  const uint8_t ccm_dummy_id[4]={0x06,0x03,0x82,0x53};
+  const uint8_t ccm_dummy_key[16]{};
+  const uint8_t ccm_dummy_tpl[20]={
+      0x7A,0x30,0x10,0xFF,0x2A,0x10,0x01,0x01,0,0,0,
+      0,0,0,0,0,0,0,0,0};
+  oms_ccm_idf_probe::Output ccm_probe_output{};
+  if (oms_ccm_idf_probe::decode_short_tpl(
+          ccm_dummy_m,ccm_dummy_id,0x3C,0x16,ccm_dummy_key,
+          ccm_dummy_tpl,sizeof(ccm_dummy_tpl),ccm_probe_output)
+          != oms_ccm_idf_probe::Status::BadTag ||
+      !ccm_probe_output.clear_application.empty()) {
+    ESP_LOGE(TAG,"ESP-IDF mbedTLS CCM fail-closed probe failed");
+    abort();
+  }
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
            static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)));
