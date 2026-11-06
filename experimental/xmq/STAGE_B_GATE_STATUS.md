@@ -1,8 +1,9 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
 Updated 2026-11-06 for branch `experimental/xmq-multidriver-auto`.
-This is an evidence ledger, not a release approval. The 177/181 source-field and executable host mbedTLS CCM regression
-calups were owner-confirmed green. New header-negative coverage is pending CI.
+This is an evidence ledger, not a release approval. The user confirmed CI green
+through `b11ebde` (including the portable host restart-checkpoint contract).
+The new real ESP-IDF NVS backend and host fake-NVS tests are **CI pending**.
 
 ## Latest verified checkpoint — 2026-11-06
 
@@ -206,6 +207,43 @@ guarantee exactly-once delivery. The writer's atomicity/durability and
 security against malicious rollback are assumptions **not validated**
 by CI. No ESP32-S3 NVS, real RX hook, live YAML, driver promotion or
 `publish_state` change has been made.
+
+## Real ESP-IDF NVS adapter, inert in firmware — CI pending
+
+The experimental `espidf_cpp_probe/main/kamwater_nvs_checkpoint.cpp`
+uses actual ESP-IDF `nvs_open`, `nvs_get_blob`, `nvs_set_blob` and
+`nvs_commit`, compiled in the `esp32s3` ESP-IDF probe target with the
+real `nvs_flash` component. `app_main` references only a harmless
+link anchor (`backend_name`); **no NVS initialization, reading, writing,
+auto-erasure, or provisioning is executed by this probe**.
+
+The adapter:
+- derives a bounded per-meter NVS key from manufacturer and eight-digit
+  configured ID, with version/medium/externally provided nonzero epoch
+  verified by the 25-byte checkpoint decoder;
+- reads only existing records and fails closed on missing/corrupt/wrong
+  identity/epoch checkpoints; **never auto-creates a replacement**;
+- accepts a write only for a correctly encoded, strictly higher CCM
+  watermark than the already persisted value; `nvs_commit` must succeed
+  and a separate NVS readback must match before success is returned;
+- never calls `nvs_flash_init` or `nvs_flash_erase`: a future explicitly
+  authorized application must supply independently verified NVS setup,
+  initial provisioning, isolation and recovery.
+
+A new Linux **fake NVS** test compiles the *same* adapter implementation
+against test-only ESP-IDF API shims. It exercises missing state,
+separately provisioned initial state, meter and key epoch mismatch, CRC
+corruption/truncation, stale/repeated watermark, successful update,
+failed `set_blob`, failed `commit`, failed read/open, and corrupted
+readback. Mock correctness **does not** prove power-loss behavior of
+real NVS flash. CI for the new code and ESP-IDF compile/link is pending.
+
+**Critical deployment blockers:** frequent per-telegram NVS writes can
+wear flash; no write throttling or independent replay-safe low-wear
+storage policy has been approved. CRC32 does not detect malicious
+rollback; NVS encryption/anti-rollback, trusted epoch management,
+atomic HA delivery, real ESP32-S3 runtime and receiver integration
+are NOT proven. No batch-2 driver admission or installed YAML changes.
 
 ## Source-fixture parity: narrow substage ready for CI
 
