@@ -359,7 +359,7 @@ extern "C" void app_main(void) {
   std::memcpy(wrong_ccm_id,ccm_dummy_id,sizeof(wrong_ccm_id));
   wrong_ccm_id[0]^=1;
   if (!seed_authenticated_ccm() ||
-      oms_ccm_idf_probe::decode_short_tpl(oms_ccm_idf_probe::decode_short_tpl(
+      oms_ccm_idf_probe::decode_short_tpl(
           ccm_dummy_m,wrong_ccm_id,0x3C,0x16,golden_key,
           golden_valid,sizeof(golden_valid),ccm_probe_output)
           != oms_ccm_idf_probe::Status::BadTag ||
@@ -373,7 +373,7 @@ extern "C" void app_main(void) {
   std::memcpy(wrong_ccm_key,golden_key,sizeof(wrong_ccm_key));
   wrong_ccm_key[0]^=1;
   if (!seed_authenticated_ccm() ||
-      oms_ccm_idf_probe::decode_short_tpl(oms_ccm_idf_probe::decode_short_tpl(
+      oms_ccm_idf_probe::decode_short_tpl(
           ccm_dummy_m,ccm_dummy_id,0x3C,0x16,wrong_ccm_key,
           golden_valid,sizeof(golden_valid),ccm_probe_output)
           != oms_ccm_idf_probe::Status::BadTag ||
@@ -387,7 +387,7 @@ extern "C" void app_main(void) {
   std::memcpy(tampered_ccm,golden_valid,sizeof(tampered_ccm));
   tampered_ccm[sizeof(tampered_ccm)-1]^=1;
   if (!seed_authenticated_ccm() ||
-      oms_ccm_idf_probe::decode_short_tpl(oms_ccm_idf_probe::decode_short_tpl(
+      oms_ccm_idf_probe::decode_short_tpl(
           ccm_dummy_m,ccm_dummy_id,0x3C,0x16,golden_key,
           tampered_ccm,sizeof(tampered_ccm),ccm_probe_output)
           != oms_ccm_idf_probe::Status::BadTag ||
