@@ -112,5 +112,16 @@ for native in (root/"components/wmbus_native_sx126x").rglob("*"):
             line.lstrip().startswith(("#include","from ","import ")) and
             "oms_ccm_mbedtls_probe" in line for line in lines
         ), f"probe-only CCM imported in active ESPHome: {native}"
+# Stage B original public encrypted source fixture parity is isolated:
+# CI compiles app_main but cannot claim it ran on a Heltec.
+golden_header=root/"experimental/xmq/espidf_cpp_probe/main/kamwater_ccm_original_fixtures.h"
+golden_text=golden_header.read_text(encoding="utf-8")
+assert "valid_tpl[]" in golden_text
+assert "invalid_tpl[]" in golden_text
+assert "expected_clear[]" in golden_text
+assert '#include "kamwater_ccm_original_fixtures.h"' in ccm_probe_cpp
+assert "golden_expected" in ccm_probe_cpp
+assert "golden_invalid" in ccm_probe_cpp
+assert "Status::BadTag" in ccm_probe_cpp
 print("PASS stage A: same Apator162, Kamwater status/numeric/TPL and wired Minomess algorithms for host and ESP-IDF, "
       "pending driver remains unavailable for live YAML and RF publication")
