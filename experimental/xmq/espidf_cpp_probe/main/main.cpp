@@ -8,6 +8,8 @@
 #include "numeric_bridge.h"
 #include "driver_runtime.h"
 #include "apator162_ixml_fields.h"
+#include "kamwater_status_semantics.h"
+#include "kamwater_numeric_semantics.h"
 #include "frame_bridge.h"
 #include <cstring>
 
@@ -174,6 +176,57 @@ extern "C" void app_main(void) {
     abort();
   }
   ESP_LOGI(TAG, "Shared native Apator162 application regression PASS (not RF)");
+
+
+  // Stage A Kamwater: the exact same native C++ pure-application logic is
+  // exercised by the original XMQ host golden tests; no RF admission.
+  const uint8_t kw_status_fixture[] = {
+      0x02,0xFF,0x20,0x71,0x00,0x04,0x13,0x08,0x19,0x00,0x00,
+      0x44,0x13,0x08,0x19,0x00,0x00,0x61,0x5B,0x7F,0x61,0x67,0x13};
+  kamwater::status_semantics::Reading kw_status{};
+  if (kamwater::status_semantics::decode(
+          kw_status_fixture,sizeof(kw_status_fixture),kw_status)
+          != kamwater::status_semantics::Status::Ok ||
+      kw_status.status != "DRY" || kw_status.current_status != "DRY" ||
+      kw_status.time_dry != "22-31 days") {
+    ESP_LOGE(TAG, "Shared Kamwater source #1 status regression failed");
+    abort();
+  }
+
+  // Original Kamwater #3 already-clear XMQ bytes include the separately
+  // reviewed prefix 46 88 78. This sample checks only the DIF/VIF numeric
+  // part; no generic RF parser or arbitrary prefix-stripping is enabled.
+  const uint8_t kw_numeric_fixture[] = {
+      0x02,0xFF,0x20,0x00,0x00,0x04,0x13,0x2F,0x4E,0x00,0x00,
+      0x92,0x01,0x3B,0x3D,0x01,0xA1,0x01,0x5B,0x02,
+      0x81,0x01,0xE7,0xFF,0x0F,0x03};
+  kamwater::numeric_semantics::Reading kw_numeric{};
+  if (kamwater::numeric_semantics::decode(
+          kw_numeric_fixture,sizeof(kw_numeric_fixture),kw_numeric)
+          != kamwater::numeric_semantics::Status::Ok) {
+    ESP_LOGE(TAG, "Shared Kamwater source #3 numeric parse failed");
+    abort();
+  }
+  bool kw_flow_ok=false, kw_temp_ok=false;
+  for (const auto &field : kw_numeric.fields) {
+    if (field.name=="max_flow_last_day_m3h")
+      kw_flow_ok=std::fabs(field.value-0.317)<0.000001;
+    if (field.name=="min_flow_temperature_last_day_c")
+      kw_temp_ok=std::fabs(field.value-2.0)<0.000001;
+  }
+  if (!kw_flow_ok || !kw_temp_ok) {
+    ESP_LOGE(TAG, "Shared Kamwater source #3 numeric values differ");
+    abort();
+  }
+  const uint8_t truncated_kw_status[] = {0x02,0xFF,0x20,0x71};
+  if (kamwater::status_semantics::decode(
+          truncated_kw_status,sizeof(truncated_kw_status),kw_status)
+          == kamwater::status_semantics::Status::Ok ||
+      !kw_status.status.empty()) {
+    ESP_LOGE(TAG, "Shared Kamwater fail-closed status regression failed");
+    abort();
+  }
+  ESP_LOGI(TAG, "Shared Kamwater clear application C++ regression PASS (not RF)");
 
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
