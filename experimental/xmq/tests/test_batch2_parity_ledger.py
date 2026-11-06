@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "experimental/xmq/tools"))
 from native_driver_specs import BATCH2_PENDING, SUPPORTED
 from portable_xmq import parse, validate_driver, blocks, values
+from test_batch2_field_gap_audit import tested_fields, META
 
 EXPECTED_COUNTS = {"minomess": 6, "kamwater": 14, "apator162": 19}
 VOLATILE = {"timestamp", "name", "_"}
@@ -66,9 +67,31 @@ def main():
     assert tuple(EXPECTED_COUNTS) == BATCH2_PENDING
     assert set(BATCH2_PENDING).isdisjoint(SUPPORTED)
     all_cases = {}
+    positive_compared=0
+    positive_pending=0
+    intentionally_rejected=0
     for driver in BATCH2_PENDING:
         all_cases[driver] = read_cases(driver)
+        for row in all_cases[driver]:
+            index=row["case"]
+            expected=row["expected_fields"]
+            # This per-field evidence is sourced from the separately
+            # compiled host parity tests; NOT production-frame replay.
+            compared=sorted(tested_fields(
+                driver,index,{key:None for key in expected}))
+            assert set(compared).issubset(set(expected))
+            row["partial_field_comparisons"]=compared
+            row["partial_field_not_compared"]=sorted(set(expected)-set(compared))
+            negative=(driver=="kamwater" and index==9)
+            row["negative_security_fixture"]=negative
+            if negative:
+                assert not compared
+                intentionally_rejected+=len(expected)
+            else:
+                positive_compared+=len(compared)
+                positive_pending+=len(expected)-len(compared)
     total = sum(len(c) for c in all_cases.values())
+    assert (positive_compared,positive_pending,intentionally_rejected)==(177,0,4)
     assert total == 39
     report = {
         "stage": "B",
@@ -76,6 +99,12 @@ def main():
         "case_count": total,
         "parity_pass": 0,
         "parity_not_run": total,
+        "partial_positive_fields_compared": positive_compared,
+        "partial_positive_fields_pending": positive_pending,
+        "intentionally_rejected_source_fields": intentionally_rejected,
+        "all_decodable_source_fields_have_partial_tests": positive_pending==0,
+        "full_driver_parity_approved": False,
+        "radio_or_firmware_enablement_approved": False,
         "baseline": SUPPORTED_BASELINE,
         "drivers": all_cases,
     }
@@ -90,8 +119,12 @@ def main():
             print(f"{driver}: {len(cases)} fixtures, {field_count} expected "
                   f"field comparisons, {keyed} keyed, {post} NOKEY, "
                   "parity 0 PASS / all NOT_RUN")
-        print("PASS ledger integrity; NOT a decoder parity pass. "
-              "Do not enable batch2 drivers based on this report.")
+        print(f"Partial evidence: {positive_compared} source JSON fields "
+              f"from accepted fixtures, {positive_pending} positive "
+              f"fields outstanding, {intentionally_rejected} fields "
+              "from intentionally rejected invalid CCM fixture.")
+        print("PASS ledger integrity; all 39 COMPLETE DRIVER parity checks "
+              "remain NOT_RUN. Do not enable batch2 drivers.")
 
 if __name__ == "__main__":
     main()
