@@ -4,6 +4,7 @@
 // The decoder must never emit measurements from failed CCM authentication.
 #include "host_only/oms_tpl_ccm_openssl.h"
 #include "host_only/kamwater_numeric_semantics.h"
+#include "host_only/kamwater_authenticated_tpl_status.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include <cassert>
 #include <cmath>
@@ -53,6 +54,18 @@ int main() {
                           out)==CcmStatus::Ok);
   assert(out.clear_application==expected);
   assert(out.counter==0x000E578Cu && out.tpl_status==0x10);
+  // Only after the valid original CCM authentication/tag check above
+  // may the original short TPL status byte be interpreted.
+  std::string original_status{};
+  using AuthStatus=xmq_portable::kamwater::authenticated_status::Status;
+  using xmq_portable::kamwater::authenticated_status::decode_original_ccm_status;
+  assert(decode_original_ccm_status(out.tpl_status,original_status)
+         ==AuthStatus::Ok);
+  assert(original_status=="TEMPORARY_ERROR"); // source #10 JSON
+  original_status="stale";
+  assert(decode_original_ccm_status(0x00,original_status)
+         ==AuthStatus::UnsupportedStatus);
+  assert(original_status.empty());
   xmq_portable::kamwater::Reading parsed{};
   assert(xmq_portable::kamwater::decode_clear_records(
              out.clear_application.data(),out.clear_application.size(),parsed)
