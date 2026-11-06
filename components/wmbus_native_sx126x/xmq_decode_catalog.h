@@ -11,6 +11,10 @@
 #include "iperl_plain.h"
 #include "hydrus_plain.h"
 #include "mkradio4a_plain.h"
+#include "minomess_clear_prefix.h"
+#include "kamwater_clear_pipeline.h"
+#include "apator162_ixml_fields.h"
+#include "native_publication_gate.h"
 
 namespace xmq_portable {
 enum class PayloadPolicy : uint8_t { Application, PreferManufacturer0f };
@@ -138,6 +142,92 @@ inline PureDecodeStatus decode_configured_plain_frame(
                                    output.value_capacity, count) != hydrus::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
     output.value_count = count;
+    return PureDecodeStatus::Ok;
+  }
+  // Batch-2 native application decoding: a real receiver-code path,
+  // but deliberately absent from the YAML/compiled SUPPORTED manifest.
+  // Caller has already verified the complete DLL CRC and configured ID.
+  // Only independently proven clear transport is accepted here; neither
+  // original Mode-5 Minomess/Apator ciphertext nor AES-CTR ELL is plaintext.
+  const bool is_minomess=driver_name &&
+      std::strcmp(driver_name,"minomess")==0;
+  const bool is_kamwater=driver_name &&
+      std::strcmp(driver_name,"kamwater")==0;
+  const bool is_apator=driver_name &&
+      std::strcmp(driver_name,"apator162")==0;
+  if(is_minomess || is_kamwater || is_apator) {
+    if(!output.values || output.value_capacity<2)
+      return PureDecodeStatus::DecodeFailure;
+    if(is_kamwater) {
+      const bool known_kam=
+          (header.manufacturer==0x2C2D &&
+           ((header.version==0x1B &&
+             (header.device_type==0x06 || header.device_type==0x16)) ||
+            (header.version==0x1D && header.device_type==0x16))) ||
+          (header.manufacturer==0x2C37 &&
+           ((header.version==0x3A && header.device_type==0x16) ||
+            (header.version==0x3C &&
+             (header.device_type==0x16 || header.device_type==0x06)) ||
+            (header.version==0x42 &&
+             (header.device_type==0x16 || header.device_type==0x06))));
+      if(!known_kam || header.ci!=0x8D)
+        return PureDecodeStatus::UnsupportedTransport;
+      kamwater::pipeline::Output reading{};
+      // ELL-II security mode 0 + payload CRC + compact signature/data
+      // CRC are checked inside the existing native clear pipeline.
+      // Mode 1 AES-CTR is explicitly rejected; no guessed decryption.
+      if(kamwater::pipeline::decode_clear_ell_ii_tpl79(
+             frame+10,length-10,{true,true},reading)
+         !=kamwater::pipeline::Status::Ok)
+        return PureDecodeStatus::DecodeFailure;
+      output.values[0]={"total_m3",reading.reading.total_m3};
+      output.value_count=1;
+      if(reading.reading.has_target)
+        output.values[output.value_count++]={"target_m3",
+                                             reading.reading.target_m3};
+      return PureDecodeStatus::Ok;
+    }
+    // Standard TPL can have a second identity. Never publish a
+    // converter's nested TPL reading under an unrelated DLL binding.
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    const auto identity=wmbus_pure::identity::inspect(frame,length);
+    if(identity.status!=wmbus_pure::identity::Status::Ok ||
+       identity.application_offset>=length)
+      return PureDecodeStatus::UnsupportedTransport;
+    const uint8_t *application=frame+identity.application_offset;
+    const size_t app_length=length-identity.application_offset;
+    if(is_minomess) {
+      if(header.manufacturer!=0x6A49 ||
+         !((header.version==0x00 && header.device_type==0x07) ||
+           (header.version==0x01 &&
+            (header.device_type==0x06 || header.device_type==0x16))))
+        return PureDecodeStatus::UnknownDriver;
+      // Keep strict full Minomess history/status shape checks.
+      while(application<frame+length && *application==0x2F) {
+        ++application;
+      }
+      minomess::Reading reading{};
+      if(minomess::decode_clear_application(
+             application,static_cast<size_t>(frame+length-application),
+             reading)!=minomess::Status::Ok)
+        return PureDecodeStatus::DecodeFailure;
+      output.values[0]={"total_m3",reading.total_m3};
+      output.value_count=1;
+      if(reading.has_target)
+        output.values[output.value_count++]={"target_m3",reading.target_m3};
+      return PureDecodeStatus::Ok;
+    }
+    if(header.manufacturer!=0x0601 || header.version!=0x05 ||
+       (header.device_type!=0x06 && header.device_type!=0x07))
+      return PureDecodeStatus::UnknownDriver;
+    apator162::Reading reading{};
+    if(apator162::decode_clear_manufacturer(
+           application,app_length,reading)!=apator162::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_m3",reading.total_m3};
+    output.value_count=1;
     return PureDecodeStatus::Ok;
   }
   // This path accepts only the two supported Techem manufacturer CIs.
