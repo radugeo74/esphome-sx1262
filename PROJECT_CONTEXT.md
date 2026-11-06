@@ -39,6 +39,18 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 - Security/transport work remains: exact verified meter identity, complete DLL/T1/C1 CRC and length admission, supported ELL/TPL security mode and key handling, authenticated CCM tags where applicable, secure profile/provenance for compact templates, replay considerations, transactional fail-closed output and parity of the complete configured frame -> sensor chain. **CRC is not cryptographic authentication**; AES-CBC mode 5 plaintext markers are not authentication either.
 - **Do not promote `minomess`, `kamwater` or `apator162` to the live manifest, YAML, or firmware while these gates remain incomplete.** No unrequested flashing.
 
+## Stage B CI checkpoint — 2026-11-06
+
+The owner confirmed 177/181 positive *partial* source-field comparisons
+and green CI for the isolated mbedTLS compile probe. Four nominal fields
+from the invalid CCM-tag Kamwater #9 stay negative-only, never decoded.
+
+The next calup compiles the exact public #9 and #10 fixtures into
+ESP-IDF test `app_main`; its CI is **not yet confirmed**. Even if green,
+the probe is build/link evidence only, not runtime on-device verification.
+Stage B full driver admission and all three pending drivers remain blocked.
+See `experimental/xmq/STAGE_B_GATE_STATUS.md` for strict remaining gates.
+
 ## Next developer workflow
 
 1. Verify the latest Stage B CI, including original fixture/field-gap tests and native ESP32-S3 build. Fix failing tests before asserting increased coverage.
