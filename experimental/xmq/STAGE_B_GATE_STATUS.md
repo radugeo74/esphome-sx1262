@@ -57,6 +57,24 @@ public fixture. This is **not an on-air recorded RF frame**, not ESP32-S3
 execution, and not live sensor publication. All three batch-2 drivers
 remain pending; full Stage B remains OPEN.
 
+## Reusable configured DLL-to-mbedTLS ingress — CI pending
+
+The previous host-only DLL verification / configured identity / CCM
+composition is now factored into
+`experimental/xmq/espidf_cpp_probe/main/oms_ccm_verified_ingress.h`,
+with a reusable narrow `decode_format_b` API and explicit statuses.
+The executed Linux mbedTLS source #9/#10 test calls **this exact API**,
+rather than its former test-local lambda, and verifies rejection of a
+different independently configured ID with no stale output. Full DLL
+CRC, manufacturer/ID/version/medium, reviewed ELL-I envelope, and CCM
+tag are all required before returning authenticated bytes.
+
+**No sensor dispatch or publication is added**, and the original
+`BATCH2_PENDING` manifest is unchanged. This host-side ingress has no
+replay/duplicate policy, key provisioning, actual ESP32-S3 runtime
+execution, nor recorded wireless RF evidence. CI for this new factoring
+is pending. It must not be described as an enabled live Kamwater driver.
+
 ## Source-fixture parity: narrow substage ready for CI
 
 Original public `wmbusmeters` XMQ fixtures from the unchanged imported
