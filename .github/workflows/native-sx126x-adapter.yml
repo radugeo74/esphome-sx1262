@@ -68,6 +68,11 @@ jobs:
         run: python3 experimental/xmq/tests/test_batch2_upstream_fixtures.py
       - name: Stage B upstream golden fixture parity ledger (NOT_RUN until actual JSON comparison)
         run: python3 experimental/xmq/tests/test_batch2_parity_ledger.py
+      - name: Stage B exact original JSON functional-field gap audit (no full parity promotion)
+        run: |
+          python3 experimental/xmq/tests/test_batch2_field_gap_audit.py
+          python3 experimental/xmq/tests/test_batch2_field_gap_audit.py --json > /tmp/batch2-field-gap-audit.json
+          python3 -m json.tool /tmp/batch2-field-gap-audit.json > /dev/null
       - name: Stage B compare native C++ clear application outputs with 7 upstream XMQ fixtures
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
