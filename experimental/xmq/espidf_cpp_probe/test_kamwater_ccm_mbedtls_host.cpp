@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <vector>
+#include "../../../components/wmbus_radio/pure_complete_frame.h"
 #include <cmath>
 #include "../../semtech-radio/host_only/kamwater_authenticated_tpl_status.h"
 #include "../../../components/wmbus_native_sx126x/kamwater_clear_records.h"
@@ -69,6 +71,68 @@ int main() {
       != xmq_portable::kamwater::authenticated_status::Status::Ok ||
       status_text!="TEMPORARY_ERROR")
     return 18;
+  // Compose the actual shared complete-DLL verifier, a configured
+  // four-field meter identity, and the ESP-IDF probe's mbedTLS decryptor.
+  // The format-B DLL envelope is SYNTHETIC: original upstream encrypted
+  // TPL #9/#10 is used unchanged, not a captured RF telegram.
+  auto envelop = [](const std::array<uint8_t,57> &tpl) {
+    std::vector<uint8_t> frame={
+        0,0x44,0x37,0x2C,0x06,0x03,0x82,0x53,0x3C,0x16,
+        0x8C,0x20,0x30};
+    frame.insert(frame.end(),tpl.begin(),tpl.end());
+    frame[0]=static_cast<uint8_t>(frame.size()+1);
+    const uint16_t crc=wmbus_pure::crc16_en13757(
+        frame.data(),frame.size());
+    frame.push_back(static_cast<uint8_t>(crc>>8));
+    frame.push_back(static_cast<uint8_t>(crc));
+    return frame;
+  };
+  const auto full_valid=envelop(valid);
+  const auto full_invalid=envelop(invalid);
+  auto renew_crc = [](std::vector<uint8_t> &frame) {
+    const uint16_t crc=wmbus_pure::crc16_en13757(
+        frame.data(),frame.size()-2);
+    frame[frame.size()-2]=static_cast<uint8_t>(crc>>8);
+    frame.back()=static_cast<uint8_t>(crc);
+  };
+  Output admitted{};
+  const auto ingress = [&](const std::vector<uint8_t> &frame) {
+    admitted={};
+    wmbus_pure::CompleteFrame verified{};
+    if(wmbus_pure::verify_complete_frame(
+           frame.data(),frame.size(),wmbus_pure::CrcFrameFormat::B,
+           verified)!=wmbus_pure::CompleteStatus::Ok)
+      return false;
+    const auto &h=verified.header;
+    if(h.manufacturer!=0x2C37 || h.meter_id!=53820306u ||
+       h.version!=0x3C || h.device_type!=0x16 || h.ci!=0x8C ||
+       verified.bytes.size()<14 || verified.bytes[11]!=0x20 ||
+       verified.bytes[12]!=0x30 || verified.bytes[13]!=0x7A)
+      return false;
+    const auto &b=verified.bytes;
+    return decode_short_tpl(b.data()+2,b.data()+4,h.version,
+                            h.device_type,key,b.data()+13,
+                            b.size()-13,admitted)==Status::Ok;
+  };
+  if(!ingress(full_valid) ||
+     admitted.clear_application.size()!=expected.size() ||
+     std::memcmp(admitted.clear_application.data(),expected.data(),
+                 expected.size())!=0 ||
+     admitted.tpl_status!=0x10 || admitted.counter!=0x000E578Cu)
+    return 19;
+  // Admission must leave no stale measurements even after a good frame.
+  auto damaged=full_valid;
+  damaged[5]^=1; // CRC corrupted
+  if(ingress(damaged) || !cleared(admitted)) return 20;
+  damaged=full_valid;
+  damaged[5]^=1;renew_crc(damaged); // valid CRC, wrong configured ID
+  if(ingress(damaged) || !cleared(admitted)) return 21;
+  damaged=full_valid;
+  damaged[10]=0x8D;renew_crc(damaged); // valid DLL, unsupported ELL CI
+  if(ingress(damaged) || !cleared(admitted)) return 22;
+  if(ingress(full_invalid) || !cleared(admitted)) return 23;
+  if(!ingress(full_valid) || admitted.clear_application!=
+       std::vector<uint8_t>(expected.begin(),expected.end())) return 24;
   // A later bad tag must clear the authenticated transport output,
   // never leaving a buffer that downstream field decoding can consume.
   // The original #9 has a corrupt CCM tag; never publish its JSON readings.
