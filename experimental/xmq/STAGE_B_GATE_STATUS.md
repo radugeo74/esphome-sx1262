@@ -139,6 +139,29 @@ transport security, actual configured dispatcher and transactional sensor
 mapping are independently demonstrated. No `BATCH2_PENDING` driver may
 be enabled on this evidence alone.
 
+## Minomess independently configured wired M-Bus admission — CI pending
+
+Original public Minomess #1/#2 are complete **wired M-Bus** 0x68 envelopes,
+not wireless T1/C1 DLLs. Their existing C++ decoder already checked length,
+SUM checksum, structural type and all 13 expected upstream JSON fields.
+The new `wired::decode_configured` gate additionally requires the caller's
+**independently configured eight-digit BCD meter ID**, including leading
+zeroes, before returning any reading; all failure paths clear the output.
+The fixture CLI and original-JSON parity test exercise the matching IDs,
+wrong IDs, malformed ID lengths and a modified wired ID with a recomputed
+valid SUM checksum. **CI for this increment is pending**. Gateway RSSI and
+actuality remain gateway metadata, never evidence of radio RSSI.
+
+Earlier Apator162 public #19 AES-CBC fixture was owner-confirmed green
+after its synthetic format-B DLL/CRC wrapper, exact configured identity
+checks and original `total_m3=7.512` parity. This is not a recorded
+on-air frame; AES-CBC mode 5 is **not authenticated**. Kamwater #10
+encrypted host replay and #9 bad-tag rejection were also owner-confirmed
+green after fixing optional metadata handling in the synthetic regression.
+
+These advances do **not** change the 0/39 production-equivalent full
+RF-to-sensor approvals or the 0/3 active batch-2 drivers.
+
 ## Strict remaining Stage B acceptance gates
 
 1. **Per-driver production-equivalent replay:** verify complete T1/C1
