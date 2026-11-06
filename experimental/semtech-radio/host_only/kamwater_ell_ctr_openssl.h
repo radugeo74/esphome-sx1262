@@ -13,12 +13,7 @@ namespace xmq_portable { namespace kamwater { namespace ell_ctr {
 enum class DecryptStatus : uint8_t {
   Ok, Invalid, Unsupported, CryptoFailure, BadCrc, UnsupportedTpl
 };
-inline void increment_counter(uint8_t iv[16]) {
-  for(int i=15;i>=0;--i) {
-    iv[i]=static_cast<uint8_t>(iv[i]+1u);
-    if(iv[i]!=0) break;
-  }
-}
+// increment_counter() is shared with the native ESP-IDF keyless IV layer.
 inline bool aes_ecb_block(const uint8_t key[16],const uint8_t input[16],
                           uint8_t output[16]) {
   EVP_CIPHER_CTX *ctx=EVP_CIPHER_CTX_new();
