@@ -469,6 +469,30 @@ Thus the number of distinct fixtures with at least one compared output
 field rises from **32 to 33** if CI passes. Fixture #9 remains a
 separately verified **negative authentication test**, not a field PASS.
 
+## Stage B Kamwater original TPL7A status propagation (#13/#14)
+
+Host-only `kamwater_tpl_status_semantics.h` now composes the
+**exact published** unencrypted short TPL `7A` status `0x02`
+(generic `ERROR`) with any separately decoded DIF/VIF alarm flags.
+For original **#13** it emits `ERROR` without inventing an
+application status. For original **#14** it emits `DRY ERROR`
+and the six explicitly supplied XMQ alarm-duration fields.
+Unsupported TPL CI, other status bytes, nonzero TPL
+configuration and malformed applications are denied rather than
+silently interpreted as valid. This is a narrow, reviewed subset,
+not general TPL status semantics or radio admission.
+
+`test_kamwater_tpl_status_upstream_parity.py` compares the actual C++
+output with **8 original JSON fields across two new fixture cases**,
+and tests fail-closed malformed TPL variants. Following the last
+confirmed stage B subset (33 distinct fixtures / 117 compared fields),
+this would bring partial-field comparisons to **35 distinct
+fixtures / 125 field comparisons**, *subject to a green CI*.
+The #13 `target_m3` value and full transport remain **outside**
+this newly compared TPL-status contract. Other outstanding examples
+include minomess wired #1/#2 and encrypted apator162 #19; a
+positive partial-field result is not full JSON/transport parity.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
