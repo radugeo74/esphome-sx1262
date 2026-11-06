@@ -6,6 +6,7 @@
 #include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
 #include "host_only/apator162_ixml_fields.h"
 #include "host_only/kamwater_status_semantics.h"
+#include "host_only/kamwater_tpl_status_semantics.h"
 #include "host_only/kamwater_numeric_semantics.h"
 #include <cstdint>
 #include <cstdio>
@@ -152,6 +153,31 @@ int main(int argc,char **argv) {
     if(reading.has_target)
       std::printf("target_m3=%.9f\n",reading.target_m3);
     else std::puts("target_m3=null");
+    return 0;
+  }
+  if(std::strcmp(argv[1],"kamwater_tpl_status")==0) {
+    xmq_portable::kamwater::tpl_status::Reading parsed{};
+    if(xmq_portable::kamwater::tpl_status::decode_clear_short_tpl(
+        bytes.data(),bytes.size(),parsed)
+        !=xmq_portable::kamwater::tpl_status::Status::Ok) return 3;
+    std::printf("status=%s\n",parsed.status.c_str());
+    if(parsed.has_durations) {
+      const auto &s=parsed.durations;
+      std::printf("time_dry=%s\n",s.time_dry.c_str());
+      std::printf("time_reversed=%s\n",s.time_reversed.c_str());
+      std::printf("time_leaking=%s\n",s.time_leaking.c_str());
+      std::printf("time_bursting=%s\n",s.time_bursting.c_str());
+      if(s.modern) {
+        std::printf("time_flow_above_q4=%s\n",
+                    s.time_flow_above_q4.c_str());
+        if(s.hot)
+          std::printf("time_high_ambient_temperature=%s\n",
+                      s.time_high_ambient_temperature.c_str());
+        else
+          std::printf("time_low_ambient_temperature=%s\n",
+                      s.time_low_ambient_temperature.c_str());
+      }
+    }
     return 0;
   }
   if(std::strcmp(argv[1],"kamwater_status")==0) {
