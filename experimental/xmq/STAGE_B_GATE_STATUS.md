@@ -113,6 +113,32 @@ driver, or alter existing `fhkvdataiii`/`mkradio4` behavior. True
 sensor lifecycle, replay/duplicate suppression, real T1/C1 RF capture
 and ESP32-S3 runtime remain separate Stage B acceptance gates.
 
+## Per-meter authenticated CCM counter gate (host-only; CI pending)
+
+The experimental `kamwater_replay_gate.h` now stages the **complete**
+configured Kamwater sensor plan only after successful shared DLL/identity
+admission, mbedTLS CCM authentication, and transactional four-field
+decode/map. It remembers the greatest admitted authenticated counter
+per configured manufacturer+ID+version+medium and rejects the same or
+lower counter without exposing a plan. Invalid frames and wrong identities
+neither advance the counter nor preserve stale outputs. Counter state
+cannot silently be reused for a different configured meter.
+
+An executed Linux host regression now exercises original authenticated
+Kamwater #10 once, rejects its identical replay, rejects the original
+bad CCM-tag #9 and DLL corruption without changing the state, and checks
+strict older/newer/wrap-boundary behavior with **synthetic state values**.
+The staging plan now **owns its text value** instead of retaining a
+temporary Reading's `c_str()` pointer.
+
+**CI for this increment is pending.** This is RAM-only single-threaded
+host/probe logic: no NVS persistence across reboot, no device reset or
+counter-wrap recovery, no production key provisioning, no live RX hook
+or Home Assistant `publish_state` call. A counter accepted in this
+prototype means **staged in memory**, not delivered to HA. True
+cross-reboot anti-replay and exactly-once publication remain OPEN
+production acceptance requirements. No `BATCH2_PENDING` driver is enabled.
+
 ## Source-fixture parity: narrow substage ready for CI
 
 Original public `wmbusmeters` XMQ fixtures from the unchanged imported
