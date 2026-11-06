@@ -70,6 +70,47 @@ int main() {
                        tampered.data(), tampered.size(), out) != Status::BadTag ||
       !cleared(out)) return 6;
 
+  // Malformed/unsupported TPL headers must fail closed after a valid
+  // decode, without preserving application data or transport metadata.
+  const auto reject = [&](const uint8_t *data, size_t size,
+                          const uint8_t *secret, Status expected_status) {
+    return good() &&
+           decode_short_tpl(manufacturer, meter_id, 0x3C, 0x16, secret,
+                            data, size, out) == expected_status &&
+           cleared(out);
+  };
+  auto altered = valid;
+  altered[0] = 0x78;
+  if (!reject(altered.data(), altered.size(), key, Status::UnsupportedCi))
+    return 7;
+  altered = valid;
+  altered[4] = 0x00;  // wrong security mode
+  if (!reject(altered.data(), altered.size(), key, Status::UnsupportedMode))
+    return 8;
+  altered = valid;
+  altered[3] = 0x00;  // partial encryption unsupported
+  if (!reject(altered.data(), altered.size(), key, Status::UnsupportedPartial))
+    return 9;
+  altered = valid;
+  altered[5] = 0x00;  // no reviewed KDF1
+  if (!reject(altered.data(), altered.size(), key, Status::UnsupportedKdf))
+    return 10;
+  if (!reject(valid.data(), valid.size(), nullptr, Status::MissingKey))
+    return 11;
+  if (!reject(valid.data(), 8, key, Status::Invalid))
+    return 12;
+  if (!reject(valid.data(), 15, key, Status::Invalid))
+    return 13;
+  altered = valid;
+  altered[6] = 0x03;  // 16-byte tag cannot fit in shortened telegram
+  if (!reject(altered.data(), 16, key, Status::Invalid))
+    return 14;
+  // Null input must never disclose a previous successful decode.
+  if (!good() ||
+      decode_short_tpl(manufacturer, meter_id, 0x3C, 0x16, key,
+                       nullptr, 0, out) != Status::Invalid || !cleared(out))
+    return 15;
+
   std::cout << "PASS host mbedTLS: original Kamwater #10 exact authenticated "
                "38-byte payload; #9 bad tag and wrong identity/key/tag "
                "reject with no stale outputs. NOT ESP32-S3 runtime.\\n";
