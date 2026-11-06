@@ -760,6 +760,32 @@ crypto primitives and transport admission without copying OpenSSL into
 the firmware or altering the live Techem code. Maintain original
 `wmbusmeters` fixture behavior as the compatibility reference.
 
+## Stage A — ELL AES-CTR keyless algorithm consolidation
+
+This slice consolidates **only** the upstream-compatible ELL II
+keyless IV derivation and big-endian 128-bit counter increment into
+`components/wmbus_native_sx126x/kamwater_ell_ctr_iv.h`.
+The old `experimental/semtech-radio/host_only/kamwater_ell_ctr_iv.h`
+is a forwarding include. The OpenSSL host experimental ELL decoder
+uses the same function instead of defining a second counter
+increment algorithm. No security policy or AES decryptor was
+changed.
+
+A CI structural guard verifies a single IV/counter implementation,
+forwarding include, and that the shared header contains **no
+OpenSSL dependency**. The original host-side ELL IV and synthetic
+encryption tests remain the semantic reference.
+
+**Important limitation:** the proposed additional ESP-IDF probe
+code was not applied; this slice has not added an explicit keyless
+IV fixture into the `app_main` ESP-IDF self-test. Compile-time
+availability of the header in the native component and all host
+fixture tests must not be confused with a successful end-to-end
+encrypted RF decode. OpenSSL decrypt, CCM authentication and
+publishing are still host-only/blocked. The Stage B drivers
+remain pending, and installed Heltec firmware is unchanged.
+CI for this change is awaiting confirmation.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
