@@ -122,6 +122,23 @@ The **source-field coverage substage is complete**. Full Stage B remains
 **OPEN**: all 39 production-equivalent replay approvals and all three
 batch-2 live-driver admissions remain blocked.
 
+## Native publication isolation — CI pending
+
+The existing host test `test_kamwater_verified_dll_ingress.cpp` now
+explicitly calls the **actual native** `wmbus_pure::publication::inspect`
+after a successful synthetic Kamwater format-B DLL + configured identity +
+clear ELL II + TPL79 + record decode. It asserts that the real live gate
+returns `UnsupportedTransport` for CI `0x8D`; a different configured
+meter ID returns `InvalidFrame`. This prevents a host-only success from
+being mistaken for live sensor admission. The separate stale-output
+negative test remains in place.
+
+This is a **boundary regression, not live driver parity or sensor lifecycle
+validation**. The stage remains OPEN until verified original-frame replay,
+transport security, actual configured dispatcher and transactional sensor
+mapping are independently demonstrated. No `BATCH2_PENDING` driver may
+be enabled on this evidence alone.
+
 ## Strict remaining Stage B acceptance gates
 
 1. **Per-driver production-equivalent replay:** verify complete T1/C1
