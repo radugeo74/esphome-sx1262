@@ -27,6 +27,7 @@ assert "#include <openssl/" not in iv_source
 assert "EVP_" not in iv_source
 
 for filename in (
+    "kamwater_authenticated_tpl_status.h",
     "kamwater_ell_ctr_openssl.h",
     "kamwater_verified_dll_ingress.h",
     "oms_tpl_ccm_openssl.h",
