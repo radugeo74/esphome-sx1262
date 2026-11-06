@@ -7,6 +7,7 @@
 #include "generated_ixml.h"
 #include "numeric_bridge.h"
 #include "driver_runtime.h"
+#include "apator162_ixml_fields.h"
 #include "frame_bridge.h"
 #include <cstring>
 
@@ -149,6 +150,30 @@ extern "C" void app_main(void) {
     abort();
   }
   ESP_LOGI(TAG, "Manufacturer 0x0F payload XMQ bridge PASS");
+
+
+  // Stage A: compile and exercise the EXACT Apator162 portable algorithm
+  // used by source XMQ host fixture #19. This is already-clear application
+  // input; no radio path or cryptographic authenticity is being asserted.
+  const uint8_t apator162_fixture[] = {0x0F, 0x64, 0x8E, 0x7A, 0x9A, 0x0C, 0x02, 0x08, 0x43, 0x90, 0x00, 0x82, 0x62, 0x85, 0x57, 0xD2, 0x48, 0x57, 0x0C, 0xF1, 0x58, 0x00, 0x10, 0x58, 0x1D, 0x00, 0x00, 0x70, 0x01, 0x53, 0x1D, 0x00, 0x00, 0xA0, 0x9D, 0xE1, 0x9D, 0x02, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0C, 0x2D};
+  xmq_portable::apator162::Reading apator162_reading{};
+  if (xmq_portable::apator162::decode_clear_manufacturer(
+          apator162_fixture, sizeof(apator162_fixture), apator162_reading)
+          != xmq_portable::apator162::Status::Ok ||
+      std::fabs(apator162_reading.total_m3 - 7.512) > 0.000001) {
+    ESP_LOGE(TAG, "Shared Apator162 XMQ application regression failed");
+    abort();
+  }
+  // Invalid manufacturer marker is rejected without a reading.
+  const uint8_t truncated_apator[] = {0x0F, 0x00};
+  if (xmq_portable::apator162::decode_clear_manufacturer(
+          truncated_apator, sizeof(truncated_apator), apator162_reading)
+          == xmq_portable::apator162::Status::Ok ||
+      apator162_reading.total_m3 != 0.0) {
+    ESP_LOGE(TAG, "Shared Apator162 fail-closed regression failed");
+    abort();
+  }
+  ESP_LOGI(TAG, "Shared native Apator162 application regression PASS (not RF)");
 
   ESP_LOGI(TAG, "Free heap: %lu", static_cast<unsigned long>(esp_get_free_heap_size()));
   ESP_LOGI(TAG, "Largest free block: %lu",
