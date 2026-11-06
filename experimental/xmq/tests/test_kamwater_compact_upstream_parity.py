@@ -111,9 +111,53 @@ def main():
         print(f"PARTIAL_PASS kamwater #{number}: 6 source compact "
               "status/duration fields with TPL79 CRC gate")
     assert status_checks==18
+    # Original Kamwater #7 uses modern cold-water status (04FF23);
+    # its TPL79 CRC references the independently validated preceding
+    # full #6 clear application, not the reconstructed current records.
+    entry=entries[6]
+    wire=bytes.fromhex("".join(values(entry,"telegram")[0].
+                                replace("|","").replace("_","").split()))
+    assert wire[10]==0x8D and wire[19]==0x79
+    reference_application=bytes.fromhex(
+        values(entries[5],"telegram")[0].split("_",1)[1])
+    expected=json.loads(values(entry,"json")[0])
+    cmd=[sys.argv[1],"kamwater_compact_status_ref",
+         wire[19:].hex(),reference_application.hex()]
+    result=subprocess.run(cmd,capture_output=True,text=True)
+    assert result.returncode==0, (
+        f"kamwater #7: modern compact status rejected; exit {result.returncode}")
+    actual={}
+    for line in result.stdout.splitlines():
+        key,sep,val=line.partition("=")
+        assert sep and key not in actual
+        actual[key]=val
+    modern_fields=("status","time_dry","time_reversed",
+                   "time_leaking","time_bursting","time_flow_above_q4",
+                   "time_low_ambient_temperature")
+    assert set(actual)==set(modern_fields)
+    for field in modern_fields:
+        assert actual[field]==expected[field], (
+            f"kamwater #7 {field}: native={actual[field]!r}, "
+            f"upstream={expected[field]!r}")
+    # Data-CRC corruption and an unrelated/unverified full reference
+    # must produce no output. This is a host fixture, not RF trust.
+    bad_compact=bytearray(wire[19:])
+    bad_compact[3]^=1
+    altered_reference=bytearray(reference_application)
+    altered_reference[-1]^=1
+    for bad in (
+        [sys.argv[1],"kamwater_compact_status_ref",
+         bad_compact.hex(),reference_application.hex()],
+        [sys.argv[1],"kamwater_compact_status_ref",
+         wire[19:].hex(),altered_reference.hex()],
+    ):
+        rejected=subprocess.run(bad,capture_output=True,text=True)
+        assert rejected.returncode!=0 and not rejected.stdout
+    print("PARTIAL_PASS kamwater #7: 7 original modern compact status "
+          "fields with full-reference CRC admission")
     assert checks==8
     print("PASS compact subset: 4 original TPL79 volume applications "
-          "and 3 status applications; 26 original JSON field comparisons. "
+          "and 4 status applications; 33 original JSON field comparisons. "
           "#7 verified against preceding full application #6. "
           "Not authenticated RF/full parity.")
 if __name__=="__main__":
