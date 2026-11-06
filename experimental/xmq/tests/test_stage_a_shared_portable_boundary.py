@@ -44,5 +44,27 @@ for name, symbol in (
 assert "kw_status.status != \"DRY\"" in cpp
 assert 'field.name=="max_flow_last_day_m3h"' in cpp
 assert 'field.name=="min_flow_temperature_last_day_c"' in cpp
-print("PASS stage A: same Apator162 plus Kamwater status/numeric parsers for host and ESP-IDF, "
+# Stage A consolidation: both limited transport-aware host helpers now share
+# one native C++ source; neither is wired to the live receiver dispatcher.
+for name, function in (
+    ("kamwater_tpl_status_semantics.h", "decode_clear_short_tpl("),
+    ("minomess_wired_frame.h", "inline Status decode("),
+):
+    impl=root/"components/wmbus_native_sx126x"/name
+    compat=root/"experimental/semtech-radio/host_only"/name
+    impl_txt=impl.read_text(encoding="utf-8")
+    compat_txt=compat.read_text(encoding="utf-8")
+    assert function in impl_txt, name
+    assert f'#include "../../../components/wmbus_native_sx126x/{name}"' in compat_txt
+    assert function not in compat_txt, "duplicate algorithm in host alias"
+    assert f'#include "{name}"' in cpp, "ESP-IDF probe missing shared code"
+native_runtime=(root/"components/wmbus_native_sx126x/native_receiver_probe.cpp").read_text(encoding="utf-8")
+native_catalog=(root/"components/wmbus_native_sx126x/xmq_decode_catalog.h").read_text(encoding="utf-8")
+assert "kamwater::tpl_status::decode_clear_short_tpl" not in native_runtime
+assert "minomess::wired::decode" not in native_runtime
+assert '"kamwater"' not in native_catalog.split("enum class PureDecodeStatus")[1]
+assert '"minomess"' not in native_catalog.split("enum class PureDecodeStatus")[1]
+assert "kw_tpl.status!=\"DRY ERROR\"" in cpp
+assert "wired_reading.gateway_rssi_dbm!=-86" in cpp
+print("PASS stage A: same Apator162, Kamwater status/numeric/TPL and wired Minomess algorithms for host and ESP-IDF, "
       "pending driver remains unavailable for live YAML and RF publication")
