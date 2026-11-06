@@ -81,6 +81,23 @@ observed on ESP-IDF hardware (or an equivalent validated target
 runner). Neither these public fixtures nor the mbedTLS test
 implementation are wired to live radio/sensor publication.
 
+## Latest ESP-IDF probe milestone (owner-confirmed build green)
+
+The owner confirmed green CI after adding original public
+`kamwater #9/#10` valid/invalid mbedTLS vectors to the isolated
+ESP-IDF test application. Their assertions are compiled/linked but
+**not run on the Heltec** by GitHub Actions.
+
+A subsequent, **CI-pending** negative-test increment also checks:
+incorrect configured meter identity, incorrect fixture key, and a
+one-byte changed CCM authentication tag. Each case must return
+`BadTag` and leave no clear application, status or previous
+counter. The structural guard checks those cases stay included.
+
+This still is not an ESP-IDF *executed* positive fixture test,
+a live native receiver admission path, or permission to promote
+`minomess`, `kamwater`, `apator162`.
+
 ## Strict remaining Stage B acceptance gates
 
 1. **Per-driver production-equivalent replay:** verify complete T1/C1
