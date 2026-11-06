@@ -75,6 +75,26 @@ replay/duplicate policy, key provisioning, actual ESP32-S3 runtime
 execution, nor recorded wireless RF evidence. CI for this new factoring
 is pending. It must not be described as an enabled live Kamwater driver.
 
+## Transactional configured Kamwater field mapping — CI pending
+
+New experimental `espidf_cpp_probe/main/kamwater_configured_fields.h`
+composes the reusable configured format-B DLL + AES-CCM mbedTLS ingress,
+the existing bounded Kamwater DIF/VIF measurement parser, the opaque
+acoustic diagnostic parser, and the reviewed original #10 status mapping.
+The result is a single all-or-nothing *in-memory* structure containing
+`total_m3`, `target_m3`, `status`, `accoustic_noise` and an
+authenticated transport counter. No intermediate values are published;
+failed frame/CCM/identity/application validation clears the entire
+result. The executed Linux mbedTLS fixture test compares all four
+positive #10 fields and checks no stale mapped output after original #9,
+a corrupted DLL, unsupported CI or mismatched configured ID. **Pending
+GitHub CI confirmation**.
+
+This is an **adapter boundary only**. The file has no Home Assistant
+sensors, no radio dispatcher hook, and no storage/replay policy. The
+counter is diagnostic only. Do not enable Kamwater, Minomess or
+Apator162 in the live manifest on these results.
+
 ## Source-fixture parity: narrow substage ready for CI
 
 Original public `wmbusmeters` XMQ fixtures from the unchanged imported
