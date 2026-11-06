@@ -89,5 +89,15 @@ Result store(const uint8_t *bytes,size_t length,
   return error(Status::Ok,ESP_OK,checkpoint::Status::Ok);
 }
 
-const char *backend_name() { return "NVS probe linked; inactive"; }
+const char *backend_name() {
+  // Volatile function-pointer anchors keep BOTH real NVS load/store
+  // implementations in the ESP-IDF link without EVER invoking them.
+  using LoadFn=Result (*)(Session &,const Meter &,uint32_t);
+  using StoreFn=Result (*)(const uint8_t *,size_t,const Meter &,uint32_t);
+  static LoadFn volatile linked_load=&load;
+  static StoreFn volatile linked_store=&store;
+  (void) linked_load;
+  (void) linked_store;
+  return "NVS probe linked; inactive";
+}
 }}} // namespace xmq_portable::kamwater::nvs_probe
