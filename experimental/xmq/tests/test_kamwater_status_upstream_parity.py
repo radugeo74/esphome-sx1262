@@ -58,6 +58,6 @@ def main():
         print(f"PARTIAL_PASS kamwater #{i}: {len(fields)} original "
               "status/duration fields")
     assert total==40
-    print(f"PASS 6 Kamwater original status/duration applications; 
+    print("PASS 6 Kamwater original status/duration applications; "
           f"{total} extra JSON field comparisons. No RF publication.")
 if __name__=="__main__": main()
