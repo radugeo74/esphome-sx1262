@@ -4,6 +4,27 @@ Updated 2026-11-06 for branch `experimental/xmq-multidriver-auto`.
 This is an evidence ledger, not a release approval. The 177/181 source-field and executable host mbedTLS CCM regression
 calups were owner-confirmed green. New header-negative coverage is pending CI.
 
+## Latest verified checkpoint — 2026-11-06
+
+Owner-confirmed GitHub Actions green through `7e89dec` on
+`experimental/xmq-multidriver-auto`: all **177 positive** upstream
+JSON functional field occurrences have independent partial compiled-host
+comparisons; four fields in invalid authenticated `kamwater #9` remain
+correctly rejected. Executed Linux mbedTLS original #9/#10 cryptographic
+regressions, Kamwater original #10 four-field host synthetic-DLL replay,
+Apator162 #19 original CBC sample with synthetic format-B DLL/CRC,
+and Minomess #1/#2 *wired M-Bus* original JSON and configured-ID gate
+are green. No claim of an authentic full wireless RF fixture or
+execution of ESP-IDF `app_main` on hardware.
+
+**Laboratory source-field comparison substage CLOSED; Stage B
+full-driver production admission OPEN**. The unchanged parity ledger
+correctly reports 0/39 complete production-equivalent replays and
+0/3 approved live batch-2 drivers. Previous sections below preserve
+historical intermediate checkpoint descriptions and their old
+"CI pending" wording; this latest checkpoint supersedes those
+dated statements.
+
 ## Source-fixture parity: narrow substage ready for CI
 
 Original public `wmbusmeters` XMQ fixtures from the unchanged imported
