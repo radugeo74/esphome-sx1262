@@ -113,5 +113,48 @@ int main() {
   assert(decode_verified_dll(bad.data(),bad.size(),
                              wmbus_pure::CrcFrameFormat::B,expected,out)
          ==IngressStatus::DllRejected);
+  // Stateful publication safety: after a good telegram, independently
+  // reject each compromised frame and clear ALL candidate measurements.
+  // The caller must not be able to publish stale total/target/status.
+  auto fresh_then_reject = [&](const std::vector<uint8_t> &untrusted,
+                               IngressStatus rejection) {
+    if (decode_verified_dll(frame.data(),frame.size(),
+                            wmbus_pure::CrcFrameFormat::B,expected,out)
+            != IngressStatus::Ok ||
+        !out.reading.has_target || !out.reading.has_status ||
+        out.reading.total_m3 <= 0.0)
+      return false;
+    return decode_verified_dll(untrusted.data(),untrusted.size(),
+                               wmbus_pure::CrcFrameFormat::B,expected,out)
+               == rejection &&
+           out.profile_index == -1 && out.reading.total_m3 == 0.0 &&
+           !out.reading.has_target && out.reading.target_m3 == 0.0 &&
+           !out.reading.has_status && out.reading.status_bits == 0;
+  };
+  auto tampered=frame;
+  tampered[4]^=1;  // broken DLL CRC
+  assert(fresh_then_reject(tampered,IngressStatus::DllRejected));
+  tampered=frame;
+  tampered[4]^=1;renew_dll_crc(tampered);  // valid CRC, wrong configured ID
+  assert(fresh_then_reject(tampered,IngressStatus::IdentityMismatch));
+  tampered=frame;
+  tampered[10]=0x8C;renew_dll_crc(tampered);  // unsupported ELL CI
+  assert(fresh_then_reject(tampered,IngressStatus::WrongCi));
+  tampered=frame;
+  tampered[17]^=1;renew_dll_crc(tampered);  // invalid ELL integrity
+  assert(fresh_then_reject(tampered,IngressStatus::ClearPipelineRejected));
+  tampered=frame;
+  tampered[16]=0x20;renew_dll_crc(tampered);  // encrypted, not proven clear
+  assert(fresh_then_reject(tampered,IngressStatus::ClearPipelineRejected));
+  tampered=frame;
+  tampered[22]^=1;  // compact CRC fails despite recomputed ELL + DLL CRC
+  const uint16_t ecrc2=signature::crc16_en13757(
+      tampered.data()+19,tampered.size()-21);
+  tampered[17]=static_cast<uint8_t>(ecrc2);
+  tampered[18]=static_cast<uint8_t>(ecrc2>>8);
+  renew_dll_crc(tampered);
+  assert(fresh_then_reject(tampered,IngressStatus::ClearPipelineRejected));
+  tampered=frame;tampered.pop_back();  // truncated DLL
+  assert(fresh_then_reject(tampered,IngressStatus::DllRejected));
   return 0;
 }
