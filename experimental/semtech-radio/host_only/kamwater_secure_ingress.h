@@ -39,7 +39,7 @@ inline Status decode(const uint8_t *raw,size_t raw_length,
   if(len<14) return Status::UnsupportedTransport;
   Reading measured{};
   int profile=-1;
-  std::string authenticated_status{};
+  std::string status_text{};
   std::string acoustic_noise{};
   if(verified.header.ci==0x8D) {
     // ELL II AES-CTR: encrypted payload CRC and application begin at index 17.
@@ -74,7 +74,7 @@ inline Status decode(const uint8_t *raw,size_t raw_length,
     // of the source JSON contract; never derive them from unauthenticated
     // TPL or return partial fields on unsupported status/records.
     if(authenticated_status::decode_original_ccm_status(
-           clear.tpl_status,authenticated_status)!=
+           clear.tpl_status,status_text)!=
        authenticated_status::Status::Ok)
       return Status::ApplicationRejected;
     numeric_semantics::Reading diagnostic{};
@@ -87,7 +87,7 @@ inline Status decode(const uint8_t *raw,size_t raw_length,
   } else return Status::UnsupportedTransport;
   out.reading=measured;
   out.profile_index=profile;
-  out.authenticated_status=std::move(authenticated_status);
+  out.authenticated_status=std::move(status_text);
   out.acoustic_noise=std::move(acoustic_noise);
   return Status::Ok;
 }
