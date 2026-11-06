@@ -1,0 +1,77 @@
+// Executable HOST mbedTLS parity for the exact ESP-IDF probe implementation.
+// This runs real CMAC/CCM crypto, unlike the build-only ESP-IDF app_main.
+// It does NOT prove ESP32-S3 execution or authorize live RF driver admission.
+#include <array>
+#include <cstdint>
+#include <cstring>
+#include <iostream>
+#include "main/oms_ccm_mbedtls_probe.h"
+#include "main/kamwater_ccm_original_fixtures.h"
+
+using xmq_portable::oms_ccm_idf_probe::Output;
+using xmq_portable::oms_ccm_idf_probe::Status;
+using xmq_portable::oms_ccm_idf_probe::decode_short_tpl;
+using xmq_portable::oms_ccm_idf_probe::fixtures::decode_hex;
+
+static bool cleared(const Output &out) {
+  return out.clear_application.empty() && out.tpl_status == 0 &&
+         out.counter == 0;
+}
+
+int main() {
+  const uint8_t manufacturer[2] = {0x37, 0x2C};
+  const uint8_t meter_id[4] = {0x06, 0x03, 0x82, 0x53};
+  const uint8_t key[16] = {
+      0xBF, 0x90, 0x2D, 0xD6, 0xDF, 0xAD, 0xAF, 0xE8,
+      0x3E, 0x4A, 0xE6, 0x83, 0x2B, 0x5F, 0xA1, 0x4C};
+  std::array<uint8_t, 57> valid{}, invalid{};
+  std::array<uint8_t, 38> expected{};
+  using namespace xmq_portable::oms_ccm_idf_probe::fixtures;
+  if (!decode_hex(valid_tpl, valid.data(), valid.size()) ||
+      !decode_hex(invalid_tpl, invalid.data(), invalid.size()) ||
+      !decode_hex(expected_clear, expected.data(), expected.size()))
+    return 1;
+
+  Output out{};
+  auto good = [&]() -> bool {
+    return decode_short_tpl(manufacturer, meter_id, 0x3C, 0x16, key,
+                            valid.data(), valid.size(), out) == Status::Ok &&
+           out.clear_application.size() == expected.size() &&
+           std::memcmp(out.clear_application.data(), expected.data(),
+                       expected.size()) == 0 &&
+           out.tpl_status == 0x10 && out.counter == 0x000E578Cu;
+  };
+  if (!good()) return 2;
+  // The original #9 has a corrupt CCM tag; never publish its JSON readings.
+  if (decode_short_tpl(manufacturer, meter_id, 0x3C, 0x16, key,
+                       invalid.data(), invalid.size(), out) != Status::BadTag ||
+      !cleared(out)) return 3;
+
+  uint8_t wrong_id[4];
+  std::memcpy(wrong_id, meter_id, sizeof(wrong_id));
+  wrong_id[0] ^= 1;
+  if (!good() ||
+      decode_short_tpl(manufacturer, wrong_id, 0x3C, 0x16, key,
+                       valid.data(), valid.size(), out) != Status::BadTag ||
+      !cleared(out)) return 4;
+
+  uint8_t wrong_key[16];
+  std::memcpy(wrong_key, key, sizeof(wrong_key));
+  wrong_key[0] ^= 1;
+  if (!good() ||
+      decode_short_tpl(manufacturer, meter_id, 0x3C, 0x16, wrong_key,
+                       valid.data(), valid.size(), out) != Status::BadTag ||
+      !cleared(out)) return 5;
+
+  auto tampered = valid;
+  tampered.back() ^= 1;
+  if (!good() ||
+      decode_short_tpl(manufacturer, meter_id, 0x3C, 0x16, key,
+                       tampered.data(), tampered.size(), out) != Status::BadTag ||
+      !cleared(out)) return 6;
+
+  std::cout << "PASS host mbedTLS: original Kamwater #10 exact authenticated "
+               "38-byte payload; #9 bad tag and wrong identity/key/tag "
+               "reject with no stale outputs. NOT ESP32-S3 runtime.\\n";
+  return 0;
+}
