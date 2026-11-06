@@ -42,14 +42,29 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 
 ## Stage B CI checkpoint — 2026-11-06
 
-The owner confirmed green through commit `7e89dec`, including Minomess
-wired configured-identity compilation fix and the preceding Kamwater/
-Apator162 host regression calups. The **source-field laboratory substage
-is complete**; full stage B driver acceptance has **not** passed. Do
-not turn an upstream fixture ledger's `NOT_RUN` into a complete parity
-`PASS` without an actual production-equivalent configured full replay.
-ESP-IDF compile/link and Linux mbedTLS execution must be distinguished
-from execution on physical ESP32-S3.
+**Last owner-confirmed CI green:** through `d24c2b4`, including
+the Kamwater original #10 configured format-B synthetic-DLL replay with
+the actual mbedTLS CCM probe, transactional four-field decoding and
+mapping of `total_m3`, `target_m3`, `status`, plus diagnostic
+`accoustic_noise`. This is host CI, not on-device RF/sensor parity.
+The source-field laboratory substage remains CLOSED at 177/177 positive
+fields, with original invalid-tag Kamwater #9 deliberately rejected.
+
+**Current new change, CI PENDING:** `kamwater_replay_gate.h` stages
+the authenticated original #10 only once per single meter-bound monotonic
+CCM counter. Same/older counters, invalid frames and wrong meter identity
+must produce an empty plan without advancing the remembered counter.
+`kamwater_sensor_mapping.h` now owns its text values, preventing
+temporary `c_str()` dangling pointers. Executable CI covers original
+#10/#9 and simulated lower/higher counter-state boundaries. Last
+documentation commit `f0209bf`; see
+`experimental/xmq/STAGE_B_GATE_STATUS.md`.
+
+This is **host-only RAM state**, not persistent replay protection across
+ESP32-S3 reboots and **not sensor publication**. No new drivers are
+in `SUPPORTED`; 0/39 full production-equivalent replays approved,
+0/3 batch-2 driver admissions. Do not enable or flash these drivers
+on green host tests alone.
 
 ## Next developer workflow
 
