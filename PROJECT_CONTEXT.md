@@ -30,26 +30,26 @@ The shared-source C++ application/structural algorithms are located at:
 
 See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits. ESP-IDF CI builds/links the portable probe; compiling `app_main` does not mean its assertions ran on physical hardware. No production firmware was flashed for Stage A.
 
-## Stage B — original fixture parity in progress, not live driver approval
+## Stage B — source-field laboratory coverage complete; full-driver admission OPEN
 
-- Original *public* XMQ test inventory: **39 cases** total (`minomess` 6, `kamwater` 14, `apator162` 19), expected **181 functional JSON field occurrences**. Evidence is derived from compiled host C++ decoders and original expected JSON, not from fabricated output.
-- **Last owner-confirmed green:** **168/181 partial field comparisons**. A later Stage B calup proposed **176/181** (`kamwater #7` modern compact status and `#13` target-only volume), without a separately confirmed green. The newest host-only authenticated CCM `#10` status test proposes **177/181**, likewise **CI pending**. This consists of 177 positive source-field comparisons plus four fields of intentionally rejected `kamwater #9`; **it does not finish Stage B full-driver acceptance**. See `experimental/xmq/STAGE_B_GATE_STATUS.md`. Verify the actual run before updating the confirmed milestone.
-- The remaining **five** positive-field gaps at 176/181: four fields in original `kamwater #9`, whose CCM authentication is intentionally rejected, plus `kamwater #10` `status` from the valid encrypted source fixture. Do **not** count invalid authenticated data as a decoded success. A high percentage of independently checked fields is **not** full-frame, per-driver or firmware parity.
-- Key project tests: `experimental/xmq/tests/test_batch2_clear_fixture_parity.py`, `test_kamwater_compact_upstream_parity.py`, `test_kamwater_tpl_status_upstream_parity.py`, `test_kamwater_status_upstream_parity.py`, `test_batch2_field_gap_audit.py`, plus host cryptographic regressions, native admission/isolation guards, generated-rule tests and `.github/workflows/native-sx126x-adapter.yml`.
-- Security/transport work remains: exact verified meter identity, complete DLL/T1/C1 CRC and length admission, supported ELL/TPL security mode and key handling, authenticated CCM tags where applicable, secure profile/provenance for compact templates, replay considerations, transactional fail-closed output and parity of the complete configured frame -> sensor chain. **CRC is not cryptographic authentication**; AES-CBC mode 5 plaintext markers are not authentication either.
-- **Do not promote `minomess`, `kamwater` or `apator162` to the live manifest, YAML, or firmware while these gates remain incomplete.** No unrequested flashing.
+- **Last owner-confirmed green (2026-11-06): 177/177 positive functional JSON fields** across the original 39 upstream fixture cases (`minomess` 6, `kamwater` 14, `apator162` 19). The original JSON contains 181 field occurrences; the other **four** belong to `kamwater #9` with an invalid CCM tag and must remain deliberately rejected, not counted as successful decoded measurements. These are individually demonstrated host-side comparisons, **not 39 full replay passes**.
+- Original `kamwater #10`: host OpenSSL secure ingress checks the configured DLL identity and a synthetic format-B CRC envelope around the original authenticated encrypted payload, and compares `total_m3`, `target_m3`, `status=TEMPORARY_ERROR`, `accoustic_noise=FFFFFFFFFFFF`. Public bad-tag #9 and stale-output regressions reject. The same mbedTLS CCM implementation compiled for ESP-IDF has **executed host Linux CI** verifying original #9/#10 and malformed input. This does not execute `app_main` on the Heltec.
+- Original `apator162 #19`: AES-CBC mode-5 host decrypt plus original `total_m3=7.512` with a **synthetic** wireless format-B DLL/CRC envelope, identity mismatch and CRC rejection (green). CBC and `2F2F` are not authentication.
+- Original `minomess #1/#2`: complete **wired M-Bus**, not wireless T1/C1. All 13 source JSON comparisons and M-Bus length/checksum plus independently configured eight-digit meter BCD identity gate and its negative cases are owner-confirmed green as of latest `7e89dec`. Remaining `minomess #3..#6` are original already-clear/post-decrypted RF application tests, not full secured RF replay.
+- The actual native `wmbus_pure::publication::inspect` was tested against a synthetic clear Kamwater ELL/compact frame and **blocks CI=0x8D** (`UnsupportedTransport`) despite successful host-only decoding. No experimental driver is registered as live.
+- **Still OPEN — no false promotion:** 0/39 approved production-equivalent complete frame-to-Home-Assistant sensor replays; 0/3 batch-2 drivers admitted. Pending: authentic complete T1/C1 frames and decryption/provenance for all needed modes, strict real identity/link-mode and replay policies, ESP-IDF/runtime execution where necessary, transactional sensor mapping and separately authorized Heltec canary/rollback. See `experimental/xmq/STAGE_B_GATE_STATUS.md` for the precise acceptance gate.
+- Keep `BATCH2_PENDING = ("minomess", "kamwater", "apator162")` excluded from `SUPPORTED`, YAML driver selection and native publishing. Do **not** flash, modify installed YAML, or alter established `fhkvdataiii`/`mkradio4` behavior without explicit authorization.
 
 ## Stage B CI checkpoint — 2026-11-06
 
-The owner confirmed 177/181 positive *partial* source-field comparisons
-and green CI for the isolated mbedTLS compile probe. Four nominal fields
-from the invalid CCM-tag Kamwater #9 stay negative-only, never decoded.
-
-The next calup compiles the exact public #9 and #10 fixtures into
-ESP-IDF test `app_main`; its CI is **not yet confirmed**. Even if green,
-the probe is build/link evidence only, not runtime on-device verification.
-Stage B full driver admission and all three pending drivers remain blocked.
-See `experimental/xmq/STAGE_B_GATE_STATUS.md` for strict remaining gates.
+The owner confirmed green through commit `7e89dec`, including Minomess
+wired configured-identity compilation fix and the preceding Kamwater/
+Apator162 host regression calups. The **source-field laboratory substage
+is complete**; full stage B driver acceptance has **not** passed. Do
+not turn an upstream fixture ledger's `NOT_RUN` into a complete parity
+`PASS` without an actual production-equivalent configured full replay.
+ESP-IDF compile/link and Linux mbedTLS execution must be distinguished
+from execution on physical ESP32-S3.
 
 ## Next developer workflow
 
