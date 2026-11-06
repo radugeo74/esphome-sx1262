@@ -6,6 +6,8 @@
 #include "host_only/kamwater_numeric_semantics.h"
 #include "host_only/kamwater_authenticated_tpl_status.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
+#include "host_only/kamwater_secure_ingress.h"
+#include "components/wmbus_radio/pure_complete_frame.h"
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -95,6 +97,55 @@ int main() {
                           wrong_key.data(),valid.data(),valid.size(),
                           out)==CcmStatus::BadTag);
   assert(out.clear_application.empty() && out.counter==0 && out.tpl_status==0);
+
+  // Integrated HOST-ONLY synthetic format-B framing around the exact
+  // upstream #9/#10 ELL I + original TPL ciphertext. This adds DLL CRC
+  // and identity admission; it is NOT a recorded RF frame or ESP-IDF crypto.
+  // The ten-byte DLL identity and 8C 20 30 ELL I header come from source.
+  auto wrap_original_tpl=[](const std::vector<uint8_t> &tpl) {
+    std::vector<uint8_t> frame={
+      0,0x44,0x37,0x2C,0x06,0x03,0x82,0x53,0x3C,0x16,
+      0x8C,0x20,0x30
+    };
+    frame.insert(frame.end(),tpl.begin(),tpl.end());
+    frame[0]=static_cast<uint8_t>(frame.size()+1u);
+    const uint16_t crc=wmbus_pure::crc16_en13757(frame.data(),frame.size());
+    frame.push_back(static_cast<uint8_t>(crc>>8));
+    frame.push_back(static_cast<uint8_t>(crc));
+    return frame;
+  };
+  const auto full_valid=wrap_original_tpl(valid);
+  const auto full_invalid=wrap_original_tpl(invalid);
+  using xmq_portable::kamwater::secure_ingress::decode;
+  using IntegratedStatus=xmq_portable::kamwater::secure_ingress::Status;
+  const xmq_portable::kamwater::ingress::ExpectedMeter configured{
+      0x2C37,53820306u,0x3C,0x16};
+  xmq_portable::kamwater::secure_ingress::Output integrated{};
+  assert(decode(full_valid.data(),full_valid.size(),
+                wmbus_pure::CrcFrameFormat::B,configured,
+                public_fixture_key,integrated)==IntegratedStatus::Ok);
+  assert(std::fabs(integrated.reading.total_m3)<1e-9);
+  assert(integrated.reading.has_target);
+  assert(std::fabs(integrated.reading.target_m3)<1e-9);
+  assert(integrated.profile_index==-1);
+  // Preserve a previous successful output deliberately: rejection must
+  // clear it transactionally rather than showing stale sensor values.
+  assert(decode(full_invalid.data(),full_invalid.size(),
+                wmbus_pure::CrcFrameFormat::B,configured,
+                public_fixture_key,integrated)==IntegratedStatus::CryptoRejected);
+  assert(!integrated.reading.has_target && integrated.profile_index==-1);
+  auto tampered_full=full_valid;
+  tampered_full[5]^=1;  // DLL data corruption without recomputed CRC
+  assert(decode(tampered_full.data(),tampered_full.size(),
+                wmbus_pure::CrcFrameFormat::B,configured,
+                public_fixture_key,integrated)==IntegratedStatus::DllRejected);
+  assert(!integrated.reading.has_target);
+  auto wrong_meter=configured;
+  wrong_meter.meter_id^=1u;
+  assert(decode(full_valid.data(),full_valid.size(),
+                wmbus_pure::CrcFrameFormat::B,wrong_meter,
+                public_fixture_key,integrated)==IntegratedStatus::IdentityMismatch);
+  assert(!integrated.reading.has_target);
   // Correct original tag is insufficient with wrong configured identity.
   auto wrong_id=std::vector<uint8_t>(id,id+sizeof(id));
   wrong_id[0]^=1;
