@@ -641,7 +641,7 @@ The same test suite now compares **Kamwater #3 `total_m3`**
 directly from its original clear application against source JSON,
 instead of crediting a volume that had not been asserted. Test
 inventory expands from seven to eight clear-application examples
-and from 22 to 27 assertions, including the absence assertions
+and from 22 to 28 assertions, including the absence assertions
 that are not source JSON keys.
 
 This adds **five uniquely verified source JSON fields**, pending CI,
