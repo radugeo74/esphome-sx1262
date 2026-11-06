@@ -5,6 +5,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <string>
+#include "kamwater_authenticated_tpl_status.h"
+#include "kamwater_numeric_semantics.h"
 #include "kamwater_verified_dll_ingress.h"
 #include "kamwater_ell_ctr_openssl.h"
 #include "oms_tpl_ccm_openssl.h"
@@ -16,6 +19,8 @@ enum class Status : uint8_t {
 struct Output {
   Reading reading{};
   int profile_index{-1};
+  std::string authenticated_status{};
+  std::string acoustic_noise{};
 };
 inline Status decode(const uint8_t *raw,size_t raw_length,
                      wmbus_pure::CrcFrameFormat format,
@@ -34,6 +39,8 @@ inline Status decode(const uint8_t *raw,size_t raw_length,
   if(len<14) return Status::UnsupportedTransport;
   Reading measured{};
   int profile=-1;
+  std::string authenticated_status{};
+  std::string acoustic_noise{};
   if(verified.header.ci==0x8D) {
     // ELL II AES-CTR: encrypted payload CRC and application begin at index 17.
     std::vector<uint8_t> tpl{};
@@ -63,9 +70,25 @@ inline Status decode(const uint8_t *raw,size_t raw_length,
     if(decode_clear_records(clear.clear_application.data(),
                             clear.clear_application.size(),measured)!=
        kamwater::Status::Ok) return Status::ApplicationRejected;
+    // Original authenticated #10 status and opaque diagnostic are part
+    // of the source JSON contract; never derive them from unauthenticated
+    // TPL or return partial fields on unsupported status/records.
+    if(authenticated_status::decode_original_ccm_status(
+           clear.tpl_status,authenticated_status)!=
+       authenticated_status::Status::Ok)
+      return Status::ApplicationRejected;
+    numeric_semantics::Reading diagnostic{};
+    if(numeric_semantics::decode(clear.clear_application.data(),
+                                 clear.clear_application.size(),diagnostic)!=
+           numeric_semantics::Status::Ok ||
+       !diagnostic.has_acoustic_noise)
+      return Status::ApplicationRejected;
+    acoustic_noise=diagnostic.acoustic_noise;
   } else return Status::UnsupportedTransport;
   out.reading=measured;
   out.profile_index=profile;
+  out.authenticated_status=std::move(authenticated_status);
+  out.acoustic_noise=std::move(acoustic_noise);
   return Status::Ok;
 }
 }}} // namespace xmq_portable::kamwater::secure_ingress
