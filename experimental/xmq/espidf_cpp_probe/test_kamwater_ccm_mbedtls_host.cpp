@@ -180,71 +180,117 @@ int main() {
   if(mapping::stage(invalid_reading,plan)!=mapping::Status::InvalidReading ||
      plan.number_count!=0 || plan.text_count!=0)
     return 36;
-  // This is the same authenticated public #10 frame, not a fabricated
-  // crypto counter. First accepted event stages all values and stores its
-  // counter only AFTER field mapping; the exact replay is rejected.
+  // Two-phase replay gate: preparation does NOT mark a CCM counter used.
+  // Even a well-formed mapped plan may be abandoned before delivery.
   namespace replay=xmq_portable::kamwater::replay_gate;
   replay::State counter_state{};
-  mapping::Plan once{};
-  if(replay::stage_once(full_valid.data(),full_valid.size(),
-                        configured,key,counter_state,once)!=replay::Status::Ok ||
+  replay::Prepared prepared{};
+  if(replay::prepare(full_valid.data(),full_valid.size(),
+                     configured,key,counter_state,prepared)!=replay::Status::Ok ||
+     !prepared.ready || counter_state.initialized ||
+     prepared.counter!=0x000E578Cu ||
+     prepared.plan.number_count!=2 || prepared.plan.text_count!=1 ||
+     prepared.plan.texts[0].value!="TEMPORARY_ERROR")
+    return 37;
+  const auto saved_plan=prepared.plan;
+  replay::discard(prepared); // Not delivered; same telegram can be retried.
+  if(prepared.ready || prepared.plan.number_count!=0 ||
+     counter_state.initialized ||
+     saved_plan.texts[0].value!="TEMPORARY_ERROR")
+    return 38;
+  int sink_calls=0;
+  const auto sink_failed=[&](const mapping::Plan &candidate) {
+    ++sink_calls;
+    return candidate.number_count!=2; // force simulated delivery failure
+  };
+  if(replay::deliver_once(full_valid.data(),full_valid.size(),
+                          configured,key,counter_state,sink_failed)!=
+        replay::Status::DeliveryFailed ||
+     counter_state.initialized || sink_calls!=1)
+    return 39;
+  int successful_deliveries=0;
+  const auto sink_ok=[&](const mapping::Plan &candidate) {
+    ++successful_deliveries;
+    return candidate.number_count==2 && candidate.text_count==1 &&
+           candidate.texts[0].value=="TEMPORARY_ERROR";
+  };
+  if(replay::deliver_once(full_valid.data(),full_valid.size(),
+                          configured,key,counter_state,sink_ok)!=
+        replay::Status::Ok ||
      !counter_state.initialized ||
      counter_state.highest_counter!=0x000E578Cu ||
-     once.number_count!=2 || once.text_count!=1 ||
-     once.texts[0].value!="TEMPORARY_ERROR")
-    return 37;
-  // Own the staged text; it remains valid after the temporary decoded
-  // Reading used by stage_once() has already been destroyed.
-  const auto saved_plan=once;
-  if(saved_plan.texts[0].value!="TEMPORARY_ERROR") return 38;
-  if(replay::stage_once(full_valid.data(),full_valid.size(),
-                        configured,key,counter_state,once)!=
-        replay::Status::DuplicateOrStale ||
-     once.number_count!=0 || once.text_count!=0 ||
-     counter_state.highest_counter!=0x000E578Cu)
-    return 39;
-  // Invalid authentication and malformed DLL must not move the counter.
-  if(replay::stage_once(full_invalid.data(),full_invalid.size(),
-                        configured,key,counter_state,once)!=
-        replay::Status::DecodeRejected ||
-     once.number_count!=0 || once.text_count!=0 ||
-     counter_state.highest_counter!=0x000E578Cu)
+     successful_deliveries!=1)
     return 40;
-  damaged=full_valid; damaged[5]^=1;
-  if(replay::stage_once(damaged.data(),damaged.size(),
-                        configured,key,counter_state,once)!=
-        replay::Status::DecodeRejected ||
-     once.number_count!=0 || once.text_count!=0 ||
+  // Duplicate and rejected cryptographic inputs must never call the sink.
+  if(replay::deliver_once(full_valid.data(),full_valid.size(),
+                          configured,key,counter_state,sink_ok)!=
+        replay::Status::DuplicateOrStale ||
+     successful_deliveries!=1 ||
      counter_state.highest_counter!=0x000E578Cu)
     return 41;
-  if(replay::stage_once(full_valid.data(),full_valid.size(),
-                        wrong_configured,key,counter_state,once)!=
-        replay::Status::IdentityChanged ||
-     once.number_count!=0 || once.text_count!=0 ||
+  if(replay::deliver_once(full_invalid.data(),full_invalid.size(),
+                          configured,key,counter_state,sink_ok)!=
+        replay::Status::DecodeRejected ||
+     successful_deliveries!=1 ||
      counter_state.highest_counter!=0x000E578Cu)
     return 42;
-  // Synthetic state boundaries validate monotonic semantics; no fake
-  // encrypted source fixture with a changed CCM counter is claimed.
-  replay::State older_state{true,configured,0x000E578Bu};
-  if(replay::stage_once(full_valid.data(),full_valid.size(),
-                        configured,key,older_state,once)!=replay::Status::Ok ||
-     older_state.highest_counter!=0x000E578Cu ||
-     once.texts[0].value!="TEMPORARY_ERROR")
+  damaged=full_valid;
+  damaged[5]^=1;
+  if(replay::deliver_once(damaged.data(),damaged.size(),
+                          configured,key,counter_state,sink_ok)!=
+        replay::Status::DecodeRejected ||
+     successful_deliveries!=1 ||
+     counter_state.highest_counter!=0x000E578Cu)
     return 43;
+  if(replay::deliver_once(full_valid.data(),full_valid.size(),
+                          wrong_configured,key,counter_state,sink_ok)!=
+        replay::Status::IdentityChanged ||
+     successful_deliveries!=1 ||
+     counter_state.highest_counter!=0x000E578Cu)
+    return 44;
+  // For the same real authenticated fixture, previously delivered older
+  // state may advance, but newer state and counter wrap must fail closed.
+  replay::State older_state{true,configured,0x000E578Bu};
+  if(replay::deliver_once(full_valid.data(),full_valid.size(),
+                          configured,key,older_state,sink_ok)!=
+        replay::Status::Ok ||
+     older_state.highest_counter!=0x000E578Cu ||
+     successful_deliveries!=2)
+    return 45;
   replay::State newer_state{true,configured,0x000E578Du};
-  if(replay::stage_once(full_valid.data(),full_valid.size(),
-                        configured,key,newer_state,once)!=
+  if(replay::deliver_once(full_valid.data(),full_valid.size(),
+                          configured,key,newer_state,sink_ok)!=
         replay::Status::DuplicateOrStale ||
      newer_state.highest_counter!=0x000E578Du ||
-     once.number_count!=0 || once.text_count!=0)
-    return 44;
+     successful_deliveries!=2)
+    return 46;
   replay::State wrapped_state{true,configured,0xFFFFFFFFu};
-  if(replay::stage_once(full_valid.data(),full_valid.size(),
-                        configured,key,wrapped_state,once)!=
+  if(replay::deliver_once(full_valid.data(),full_valid.size(),
+                          configured,key,wrapped_state,sink_ok)!=
         replay::Status::DuplicateOrStale ||
      wrapped_state.highest_counter!=0xFFFFFFFFu ||
-     once.number_count!=0 || once.text_count!=0)
-    return 45;
+     successful_deliveries!=2)
+    return 47;
+  // Recheck at commit: two prepared candidates do not both consume the
+  // same counter, even if they were prepared against the same old state.
+  replay::State raced_state{};
+  replay::Prepared first{},second{};
+  if(replay::prepare(full_valid.data(),full_valid.size(),
+                     configured,key,raced_state,first)!=replay::Status::Ok ||
+     replay::prepare(full_valid.data(),full_valid.size(),
+                     configured,key,raced_state,second)!=replay::Status::Ok ||
+     raced_state.initialized)
+    return 48;
+  if(replay::confirm_delivery(raced_state,first)!=replay::Status::Ok ||
+     first.ready || !raced_state.initialized ||
+     raced_state.highest_counter!=0x000E578Cu ||
+     replay::confirm_delivery(raced_state,second)!=
+         replay::Status::DuplicateOrStale ||
+     second.ready || raced_state.highest_counter!=0x000E578Cu)
+    return 49;
+  if(replay::confirm_delivery(raced_state,first)!=
+        replay::Status::NotPrepared)
+    return 50;
   // Previously accepted values must NEVER survive a bad authentication,
   // a wrong configured identity, a corrupt DLL or an unsupported transport.
   if(map_frame(full_invalid)!=mapped::Status::IngressRejected ||
