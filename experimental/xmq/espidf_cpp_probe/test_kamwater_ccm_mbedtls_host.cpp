@@ -13,6 +13,7 @@
 #include "../../../components/wmbus_native_sx126x/kamwater_numeric_semantics.h"
 #include "main/oms_ccm_mbedtls_probe.h"
 #include "main/oms_ccm_verified_ingress.h"
+#include "main/kamwater_configured_fields.h"
 #include "main/kamwater_ccm_original_fixtures.h"
 
 using xmq_portable::oms_ccm_idf_probe::Output;
@@ -131,6 +132,45 @@ int main() {
      !cleared(admitted)) return 25;
   if(!ingress(full_valid) || admitted.clear_application!=
        std::vector<uint8_t>(expected.begin(),expected.end())) return 24;
+  // Exact same original #10 full configured host replay now returns an
+  // all-or-nothing field set instead of raw decrypted bytes. It DOES NOT
+  // publish to sensors; this is the admission-to-mapping boundary.
+  namespace mapped=xmq_portable::kamwater::configured_fields;
+  mapped::Reading sensors{};
+  const auto map_frame=[&](const std::vector<uint8_t> &frame) {
+    return mapped::decode_format_b(frame.data(),frame.size(),
+                                   configured,key,sensors);
+  };
+  if(map_frame(full_valid)!=mapped::Status::Ok ||
+     !sensors.has_total || std::fabs(sensors.total_m3)>1e-9 ||
+     !sensors.has_target || std::fabs(sensors.target_m3)>1e-9 ||
+     sensors.status!="TEMPORARY_ERROR" ||
+     sensors.acoustic_noise!="FFFFFFFFFFFF" ||
+     sensors.authenticated_counter!=0x000E578Cu)
+    return 26;
+  // Previously accepted values must NEVER survive a bad authentication,
+  // a wrong configured identity, a corrupt DLL or an unsupported transport.
+  if(map_frame(full_invalid)!=mapped::Status::IngressRejected ||
+     sensors.has_total || sensors.has_target || !sensors.status.empty() ||
+     !sensors.acoustic_noise.empty() || sensors.authenticated_counter!=0)
+    return 27;
+  if(map_frame(full_valid)!=mapped::Status::Ok) return 28;
+  damaged=full_valid;
+  damaged[5]^=1;
+  if(map_frame(damaged)!=mapped::Status::IngressRejected ||
+     sensors.has_total || sensors.has_target || !sensors.status.empty())
+    return 29;
+  if(map_frame(full_valid)!=mapped::Status::Ok) return 30;
+  damaged=full_valid;
+  damaged[10]=0x8D;renew_crc(damaged);
+  if(map_frame(damaged)!=mapped::Status::IngressRejected ||
+     sensors.has_total || sensors.has_target || !sensors.status.empty())
+    return 31;
+  if(mapped::decode_format_b(full_valid.data(),full_valid.size(),
+                            wrong_configured,key,sensors)!=
+         mapped::Status::IngressRejected ||
+     sensors.has_total || sensors.has_target || !sensors.status.empty())
+    return 32;
   // A later bad tag must clear the authenticated transport output,
   // never leaving a buffer that downstream field decoding can consume.
   // The original #9 has a corrupt CCM tag; never publish its JSON readings.
