@@ -244,6 +244,37 @@ int main(int argc,char **argv) {
     else std::puts("target_m3=null");
     return 0;
   }
+  if(std::strcmp(argv[1],"kamwater_tpl_target")==0) {
+    // Original #13: short unencrypted TPL 7A with generic error and
+    // a storage-one target volume, without any current total record.
+    // Reuse the shared standard DIF/VIF reader, not fake a total.
+    xmq_portable::kamwater::tpl_status::Reading header{};
+    if(xmq_portable::kamwater::tpl_status::decode_clear_short_tpl(
+          bytes.data(),bytes.size(),header)
+       !=xmq_portable::kamwater::tpl_status::Status::Ok ||
+       header.status!="ERROR" || header.has_durations) return 3;
+    xmq_portable::standard::Record records[48]{};
+    size_t count=0;
+    if(xmq_portable::standard::records(bytes.data()+5,bytes.size()-5,
+                                      records,48,count)
+       !=xmq_portable::standard::Status::Ok) return 3;
+    bool found=false;
+    double target=0;
+    for(size_t i=0;i<count;++i) {
+      const auto &rec=records[i];
+      if(!rec.numeric || rec.function!=0 || rec.tariff!=0 ||
+         rec.subunit!=0 || rec.vif_extension_count!=0 ||
+         rec.vif<0x10 || rec.vif>0x17) continue;
+      // Original #13 has no current total; do not infer one.
+      if(rec.storage!=1 || found) return 3;
+      if(!xmq_portable::standard::to_canonical(rec.vif,rec.value,target)
+         || !std::isfinite(target)) return 3;
+      found=true;
+    }
+    if(!found) return 3;
+    std::printf("target_m3=%.9f\n",target);
+    return 0;
+  }
   if(std::strcmp(argv[1],"kamwater_tpl_status")==0) {
     xmq_portable::kamwater::tpl_status::Reading parsed{};
     if(xmq_portable::kamwater::tpl_status::decode_clear_short_tpl(
