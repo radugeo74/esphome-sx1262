@@ -16,6 +16,7 @@
 #include "main/kamwater_configured_fields.h"
 #include "main/kamwater_sensor_mapping.h"
 #include "main/kamwater_replay_gate.h"
+#include "main/kamwater_replay_checkpoint.h"
 #include "main/kamwater_ccm_original_fixtures.h"
 
 using xmq_portable::oms_ccm_idf_probe::Output;
@@ -291,6 +292,127 @@ int main() {
   if(replay::confirm_delivery(raced_state,first)!=
         replay::Status::NotPrepared)
     return 50;
+  // Persistent checkpoint contract (host-only mock storage). A missing
+  // checkpoint is NOT automatically reinitialized after a reboot.
+  namespace ck=xmq_portable::kamwater::checkpoint;
+  ck::Session restored{};
+  if(ck::restore(restored,nullptr,0,configured,7)!=ck::Status::Missing ||
+     restored.ready)
+    return 51;
+  replay::State trusted_baseline{true,configured,0x000E578Bu};
+  ck::Bytes disk{};
+  if(!ck::encode(trusted_baseline,7,disk) ||
+     ck::restore(restored,disk.data(),disk.size(),configured,7)!=
+         ck::Status::Ok ||
+     !restored.ready || restored.state.highest_counter!=0x000E578Bu)
+    return 52;
+  auto damaged_checkpoint=disk;
+  damaged_checkpoint[17]^=1; // changed counter, stale integrity check
+  if(ck::restore(restored,damaged_checkpoint.data(),
+                 damaged_checkpoint.size(),configured,7)!=
+         ck::Status::Corrupt || restored.ready)
+    return 53;
+  damaged_checkpoint=disk;
+  damaged_checkpoint[4]=2; // unknown format version
+  if(ck::restore(restored,damaged_checkpoint.data(),
+                 damaged_checkpoint.size(),configured,7)!=
+         ck::Status::InvalidFormat || restored.ready)
+    return 54;
+  if(ck::restore(restored,disk.data(),disk.size()-1,configured,7)!=
+         ck::Status::InvalidFormat || restored.ready)
+    return 55;
+  if(ck::restore(restored,disk.data(),disk.size(),wrong_configured,7)!=
+         ck::Status::WrongMeter || restored.ready)
+    return 56;
+  if(ck::restore(restored,disk.data(),disk.size(),configured,8)!=
+         ck::Status::WrongEpoch || restored.ready)
+    return 57;
+  if(ck::restore(restored,disk.data(),disk.size(),configured,7)!=
+         ck::Status::Ok || !restored.ready)
+    return 58;
+  int sink_attempts=0, storage_attempts=0;
+  const auto storage=[&](const uint8_t *data,size_t count) {
+    ++storage_attempts;
+    if(count!=disk.size()) return false;
+    std::memcpy(disk.data(),data,count);
+    return true; // simulated atomic + durable storage
+  };
+  const auto fail_sink=[&](const mapping::Plan &p) {
+    ++sink_attempts;
+    return p.number_count!=2;
+  };
+  if(ck::deliver_once(restored,full_valid.data(),full_valid.size(),
+                      key,fail_sink,storage)!=ck::Status::DeliveryFailed ||
+     restored.state.highest_counter!=0x000E578Bu ||
+     !restored.ready || sink_attempts!=1 || storage_attempts!=0)
+    return 59;
+  const auto accept_sink=[&](const mapping::Plan &p) {
+    ++sink_attempts;
+    return p.number_count==2 && p.text_count==1 &&
+           p.texts[0].value=="TEMPORARY_ERROR";
+  };
+  if(ck::deliver_once(restored,full_valid.data(),full_valid.size(),
+                      key,accept_sink,storage)!=ck::Status::Ok ||
+     restored.state.highest_counter!=0x000E578Cu ||
+     sink_attempts!=2 || storage_attempts!=1)
+    return 60;
+  // Process "restarts": a fresh session restores the stored watermark.
+  ck::Session after_restart{};
+  if(ck::restore(after_restart,disk.data(),disk.size(),configured,7)!=
+         ck::Status::Ok ||
+     ck::deliver_once(after_restart,full_valid.data(),full_valid.size(),
+                      key,accept_sink,storage)!=
+         ck::Status::DuplicateOrStale ||
+     sink_attempts!=2 || storage_attempts!=1 ||
+     after_restart.state.highest_counter!=0x000E578Cu)
+    return 61;
+  if(ck::deliver_once(after_restart,full_invalid.data(),full_invalid.size(),
+                      key,accept_sink,storage)!=ck::Status::DecodeRejected ||
+     sink_attempts!=2 || storage_attempts!=1)
+    return 62;
+  // Reentrant delivery is blocked while the sink callback is executing.
+  ck::Session reentrant{};
+  ck::Bytes seed{};
+  if(!ck::encode(trusted_baseline,7,seed) ||
+     ck::restore(reentrant,seed.data(),seed.size(),configured,7)!=
+         ck::Status::Ok)
+    return 63;
+  int recursive_calls=0;
+  const auto reentrant_sink=[&](const mapping::Plan &p) {
+    const auto never_sink=[&](const mapping::Plan &) {
+      ++recursive_calls;
+      return true;
+    };
+    if(ck::deliver_once(reentrant,full_valid.data(),full_valid.size(),
+                        key,never_sink,storage)!=ck::Status::Busy)
+      return false;
+    return p.number_count==2;
+  };
+  if(ck::deliver_once(reentrant,full_valid.data(),full_valid.size(),
+                      key,reentrant_sink,storage)!=ck::Status::Ok ||
+     recursive_calls!=0)
+    return 64;
+  // Simulated sink success but persistence failure: block further use,
+  // even though a crash could still replay against an older disk image.
+  ck::Session broken_store{};
+  if(ck::restore(broken_store,seed.data(),seed.size(),configured,7)!=
+         ck::Status::Ok)
+    return 65;
+  int accepted_before_failed_store=0;
+  const auto count_sink=[&](const mapping::Plan &p) {
+    ++accepted_before_failed_store;
+    return p.number_count==2;
+  };
+  const auto refuse_storage=[](const uint8_t *,size_t) {return false;};
+  if(ck::deliver_once(broken_store,full_valid.data(),full_valid.size(),
+                      key,count_sink,refuse_storage)!=
+         ck::Status::StorageFailed ||
+     broken_store.ready || accepted_before_failed_store!=1 ||
+     broken_store.state.highest_counter!=0x000E578Bu ||
+     ck::deliver_once(broken_store,full_valid.data(),full_valid.size(),
+                      key,count_sink,refuse_storage)!=ck::Status::NotReady ||
+     accepted_before_failed_store!=1)
+    return 66;
   // Previously accepted values must NEVER survive a bad authentication,
   // a wrong configured identity, a corrupt DLL or an unsupported transport.
   if(map_frame(full_invalid)!=mapped::Status::IngressRejected ||
