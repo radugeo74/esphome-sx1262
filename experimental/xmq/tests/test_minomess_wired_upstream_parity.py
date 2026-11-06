@@ -15,12 +15,15 @@ sys.path.insert(0,str(ROOT/"experimental/xmq/tools"))
 from portable_xmq import parse,validate_driver,blocks,values
 
 FIELDS=("total_m3","target_m3","meter_date","target_date","status","rssi_dbm")
-def decode(binary,frame):
-    return subprocess.run([binary,"minomess_wired",frame.hex()],
-                          capture_output=True,text=True)
+def decode(binary,frame,configured_id=None):
+    args=[binary,"minomess_wired_configured" if configured_id is not None
+          else "minomess_wired",frame.hex()]
+    if configured_id is not None:
+        args.append(configured_id)
+    return subprocess.run(args,capture_output=True,text=True)
 
-def check_bad(binary,frame):
-    result=decode(binary,frame)
+def check_bad(binary,frame,configured_id=None):
+    result=decode(binary,frame,configured_id)
     assert result.returncode!=0 and not result.stdout, (
         "invalid wired frame unexpectedly accepted")
 
@@ -40,7 +43,10 @@ def main():
         assert "_" not in telegram
         wire=bytearray(bytes.fromhex(telegram))
         expected=json.loads(values(entry,"json")[0])
-        result=decode(sys.argv[1],wire)
+        configured_id=expected["id"]
+        assert isinstance(configured_id,str) and len(configured_id)==8
+        assert configured_id.isdecimal()
+        result=decode(sys.argv[1],wire,configured_id)
         if result.returncode:
             raise AssertionError(
                 f"minomess #{index}: C++ M-Bus decoder rejected original "
@@ -64,6 +70,16 @@ def main():
                 assert str(reference)==value, (
                     f"minomess #{index} {key}: value mismatch")
             comparisons+=1
+        # Independent configured identity is mandatory, including leading
+        # zeroes; the public wire address is not a YAML authorization.
+        wrong_id=("0" if configured_id[0]!="0" else "1")+configured_id[1:]
+        check_bad(sys.argv[1],wire,wrong_id)
+        check_bad(sys.argv[1],wire,configured_id[:-1])
+        check_bad(sys.argv[1],wire,configured_id+"0")
+        damaged=wire.copy()
+        damaged[7]^=1  # changed meter ID, recomputed valid wired checksum
+        damaged[-2]=sum(damaged[4:-2])&255
+        check_bad(sys.argv[1],damaged,configured_id)
         # Length and checksum are independently verified, not assumed.
         assert wire[0]==wire[3]==0x68 and wire[-1]==0x16
         assert wire[1]==wire[2]==len(wire)-6
