@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include "kamwater_configured_fields.h"
 
 namespace xmq_portable { namespace kamwater { namespace sensor_mapping {
@@ -18,7 +19,7 @@ struct Number {
 };
 struct Text {
   const char *name{nullptr};
-  const char *value{nullptr};
+  std::string value{};
 };
 // Names follow existing xmq_sensors / xmq_text_sensors field bindings.
 // Opaque acoustic noise is intentionally NOT mapped: current native
@@ -42,9 +43,9 @@ inline Status stage(const configured_fields::Reading &reading, Plan &out) {
   candidate.numbers[0]={"total_m3",reading.total_m3};
   candidate.numbers[1]={"target_m3",reading.target_m3};
   candidate.number_count=2;
-  // Pointer remains valid only as long as the caller's Reading is alive.
-  // This plan MUST be consumed synchronously; never retain it.
-  candidate.texts[0]={"status",reading.status.c_str()};
+  // Own the text value: a plan returned from a temporary Reading must
+  // never contain a dangling c_str() pointer.
+  candidate.texts[0]={"status",reading.status};
   candidate.text_count=1;
   out=candidate;
   return Status::Ok;
