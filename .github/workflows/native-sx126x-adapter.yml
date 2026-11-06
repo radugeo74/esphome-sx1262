@@ -368,6 +368,15 @@ jobs:
             -o /tmp/test-configured-plain-decode
           /tmp/test-configured-plain-decode
 
+      - name: Batch-2 configured native clear-only dispatch regression
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_batch2_native_catalog_dispatch.cpp \
+            -o /tmp/test-batch2-native-catalog
+          /tmp/test-batch2-native-catalog
+
       - name: End-to-end T1 and C1-A CRC to XMQ regression for official heat and water fixtures
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
