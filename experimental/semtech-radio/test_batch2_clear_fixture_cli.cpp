@@ -234,6 +234,23 @@ int main(int argc,char **argv) {
     }
     return 0;
   }
+  if(std::strcmp(argv[1],"kamwater_prefixed")==0) {
+    // Original kamwater.xmq #3 clear-application sample carries exactly
+    // three leading bytes 46 88 78 before its DIF/VIF record stream.
+    // Admit only this reviewed prefix in this host-only parity adapter;
+    // do not relax the generic DIF/VIF parser or RF dispatch.
+    if(bytes.size()<4 || bytes[0]!=0x46 ||
+       bytes[1]!=0x88 || bytes[2]!=0x78) return 3;
+    xmq_portable::kamwater::Reading reading{};
+    if(xmq_portable::kamwater::decode_clear_records(
+        bytes.data()+3,bytes.size()-3,reading)
+        !=xmq_portable::kamwater::Status::Ok) return 3;
+    std::printf("total_m3=%.9f\n",reading.total_m3);
+    if(reading.has_target)
+      std::printf("target_m3=%.9f\n",reading.target_m3);
+    else std::puts("target_m3=null");
+    return 0;
+  }
   if(std::strcmp(argv[1],"kamwater")==0) {
     xmq_portable::kamwater::Reading reading{};
     const auto result=xmq_portable::kamwater::decode_clear_records(
