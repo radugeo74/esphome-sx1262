@@ -42,33 +42,39 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 
 ## Stage B CI checkpoint — 2026-11-06
 
-**Last owner-confirmed green: through `01fe808`**, including Kamwater
-authenticated mbedTLS original public #10, configured DLL identity and
-CRC, full four-field host decode, staged numeric/text sensor mapping,
-duplicate suppression and a two-phase `prepare` /
-`confirm_delivery` contract with simulated delivery failures.
-The original 177/177 valid positive source JSON functional-field
-comparisons are complete; the four invalid-tag #9 fields are rejected.
-These are **host tests**, not live RF or actual HA sensor admission.
+**Last owner-confirmed green: through `b11ebde`**, including the
+portable one-meter 25-byte authenticated-counter checkpoint codec,
+simulated host restart/restore, corrupt/foreign/mismatched-epoch
+record rejection, and mock storage failure after a successful delivery.
+The source-field laboratory subset remains closed at 177/177 positive
+functional JSON fields; original invalid-tag Kamwater #9 remains
+negative-only. Neither ESP32-S3 runtime nor real RF-to-HA sensor
+publication is proven.
 
-**New increment, CI PENDING:** `espidf_cpp_probe/main/kamwater_replay_checkpoint.h`
-encodes a fixed 25-byte, meter-bound CCM watermark with external
-key-epoch and CRC32, rejects missing/corrupt/truncated/foreign
-checkpoints without automatically resetting the high watermark, and
-offers a callback-based durable-store contract. Host regressions
-simulate restart, successful restore, stale replay rejection, bad
-CRC/key epoch/identity, a failing HA-like sink, storage failure and
-reentrant admission. Latest documentation commit `616a0dd`;
-see `experimental/xmq/STAGE_B_GATE_STATUS.md`.
+**Current work, CI PENDING (latest checkpoint `1e50ab1`):**
+An inert **real ESP-IDF NVS** adapter was added under
+`experimental/xmq/espidf_cpp_probe/main/kamwater_nvs_checkpoint.{h,cpp}`,
+compiled/linked in the isolated ESP-IDF esp32s3 target with
+`nvs_flash`. Only a harmless `backend_name()` anchor is invoked by
+`app_main`; it does not initialize, open, read, write, or erase NVS.
+The adapter's explicit read/write APIs use a meter-bound 14-character
+key in namespace `kw_ccm_probe`; read-only restore fails on missing/
+invalid checkpoints, and writing requires a pre-existing valid,
+strictly lower watermark, successful `nvs_set_blob` + `nvs_commit`
+and an independent readback. No implicit provisioning or flash erase.
+A new compiled Linux **fake NVS** test exercises these C++ methods
+with simulated read/write/commit/corruption failures, independently
+from the ESP-IDF compile/link job.
 
-**Security and scope limits:** CRC32 cannot prevent malicious
-checkpoint rollback; real protected storage, atomic durable NVS and
-reprovision/reset/key rotation are NOT implemented or tested. A
-synchronous sink can partially publish or succeed before the
-watermark write; the design does not claim exactly-once delivery
-across reboot. None of the three `BATCH2_PENDING` drivers is enabled,
-no native receiver/YAML/live Heltec changes, and 0/39 original cases
-are approved as production-equivalent full frame-to-sensor RF replays.
+**Remaining blockers:** NVS writes per received telegram would cause
+unnecessary flash wear; no approved rate-limit / guaranteed
+non-volatile anti-replay policy, malicious rollback protection, trusted
+key-epoch provisioning, physical power-cut tests, real app delivery
+semantics, live radio/HA hook or ESP32-S3 execution. Continue to keep
+`BATCH2_PENDING` (minomess/kamwater/apator162) excluded from
+`SUPPORTED` and production YAML. 0/39 complete RF-to-HA approvals and
+0/3 new driver admissions. Installed Heltec firmware remains
+untouched. Details: `experimental/xmq/STAGE_B_GATE_STATUS.md`.
 
 ## Next developer workflow
 
