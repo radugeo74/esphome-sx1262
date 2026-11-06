@@ -652,6 +652,42 @@ four fields deliberately withheld for corrupted CCM sample #9).
 `apator162` **19/19**. This is still only partial host-side
 parity. Firmware admission remains blocked.
 
+## Stage A — native/host algorithm consolidation, first slice (CI pending)
+
+The live path is `NativeReceiverProbe` -> CRC/security/identity gate ->
+`decode_configured_plain_frame` -> generated XMQ `decode_driver_payload`
+-> configured sensors. The approved manifest remains unchanged:
+`fhkvdataiii`, `mkradio4`, `iperl`, `hydrus`; the Stage B
+`minomess`, `kamwater` and `apator162` remain
+`BATCH2_PENDING`, not selectable for sensor publication.
+
+**First consolidation:** Apator162's existing bounded manufacturer
+application parser now has one implementation:
+`experimental/xmq/portable_cpp/apator162_ixml_fields.h`.
+The old `experimental/semtech-radio/host_only/apator162_ixml_fields.h`
+contains only a forwarding include, so every existing original XMQ
+host test uses the same parser. The ESP-IDF ESP32-S3 C++ probe now
+includes that shared header and embeds the original public
+already-clear #19 sample (7.512 m3), including a truncation check.
+The ESP-IDF CI **compiles/links** this test, but does not run
+`app_main` on physical hardware. This is not full telemetry parity
+or an authorization to decode live encrypted frames.
+
+The new CI guard checks this single-source architecture, the
+shared-header copy performed by the ESPHome generator, and the
+unchanged pending-driver manifest. No RF hooks, YAML, active
+`mkradio4` or `fhkvdataiii` code were changed.
+
+**Remaining Stage A mapping:** shared code already exists for
+DIF/VIF, IXML runtime, Minomess clear application and Kamwater
+clear/compact records. Host-only pure semantics still to assess:
+Kamwater status, numeric fields, TPL status and Minomess wired
+envelope. Host-only OpenSSL AES-CBC/CTR/CCM and transport
+ingress must not be promoted without an ESP-IDF mbedTLS backend
+and explicit integrity/admission gates. Keep original
+`wmbusmeters` behavior as the reference, not a copied second
+radio stack. New drivers remain disabled until end-to-end checks.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
