@@ -42,29 +42,34 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 
 ## Stage B CI checkpoint — 2026-11-06
 
-**Last owner-confirmed CI green:** through `d24c2b4`, including
-the Kamwater original #10 configured format-B synthetic-DLL replay with
-the actual mbedTLS CCM probe, transactional four-field decoding and
-mapping of `total_m3`, `target_m3`, `status`, plus diagnostic
-`accoustic_noise`. This is host CI, not on-device RF/sensor parity.
-The source-field laboratory substage remains CLOSED at 177/177 positive
-fields, with original invalid-tag Kamwater #9 deliberately rejected.
+**Last owner-confirmed green: through `d0bb0d7`**, including original
+Kamwater #10 authenticated mbedTLS configured full synthetic-DLL replay,
+transactional four-field mapping, strict native field names, and the
+first single-meter CCM duplicate/stale test. Source JSON laboratory
+coverage is CLOSED at 177/177 valid functional fields; four nominal
+fields from source #9's invalid CCM tag are negative-only. The
+experimental driver is not live or approved for RF.
 
-**Current new change, CI PENDING:** `kamwater_replay_gate.h` stages
-the authenticated original #10 only once per single meter-bound monotonic
-CCM counter. Same/older counters, invalid frames and wrong meter identity
-must produce an empty plan without advancing the remembered counter.
-`kamwater_sensor_mapping.h` now owns its text values, preventing
-temporary `c_str()` dangling pointers. Executable CI covers original
-#10/#9 and simulated lower/higher counter-state boundaries. Last
-documentation commit `f0209bf`; see
-`experimental/xmq/STAGE_B_GATE_STATUS.md`.
+**New work, CI PENDING (last docs commit `368e3e8`):** replaced the
+premature `kamwater_replay_gate::stage_once` counter advance with
+separate `prepare` / `confirm_delivery`, plus host-only synchronous
+`deliver_once`. The CCM counter does not advance if mapped values were
+only staged or if a simulated downstream sink reports failure. Only
+a successful callback allows monotonic state commit; duplicate and
+corrupt inputs must not call the sink. Two outstanding preparations
+are rechecked at confirmation. Tested with genuine public #10 crypto
+and #9 negative fixture, plus synthetic replay-state boundaries.
 
-This is **host-only RAM state**, not persistent replay protection across
-ESP32-S3 reboots and **not sensor publication**. No new drivers are
-in `SUPPORTED`; 0/39 full production-equivalent replays approved,
-0/3 batch-2 driver admissions. Do not enable or flash these drivers
-on green host tests alone.
+**Still blocked:** this is RAM-only, not crash-safe or persistent.
+`deliver_once` cannot undo partially completed Home Assistant entity
+writes and makes no exactly-once delivery guarantee. It has no physical
+SX1262 runtime path, no firmware sensor dispatcher, no real on-air
+full-frame approval, and no safe key provisioning. Keep all three
+batch-2 drivers in `BATCH2_PENDING` (0/3 enabled) and the 39 source
+fixtures at 0/39 production-equivalent complete RF-to-sensor approvals.
+Do not change live Heltec firmware or existing Techem behavior.
+
+See `experimental/xmq/STAGE_B_GATE_STATUS.md` for detailed gate history.
 
 ## Next developer workflow
 
