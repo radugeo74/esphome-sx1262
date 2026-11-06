@@ -14,6 +14,7 @@
 #include "main/oms_ccm_mbedtls_probe.h"
 #include "main/oms_ccm_verified_ingress.h"
 #include "main/kamwater_configured_fields.h"
+#include "main/kamwater_sensor_mapping.h"
 #include "main/kamwater_ccm_original_fixtures.h"
 
 using xmq_portable::oms_ccm_idf_probe::Output;
@@ -148,6 +149,36 @@ int main() {
      sensors.acoustic_noise!="FFFFFFFFFFFF" ||
      sensors.authenticated_counter!=0x000E578Cu)
     return 26;
+  // Stage exactly the names supported by the existing native sensor
+  // bindings, with no publish_state call, no counter/RSSI or unsupported
+  // opaque diagnostic mapped as a measurement.
+  namespace mapping=xmq_portable::kamwater::sensor_mapping;
+  mapping::Plan plan{};
+  if(mapping::stage(sensors,plan)!=mapping::Status::Ok ||
+     plan.number_count!=2 || plan.text_count!=1 ||
+     std::strcmp(plan.numbers[0].name,"total_m3")!=0 ||
+     std::strcmp(plan.numbers[1].name,"target_m3")!=0 ||
+     std::fabs(plan.numbers[0].value)>1e-9 ||
+     std::fabs(plan.numbers[1].value)>1e-9 ||
+     std::strcmp(plan.texts[0].name,"status")!=0 ||
+     std::strcmp(plan.texts[0].value,"TEMPORARY_ERROR")!=0)
+    return 33;
+  // Staging must fail closed and discard an earlier successful plan.
+  auto invalid_reading=sensors;
+  invalid_reading.has_target=false;
+  if(mapping::stage(invalid_reading,plan)!=mapping::Status::InvalidReading ||
+     plan.number_count!=0 || plan.text_count!=0)
+    return 34;
+  invalid_reading=sensors;
+  invalid_reading.total_m3=-1;
+  if(mapping::stage(invalid_reading,plan)!=mapping::Status::InvalidReading ||
+     plan.number_count!=0 || plan.text_count!=0)
+    return 35;
+  invalid_reading=sensors;
+  invalid_reading.status.clear();
+  if(mapping::stage(invalid_reading,plan)!=mapping::Status::InvalidReading ||
+     plan.number_count!=0 || plan.text_count!=0)
+    return 36;
   // Previously accepted values must NEVER survive a bad authentication,
   // a wrong configured identity, a corrupt DLL or an unsupported transport.
   if(map_frame(full_invalid)!=mapped::Status::IngressRejected ||
