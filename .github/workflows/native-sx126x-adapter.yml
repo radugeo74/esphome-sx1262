@@ -68,6 +68,9 @@ jobs:
         run: python3 experimental/xmq/tests/test_batch2_upstream_fixtures.py
       - name: Stage B upstream golden fixture parity ledger (NOT_RUN until actual JSON comparison)
         run: python3 experimental/xmq/tests/test_batch2_parity_ledger.py
+      - name: Stage A shared portable parser and pending runtime admission guard
+        run: |
+          python3 experimental/xmq/tests/test_stage_a_shared_portable_boundary.py
       - name: Stage B exact original JSON functional-field gap audit (no full parity promotion)
         run: |
           python3 experimental/xmq/tests/test_batch2_field_gap_audit.py
