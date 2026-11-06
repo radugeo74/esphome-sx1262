@@ -818,6 +818,29 @@ The Stage B drivers are still `BATCH2_PENDING` and unavailable for
 live YAML or ESPHome sensor publication. No AES decryption, radio code,
 ESP-IDF dispatch or existing Techem driver was changed.
 
+## Stage B — compact TPL79 legacy statuses (CI pending)
+
+Using the already shared native `kamwater_tpl79_probe.h` and
+`kamwater_status_semantics.h`, the host fixture CLI adds a
+`kamwater_compact_status` operation. It first checks the declared compact
+profile signature, reconstructs DIF/VIF records, and validates the
+reconstructed-record data CRC; **only then** decodes status/duration.
+It supports only the explicitly reviewed legacy status form.
+Corrupted compact CRC fails with no emitted fields.
+
+The fixture parity test compares the exact original
+`kamwater.xmq` #2, #4 and #8 clear compact applications against
+all six source JSON status/duration fields per fixture. This is
+**18 additional source JSON field assertions**, moving partial
+evidence from **150/181 to 168/181** across the same 39 original
+fixtures, contingent on the new CI passing. The original compact
+volume tests (#2/#4/#7/#8) remain intact, including #7's separately
+validated full-reference CRC handling.
+
+No RF decryption, ELL identity admission, C1/T1 publication, firmware
+driver manifest or live Techem decoding has changed. This is not
+full-driver parity and must not activate the three pending drivers.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
