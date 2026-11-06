@@ -5,6 +5,10 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <cmath>
+#include "../../semtech-radio/host_only/kamwater_authenticated_tpl_status.h"
+#include "../../../components/wmbus_native_sx126x/kamwater_clear_records.h"
+#include "../../../components/wmbus_native_sx126x/kamwater_numeric_semantics.h"
 #include "main/oms_ccm_mbedtls_probe.h"
 #include "main/kamwater_ccm_original_fixtures.h"
 
@@ -42,6 +46,31 @@ int main() {
            out.tpl_status == 0x10 && out.counter == 0x000E578Cu;
   };
   if (!good()) return 2;
+  // Real mbedTLS authenticated plaintext now passes the shared native
+  // Kamwater record and diagnostic decoders in the SAME executed test.
+  // The status map remains the narrow reviewed original #10 subset.
+  xmq_portable::kamwater::Reading measurement{};
+  if (xmq_portable::kamwater::decode_clear_records(
+          out.clear_application.data(),out.clear_application.size(),measurement)
+      != xmq_portable::kamwater::Status::Ok ||
+      std::fabs(measurement.total_m3)>1e-9 ||
+      !measurement.has_target || std::fabs(measurement.target_m3)>1e-9)
+    return 16;
+  xmq_portable::kamwater::numeric_semantics::Reading diagnostic{};
+  if (xmq_portable::kamwater::numeric_semantics::decode(
+          out.clear_application.data(),out.clear_application.size(),diagnostic)
+      != xmq_portable::kamwater::numeric_semantics::Status::Ok ||
+      !diagnostic.has_acoustic_noise ||
+      diagnostic.acoustic_noise!="FFFFFFFFFFFF")
+    return 17;
+  std::string status_text{};
+  if (xmq_portable::kamwater::authenticated_status::decode_original_ccm_status(
+          out.tpl_status,status_text)
+      != xmq_portable::kamwater::authenticated_status::Status::Ok ||
+      status_text!="TEMPORARY_ERROR")
+    return 18;
+  // A later bad tag must clear the authenticated transport output,
+  // never leaving a buffer that downstream field decoding can consume.
   // The original #9 has a corrupt CCM tag; never publish its JSON readings.
   if (decode_short_tpl(manufacturer, meter_id, 0x3C, 0x16, key,
                        invalid.data(), invalid.size(), out) != Status::BadTag ||
@@ -113,6 +142,7 @@ int main() {
 
   std::cout << "PASS host mbedTLS: original Kamwater #10 exact authenticated "
                "38-byte payload; #9 bad tag and wrong identity/key/tag "
-               "reject with no stale outputs. NOT ESP32-S3 runtime.\\n";
+               "reject with no stale outputs; four source fields decoded "
+               "from authenticated mbedTLS plaintext. NOT ESP32-S3 runtime.\\n";
   return 0;
 }
