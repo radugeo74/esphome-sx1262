@@ -786,6 +786,15 @@ publishing are still host-only/blocked. The Stage B drivers
 remain pending, and installed Heltec firmware is unchanged.
 CI for this change is awaiting confirmation.
 
+## Stage A closeout checkpoint
+
+The final single-source/CI boundary inventory is now maintained in
+[`STAGE_A_CLOSEOUT.md`](STAGE_A_CLOSEOUT.md). This closes **source
+consolidation only** once the new CI passes. All earlier entries labeled
+`CI pending` are historical notes, not claims that unverified
+decryptors or new drivers run in firmware. No live algorithm, SX126x
+radio, YAML or Heltec firmware changed as part of the closeout.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
