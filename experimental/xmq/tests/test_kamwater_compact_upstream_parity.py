@@ -71,9 +71,50 @@ def main():
             checks+=1
         print(f"PARTIAL_PASS kamwater #{number}: compact TPL79 "
               "total_m3 / target_m3")
+    # Test the SAME compiled C++ compact expansion and status parser on
+    # three original legacy-status compact fixtures. Unknown formats,
+    # reconstructed CRC failures or malformed records remain fail-closed.
+    status_fields=("status","current_status","time_dry","time_reversed",
+                   "time_leaking","time_bursting")
+    status_checks=0
+    for number in (2,4,8):
+        entry=entries[number-1]
+        assert "NOKEY" in values(entry,"args")[0]
+        telegram=values(entry,"telegram")[0]
+        wire=bytes.fromhex("".join(telegram.replace("|","").replace("_","").split()))
+        assert wire[10]==0x8D and wire[19]==0x79
+        expected=json.loads(values(entry,"json")[0])
+        command=[sys.argv[1],"kamwater_compact_status",wire[19:].hex()]
+        result=subprocess.run(command,capture_output=True,text=True)
+        assert result.returncode==0, (
+            f"kamwater #{number}: native compact status rejected original "
+            f"fixture (exit {result.returncode})")
+        actual={}
+        for line in result.stdout.splitlines():
+            key,sep,value=line.partition("=")
+            assert sep and key not in actual
+            actual[key]=value
+        assert set(actual)==set(status_fields), (
+            f"kamwater #{number}: unexpected compact status output")
+        for field in status_fields:
+            assert actual[field]==expected[field], (
+                f"kamwater #{number} {field}: compact native "
+                f"{actual[field]!r} != source {expected[field]!r}")
+            status_checks+=1
+        # A changed reconstructed data CRC must reject before parsing.
+        altered=bytearray(wire[19:])
+        altered[3]^=1
+        rejected=subprocess.run(
+            [sys.argv[1],"kamwater_compact_status",altered.hex()],
+            capture_output=True,text=True)
+        assert rejected.returncode!=0 and not rejected.stdout
+        print(f"PARTIAL_PASS kamwater #{number}: 6 source compact "
+              "status/duration fields with TPL79 CRC gate")
+    assert status_checks==18
     assert checks==8
-    print("PASS compact subset: 4 original TPL79 applications, "
-          "8 JSON field comparisons; #7 verified against preceding full "
-          "application #6. Not authenticated RF/full parity.")
+    print("PASS compact subset: 4 original TPL79 volume applications "
+          "and 3 status applications; 26 original JSON field comparisons. "
+          "#7 verified against preceding full application #6. "
+          "Not authenticated RF/full parity.")
 if __name__=="__main__":
     main()
