@@ -117,7 +117,7 @@ int main() {
        nvs::Status::Missing || !fake::committed.empty())
     return 6;
   // Simulated independently authorized provisioning (not adapter behavior).
-  fake::committed[storage_key]={encoded.begin(),encoded.end()};
+  fake::committed[storage_key]=fake::Blob(encoded.begin(),encoded.end());
   if(nvs::load(loaded,meter,epoch).status!=nvs::Status::Ok ||
      !loaded.ready || loaded.state.highest_counter!=0x000E578Bu)
     return 7;
@@ -133,12 +133,12 @@ int main() {
   if(bad_crc.status!=nvs::Status::CheckpointRejected ||
      bad_crc.checkpoint_status!=ck::Status::Corrupt || loaded.ready)
     return 10;
-  fake::committed[storage_key]={encoded.begin(),encoded.end()};
+  fake::committed[storage_key]=fake::Blob(encoded.begin(),encoded.end());
   fake::committed[storage_key].pop_back();
   if(nvs::load(loaded,meter,epoch).status!=
        nvs::Status::CheckpointRejected || loaded.ready)
     return 11;
-  fake::committed[storage_key]={encoded.begin(),encoded.end()};
+  fake::committed[storage_key]=fake::Blob(encoded.begin(),encoded.end());
 
   ck::State stale_state{true,meter,0x000E578Au};
   ck::Bytes stale{};
