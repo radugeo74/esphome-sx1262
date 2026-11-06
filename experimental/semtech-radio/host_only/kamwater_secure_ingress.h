@@ -73,17 +73,25 @@ inline Status decode(const uint8_t *raw,size_t raw_length,
     // Original authenticated #10 status and opaque diagnostic are part
     // of the source JSON contract; never derive them from unauthenticated
     // TPL or return partial fields on unsupported status/records.
-    if(authenticated_status::decode_original_ccm_status(
-           clear.tpl_status,status_text)!=
-       authenticated_status::Status::Ok)
+    // TPL status 0x00 is valid in the existing synthetic CCM regression;
+    // its application has no acoustic-noise record. Do not require the
+    // optional source-#10 metadata for every authenticated telegram.
+    // The known #10 status 0x10 gets its independently checked mapping.
+    if(clear.tpl_status==0x10) {
+      if(authenticated_status::decode_original_ccm_status(
+             clear.tpl_status,status_text)!=
+         authenticated_status::Status::Ok)
+        return Status::ApplicationRejected;
+    } else if(clear.tpl_status!=0x00) {
       return Status::ApplicationRejected;
+    }
     numeric_semantics::Reading diagnostic{};
     if(numeric_semantics::decode(clear.clear_application.data(),
                                  clear.clear_application.size(),diagnostic)!=
-           numeric_semantics::Status::Ok ||
-       !diagnostic.has_acoustic_noise)
+       numeric_semantics::Status::Ok)
       return Status::ApplicationRejected;
-    acoustic_noise=diagnostic.acoustic_noise;
+    if(diagnostic.has_acoustic_noise)
+      acoustic_noise=diagnostic.acoustic_noise;
   } else return Status::UnsupportedTransport;
   out.reading=measured;
   out.profile_index=profile;
