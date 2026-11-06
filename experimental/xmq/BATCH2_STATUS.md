@@ -871,6 +871,36 @@ positive without the correct security-aware verification.
 cryptographic and publication parity have not been approved. The
 original Techem decoders and SX126x radio are unchanged.
 
+## Stage B — authenticated source status + integrated host ingress (CI pending)
+
+The original `kamwater.xmq` #10 public CCM fixture has a valid
+authenticated short TPL with `status=0x10` and expects
+`TEMPORARY_ERROR`. The host-only exact-subset status interpretation
+is asserted **only after a successful CCM authentication**. Unknown
+status values fail closed. The source #9 fixture has a corrupted
+CCM authentication tag; it must continue to reject the entire
+application with no measurement output.
+
+The `test_kamwater_upstream_ccm_openssl.cpp` host regression now also
+wraps the **original public** #9/#10 encrypted ELL/TPL content in
+explicitly **synthetic** complete format-B DLL frames so that the
+existing `kamwater_secure_ingress.h` verifies frame length/CRC,
+configured identity, CCM authentication and transactional output
+clearing. Negative cases include an invalid CCM tag, DLL CRC
+tampering and wrong configured meter identity. This is **not** a
+recorded RF transmission, not an ESP-IDF mbedTLS implementation,
+and not a production receiver or HA sensor parity test.
+
+`test_batch2_field_gap_audit.py` now expects **177/181 positive
+partial source-field comparisons**, with **four source JSON fields
+from deliberately invalid #9 not claimed as decoded**. The
+separate `test_batch2_parity_ledger.py` tracks the same field
+distinction, but **all 39 full-driver end-to-end parity cases remain
+NOT_RUN**. The dedicated acceptance checklist is
+[`STAGE_B_GATE_STATUS.md`](STAGE_B_GATE_STATUS.md).
+**This entire new change set is pending fresh CI validation.**
+All three experimental batch-2 drivers remain disabled.
+
 ## Next implementation steps
 
 1. Develop a bounded minomess record decoder and compare normal, sentinel,
