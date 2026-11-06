@@ -1,4 +1,5 @@
 #include "host_only/kamwater_verified_dll_ingress.h"
+#include "components/wmbus_native_sx126x/native_publication_gate.h"
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -54,6 +55,17 @@ int main() {
   assert(std::fabs(out.reading.total_m3-6.408)<1e-8);
   assert(out.reading.has_target && std::fabs(out.reading.target_m3-6.408)<1e-8);
   assert(out.reading.has_status && out.reading.status_bits==0x71);
+  // Crucial production boundary: a valid host-only Kamwater CI=0x8D
+  // decode MUST NOT bypass the actual native sensor publication gate.
+  // It currently permits only the established live transport profiles.
+  const auto live_decision=wmbus_pure::publication::inspect(
+      dll_check.bytes.data(),dll_check.bytes.size(),expected.meter_id);
+  assert(live_decision==
+         wmbus_pure::publication::Decision::UnsupportedTransport);
+  const auto other_meter_decision=wmbus_pure::publication::inspect(
+      dll_check.bytes.data(),dll_check.bytes.size(),12345679u);
+  assert(other_meter_decision==
+         wmbus_pure::publication::Decision::InvalidFrame);
   // CRC corruption never reaches application decoder.
   auto bad=frame;bad[4]^=1;
   assert(decode_verified_dll(bad.data(),bad.size(),
