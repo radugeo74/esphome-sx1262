@@ -17,6 +17,7 @@
 #include "main/kamwater_sensor_mapping.h"
 #include "main/kamwater_replay_gate.h"
 #include "main/kamwater_replay_checkpoint.h"
+#include "main/kamwater_replay_reservation.h"
 #include "main/kamwater_ccm_original_fixtures.h"
 
 using xmq_portable::oms_ccm_idf_probe::Output;
@@ -413,6 +414,129 @@ int main() {
                       key,count_sink,refuse_storage)!=ck::Status::NotReady ||
      accepted_before_failed_store!=1)
     return 66;
+  // Optional write-ahead range reservation (NOT enabled on Heltec).
+  // Restore only an independently verified checkpoint with original
+  // public #10 counter - 1. The store callback emulates durable NVS.
+  namespace reserve=xmq_portable::kamwater::reservation;
+  reserve::Session windowed{};
+  ck::Session initial_disk{};
+  if(ck::restore(initial_disk,seed.data(),seed.size(),
+                 configured,7)!=ck::Status::Ok ||
+     reserve::begin(initial_disk,0,windowed)!=
+        reserve::Status::InvalidWindow ||
+     windowed.ready ||
+     reserve::begin(initial_disk,9,windowed)!=
+        reserve::Status::InvalidWindow ||
+     reserve::begin(ck::Session{},4,windowed)!=
+        reserve::Status::NotReady ||
+     reserve::begin(initial_disk,4,windowed)!=reserve::Status::Ok ||
+     !windowed.ready || windowed.reserved_through!=0x000E578Bu)
+    return 67;
+  ck::Bytes reserved_disk=seed;
+  int reservation_writes=0;
+  const auto durable_reserve=[&](const uint8_t *p,size_t len) {
+    ck::Session candidate{},current{};
+    if(ck::restore(candidate,p,len,configured,7)!=ck::Status::Ok ||
+       ck::restore(current,reserved_disk.data(),reserved_disk.size(),
+                   configured,7)!=ck::Status::Ok ||
+       candidate.state.highest_counter<=current.state.highest_counter)
+      return false;
+    ++reservation_writes;
+    std::memcpy(reserved_disk.data(),p,len);
+    return true;
+  };
+  int reservation_sink_calls=0;
+  const auto reservation_sink=[&](const mapping::Plan &p) {
+    ++reservation_sink_calls;
+    return p.number_count==2 && p.text_count==1 &&
+           p.texts[0].value=="TEMPORARY_ERROR";
+  };
+  if(reserve::deliver_once(windowed,full_valid.data(),full_valid.size(),
+                           key,durable_reserve,reservation_sink)!=
+        reserve::Status::Ok ||
+     reservation_writes!=1 || reservation_sink_calls!=1 ||
+     windowed.accepted.highest_counter!=0x000E578Cu ||
+     windowed.reserved_through!=0x000E578Fu)
+    return 68;
+  if(reserve::deliver_once(windowed,full_valid.data(),full_valid.size(),
+                           key,durable_reserve,reservation_sink)!=
+        reserve::Status::DuplicateOrStale ||
+     reservation_writes!=1 || reservation_sink_calls!=1)
+    return 69;
+  if(reserve::deliver_once(windowed,full_invalid.data(),full_invalid.size(),
+                           key,durable_reserve,reservation_sink)!=
+        reserve::Status::DecodeRejected ||
+     reservation_writes!=1 || reservation_sink_calls!=1)
+    return 70;
+  // Simulated power cycle: the reserved upper bound is recovered, NOT
+  // the last delivered reading; this deliberately sacrifices the
+  // intervening legitimate counter values after a reboot.
+  ck::Session restored_reservation{};
+  reserve::Session after_reservation_restart{};
+  if(ck::restore(restored_reservation,reserved_disk.data(),
+                 reserved_disk.size(),configured,7)!=ck::Status::Ok ||
+     reserve::begin(restored_reservation,4,after_reservation_restart)!=
+        reserve::Status::Ok ||
+     after_reservation_restart.accepted.highest_counter!=0x000E578Fu ||
+     reserve::deliver_once(after_reservation_restart,full_valid.data(),
+                           full_valid.size(),key,
+                           durable_reserve,reservation_sink)!=
+        reserve::Status::DuplicateOrStale ||
+     reservation_writes!=1 || reservation_sink_calls!=1)
+    return 71;
+  // Bad persistent write must block delivery entirely, even if the
+  // simulated storage backend actually persisted before returning false.
+  reserve::Session failed_reservation{};
+  if(reserve::begin(initial_disk,4,failed_reservation)!=reserve::Status::Ok)
+    return 72;
+  const auto reject_reserve=[](const uint8_t *,size_t) {return false;};
+  if(reserve::deliver_once(failed_reservation,full_valid.data(),
+                           full_valid.size(),key,
+                           reject_reserve,reservation_sink)!=
+        reserve::Status::StorageFailed ||
+     failed_reservation.ready ||
+     failed_reservation.accepted.highest_counter!=0x000E578Bu ||
+     reservation_sink_calls!=1 ||
+     reserve::deliver_once(failed_reservation,full_valid.data(),
+                           full_valid.size(),key,
+                           reject_reserve,reservation_sink)!=
+        reserve::Status::NotReady)
+    return 73;
+  // Failed sink after successful reservation leaves volatile progress
+  // unchanged; retry without reboot uses the already reserved range,
+  // avoiding an extra flash write.
+  reserve::Session retry_reservation{};
+  if(reserve::begin(initial_disk,4,retry_reservation)!=reserve::Status::Ok)
+    return 74;
+  ck::Bytes retry_disk=seed;
+  int retry_store_calls=0,retry_sink_calls=0;
+  const auto retry_store=[&](const uint8_t *p,size_t len) {
+    if(len!=retry_disk.size()) return false;
+    ++retry_store_calls;
+    std::memcpy(retry_disk.data(),p,len);
+    return true;
+  };
+  const auto retry_sink=[&](const mapping::Plan &) {
+    ++retry_sink_calls;
+    return retry_sink_calls>1;
+  };
+  if(reserve::deliver_once(retry_reservation,full_valid.data(),
+                           full_valid.size(),key,retry_store,retry_sink)!=
+        reserve::Status::DeliveryFailed ||
+     retry_store_calls!=1 || retry_sink_calls!=1 ||
+     retry_reservation.accepted.highest_counter!=0x000E578Bu ||
+     retry_reservation.reserved_through!=0x000E578Fu ||
+     !retry_reservation.ready)
+    return 75;
+  if(reserve::deliver_once(retry_reservation,full_valid.data(),
+                           full_valid.size(),key,retry_store,retry_sink)!=
+        reserve::Status::Ok ||
+     retry_store_calls!=1 || retry_sink_calls!=2 ||
+     retry_reservation.accepted.highest_counter!=0x000E578Cu)
+    return 76;
+  if(reserve::upper_bound(0xFFFFFFFEu,4)!=0xFFFFFFFFu ||
+     reserve::upper_bound(0x000E578Cu,1)!=0x000E578Cu)
+    return 77;
   // Previously accepted values must NEVER survive a bad authentication,
   // a wrong configured identity, a corrupt DLL or an unsupported transport.
   if(map_frame(full_invalid)!=mapped::Status::IngressRejected ||
