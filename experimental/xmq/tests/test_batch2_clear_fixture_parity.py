@@ -15,7 +15,7 @@ from portable_xmq import parse, validate_driver, blocks, values
 
 # Explicitly reviewed references from original driver tests:
 # minomess 3-6: wireless MODE 5 fixtures with pre-decrypted application after '_'
-# kamwater 1, 5, 6: ELL 8D20 NOKEY fixtures with pre-decrypted application.
+# kamwater 1, 3, 5, 6: ELL 8D20 NOKEY fixtures; #3 has a reviewed leading prefix.
 # Other cases need wired M-Bus, compact profile handling, authenticated
 # decryption, manufacturer-specific records or additional fields.
 CASES = {"minomess": (3, 4, 5, 6), "kamwater": (1, 3, 5, 6)}
@@ -64,8 +64,20 @@ def main():
             after = "".join(parts[1].replace("|", "").split())
             if not after or len(after) % 2:
                 raise AssertionError(f"{driver} #{number}: invalid application hex")
+            # Kamwater #3 starts with a reviewed 46 88 78 prefix
+            # before the DIF/VIF records. Keep this explicit and
+            # isolated; never loosen the generic radio record parser.
+            mode = "kamwater_prefixed" if driver == "kamwater" and number == 3 else driver
+            if mode == "kamwater_prefixed":
+                assert after.startswith("468878")
+                # An incorrect prefix must not be accepted even if the
+                # records after it are otherwise valid.
+                altered = subprocess.run(
+                    [str(binary), mode, "478878" + after[6:]],
+                    check=False, capture_output=True, text=True)
+                assert altered.returncode != 0 and not altered.stdout
             result = subprocess.run(
-                [str(binary), driver, after], check=False,
+                [str(binary), mode, after], check=False,
                 capture_output=True, text=True)
             if result.returncode:
                 raise AssertionError(
