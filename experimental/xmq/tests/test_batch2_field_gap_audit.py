@@ -76,6 +76,10 @@ def tested_fields(driver,index,reference):
         fields.update(STATUS_MODERN)
         fields.add("time_high_ambient_temperature" if index==12
                    else "time_low_ambient_temperature")
+    # test_kamwater_compact_upstream_parity.py uses the existing CRC-checked
+    # TPL79 expansion and shared status decoder for original #2/#4/#8.
+    if index in (2,4,8):
+        fields.update(STATUS_OLD)
     # test_kamwater_numeric_upstream_parity.py matches exact output keys
     if index<=8:
         fields.update(key for key in reference if
@@ -121,7 +125,7 @@ def main():
     assert sum(map(len,output.values()))==39
     # Snapshot of *unique functional fields* derived from XMQ expected JSON.
     # NOT the cumulative number of assertions across overlapping test suites.
-    assert (total_expected,total_compared,positives)==(181,150,38)
+    assert (total_expected,total_compared,positives)==(181,168,38)
     assert output["kamwater"][8]["compared_partial"]==0
     assert output["kamwater"][8]["negative_security_only"]
     assert output["kamwater"][8]["not_compared"]==[
