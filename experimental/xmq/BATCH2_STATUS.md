@@ -614,6 +614,21 @@ count as positive comparisons against existing JSON keys.
 The audit explicitly excludes both missing fields and retains
 per-driver totals: Minomess 28/32, Kamwater 92/130 and Apator162 19/19.
 
+## Kamwater #3 leading three bytes: host-only golden regression correction
+
+The original source NOKEY fixture #3 puts `468878` before its
+`02FF20`/volume/flow DIF/VIF records. Treating all bytes as an
+ordinary application record stream causes the generic clear-record
+decoder to reject it. The host-only fixture CLI now accepts **only**
+this explicit three-byte prefix in its separate
+`kamwater_prefixed` test mode and then runs the unchanged bounded
+generic decoder. The source JSON's `total_m3=20.015` and absence
+of `target_m3` are compared in the existing CI test; an altered
+prefix must fail without any readings. This fixture-specific test
+adapter does **not** imply that arbitrary radio telegrams with a
+similar prefix may be stripped, nor does it authorize firmware
+integration. The test has not yet been confirmed by new CI.
+
 ## Stage B explicit Minomess status and Kamwater #3 total-volume regression
 
 The compiled batch2 clear-fixture C++ CLI now prints `status=OK`
