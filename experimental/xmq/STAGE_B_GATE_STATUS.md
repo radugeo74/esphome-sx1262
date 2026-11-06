@@ -95,6 +95,24 @@ sensors, no radio dispatcher hook, and no storage/replay policy. The
 counter is diagnostic only. Do not enable Kamwater, Minomess or
 Apator162 in the live manifest on these results.
 
+## Native field-binding staging contract — CI pending
+
+An isolated probe-only `kamwater_sensor_mapping.h` now stages only the
+existing native binding names `total_m3`, `target_m3` (numeric,
+cubic metres) and `status` (text) **after** the configured authenticated
+Kamwater #10 decoder succeeded. The staged result is transactional:
+missing/negative/nonfinite volumes or absent status yield an empty plan;
+no partial measurements are available. `accoustic_noise` and the CCM
+counter are intentionally **not** sensor fields, and the plan carries
+no RSSI. The probe adds executable assertions for source #10 field
+names/values and invalid mapping rejection. **CI pending.**
+
+This is a synchronous in-memory binding plan, **not publication**: it
+does not call `publish_state`, change YAML schemas, enable the Kamwater
+driver, or alter existing `fhkvdataiii`/`mkradio4` behavior. True
+sensor lifecycle, replay/duplicate suppression, real T1/C1 RF capture
+and ESP32-S3 runtime remain separate Stage B acceptance gates.
+
 ## Source-fixture parity: narrow substage ready for CI
 
 Original public `wmbusmeters` XMQ fixtures from the unchanged imported
