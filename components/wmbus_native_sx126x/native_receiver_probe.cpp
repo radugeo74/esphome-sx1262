@@ -17,6 +17,9 @@
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
 #include "xmq_decode_catalog.h"
 #include "xmq_plain_text_fields.h"
+#ifdef WMBUS_NATIVE_BATCH2_SECURE_ENABLED
+#include "xmq_batch2_secure_dispatch.h"
+#endif
 #endif
 
 namespace esphome {
@@ -183,6 +186,59 @@ static void log_verified_identities(
       parsed.has_tpl && parsed.tpl.decimal_bcd ? "yes" : "no",
       static_cast<unsigned>(policy.candidate),
       policy.multiple_configured_ids ? "yes" : "no");
+}
+
+// Called exclusively from verified::process/T1 FIFO Verified callbacks.
+// A configured secure meter is "handled" even if its key/frame fails,
+// so ordinary plaintext and AUTO dispatch can never become a fallback.
+bool NativeReceiverProbe::publish_secure_batch2_(
+    const std::vector<uint8_t> &frame,uint32_t meter_id,float rssi_dbm) {
+#if defined(WMBUS_NATIVE_XMQ_ENABLED) && defined(WMBUS_NATIVE_BATCH2_SECURE_ENABLED)
+  if (frame.empty() || secure_meters_.empty()) return false;
+  const std::string id=native_meter_id(meter_id);
+  for (const auto &binding : secure_meters_) {
+    if (binding.id!=id) continue;
+    xmq_portable::CalcValue values[24]{};
+    xmq_portable::CalendarDate dates[2]{};
+    xmq_portable::DecodedPayload result{values,24,0,dates,2,0};
+    const auto status=xmq_portable::batch2_secure::decode_configured(
+        frame.data(),frame.size(),id.c_str(),
+        binding.driver.c_str(),binding.key.data(),result);
+    if (status!=xmq_portable::batch2_secure::Status::Ok ||
+        result.value_count==0) {
+      static uint32_t blocked_secure=0;
+      if (++blocked_secure<=5 || blocked_secure%100==0)
+        ESP_LOGW(TAG,"Configured secure XMQ rejected meter=%s driver=%s status=%u (no publication)",
+                 id.c_str(),binding.driver.c_str(),static_cast<unsigned>(status));
+      return true; // no plaintext fallback or RSSI on rejected frame
+    }
+    for (const auto &sensor_binding : xmq_sensors_) {
+      if (sensor_binding.meter_id!=id || sensor_binding.output==nullptr) continue;
+      for (size_t i=0;i<result.value_count;++i) {
+        if (result.values[i].name!=nullptr &&
+            sensor_binding.field==result.values[i].name &&
+            std::isfinite(result.values[i].value)) {
+          sensor_binding.output->publish_state(
+              round_for_sensor(result.values[i].value,sensor_binding.output));
+          break;
+        }
+      }
+    }
+    for (const auto &rssi_binding : rssi_sensors_) {
+      if (rssi_binding.meter_id==id && rssi_binding.output!=nullptr)
+        rssi_binding.output->publish_state(
+            round_for_sensor(rssi_dbm,rssi_binding.output));
+    }
+    ESP_LOGI(TAG,"Configured secure XMQ meter=%s driver=%s decoded=%u (mapped sensors only)",
+             id.c_str(),binding.driver.c_str(),static_cast<unsigned>(result.value_count));
+    return true;
+  }
+#else
+  (void)frame;
+  (void)meter_id;
+  (void)rssi_dbm;
+#endif
+  return false;
 }
 
 // C1 publication is opt-in and accepts only CRC-verified, CRC-stripped
@@ -354,6 +410,11 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
       // frame is observable by on_verified, regardless of YAML meter IDs.
       // This is a user-defined diagnostic event, not an XMQ sensor update.
       self->fire_verified_(frame.header.meter_id, rssi_dbm, frame.bytes);
+      // The sole explicit encrypted driver path; no AUTO key trial or
+      // relaxation of the original plain publication gate.
+      if (kind==registry::Kind::Configured &&
+          self->publish_secure_batch2_(frame.bytes,frame.header.meter_id,rssi_dbm))
+        return;
       const auto admission=wmbus_pure::publication::inspect(
           frame.bytes.data(),frame.bytes.size(),frame.header.meter_id);
       if (kind==registry::Kind::Configured &&
@@ -476,7 +537,10 @@ void NativeReceiverProbe::on_c1_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.bytes.size()),
              static_cast<unsigned>(checked.frame.header.ci),
              wmbus_pure::tpl_security::label(security.state));
-    self->publish_c1_plaintext_(checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm);
+    if (!self->publish_secure_batch2_(
+            checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm))
+      self->publish_c1_plaintext_(
+          checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm);
   }
   if (self->t1_raw_diagnostics_) {
     static constexpr char HEX[] = "0123456789ABCDEF";
@@ -563,7 +627,10 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.header.ci),
              kind == registry::Kind::Configured ? "yes" : "no",
              wmbus_pure::tpl_security::label(security.state));
-    self->publish_c1_plaintext_(checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm);
+    if (!self->publish_secure_batch2_(
+            checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm))
+      self->publish_c1_plaintext_(
+          checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm);
     // Identification-only auto catalog (generated from XMQ detect.mvt).
     // A converter DLL signature is a candidate, NOT proof of the TPL's
     // underlying meter driver, and never authorizes decryption/publication.
