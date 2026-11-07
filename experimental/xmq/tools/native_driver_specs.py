@@ -21,7 +21,7 @@ GENERATED = (
 # Portable live cleartext decoders, independently validated with official
 # upstream fixture records. These do not require a generated IXML grammar.
 PORTABLE = ("iperl", "hydrus", "lansenpu", "lansendw", "cma12w",
-            "ultraheat", "sontex868")
+            "ultraheat", "sontex868", "supercal")
 # Independently configured AES-only receiver. Not safe for generic
 # plaintext meter_drivers, and never guesses keys from "NOKEY" fixtures.
 SECURE_ONLY = ("mkradio4a",)
