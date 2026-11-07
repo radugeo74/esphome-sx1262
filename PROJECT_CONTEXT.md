@@ -42,46 +42,53 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 
 ## Stage B active driver integration — 2026-11-07
 
-**Last owner-confirmed CI green:** all three experimental native
-encrypted mbedTLS decoder paths compiled in the standalone ESP-IDF
-probe and host regressions at `d072669` / related branch commits.
-Do not equate these with live SX1262 reception. The already-green
-native clear-only batch-2 catalog branches and unaffected Techem
-`fhkvdataiii` / `mkradio4` remain the baseline.
+**Owner-confirmed CI green through `d606d72` / run
+`42349861321`**, including full opt-in ESPHome ESP32-S3 link
+with real mbedTLS CCM/CMAC enabled, plus the native T1/C1
+secure driver dispatcher and existing Techem non-regression builds.
+No physical Heltec firmware has been installed or flashed.
 
-**Current new change, CI PENDING (commit `1d96f01`):**
-The real `NativeReceiverProbe` now has a strictly opt-in YAML
-`secure_meters` list, each with 8-digit DLL meter ID, explicit
-`minomess` / `kamwater` / `apator162` driver and exactly 16
-AES key bytes supplied as 32 hexadecimal digits (use `!secret`
-in private YAML). The config forbids the same meter in regular
-`meter_drivers` and `secure_meters` and rejects duplicate secure
-meter IDs. Every secure meter automatically enters the configured
-DLL identity registry. The firmware holds only the 16-byte binary
-keys at runtime; keys must never enter project docs/logs.
+**Current direct Minomess integration, CI PENDING**:
+Some ORIGINAL Minomess wireless source samples have different
+identities in the radio DLL (converter) and the long TPL (actual
+water meter): e.g. source #3 uses DLL 55036410 but TPL 15503451.
+Previously the experimental encrypted dispatcher required a single
+identical ID at both layers, so these legitimate converter frames
+were necessarily rejected despite a valid AES-CBC payload.
 
-On CRC-verified, CRC-stripped T1 and C1-A/B frames (including combined
-T1_C1), `publish_secure_batch2_` selects only the already-configured
-ID and driver, calls the strict
-`batch2_secure::decode_configured` entrypoint, then publishes
-only successfully decoded mapped numeric values and RSSI.
-Failed decryption or identity/format checks are terminal for
-that secure meter: **no publication and no plaintext/AUTO fallback**.
-Existing `native_publication_gate.h` and all ordinary
-Techem/portable YAML mappings remain untouched. The secure header
-is only compiled when `WMBUS_NATIVE_BATCH2_SECURE_ENABLED`
-is explicitly enabled by a nonempty secure YAML list.
-`BATCH2_PENDING` drivers stay outside ordinary `SUPPORTED` and AUTO.
+The isolated `secure_meters` YAML entry now supports optional
+`dll_meter_id` **only for minomess**. Without it, behavior is
+unchanged (same ID in DLL and TPL). With it, the configured DLL
+sender is registered at verified T1/C1 ingress, but **the nested
+TPL ID independently MUST match `meter_id`** for decrypted
+fields to be published to that meter's HA sensors. No inference
+of keys, no AUTO fallback, no binding by DLL alone. YAML rejects
+duplicate/ambiguous secure DLL senders, conflicting ordinary
+`meter_drivers`, and converter bindings on other drivers.
 
-CI newly validates/compiles build-only
-`experimental/semtech-radio/ci/native-sx126x-batch2-lab.yaml`
-using three synthetic public IDs and public crypto test keys.
-The user-installed Heltec firmware is not modified; no physical
-radio, HA publication, power or field-key verification is claimed.
-**Still open:** native Kamwater OMS profile-D CCM message format,
-real on-air T1/C1 acceptance and minomess converter secondary
-identity cases; exact full upstream fixture-to-HA parity.
-No NVS work is required for these meter drivers.
+The original public Minomess #6 clear application was encrypted
+with a public synthetic test key; the regression substitutes a
+converter DLL address while preserving encrypted TPL bytes,
+verifies format-B DLL CRC and checks the real
+`batch2_secure::decode_configured` path. Expected total/target:
+140.354 / 138.485 m3. Negative checks reject missing/wrong DLL
+binding, wrong nested TPL and unsupported AUTO. The build-only
+ESP32-S3 lab YAML also configures a distinct converter ID.
+**Current run `42350691692` is not yet confirmed green.**
+
+All three drivers are now connected to the real experimental native
+T1/C1 RX callback via explicit `secure_meters`, with mbedTLS
+AES-CBC Minomess/Apator162, ELL AES-CTR Kamwater and
+authenticated OMS CCM Kamwater. Original encrypted Kamwater #10
+positive and #9 invalid-tag cases were exercised in host CI;
+no NVS is part of the driver requirement.
+
+**Still OPEN for production:** complete on-air T1/C1 captures,
+actual ESP32-S3 runtime, publishing observation in Home Assistant,
+and explicit canary/rollback approval. Original source fixtures are
+independent references, NOT physical radio runtime evidence.
+`BATCH2_PENDING` remains outside `SUPPORTED`/AUTO,
+no production YAML or installed Heltec firmware changes.
 
 ## Next developer workflow
 
