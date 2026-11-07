@@ -78,8 +78,8 @@ def validate_secure_config(config):
                 and entry[CONF_DRIVER] != "minomess"):
             raise cv.Invalid("Separate dll_meter_id is supported only by minomess")
     normal = {entry[CONF_METER_ID] for entry in config[CONF_METER_DRIVERS]}
-    if normal.intersection(dll_ids):
-        raise cv.Invalid("A secure DLL sender cannot also use meter_drivers")
+    if normal.intersection(ids) or normal.intersection(dll_ids):
+        raise cv.Invalid("A secure meter or its DLL sender cannot also use meter_drivers")
     return config
 
 
