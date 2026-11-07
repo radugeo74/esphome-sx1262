@@ -142,6 +142,32 @@ These new additions are software-only, not tested with live RF or
 Home Assistant. Keep the last *fully green* CI marker above until
 the new jobs complete.
 
+### MK Radio4a NOKEY examples also decode without AES (offline)
+
+Just as for `topaseskr`, both original `mkradio4a.xmq`
+examples (`FOO` warm water and `BAR` cold water) contain
+**already-readable storage-one DIF/VIF values** despite their
+Mode-5 `0x0530` three-block CBC TPL and radio-converter
+headers. The existing `mkradio4a_plain.h` parser has decoded
+them without a key; the new **host-only** supplied-clear adapter
+`experimental/semtech-radio/host_only/mkradio4a_supplied_clear_fixture.h`
+additionally validates **both** DLL radio-converter and nested
+TPL meter IDs, model/version, the `2F2F` fixture marker,
+and complete target volume/date fields.
+
+The regression `test_mkradio4a_supplied_clear.cpp` decodes both
+original public examples **without a key**, checks their expected
+`target_m3` (16.1/75.2) and `target_date` (2021-12-31),
+and rejects wrong DLL/TPL IDs, malformed data, and unsupported
+envelopes. This adapter is **not included in the live Heltec**
+receiver, not a keyless `driver: auto` authorization.
+
+The original examples may have been decrypted before being saved:
+`NOKEY` does **not** establish unencrypted radio transmission.
+For live `0x0530` Mode-5 RF, the configured `secure_meters`
+route still requires the corresponding AES key and both IDs.
+No OTA/flash or physical RF/HA test was performed.
+
 ### Encrypted-only driver: `mkradio4a`
 
 `mkradio4a` is now additionally software-integrated through
