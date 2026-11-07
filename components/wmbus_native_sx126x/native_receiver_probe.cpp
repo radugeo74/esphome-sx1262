@@ -342,6 +342,10 @@ bool NativeReceiverProbe::publish_plain_batch2_(
                  static_cast<unsigned>(status));
       return true;
     }
+    // Publish only source-validated Lansen TPL status alongside its
+    // successfully decoded counters. No status on failed/unknown frames.
+    if(entry.driver=="lansenpu")
+      publish_xmq_text_(frame,entry.id,entry.driver.c_str(),result);
     for(const auto &binding : xmq_sensors_) {
       if(binding.meter_id!=entry.id || binding.output==nullptr) continue;
       for(size_t i=0;i<result.value_count;++i) {
