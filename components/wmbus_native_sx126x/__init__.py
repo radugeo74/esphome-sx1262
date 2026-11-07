@@ -47,10 +47,10 @@ def validate_driver_name(value):
     tool_dir = root / "experimental" / "xmq" / "tools"
     sys.path.insert(0, str(tool_dir))
     try:
-        from native_driver_specs import SUPPORTED, BATCH2_PENDING
+        from native_driver_specs import SUPPORTED, BATCH2_PENDING, MANUAL_PLAIN
         # BATCH2 is manual clear-only at this interface. Do not place it
         # in SUPPORTED: generated AUTO must not select untested RF modes.
-        if value not in SUPPORTED + BATCH2_PENDING:
+        if value not in SUPPORTED + BATCH2_PENDING + MANUAL_PLAIN:
             raise cv.Invalid(f"Native XMQ driver {value!r} is not available")
     finally:
         sys.path.pop(0)
