@@ -180,21 +180,24 @@ inline Status decode_kamwater_oms_ccm(const uint8_t *frame,size_t length,
   if(out_status) *out_status="TEMPORARY_ERROR";
   return Status::Ok;
 }
-// Minomess uses a long CI=0x72 TPL that can describe a meter behind
-// a DLL radio converter. Require the independently configured meter ID
-// in BOTH addresses, while matching manufacturer/model in the TPL.
+// Minomess may be behind a separate converter DLL address. Require
+// both IDs to be independently and explicitly bound: expected DLL ID
+// authorizes the radio gateway; configured_id authorizes the nested TPL.
+// Without an explicit expected DLL ID, both must still match.
 // Never interpret an upstream NOKEY plaintext fixture as encrypted RF.
 inline Status decode_minomess_mode5(const uint8_t *frame,size_t length,
                                      const char *configured_id,
                                      const uint8_t key[16],
-                                     DecodedPayload &output) {
+                                     DecodedPayload &output,
+                                     const char *expected_dll_id=nullptr) {
   output.value_count=0;
   output.date_count=0;
   wmbus_pure::Header h{};
   if(wmbus_pure::parse_header(frame,length,h)!=
      wmbus_pure::HeaderStatus::Ok)
     return Status::InvalidFrame;
-  if(wmbus_pure::match_meter_id(h,configured_id)!=
+  if(wmbus_pure::match_meter_id(
+        h,expected_dll_id ? expected_dll_id : configured_id)!=
      wmbus_pure::MatchStatus::Match)
     return Status::WrongMeter;
   const auto identity=wmbus_pure::identity::inspect(frame,length);
@@ -235,7 +238,8 @@ inline Status decode_configured(const uint8_t *frame,size_t length,
                                 const char *configured_id,
                                 const char *driver,const uint8_t key[16],
                                 DecodedPayload &output,
-                                const char **out_status=nullptr) {
+                                const char **out_status=nullptr,
+                                const char *expected_dll_id=nullptr) {
   output.value_count=0;
   output.date_count=0;
   if(out_status) *out_status=nullptr;
@@ -244,7 +248,8 @@ inline Status decode_configured(const uint8_t *frame,size_t length,
   if(std::strcmp(driver,"apator162")==0)
     return decode_apator162_mode5(frame,length,configured_id,key,output);
   if(std::strcmp(driver,"minomess")==0)
-    return decode_minomess_mode5(frame,length,configured_id,key,output);
+    return decode_minomess_mode5(frame,length,configured_id,key,
+                                  output,expected_dll_id);
   if(std::strcmp(driver,"kamwater")==0) {
     // Distinct ELL AES-CTR (8D) versus authenticated OMS CCM (8C).
     // Never retry a different security mode when authentication fails.
