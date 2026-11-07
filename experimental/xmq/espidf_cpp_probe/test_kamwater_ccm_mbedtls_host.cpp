@@ -12,6 +12,7 @@
 #include "../../../components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include "../../../components/wmbus_native_sx126x/kamwater_numeric_semantics.h"
 #include "main/oms_ccm_mbedtls_probe.h"
+#include "../../../components/wmbus_native_sx126x/xmq_batch2_secure_dispatch.h"
 #include "main/oms_ccm_verified_ingress.h"
 #include "main/kamwater_configured_fields.h"
 #include "main/kamwater_sensor_mapping.h"
@@ -101,6 +102,65 @@ int main() {
     frame[frame.size()-2]=static_cast<uint8_t>(crc>>8);
     frame.back()=static_cast<uint8_t>(crc);
   };
+  // REAL configured batch-2 receiver dispatcher on original public
+  // Kamwater #10 authenticated TPL and #9 invalid CCM authentication.
+  // Synthetic FORMAT-B DLL envelope is verified independently first.
+  namespace native_ccm=xmq_portable::batch2_secure;
+  wmbus_pure::CompleteFrame verified_ccm{};
+  if(wmbus_pure::verify_complete_frame(
+       full_valid.data(),full_valid.size(),
+       wmbus_pure::CrcFrameFormat::B,verified_ccm)
+     !=wmbus_pure::CompleteStatus::Ok)
+    return 78;
+  xmq_portable::CalcValue actual_values[4]{};
+  xmq_portable::CalendarDate actual_dates[1]{};
+  xmq_portable::DecodedPayload actual{actual_values,4,0,actual_dates,1,0};
+  const char *actual_text=nullptr;
+  const auto native_decode=[&](const std::vector<uint8_t> &bytes,
+                               const char *meter,const uint8_t *secret,
+                               const char *driver) {
+    return native_ccm::decode_configured(bytes.data(),bytes.size(),meter,
+                                         driver,secret,actual,&actual_text);
+  };
+  if(native_decode(verified_ccm.bytes,"53820306",key,"kamwater")!=
+       native_ccm::Status::Ok ||
+     actual.value_count!=2 ||
+     std::strcmp(actual.values[0].name,"total_m3")!=0 ||
+     std::strcmp(actual.values[1].name,"target_m3")!=0 ||
+     std::fabs(actual.values[0].value)>1e-9 ||
+     std::fabs(actual.values[1].value)>1e-9 ||
+     !actual_text || std::strcmp(actual_text,"TEMPORARY_ERROR")!=0)
+    return 79;
+  wmbus_pure::CompleteFrame verified_bad_ccm{};
+  if(wmbus_pure::verify_complete_frame(
+       full_invalid.data(),full_invalid.size(),
+       wmbus_pure::CrcFrameFormat::B,verified_bad_ccm)
+     !=wmbus_pure::CompleteStatus::Ok ||
+     native_decode(verified_bad_ccm.bytes,"53820306",key,"kamwater")!=
+       native_ccm::Status::EncryptedDecodeRejected ||
+     actual.value_count!=0 || actual_text!=nullptr)
+    return 80;
+  uint8_t wrong_ccm_master[16]{};
+  std::memcpy(wrong_ccm_master,key,16);
+  wrong_ccm_master[0]^=1;
+  if(native_decode(verified_ccm.bytes,"53820306",wrong_ccm_master,
+                   "kamwater")==native_ccm::Status::Ok ||
+     actual.value_count!=0 || actual_text!=nullptr)
+    return 81;
+  if(native_decode(verified_ccm.bytes,"53820307",key,"kamwater")!=
+       native_ccm::Status::WrongMeter ||
+     actual.value_count!=0 || actual_text!=nullptr)
+    return 82;
+  if(native_decode(verified_ccm.bytes,"53820306",key,"auto")==
+       native_ccm::Status::Ok ||
+     actual.value_count!=0 || actual_text!=nullptr)
+    return 83;
+  auto altered_ccm=verified_ccm.bytes;
+  altered_ccm[10]=0x8D; // Do not reinterpret CCM as ELL ciphertext.
+  if(native_decode(altered_ccm,"53820306",key,"kamwater")==
+       native_ccm::Status::Ok ||
+     actual.value_count!=0 || actual_text!=nullptr)
+    return 84;
   Output admitted{};
   const xmq_portable::oms_ccm_idf_probe::ingress::ConfiguredMeter configured{
       0x2C37,53820306u,0x3C,0x16};
