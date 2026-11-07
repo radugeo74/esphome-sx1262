@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstdint>
 #include <vector>
 #include <string>
@@ -34,6 +35,32 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   void set_c1_plaintext_publish(bool value) { this->c1_plaintext_publish_ = value; }
   void add_configured_meter_id(const std::string &value) { this->configured_meter_ids_.push_back(value); }
   void add_meter_driver(const std::string &id, const std::string &driver) { this->meter_drivers_.push_back({id, driver}); }
+  // Explicit opt-in binding. Convert the !secret-sourced hex key to
+  // 16 bytes once; never retain the hexadecimal text or print the key.
+  void add_secure_meter(const std::string &id,const std::string &driver,
+                        const std::string &key_hex) {
+    if (id.size()!=8 || key_hex.size()!=32 ||
+        (driver!="minomess" && driver!="kamwater" && driver!="apator162"))
+      return;
+    for (char c : id)
+      if (c<'0' || c>'9') return;
+    for (const auto &meter : secure_meters_)
+      if (meter.id==id) return; // fail closed on duplicate entry
+    std::array<uint8_t,16> key{};
+    for (size_t i=0;i<16;++i) {
+      const auto nibble=[](char c)->int {
+        if(c>='0' && c<='9') return c-'0';
+        if(c>='a' && c<='f') return c-'a'+10;
+        if(c>='A' && c<='F') return c-'A'+10;
+        return -1;
+      };
+      const int high=nibble(key_hex[2*i]);
+      const int low=nibble(key_hex[2*i+1]);
+      if(high<0 || low<0) return;
+      key[i]=static_cast<uint8_t>((high<<4)|low);
+    }
+    secure_meters_.push_back({id,driver,key});
+  }
   void add_xmq_sensor(const std::string &meter_id, const std::string &field,
                       sensor::Sensor *output) {
     this->xmq_sensors_.push_back({meter_id, field, output});
@@ -70,9 +97,20 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
                          const xmq_portable::DecodedPayload &decoded);
   void publish_c1_plaintext_(const std::vector<uint8_t> &frame, uint32_t meter_id,
                              float rssi_dbm);
+  // Called ONLY with CRC-verified, stripped frames from SX1262.
+  // true means the explicitly configured secure meter was handled,
+  // including failed/blocked decode (no plaintext fallback).
+  bool publish_secure_batch2_(const std::vector<uint8_t> &frame,
+                              uint32_t meter_id,float rssi_dbm);
   std::vector<std::string> configured_meter_ids_{};
   struct MeterDriver { std::string id; std::string driver; std::string logged_auto_driver; };
   std::vector<MeterDriver> meter_drivers_{};
+  struct SecureMeter {
+    std::string id;
+    std::string driver;
+    std::array<uint8_t,16> key{};
+  };
+  std::vector<SecureMeter> secure_meters_{};
   t1::FifoContract t1_fifo_{};
   std::vector<uint8_t> c1_encoded_frame_{};
   std::vector<uint8_t> combined_encoded_frame_{};
