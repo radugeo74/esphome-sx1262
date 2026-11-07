@@ -40,55 +40,56 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 - **Still OPEN — no false promotion:** 0/39 approved production-equivalent complete frame-to-Home-Assistant sensor replays; 0/3 batch-2 drivers admitted. Pending: authentic complete T1/C1 frames and decryption/provenance for all needed modes, strict real identity/link-mode and replay policies, ESP-IDF/runtime execution where necessary, transactional sensor mapping and separately authorized Heltec canary/rollback. See `experimental/xmq/STAGE_B_GATE_STATUS.md` for the precise acceptance gate.
 - Keep `BATCH2_PENDING = ("minomess", "kamwater", "apator162")` excluded from `SUPPORTED`, YAML driver selection and native publishing. Do **not** flash, modify installed YAML, or alter established `fhkvdataiii`/`mkradio4` behavior without explicit authorization.
 
-## Stage B active driver integration — 2026-11-07
+## Stage B native integration — 2026-11-07 (all CI green; device validation OPEN)
 
-**Owner-confirmed CI green through `d606d72` / run
-`42349861321`**, including full opt-in ESPHome ESP32-S3 link
-with real mbedTLS CCM/CMAC enabled, plus the native T1/C1
-secure driver dispatcher and existing Techem non-regression builds.
-No physical Heltec firmware has been installed or flashed.
+**Last owner-confirmed GitHub CI green: `8136a346`, run
+`42350691692` (three jobs PASS: native packet input, standalone
+ESP-IDF ESP32-S3 probe, and native ESPHome complete build).**
+Full build includes the opt-in `secure_meters` configuration
+and conditional mbedTLS CCM/CMAC Kconfig enablement.
+Earlier native source-fixture and rejection tests remain green.
 
-**Current direct Minomess integration, CI PENDING**:
-Some ORIGINAL Minomess wireless source samples have different
-identities in the radio DLL (converter) and the long TPL (actual
-water meter): e.g. source #3 uses DLL 55036410 but TPL 15503451.
-Previously the experimental encrypted dispatcher required a single
-identical ID at both layers, so these legitimate converter frames
-were necessarily rejected despite a valid AES-CBC payload.
+**The three experimental drivers are CODE-INTEGRATED:**
+- `minomess`: OMS long TPL AES-CBC Mode 5, existing native XMQ
+  application decoder; optional **explicit** `dll_meter_id` for
+  wireless converter DLL identity differing from actual meter TPL
+  identity. TPL meter must match configured `meter_id`; optional
+  DLL sender must match configured `dll_meter_id`. No AUTO key
+  guesses or ambiguous multi-target sender bindings.
+- `kamwater`: ELL-II AES-CTR for independently checked compact /
+  clear records, plus authenticated OMS profile-D AES-CMAC/CCM
+  (original public #10 positive and #9 bad CCM tag rejected).
+  The validated status text is published only after CCM acceptance.
+- `apator162`: OMS short TPL AES-CBC Mode 5 to native XMQ
+  `total_m3`; original public encrypted #19 host regression.
+All three use the actual experimental `NativeReceiverProbe` verified
+T1/C1 ingress with strict, opt-in YAML `secure_meters`, individual
+16-byte AES keys from `!secret`, and sensor/RSSI mapping. Existing
+Techem `fhkvdataiii` and `mkradio4` paths remain unchanged.
 
-The isolated `secure_meters` YAML entry now supports optional
-`dll_meter_id` **only for minomess**. Without it, behavior is
-unchanged (same ID in DLL and TPL). With it, the configured DLL
-sender is registered at verified T1/C1 ingress, but **the nested
-TPL ID independently MUST match `meter_id`** for decrypted
-fields to be published to that meter's HA sensors. No inference
-of keys, no AUTO fallback, no binding by DLL alone. YAML rejects
-duplicate/ambiguous secure DLL senders, conflicting ordinary
-`meter_drivers`, and converter bindings on other drivers.
+**Validation boundary:**
+- **PASS:** executable source-fixture host tests, positive/negative
+  secure dispatcher regressions, all three CI jobs, complete ESP32-S3
+  build/link, existing non-secure regressions.
+- **NOT TESTED:** runtime on physical Heltec hardware, original
+  *complete on-air* T1/C1 capture with each target driver, real
+  production key provisioning, or observed Home Assistant state
+  publication. The synthetic Minomess converter/CTR fixtures
+  and public upstream ciphertext are not substituted for these.
+- **Release gate remains OPEN:** 0/3 drivers admitted to
+  `SUPPORTED` / AUTO and 0/39 complete production-equivalent
+  physical RF-to-HA approvals. A separate explicitly authorized
+  test build/flash with rollback and suitable actual meter captures
+  is needed before production admission. No NVS work is relevant.
+  **Installed Heltec firmware is unchanged.**
 
-The original public Minomess #6 clear application was encrypted
-with a public synthetic test key; the regression substitutes a
-converter DLL address while preserving encrypted TPL bytes,
-verifies format-B DLL CRC and checks the real
-`batch2_secure::decode_configured` path. Expected total/target:
-140.354 / 138.485 m3. Negative checks reject missing/wrong DLL
-binding, wrong nested TPL and unsupported AUTO. The build-only
-ESP32-S3 lab YAML also configures a distinct converter ID.
-**Current run `42350691692` is not yet confirmed green.**
-
-All three drivers are now connected to the real experimental native
-T1/C1 RX callback via explicit `secure_meters`, with mbedTLS
-AES-CBC Minomess/Apator162, ELL AES-CTR Kamwater and
-authenticated OMS CCM Kamwater. Original encrypted Kamwater #10
-positive and #9 invalid-tag cases were exercised in host CI;
-no NVS is part of the driver requirement.
-
-**Still OPEN for production:** complete on-air T1/C1 captures,
-actual ESP32-S3 runtime, publishing observation in Home Assistant,
-and explicit canary/rollback approval. Original source fixtures are
-independent references, NOT physical radio runtime evidence.
-`BATCH2_PENDING` remains outside `SUPPORTED`/AUTO,
-no production YAML or installed Heltec firmware changes.
+**Next action is hardware/runtime validation, not additional driver
+framework work.** If the site has no Minomess/Kamwater/Apator162
+meters or keys, report that physical end-to-end validation is
+unavailable rather than inventing approval. Do not flash, enable
+YAML for real meters, or alter stable Techem paths without owner's
+explicit authorization. Consult
+`experimental/xmq/STAGE_B_GATE_STATUS.md` for historical gates.
 
 ## Next developer workflow
 
