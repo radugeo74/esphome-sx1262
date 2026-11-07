@@ -138,6 +138,13 @@ jobs:
             experimental/xmq/espidf_cpp_probe/test_kamwater_ccm_mbedtls_host.cpp \
             -o /tmp/test-kamwater-ccm-mbedtls-host -lmbedcrypto
           /tmp/test-kamwater-ccm-mbedtls-host
+      - name: Original encrypted Apator162 RF application through native mbedTLS and driver dispatch
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_apator162_native_mbedtls_dispatch.cpp \
+            -o /tmp/test-apator162-native-mbedtls -lmbedcrypto
+          /tmp/test-apator162-native-mbedtls
       - name: Test real Kamwater ESP-IDF NVS adapter with host fake (no physical flash)
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
