@@ -40,43 +40,49 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 - **Still OPEN — no false promotion:** 0/39 approved production-equivalent complete frame-to-Home-Assistant sensor replays; 0/3 batch-2 drivers admitted. Pending: authentic complete T1/C1 frames and decryption/provenance for all needed modes, strict real identity/link-mode and replay policies, ESP-IDF/runtime execution where necessary, transactional sensor mapping and separately authorized Heltec canary/rollback. See `experimental/xmq/STAGE_B_GATE_STATUS.md` for the precise acceptance gate.
 - Keep `BATCH2_PENDING = ("minomess", "kamwater", "apator162")` excluded from `SUPPORTED`, YAML driver selection and native publishing. Do **not** flash, modify installed YAML, or alter established `fhkvdataiii`/`mkradio4` behavior without explicit authorization.
 
-## Stage B CI checkpoint — 2026-11-06
+## Stage B active driver integration — 2026-11-07
 
-**Last owner-confirmed CI green: through `6bd4d98`**, including the
-portable Kamwater replay checkpoint, compilation/linking of actual
-ESP-IDF NVS APIs in the experimental ESP32-S3 probe, and Linux host
-fake-NVS open/read/set/commit/readback failure simulations.
-Earlier original #10 authenticated mbedTLS DLL-to-mapped-fields, #9
-bad-tag rejection and 177/177 source-field host comparisons remain
-green. These are **not** authentic live RF-to-HA approvals.
+**Last owner-confirmed CI green: `1d3bbce`.** This included
+the actual native `decode_configured_plain_frame` clear-transport
+dispatch branches for **minomess, kamwater, apator162**, compiled host
+regressions and rejection of fake plaintext/encrypted input. Existing
+`fhkvdataiii` and `mkradio4` YAML/runtime behavior remains unchanged.
 
-**Current code, CI PENDING (last code commit `fa014c4`):** separate
-`espidf_cpp_probe/main/kamwater_replay_reservation.h` offers an
-explicitly opt-in, bounded **write-ahead** checkpoint policy with a
-configurable 1..8 CCM-counter range. It persists a reserved upper
-watermark *before* the synchronous sink callback, so a crash cannot
-replay an unreserved delivered counter if the durable-store callback
-behaves as specified. Window 1 requires a persistent write for every
-new accepted counter. Window 4/8 may reduce writes, but reboot
-intentionally skips up to 3/7 subsequent **counter values** that have
-not been delivered. The existing public #10 mbedTLS host test adds
-failed-store / failed-sink / retry / duplicate / simulated reboot
-checks; the header also participates in the actual ESP-IDF probe
-compile. No policy is active on hardware.
+**New encrypted integration, CI PENDING (last code commit `d072669`):**
+In the *native receiver component source*, not in the old wmbusmeters
+stack, `oms_mode5_mbedtls.h` handles short/long OMS AES-CBC Mode-5,
+`kamwater_ell_ctr_mbedtls.h` handles ELL-II AES-CTR using the original
+XMQ IV/counter method, and `xmq_batch2_secure_dispatch.h` hands
+cryptographically transformed applications to the reviewed actual
+Minomess/Kamwater/Apator162 XMQ semantic decoders. Host regressions:
+- **Apator162 #19**: ORIGINAL public AES-CBC ciphertext, publicly
+  supplied all-zero source-fixture key, independent DLL CRC, ID,
+  decoded **7.512 m3**, malformed-mode/key/identity negatives.
+- **Kamwater**: synthetic NIST-key ELL AES-CTR around original public
+  compact TPL79; strict CRC/signature and **6.408 m3 total/target**.
+  This is not a genuine captured encrypted RF packet.
+- **Minomess**: synthetic AES-CBC Mode-5 ciphertext constructed from
+  public upstream NOKEY clear application and the original long
+  CI=72 TPL identity, **140.354 / 138.485 m3**; real NOKEY
+  plaintext must NOT be accepted as encrypted RF.
 
-**Decision still OPEN:** the owner has not selected a write frequency
-vs post-restart reporting-gap tradeoff. Real NVS power-loss recovery,
-flash endurance, malicious anti-rollback protections, genuine epoch
-provisioning, real radio transport, physical ESP32-S3 execution,
-atomicity of individual HA sensor updates and rollback are not
-proved. There is **no** auto-provisioning or key reset. Keep
-`BATCH2_PENDING` (minomess/kamwater/apator162) excluded from
-`SUPPORTED`, sensor publishing and live YAML: still **0/39** complete
-production-equivalent source-frame-to-sensor approvals and **0/3**
-driver admissions. Live Heltec remains untouched.
+**Known CI defect corrected:** first ESP-IDF public Apator #19
+initializer lacked row commas; fixed in `d072669`. The new
+ESP-IDF probe + all three host crypto CI runs are not yet confirmed
+green. Do not claim device execution.
 
-See `experimental/xmq/STAGE_B_GATE_STATUS.md` for gate history and
-the explicit strict-vs-reservation tradeoff table.
+**What is actually left:** per-meter key configuration and the
+authenticated/decrypted path must be connected from the official
+SX126x complete verified radio callback to the secure native
+dispatcher, with explicit configuration and no fallback on invalid
+crypto/identity; real T1/C1 on-device captures and guarded canary
+OTA require owner authorization. The existing live
+`native_publication_gate.h` still blocks encrypted batch-2
+telegrams; current secure functions are callable but **NOT yet
+published to Home Assistant**. All three names remain
+`BATCH2_PENDING`, 0/3 live enabled, 0/39 real complete
+production-equivalent RF-to-sensor approvals. NO new NVS work:
+it is unrelated to finishing these three drivers.
 
 ## Next developer workflow
 
