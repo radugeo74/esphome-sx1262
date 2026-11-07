@@ -40,16 +40,18 @@ def validate_meter_id(value):
     return value
 
 def validate_driver_name(value):
-    # The same reviewed capability manifest also owns YAML driver selection.
+    # The reviewed manifest permits explicit clear batch-2, never AUTO.
     if value == "auto":
         return value
     root = Path(__file__).resolve().parents[2]
     tool_dir = root / "experimental" / "xmq" / "tools"
     sys.path.insert(0, str(tool_dir))
     try:
-        from native_driver_specs import SUPPORTED
-        if value not in SUPPORTED:
-            raise cv.Invalid(f"Native XMQ driver {value!r} is not compiled")
+        from native_driver_specs import SUPPORTED, BATCH2_PENDING
+        # BATCH2 is manual clear-only at this interface. Do not place it
+        # in SUPPORTED: generated AUTO must not select untested RF modes.
+        if value not in SUPPORTED + BATCH2_PENDING:
+            raise cv.Invalid(f"Native XMQ driver {value!r} is not available")
     finally:
         sys.path.pop(0)
     return value
@@ -64,22 +66,27 @@ def validate_secure_key(value):
 
 def validate_secure_config(config):
     secured = config[CONF_SECURE_METERS]
-    ids = [entry[CONF_METER_ID] for entry in secured]
-    dll_ids = [entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) for entry in secured]
-    if len(ids) != len(set(ids)):
+    plain = config[CONF_METER_DRIVERS]
+    secure_ids = [entry[CONF_METER_ID] for entry in secured]
+    secure_dll = [entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID])
+                  for entry in secured]
+    plain_ids = [entry[CONF_METER_ID] for entry in plain]
+    plain_dll = [entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID])
+                 for entry in plain]
+    if len(secure_ids) != len(set(secure_ids)):
         raise cv.Invalid("secure_meters must not contain duplicate meter IDs")
-    # A single DLL sender cannot ambiguously dispatch several keyed meters.
-    # This first converter implementation explicitly supports one-to-one
-    # sender-to-meter bindings, not a shared gateway with trial keys.
-    if len(dll_ids) != len(set(dll_ids)):
+    if len(secure_dll) != len(set(secure_dll)):
         raise cv.Invalid("secure_meters must have unique DLL sender IDs")
-    for entry in secured:
+    if len(plain_ids) != len(set(plain_ids)) or len(plain_dll) != len(set(plain_dll)):
+        raise cv.Invalid("meter_drivers must have unique meter and DLL sender IDs")
+    for entry in secured + plain:
         if (entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) != entry[CONF_METER_ID]
                 and entry[CONF_DRIVER] != "minomess"):
             raise cv.Invalid("Separate dll_meter_id is supported only by minomess")
-    normal = {entry[CONF_METER_ID] for entry in config[CONF_METER_DRIVERS]}
-    if normal.intersection(ids) or normal.intersection(dll_ids):
-        raise cv.Invalid("A secure meter or its DLL sender cannot also use meter_drivers")
+    # One sender cannot dispatch to two different meters, nor to both
+    # encrypted and no-key decoding. Avoid any ambiguous cross-binding.
+    if (set(plain_ids) | set(plain_dll)) & (set(secure_ids) | set(secure_dll)):
+        raise cv.Invalid("An ID cannot be assigned to both meter_drivers and secure_meters")
     return config
 
 
@@ -95,8 +102,10 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_LINK_MODE, default="C1"): cv.one_of("T1", "C1", "T1_C1", upper=True),
     cv.Optional(CONF_FIFO_PROGRESS_PROBE, default=False): cv.boolean,
     cv.Optional(CONF_T1_RAW_DIAGNOSTICS, default=False): cv.boolean,
+    # Regular supported drivers plus explicit (NEVER AUTO) no-key batch-2.
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
+        cv.Optional(CONF_DLL_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Required(CONF_DRIVER): cv.All(cv.string_strict, validate_driver_name),
     })),
     # Explicit opt-in: batch-2 remains excluded from AUTO and SUPPORTED.
@@ -187,12 +196,18 @@ async def to_code(config):
     for meter_id in list(config[CONF_CONFIGURED_METER_IDS]) + [
         item.get(CONF_DLL_METER_ID, item[CONF_METER_ID])
         for item in config[CONF_SECURE_METERS]
+    ] + [
+        item.get(CONF_DLL_METER_ID, item[CONF_METER_ID])
+        for item in config[CONF_METER_DRIVERS]
+        if item[CONF_DRIVER] in ("minomess", "kamwater", "apator162")
     ]:
         if meter_id not in configured_ids:
             cg.add(var.add_configured_meter_id(meter_id))
             configured_ids.add(meter_id)
     for item in config[CONF_METER_DRIVERS]:
-        cg.add(var.add_meter_driver(item[CONF_METER_ID], item[CONF_DRIVER]))
+        cg.add(var.add_meter_driver(
+            item[CONF_METER_ID], item[CONF_DRIVER],
+            item.get(CONF_DLL_METER_ID, item[CONF_METER_ID])))
     for item in config[CONF_SECURE_METERS]:
         cg.add(var.add_secure_meter(
             item[CONF_METER_ID], item[CONF_DRIVER], item[CONF_KEY],
