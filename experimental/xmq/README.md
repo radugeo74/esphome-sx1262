@@ -32,6 +32,49 @@ restrictions, and verified vs pending CI milestones.
   CRC alone does not prove cryptographic authenticity; an intentionally
   invalid CCM-tag source fixture must remain rejected.
 
+## Configured-meter driver selection (native SX126x)
+
+The active `wmbus_native_sx126x` component supports either automatic
+driver selection or an explicit driver for a **configured** meter ID:
+
+```yaml
+wmbus_native_sx126x:
+  sx126x_id: native_sx1262
+  link_mode: T1_C1
+  meter_drivers:
+    - meter_id: "12345678"   # synthetic example only
+      driver: auto
+```
+
+To select manually, replace `driver: auto` with
+`driver: fhkvdataiii`, `mkradio4`, `iperl`, `hydrus`,
+`lansenpu`, `minomess`, `kamwater` or `apator162`.
+For Minomess radio converters, optionally add
+`dll_meter_id: "87654321"` (synthetic) to bind the separate radio
+sender. The actual data fields must be mapped through `xmq_sensors`
+and `xmq_text_sensors`; `auto` does not create Home Assistant
+entities for unconfigured meters.
+
+AUTO can select all eight on the verified **unencrypted** native
+path. Encrypted telegrams require `secure_meters` with an **explicit
+driver and AES key**. A matched model alone is not authorization to
+decode or publish. Passive discovery remains metadata-only. The
+latest complete, green Heltec CI run is
+[42388899090](https://github.com/radugeo74/esphome-sx1262/actions/runs/42388899090).
+For a full explanation and examples, use the
+[root README](../../README.md).
+
+## Origin of the current pipeline
+
+The current architecture comprises ESPHome SX126x radio integration
+and the repository's native `wmbus_native_sx126x` C++ pipeline.
+`SzczepanLeon/esphome-components` is relevant to **earlier project
+history**, not the active radio/decoder dependency. Upstream
+`wmbusmeters` XMQ definitions and any other imported source retain
+their original copyrights and licensing requirements. The old
+`wmbus_radio` / `wmbus_meter` notes below are archived historical
+material, not current installation instructions.
+
 ---
 
 ## Historical 2026-11-01 note (different branch)

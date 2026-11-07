@@ -1,271 +1,199 @@
-# Experimental native wM-Bus SX126x + XMQ — `experimental/xmq-multidriver-auto`
+# Native wM-Bus / XMQ on ESPHome SX126x
 
-> **Branch-specific status (6 November 2026).** This README contains historical material about `experimental/xmq-independent-pipeline` below. **For this branch, the native `wmbus_native_sx126x` pipeline and the instructions in [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) are authoritative.** The history is retained to explain earlier migrations, not as current YAML/build guidance.
+**Experimental Heltec ESP32-S3 + SX1262 receiver** for wireless M-Bus
+T1 and C1, with a native C++ parsing/decoding pipeline and configurable
+Home Assistant sensors.
 
-## Current branch in brief
+**Active branch:** `experimental/xmq-multidriver-auto`  
+**Last fully green code CI:** [GitHub Actions #42388899090](https://github.com/radugeo74/esphome-sx1262/actions/runs/42388899090)
+(code commit `a4894ee185ae6c9fb0608489c92283d0b351fc28`).
 
-The experimental firmware uses the **official ESPHome SX126x radio** (Heltec ESP32-S3 / SX1262) for T1/C1 reception and our **native C++ wM-Bus parsing/decoding path**. The original *wmbusmeters* XMQ algorithms and their public expected JSON fixtures are a **compatibility reference**, not a second active radio driver.
+> This branch is a distinct native implementation. It **does not use
+> `wmbus_radio` / `wmbus_meter` or the old
+> `Meter::handleTelegram()` pipeline as its live receiver/decoder**.
+> Earlier experiments in this repository used different components; do
+> not copy their YAML into this branch. The current architecture and
+> safety rules are recorded in [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
 
-| Capability / state | `experimental/xmq-multidriver-auto` |
-| --- | --- |
-| Existing configured Techem meter decoding | `fhkvdataiii` (CI A0) and `mkradio4` (CI A2) — preserve established behavior |
-| Other native manifest-supported clear decoders | `iperl`, `hydrus` |
-| Already-decrypted-only experiment | `mkradio4a`; not automatically eligible for live encrypted RF |
-| **Pending, not selectable or publishing** | **`minomess`, `kamwater`, `apator162`** |
-| Stage A — shared-source consolidation | Completed; owner-confirmed CI green |
-| Stage B — source JSON fixture coverage | Last owner-confirmed CI: **168/181** partial comparisons; subsequent updates target **177/181** (4 intentionally rejected bad-CCM fields), **pending CI confirmation** |
-| Driver end-to-end parity / production readiness for batch 2 | **Not approved** — identity, CRC, security, transport, publication and real-device canary work remain |
-| Installed Heltec firmware and private YAML | **Unchanged by this branch's documentation and Stage A/B host parity commits** |
+## Architecture
 
-**Do not treat percentages of original source fields as overall decoding reliability or authorization to flash firmware.** Some original source fixtures are intentionally invalid authenticated frames. In particular, `kamwater #9` must stay rejected, not be counted as successful plaintext decode.
+- **Radio:** ESPHome's SX126x component, locally patched for T1/C1
+  progressive FIFO reception; target board is Heltec WiFi LoRa 32 V3
+  (ESP32-S3 / SX1262).
+- **wM-Bus:** `components/wmbus_native_sx126x` handles radio-to-DLL
+  framing, CRC verification, T1/C1 routing, meter identity, security
+  checks, driver selection and mapped sensor publication.
+- **Decoding:** native C++ implementations and selected generated XMQ
+  rules, checked against public original `wmbusmeters` XMQ fixtures.
+  The old `wmbusmeters` radio/decoder stack is **not an active
+  dependency** of this receiver.
+- **Home Assistant:** only explicitly configured meter IDs and mapped
+  `xmq_sensors`, `xmq_text_sensors` or `rssi_sensors` can publish
+  values. Unknown meters may be recognized in diagnostics, but do not
+  cause entities or readings to be created.
 
-### Branch documentation and testing
+### Supported driver selection
 
-- [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md): **read first** before any code change, including code assistants; development restrictions, architecture and milestone ledger.
-- [experimental/xmq/STAGE_A_CLOSEOUT.md](experimental/xmq/STAGE_A_CLOSEOUT.md): consolidated C++ implementations and isolation safeguards.
-- [experimental/xmq/BATCH2_STATUS.md](experimental/xmq/BATCH2_STATUS.md): detailed batch-2 implementation and test progress.
-- [experimental/xmq/tools/native_driver_specs.py](experimental/xmq/tools/native_driver_specs.py): executable source of truth for live vs pending driver selection.
-- [Native SX126x adapter CI](.github/workflows/native-sx126x-adapter.yml): regression tests, ESP-IDF build, security and host fixture checks.
+| Driver | `driver: auto` for a configured meter | Explicit `meter_drivers` |
+| --- | --- | --- |
+| `fhkvdataiii` (Techem heat) | Yes | Yes |
+| `mkradio4` (Techem water) | Yes | Yes |
+| `iperl` | Yes (supported clear payloads) | Yes |
+| `hydrus` | Yes (supported clear payloads) | Yes |
+| `lansenpu` (pulse channels A/B) | Yes | Yes |
+| `minomess` | Yes, clear transport only | Yes |
+| `kamwater` | Yes, clear transport only | Yes |
+| `apator162` | Yes, clear transport only | Yes |
 
-**Safe development rule:** make changes only on `experimental/xmq-multidriver-auto`; retain existing radio/Techem behavior; never commit real meter IDs, encryption keys, production telegrams or YAML; do not flash Heltec or enable batch-2 drivers without explicit permission and end-to-end evidence.
+The last three drivers use a **dedicated, strict configured-only AUTO
+path**. They are deliberately **not** in the generic `SUPPORTED`
+manifest; this does not prevent their configured cleartext AUTO
+selection. Detection of a model is not proof that its payload is
+unencrypted or successfully decoded.
 
----
+## YAML: automatic or explicit driver selection
 
-## Archived README — earlier `experimental/xmq-independent-pipeline` work
+For a **configured meter**, both forms are supported. Use an
+eight-digit, decimal-string meter ID (including leading zeroes). The
+examples use **synthetic IDs only**.
 
-The material below describes a **different experimental branch** and is preserved for historical reference. Its example `wmbus_radio`/`wmbus_meter` YAML, `xmq_only` options and legacy-path observations **must not be copied into the current native `wmbus_native_sx126x` configuration** without checking the actual current component schema.
-
-# ESPHome wM-Bus on Heltec SX1262 — experimental independent XMQ decoding
-
-ESPHome external components for receiving **wireless M-Bus (wM-Bus)** telegrams with an **SX1262** radio on an ESP32-S3 Heltec board, and decoding selected meter formats into Home Assistant sensors.
-
-> **Branch status (November 2026):** This README describes `experimental/xmq-independent-pipeline`, **not** necessarily the repository's default/stable branch. Independent **XMQ-generated** decoding is being validated against the existing wmbusmeters-based implementation. It is **not yet a universal replacement for the legacy decoder**.
-
-## Current capabilities
-
-| Area | Current implementation |
-| --- | --- |
-| Hardware | ESP32-S3 Heltec board with SX1262; tested with `board: heltec_wifi_lora_32_V3`, 8 MB flash, ESP-IDF |
-| Radio | Existing SX1262 receiver; T1 and C1 reception, frame A handling, radio-level CRC/structure diagnostics |
-| Meter configuration | Multiple `wmbus_meter` entries with specific meter IDs, driver types, link modes and optional keys |
-| Supported independent application decoders | `fhkvdataiii` (heat-cost allocator, manufacturer CI `0xA0`) and `mkradio4` (water, manufacturer CI `0xA2`) |
-| Independent path | Configured-meter matching, header/transport inspection, generated XMQ decoding, numeric parity against legacy |
-| Home Assistant | `wmbus_meter` numeric sensors (e.g., `current_hca`, `previous_hca`, temperatures, `target_m3`, `total_m3`, RSSI) |
-| Security/other CI formats | Experimental Mode 5 (CI `0x72`/`0x7A`) preparation, AES-based decrypt/diagnostics; **not proven** as a general-purpose XMQ payload decoder |
-| Other meters | May be detected at radio/header level but **are not automatically decoded or exposed as entities** |
-
-Independent XMQ tables are generated at ESPHome code-generation time from the experimental XMQ driver grammars. The normal configuration does not enable this experimental generation unless XMQ is opted in.
-
-### What the two XMQ options mean
-
-Both settings are optional per configured meter:
-
-| Setting | Behavior |
-| --- | --- |
-| No XMQ flags (defaults) | Existing legacy behavior |
-| `xmq_shadow: true`, `xmq_only: false` | **Recommended field test.** Decode and compare independently, but **legacy remains authoritative** for Home Assistant sensor publishing |
-| `xmq_only: true` | **Experimental.** Uses independent XMQ values for supported drivers; do not deploy as the first test. Current implementation still calls legacy `handleTelegram()` for some handling/comparison work. The name does **not** mean legacy code has been removed from the firmware |
-
-The parity logs distinguish equal, different and missing values; an `observed_match` only establishes **observed numeric equality**, not that every legacy field was freshly updated by that particular telegram. Date fields and the full telemetry lifecycle need further validation before removing legacy.
-
-## Real-device validation to date
-
-On **1 November 2026**, an experimental shadow build on a real Heltec ESP32-S3 (ESPHome **2026.10.1**) successfully received configured meters, updated Home Assistant sensors through legacy, and produced independent XMQ results for real **T1 A / CI A0 and A2** telegrams.
-
-Two captured log sessions showed matching XMQ/legacy numeric fields for the observed configured heat/water meters, including `different=0` and `missing_xmq=0` in reported parity summaries. The capture covered **11 of 12 configured meters**, not yet an exhaustive test of every meter and repeated cycle. Some unconfigured nearby meters were correctly left unhandled.
-
-**Limitations:** a successful host CI run does not prove runtime behavior; the short on-device capture cannot establish long-term memory stability, packet-loss behavior or comprehensive field freshness. There were occasional radio-operation latency warnings; monitor under sustained traffic. These observations are **not** certification for production-wide XMQ-only deployment.
-
-## Example configuration — safe shadow mode
-
-Adapt this to your **own board revision and existing verified GPIO mapping**. The pins below match the tested Heltec ESP32-S3 setup; do **not** blindly copy them to another Heltec model.
+**Option A — automatically identify the driver:**
 
 ```yaml
-esphome:
-  name: heltec-wmbus
-  friendly_name: Heltec wM-Bus
-
-esp32:
-  board: heltec_wifi_lora_32_V3
-  flash_size: 8MB
-  framework:
-    type: esp-idf
-
-logger:
-  level: INFO
-
-external_components:
-  - source: github://radugeo74/esphome-sx1262@experimental/xmq-independent-pipeline
-    refresh: always
-
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
-api:
-  encryption:
-    key: !secret heltec_api_key
-
-ota:
-  - platform: esphome
-    password: !secret heltec_ota_password
-
-spi:
-  clk_pin: GPIO9
-  mosi_pin: GPIO10
-  miso_pin: GPIO11
-
-wmbus_radio:
-  id: radio
-  radio_type: SX1262
-  cs_pin: GPIO8
-  reset_pin: GPIO12
-  irq_pin: GPIO14
-
-wmbus_meter:
-  - id: heat_meter
-    radio_id: radio
-    meter_id: 0x12345678  # Dummy; replace with your own meter ID
-    type: fhkvdataiii
-    mode: [T1]
-    xmq_shadow: true
-    xmq_only: false
-    # key: !secret heat_meter_key  # Only if required by your meter
-
-  - id: water_meter
-    radio_id: radio
-    meter_id: 0x87654321  # Dummy; replace with your own meter ID
-    type: mkradio4
-    mode: [T1]
-    xmq_shadow: true
-    xmq_only: false
-
-sensor:
-  - platform: wmbus_meter
-    parent_id: heat_meter
-    name: "Heat allocator current"
-    field: current_hca
-    unit_of_measurement: "HCA"
-    state_class: total_increasing
-    accuracy_decimals: 0
-
-  - platform: wmbus_meter
-    parent_id: water_meter
-    name: "Water total"
-    field: total_m3
-    unit_of_measurement: "m³"
-    device_class: water
-    state_class: total_increasing
-    accuracy_decimals: 1
+wmbus_native_sx126x:
+  sx126x_id: native_sx1262
+  link_mode: T1_C1
+  meter_drivers:
+    - meter_id: "12345678"
+      driver: auto
+  xmq_sensors:
+    - meter_id: "12345678"
+      field: total_m3
+      sensor:
+        name: "Example meter total"
+        unit_of_measurement: "m³"
 ```
 
-This is an **illustrative** YAML, not a substitute for an existing working production configuration. Keep all existing meters, sensor mappings, link modes and secrets in your own configuration. Build/validate your **full actual YAML** before OTA; keep a known-good firmware for rollback. Do not commit real meter identifiers or secrets to a public repository.
+The firmware selects a driver from the verified telegram metadata,
+then the chosen decoder independently checks transport, meter identity,
+security and field validity. No matching/valid frame means **no
+sensor update**.
 
-## Experimental strict pre-legacy numeric publishing (new, not yet hardware-validated)
-
-An additional per-meter opt-in, `xmq_pure_publish`, selects the **pre-legacy independent XMQ A0/A2 decode result** as the numeric sensor source. This is separate from existing `xmq_only` behavior:
+**Option B — specify the driver yourself:**
 
 ```yaml
-wmbus_meter:
-  - id: test_meter
-    meter_id: 0x12345678  # Sample only
-    type: mkradio4
-    mode: [T1]
-    xmq_shadow: true
-    xmq_only: true
-    xmq_pure_publish: true  # Explicit, experimental opt-in
+wmbus_native_sx126x:
+  sx126x_id: native_sx1262
+  link_mode: T1_C1
+  meter_drivers:
+    - meter_id: "12345678"
+      driver: kamwater
+  xmq_sensors:
+    - meter_id: "12345678"
+      field: total_m3
+      sensor:
+        name: "Example Kamwater total"
+        unit_of_measurement: "m³"
 ```
 
-**Do not enable this on the current production Heltec configuration yet.** In this mode, missing/failed independent plaintext decoding produces **no new XMQ numeric reading** and does not fall back to post-legacy or stale values. Only finite decoded numeric fields are carried forward; legacy telegram handling and callback lifecycle **still execute**, so this is **not** end-to-end replacement of wmbusmeters. CI `0x72`/`0x7A`, other formats and unsupported drivers are outside this numeric publishing gate. This option requires `xmq_only: true` and currently targets only `fhkvdataiii` and `mkradio4`.
+In both examples, `sx126x_id` must reference a correctly configured
+`sx126x:` radio in the **same full YAML**. These snippets demonstrate
+driver selection; they are not standalone firmware configurations.
+Map only fields supported by the selected meter and driver.
 
-This change needs ESPHome compile/CI, a controlled canary and a parity/availability check before field deployment. Existing `xmq_shadow` and `xmq_only` configurations are unchanged unless the new option is explicitly set.
-
-## Logs and testing
-
-Useful diagnostic prefixes:
-
-- `Independent XMQ plain diagnostic` — A0/A2 standalone decode attempt and status.
-- `Independent XMQ vs legacy parity` — comparable, equal, differing and missing numeric fields.
-- `Independent XMQ plain parity field` — bounded identification of the field causing a mismatch.
-- `XMQ field parity`, `XMQ shadow` — supporting per-meter comparisons and decode result.
-- `Pure DLL CRC parity`, `Pure radio parity` — independent radio/frame checks.
-- `Pure TPL diag` and `Independent Mode5` — transport classification and **experimental** Mode 5 diagnostics.
-
-When interpreting logs, verify that a **configured meter actually transmitted**: zero mismatches without a decoded frame are not validation. Warnings about an unhandled meter ID are expected for nearby, unconfigured devices.
-
-A first-field-test/rollback checklist is provided in [experimental/xmq/HELTEC_SHADOW_TEST.md](experimental/xmq/HELTEC_SHADOW_TEST.md). CI and portable decoder tests are under `experimental/xmq/`; they complement rather than replace tests on hardware.
-
-## Roadmap / not yet complete
-
-1. Observe multiple real telegrams from **all configured meters**, checking numeric readings, dates, publish continuity, heap use and reception performance.
-2. Resolve any XMQ/legacy differences; distinguish current-telegram values from potentially retained legacy values.
-3. Validate the independent sensor publishing lifecycle and failure handling before considering XMQ-only as default.
-4. Remove reliance on `handleTelegram()` **only after** equivalent behavior is demonstrated. Expand the XMQ driver catalog beyond the current two formats in separate, controlled work.
-5. Keep Mode 5, C1/security variants and other manufacturer formats behind explicit tests until they are validated with matching real meter payloads.
-
-## Origin and credits
-
-Based on [SzczepanLeon/esphome-components](https://github.com/SzczepanLeon/esphome-components), with SX1262/ESP-IDF adaptations and ongoing experimental XMQ independent-decoder work.
-
-> **ESPHome integration note:** Do **not** copy an `esp32` folder into local `components`; use the official ESPHome ESP32 framework integration. This avoids component conflicts on newer versions of ESPHome.
-
-### Experimental direct plaintext XMQ dispatch (opt-in)
-
-The two tested drivers (`mkradio4` and `fhkvdataiii`) can bypass the legacy
-`meter->handleTelegram()` call for CRC-verified, CRC-stripped **plaintext**
-A2/A0 telegrams. Enable **only on one canary meter first**:
+**Minomess behind a radio converter:** when the radio's DLL sender ID
+differs from the actual meter ID in the long TPL address, configure
+both explicitly. This works with `driver: auto` or `driver: minomess`:
 
 ```yaml
-xmq_shadow: true
-xmq_only: true
-xmq_pure_publish: true
-xmq_direct_plain: true
+wmbus_native_sx126x:
+  # ...same sx126x_id and receiver options...
+  meter_drivers:
+    - meter_id: "12345678"      # meter identity in TPL
+      dll_meter_id: "87654321"  # sender identity in DLL
+      driver: auto              # or: minomess
 ```
 
-`xmq_direct_plain` defaults to `false`. It requires both `xmq_only` and
-`xmq_pure_publish`; a configured encryption key is rejected at YAML validation.
-On decode failure it **does not fall back** to legacy and does not publish the
-frame. The existing radio receiver, frame-to-handler routing, sensor callback,
-RSSI and entity IDs remain in use. This **does not** remove the wmbusmeters
-library from the firmware or make encrypted C1/Mode-5 telegrams work directly.
-Legacy meter objects are still created for configuration/metadata; the plaintext
-numeric decode/publish path itself skips `handleTelegram()`.
+The two identities must match their respective headers; a wrong or
+ambiguous match blocks decoding. A distinct `dll_meter_id` is not a
+general gateway auto-discovery feature.
 
-Watch the `XMQ direct publish` log line and actual Home Assistant sensor
-updates, then revert the flag to `false` if updates stop. Do not enable it on
-all meters until an individual ESPHome firmware build and live canary test pass.
+### Encryption and discovery boundaries
 
-
-### Raw discovery / unverified frame feeds (experimental)
-
-The radio now classifies each successfully converted frame **once**. Frames with
-valid independent headers that do not match any configured meter are logged as
-`DISCOVERED`, with ID, manufacturer, version, type, CI, link mode, RSSI and raw
-hex. Frames converted by the radio but rejected by the independent header
-parser are logged as `RAW_UNVERIFIED` with status, mode, RSSI and raw hex. No
-measurements are inferred from unverified frames. Malformed frames that fail
-radio-to-frame conversion still remain visible in the packet DEBUG logs; they
-do not fire the frame-level callbacks.
-
-Two optional ESPHome `wmbus_radio:` automation hooks expose the raw frame for
-external publishing/recording without creating HA sensor entities for every
-neighboring meter:
+**`driver: auto` does not guess AES keys or decrypt encrypted
+telegrams.** For encrypted meters, use an explicit driver and the
+appropriate AES-128 key in `secure_meters`, usually via `!secret`:
 
 ```yaml
-wmbus_radio:
-  # ...existing radio options...
-  on_discovered:
-    - lambda: |-
-        ESP_LOGI("wmbus_discovery", "DISCOVERED raw=%s", frame->as_hex().c_str());
-  on_unverified:
-    - lambda: |-
-        ESP_LOGW("wmbus_discovery", "RAW_UNVERIFIED raw=%s", frame->as_hex().c_str());
+wmbus_native_sx126x:
+  # ...same sx126x_id and receiver options...
+  secure_meters:
+    - meter_id: "12345678"
+      driver: minomess
+      key: !secret example_minomess_aes_key
 ```
 
-Attach your own bounded MQTT/event transport in those hooks if you want the
-feed outside ESPHome logs; these hooks **do not auto-publish to MQTT**.
-Configured meter handlers run only when independent header parsing succeeds and
-the meter ID matches; invalid headers no longer cause all configured direct-XMQ
-handlers to report redundant failures. General `on_frame` automations remain
-unchanged. Verify ESPHome compilation/CI before applying this experimental mode
-to a live receiver.
+`secure_meters` supports the separately reviewed keyed paths for
+`minomess`, `kamwater` and `apator162`; it **requires an explicit
+driver**, not `auto`. A telegram that claims encryption but lacks a
+configured valid key must not be published as plaintext. Failed
+integrity, identity, payload or cryptographic checks do not publish
+partial, stale or synthetic values. C1 plaintext sensor publication
+additionally requires the opt-in `c1_plaintext_publish: true`.
+
+CRC-verified T1/C1 frames from **unconfigured** meters can be
+recognized passively, including Minomess, Kamwater, Apator162 and
+Lansen, using original XMQ manufacturer/version/type signatures.
+Diagnostic `BATCH2 AUTO candidate=...` messages do **not** decode,
+create entities, or publish meter values.
+
+## Building and testing
+
+The branch includes a **build-only** Heltec T1/C1 laboratory YAML at
+[experimental/semtech-radio/heltec-sx126x-combined-lab.yaml](experimental/semtech-radio/heltec-sx126x-combined-lab.yaml).
+It uses synthetic IDs and exercises `driver: auto` for the four newer
+drivers. Check the board revision and real radio pin/TCXO mapping
+before adapting it to your own hardware.
+
+GitHub Actions run [#42388899090](https://github.com/radugeo74/esphome-sx1262/actions/runs/42388899090)
+passed `native-packet-input`,
+`stage-a-espidf-s3-portable-link` and `native-esphome-build`.
+This establishes host regression coverage and ESP32-S3/Heltec
+**compilation**, not reception or correct HA publication from real
+Minomess/Kamwater/Apator162/Lansen devices. The known-working Techem
+behavior has been observed separately on a Heltec, but does not
+validate every newly added driver.
+
+**Do not flash the existing production Heltec solely on the strength
+of CI.** Preserve a working firmware backup and test any new build
+with real reception before declaring field readiness. Do not commit
+private meter IDs, encryption keys, Wi-Fi secrets or production
+telegrams.
+
+For implementation notes, start with
+[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md),
+[experimental/xmq/README.md](experimental/xmq/README.md),
+[experimental/xmq/STAGE_B_GATE_STATUS.md](experimental/xmq/STAGE_B_GATE_STATUS.md)
+and the [CI workflow](.github/workflows/native-sx126x-adapter.yml).
+
+## Project origin, credits and licensing
+
+This **current native SX126x + XMQ architecture is not a continuation
+of the old `SzczepanLeon/esphome-components` runtime**. That project
+is part of the **historical development lineage** of earlier wM-Bus
+experiments in this repository; it is not the active radio/decoding
+component described above.
+
+The active project uses the ESPHome SX126x component with local
+modifications, plus native implementation work in this repository.
+Original XMQ driver specifications and public fixture expectations
+come from [wmbusmeters](https://github.com/wmbusmeters/wmbusmeters)
+and retain their upstream copyright/licence notices. Historical
+SzczepanLeon contributions and any other imported source still
+retain the attribution and licensing applicable to those files:
+architecture changes do **not** erase the origin of reused code.
+Consult the individual file headers before reuse or redistribution.
+
+For earlier development and the former relationship with
+[SzczepanLeon/esphome-components](https://github.com/SzczepanLeon/esphome-components),
+see the [archived historical README](docs/history/xmq-independent-pipeline-README.md).
