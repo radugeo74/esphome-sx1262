@@ -92,6 +92,21 @@ int main() {
     assert(got.state==State::Candidate && got.source==Source::Dll);
     assert(std::strcmp(got.driver,"apator162")==0);
   }
+  // Lansen recognized passively on verified yet unconfigured T1/C1.
+  const DriverSignature lansen_variants[]={
+    {0x3033,0x14,0x00,"lansenpu"},{0x3033,0x1B,0x00,"lansenpu"},
+    {0x3033,0x0B,0x02,"lansenpu"}};
+  for(const auto &v:lansen_variants) {
+    got=identify(frame(v.manufacturer,v.version,v.device_type,0x7A));
+    assert(got.state==State::Candidate && got.source==Source::Dll);
+    assert(std::strcmp(got.driver,"lansenpu")==0);
+  }
+  const DriverSignature lansen_collision[]={
+    {0x3033,0x14,0x00,"lansenpu"},
+    {0x3033,0x14,0x00,"unrelated"}};
+  auto colliding_lansen=frame(0x3033,0x14,0x00,0x7A);
+  assert(diag::inspect(colliding_lansen.data(),colliding_lansen.size(),
+                       lansen_collision,2).state==State::Ambiguous);
   // ELL address overrides an unrelated converter DLL, but never
   // treats the ELL application or CRC as already decoded.
   auto ell=frame(0x5068,0x95,0x72,0x8D);

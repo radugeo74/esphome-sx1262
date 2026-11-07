@@ -77,6 +77,8 @@ wmbus_native_sx126x:
   meter_drivers:
     - meter_id: "00000000"
       driver: fhkvdataiii
+    - meter_id: "00010206"
+      driver: auto  # upstream public Lansen test ID, no actual meter
   xmq_sensors:
     - meter_id: "00000000"
       field: current_hca
@@ -88,6 +90,21 @@ wmbus_native_sx126x:
       sensor:
         name: "Lab Heat Previous HCA Schema Test"
         accuracy_decimals: 0
+    - meter_id: "00010206"
+      field: a_counter
+      sensor:
+        name: "Lab AUTO Lansen Pulse A"
+        accuracy_decimals: 0
+    - meter_id: "00010206"
+      field: b_counter
+      sensor:
+        name: "Lab AUTO Lansen Pulse B"
+        accuracy_decimals: 0
+  xmq_text_sensors:
+    - meter_id: "00010206"
+      field: status
+      sensor:
+        name: "Lab AUTO Lansen Status"
   # Synthetic ID exercises the RSSI YAML schema during CI compilation.
   # It is not a real meter and receives no sensor updates.
   rssi_sensors:

@@ -21,7 +21,7 @@ assert "decode_clear_manufacturer" not in legacy
 assert '#include "apator162_ixml_fields.h"' in cpp
 assert 'apator162_reading.total_m3 - 7.512' in cpp
 assert "BATCH2_PENDING = (\"minomess\", \"kamwater\", \"apator162\")" in names
-assert "PORTABLE = (\"iperl\", \"hydrus\")" in names
+assert "PORTABLE = (\"iperl\", \"hydrus\", \"lansenpu\")" in names
 assert "for header in (xmq / \"portable_cpp\").glob(\"*.h\")" in component.read_text(encoding="utf-8")
 assert not (root/"components/wmbus_native_sx126x/apator162_ixml_fields.h").exists(), (
     "Shared module should be copied at build time only, not committed as a second source")
@@ -81,7 +81,7 @@ assert "kamwater::ell_ctr::decrypt" not in catalog_branch
 assert "oms_ccm_mbedtls_probe" not in native_catalog
 assert "oms_tpl_cbc" not in native_catalog
 assert "BATCH2_PENDING = (\"minomess\", \"kamwater\", \"apator162\")" in names
-assert "PORTABLE = (\"iperl\", \"hydrus\")" in names
+assert "PORTABLE = (\"iperl\", \"hydrus\", \"lansenpu\")" in names
 # Stage B explicitly binds all three encrypted decoders ONLY through an
 # opt-in secure_meters list and a CRC-verified SX1262 callback. Do not
 # rewrite the earlier, proven plaintext publication gate.

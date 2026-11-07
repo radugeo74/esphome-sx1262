@@ -4,6 +4,7 @@
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/xmq_plain_text_fields.h"
 #include "components/wmbus_native_sx126x/pure_complete_frame.h"
+#include "components/wmbus_native_sx126x/xmq_auto_registry.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -61,6 +62,31 @@ int main() {
   const auto third=verify_crc(unhex(
     "1A443330503702000B027AD74C0020|2F2F8E40FD3A700800000000"));
   assert(first.size()==36 && second.size()==27 && third.size()==27);
+  // Same selector as live T1/C1: configured-only AUTO Lansen,
+  // metadata alone cannot override a bad ID or ambiguous model.
+  const auto selected=[&](const std::vector<uint8_t> &raw,
+                          const char *id,const char *requested="auto") {
+    return xmq_portable::batch2_plain::select_configured_driver(
+        raw.data(),raw.size(),id,id,requested,
+        wmbus_pure::generated::signatures,
+        wmbus_pure::generated::signature_count);
+  };
+  for(const auto *fixture:{&first,&second,&third}) {
+    const char *id=(fixture==&first) ? "00010206" : "00023750";
+    assert(selected(*fixture,id)!=nullptr);
+    assert(std::strcmp(selected(*fixture,id),"lansenpu")==0);
+  }
+  assert(selected(first,"00010207")==nullptr);
+  assert(xmq_portable::batch2_plain::select_configured_driver(
+      first.data(),first.size(),"00010207","00010206","auto",
+      wmbus_pure::generated::signatures,
+      wmbus_pure::generated::signature_count)==nullptr);
+  constexpr wmbus_pure::DriverSignature collision[]={
+    {0x3033,0x14,0x00,"lansenpu"},
+    {0x3033,0x14,0x00,"another_driver"}};
+  assert(xmq_portable::batch2_plain::select_configured_driver(
+      first.data(),first.size(),"00010206","00010206","auto",
+      collision,2)==nullptr);
 
   xmq_portable::CalcValue values[4]{};
   xmq_portable::CalendarDate dates[1]{};
@@ -102,6 +128,12 @@ int main() {
   assert(decode(a_only,"00010206")==Status::Ok);
   assert(decoded.value_count==1 && value(decoded,"a_counter",4711));
   assert(decode(first,"00010207")==Status::InvalidMeterId);
+  // Encryption may still match AUTO metadata; strict decoded-data admission
+  // must reject it without stale counts or RSSI publication.
+  auto auto_cipher=first;auto_cipher[14]=0x05;
+  assert(selected(auto_cipher,"00010206")!=nullptr);
+  assert(decode(auto_cipher,"00010206")!=Status::Ok);
+  assert(decoded.value_count==0);
   assert(decoded.value_count==0);
   assert(decode(first,"00010206","auto")!=Status::Ok);
   assert(decoded.value_count==0);

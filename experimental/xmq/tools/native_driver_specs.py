@@ -20,22 +20,22 @@ GENERATED = (
 )
 # Portable live cleartext decoders, independently validated with official
 # upstream fixture records. These do not require a generated IXML grammar.
-PORTABLE = ("iperl", "hydrus")
+PORTABLE = ("iperl", "hydrus", "lansenpu")
 # A decoder for trusted, already-decrypted application bytes exists, but it
 # MUST NOT be selected for live RF without an authenticated decrypt stage.
 POST_DECRYPT_ONLY = ("mkradio4a",)
 # Imported official source definitions under active review; do not allow
 # YAML mapping or firmware runtime dispatch before passing decode fixtures.
 BATCH2_PENDING = ("minomess", "kamwater", "apator162")
-# Explicit-only native NOKEY (no AUTO and no legacy/crypto fallback).
-MANUAL_PLAIN = ("lansenpu",)
+# AUTO-safe only for configured, CRC-verified clear frames; never unknown RF.
+MANUAL_PLAIN = ()
 SUPPORTED = tuple(d.name for d in GENERATED) + PORTABLE
 
 def validate(root: Path):
     names = [d.name for d in GENERATED]
     if len(set(SUPPORTED + POST_DECRYPT_ONLY + BATCH2_PENDING + MANUAL_PLAIN)) != len(SUPPORTED + POST_DECRYPT_ONLY + BATCH2_PENDING + MANUAL_PLAIN):
         raise ValueError("Duplicate native XMQ driver")
-    for name in BATCH2_PENDING + MANUAL_PLAIN:
+    for name in BATCH2_PENDING + MANUAL_PLAIN + PORTABLE:
         if not (root / "drivers" / f"{name}.xmq").is_file():
             raise ValueError(f"{name}: missing upstream batch-2 XMQ definition")
     for d in GENERATED:

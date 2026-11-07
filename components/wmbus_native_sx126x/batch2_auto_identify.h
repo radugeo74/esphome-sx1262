@@ -1,5 +1,5 @@
 #pragma once
-// Read-only recognition of the three manually selectable batch-2 drivers.
+// Passive four-driver recognition: batch-2 plus Lansen Pulse Counter.
 // ONLY call with independently verified DLL/CRC-stripped T1/C1 frames.
 // Checks original XMQ detect.mvt metadata, including a long-TPL meter
 // behind a different DLL converter. Never reads AES keys, attempts a
@@ -26,7 +26,8 @@ struct Result {
 inline bool is_batch2(const char *name) {
   return name && (std::strcmp(name,"minomess")==0 ||
                   std::strcmp(name,"kamwater")==0 ||
-                  std::strcmp(name,"apator162")==0);
+                  std::strcmp(name,"apator162")==0 ||
+                  std::strcmp(name,"lansenpu")==0);
 }
 
 inline uint32_t decimal_id(const identity::Address &address) {

@@ -390,7 +390,7 @@ jobs:
             -o /tmp/test-xmq-batch1-contract
           /tmp/test-xmq-batch1-contract
 
-      - name: Decode all three original Lansen NOKEY pulse-counter fixtures through configured native RX
+      - name: AUTO-select and decode original Lansen NOKEY fixtures with configured-only guards
         run: |
           python3 experimental/xmq/tools/build_native_generated.py
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \

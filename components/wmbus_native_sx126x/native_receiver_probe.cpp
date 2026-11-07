@@ -322,9 +322,13 @@ bool NativeReceiverProbe::publish_plain_batch2_(
   if(frame.empty()) return false;
   const std::string sender=native_meter_id(dll_meter_id);
   for(const auto &entry : meter_drivers_) {
-    if(entry.dll_id!=sender ||
-       !xmq_portable::batch2_plain::is_explicit_driver(entry.driver.c_str()))
-      continue;
+    if(entry.dll_id!=sender) continue;
+    const char *selected_driver=
+        xmq_portable::batch2_plain::select_configured_driver(
+            frame.data(),frame.size(),entry.id.c_str(),sender.c_str(),
+            entry.driver.c_str(),wmbus_pure::generated::signatures,
+            wmbus_pure::generated::signature_count);
+    if(!selected_driver) continue;
     if(!publication_enabled) return true; // honor C1 opt-in, no fallback
     xmq_portable::CalcValue values[24]{};
     xmq_portable::CalendarDate dates[2]{};
@@ -332,7 +336,7 @@ bool NativeReceiverProbe::publish_plain_batch2_(
     xmq_portable::DecodedPayload result{values,24,0,dates,2,0};
     const auto status=xmq_portable::batch2_plain::decode_configured(
         frame.data(),frame.size(),entry.id.c_str(),sender.c_str(),
-        entry.driver.c_str(),captures,12,result);
+        selected_driver,captures,12,result);
     if(status!=xmq_portable::PureDecodeStatus::Ok ||
        result.value_count==0) {
       static uint32_t rejected=0;
@@ -342,10 +346,13 @@ bool NativeReceiverProbe::publish_plain_batch2_(
                  static_cast<unsigned>(status));
       return true;
     }
+    if(entry.driver=="auto" && std::strcmp(selected_driver,"lansenpu")==0)
+      ESP_LOGI(TAG,"Native XMQ AUTO configured meter=%s detected_driver=lansenpu decode=ok (mapped sensors only)",
+               entry.id.c_str());
     // Publish only source-validated Lansen TPL status alongside its
     // successfully decoded counters. No status on failed/unknown frames.
-    if(entry.driver=="lansenpu")
-      publish_xmq_text_(frame,entry.id,entry.driver.c_str(),result);
+    if(std::strcmp(selected_driver,"lansenpu")==0)
+      publish_xmq_text_(frame,entry.id,selected_driver,result);
     for(const auto &binding : xmq_sensors_) {
       if(binding.meter_id!=entry.id || binding.output==nullptr) continue;
       for(size_t i=0;i<result.value_count;++i) {
@@ -363,7 +370,7 @@ bool NativeReceiverProbe::publish_plain_batch2_(
         binding.output->publish_state(round_for_sensor(rssi_dbm,binding.output));
     }
     ESP_LOGI(TAG,"Plain XMQ dll=%s meter=%s driver=%s decoded=%u (mapped only)",
-             sender.c_str(),entry.id.c_str(),entry.driver.c_str(),
+             sender.c_str(),entry.id.c_str(),selected_driver,
              static_cast<unsigned>(result.value_count));
     return true;
   }
@@ -887,7 +894,12 @@ void NativeReceiverProbe::setup() {
     return;
 #endif
   }
-  ESP_LOGI(TAG, "Native SX126x packet probe attached; diagnostic only, no decoding or publishing");
+  ESP_LOGI(TAG, "Native SX126x receiver ready; configured-only XMQ decoding");
+#ifdef WMBUS_NATIVE_XMQ_ENABLED
+  ESP_LOGI(TAG, "XMQ auto recognition enabled: lansenpu configured clear; "
+                "minomess/kamwater/apator162 metadata-only. "
+                "No unconfigured meter publications");
+#endif
 }
 
 void NativeReceiverProbe::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) {

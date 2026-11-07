@@ -35,6 +35,25 @@ int main() {
   const auto hydrus_ready = auto_driver::resolve("auto", signatures, signature_count, 0x11A5, 0x70, 0x07);
   assert(hydrus_ready.status == auto_driver::Status::Ready);
   assert(std::strcmp(hydrus_ready.driver, "hydrus") == 0);
+  // Lansen: three original LAS MVTs may AUTO-select on configured meters.
+  constexpr uint8_t lansen_v[] = {0x14,0x1B,0x0B};
+  constexpr uint8_t lansen_t[] = {0x00,0x00,0x02};
+  for(unsigned i=0;i<3;++i) {
+    const auto selected_lansen=auto_driver::resolve(
+        "auto",signatures,signature_count,0x3033,lansen_v[i],lansen_t[i]);
+    assert(selected_lansen.status==auto_driver::Status::Ready);
+    assert(std::strcmp(selected_lansen.driver,"lansenpu")==0);
+  }
+  // Earlier batch-2 families remain excluded from AUTO decode.
+  const auto minomess_auto=auto_driver::resolve(
+      "auto",signatures,signature_count,0x6A49,0x01,0x06);
+  const auto kamwater_auto=auto_driver::resolve(
+      "auto",signatures,signature_count,0x2C2D,0x1B,0x16);
+  const auto apator_auto=auto_driver::resolve(
+      "auto",signatures,signature_count,0x0601,0x05,0x06);
+  assert(minomess_auto.status==auto_driver::Status::NotCompiled);
+  assert(kamwater_auto.status==auto_driver::Status::NotCompiled);
+  assert(apator_auto.status==auto_driver::Status::NotCompiled);
   // A different TPL MVT must not silently be assigned to a DLL candidate.
   auto unknown = select_driver(signatures, signature_count, 0x11A4, 0xFE, 0x07);
   assert(unknown.status == DriverSelectionStatus::Unknown);

@@ -23,6 +23,11 @@ def main():
     for driver in GENERATED:
         assert f'generated_ixml::{driver.name}::rules' in catalog
         assert f'namespace {driver.name} ' in generated["xmq_generated.h"]
+    assert "lansenpu" in SUPPORTED
+    assert 'std::strcmp(name, "lansenpu")' in compiled
+    for experimental in ("minomess","kamwater","apator162"):
+        assert experimental not in SUPPORTED
+        assert f'std::strcmp(name, "{experimental}")' not in compiled
     assert "mkradio4a" in POST_DECRYPT_ONLY
     assert "mkradio4a" not in SUPPORTED
     assert "mkradio4a" not in compiled  # post-decrypt only, never live RF
