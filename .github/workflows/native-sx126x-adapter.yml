@@ -425,6 +425,15 @@ jobs:
             -o /tmp/test-supercal-native
           /tmp/test-supercal-native
 
+      - name: Original Axioma Q400 clear-only AUTO parity and encrypted NOKEY rejection
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_q400_native.cpp \
+            -o /tmp/test-q400-native
+          /tmp/test-q400-native
+
       - name: AUTO-select and decode original Lansen NOKEY fixtures with configured-only guards
         run: |
           python3 experimental/xmq/tools/build_native_generated.py
