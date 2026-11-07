@@ -20,7 +20,8 @@ GENERATED = (
 )
 # Portable live cleartext decoders, independently validated with official
 # upstream fixture records. These do not require a generated IXML grammar.
-PORTABLE = ("iperl", "hydrus", "lansenpu", "lansendw", "cma12w")
+PORTABLE = ("iperl", "hydrus", "lansenpu", "lansendw", "cma12w",
+            "ultraheat", "sontex868")
 # A decoder for trusted, already-decrypted application bytes exists, but it
 # MUST NOT be selected for live RF without an authenticated decrypt stage.
 POST_DECRYPT_ONLY = ("mkradio4a",)

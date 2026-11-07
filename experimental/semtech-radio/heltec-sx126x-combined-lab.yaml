@@ -86,6 +86,10 @@ wmbus_native_sx126x:
       driver: auto  # synthetic Kamwater
     - meter_id: "87654323"
       driver: auto  # synthetic Apator162
+    - meter_id: "71635605"
+      driver: auto  # upstream public Ultraheat ID, lab only
+    - meter_id: "27282728"
+      driver: auto  # upstream public Sontex ID, lab only
     - meter_id: "00010205"
       driver: auto  # public Lansen door/window fixture
     - meter_id: "66666666"
@@ -131,6 +135,14 @@ wmbus_native_sx126x:
       sensor:
         name: "Lab AUTO CMA12w Average Temperature"
         unit_of_measurement: "°C"
+    - meter_id: "71635605"
+      field: heat_kwh
+      sensor:
+        name: "Lab AUTO Ultraheat kWh"
+    - meter_id: "27282728"
+      field: current_consumption_hca
+      sensor:
+        name: "Lab AUTO Sontex HCA"
   xmq_text_sensors:
     - meter_id: "00010206"
       field: status

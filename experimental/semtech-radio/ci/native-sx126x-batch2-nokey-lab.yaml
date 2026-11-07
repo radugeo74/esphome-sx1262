@@ -71,6 +71,10 @@ wmbus_native_sx126x:
       driver: auto
     - meter_id: "87654323"
       driver: auto
+    - meter_id: "71635605"
+      driver: auto
+    - meter_id: "27282728"
+      driver: auto
   xmq_sensors:
     - meter_id: "12345678"
       field: total_m3

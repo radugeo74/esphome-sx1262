@@ -29,7 +29,9 @@ inline bool is_batch2(const char *name) {
                   std::strcmp(name,"apator162")==0 ||
                   std::strcmp(name,"lansenpu")==0 ||
                   std::strcmp(name,"lansendw")==0 ||
-                  std::strcmp(name,"cma12w")==0);
+                  std::strcmp(name,"cma12w")==0 ||
+                  std::strcmp(name,"ultraheat")==0 ||
+                  std::strcmp(name,"sontex868")==0);
 }
 
 inline uint32_t decimal_id(const identity::Address &address) {

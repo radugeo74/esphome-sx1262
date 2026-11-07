@@ -322,6 +322,32 @@ DW/CMA12w RF receptions or HA publications are claimed.
 Installed Heltec firmware was not modified. Subsequent changes
 to these notes are documentation-only.
 
+## New native drivers: Ultraheat + Sontex868 — 2026-11-07 (CI pending)
+
+Owner requested up to two additional easy drivers. Both use existing
+bounded standard DIF/VIF parser and strict configured-only clear TPL
+admission. Import original upstream XMQ definitions, with upstream
+GPL-3.0-or-later copyright. No revival of legacy radio or decoder.
+- Ultraheat LUG/04/04: original wireless clear short TPL fixture
+  supports `heat_kwh`, `volume_m3`, `power_kw`, `flow_m3h`,
+  `flow_c`, `return_c`. The original wired M-Bus example and
+  ELL/post-decrypted example are NOT admitted as clear RF.
+- Sontex868 SON/16/08: original clear short TPL fixture supports
+  `current_consumption_hca`, `consumption_at_set_date_hca`,
+  `current_temp_c`, `current_room_temp_c`, `max_temp_c`,
+  `max_temp_previous_period_c`. The subset does not claim all
+  upstream date/status fields.
+- Both can be explicitly mapped or configured with `driver: auto`;
+  no unconfigured sensor publication; no key guessing, partial
+  publication, or relaxed CRC/TPL mode. Synthetic examples added to
+  build-only Heltec YAML, host regressions and native CI.
+- Apator08 was considered but BOTH original XMQ samples have
+  non-BCD radio ID bytes; strict current eight-decimal-digit address
+  admission forbids treating them as complete supported RF fixtures.
+  No general ID-validation relaxation was performed.
+**Do not declare full CI green or real radio validation from source
+fixture comparisons alone.**
+
 ## Next developer workflow
 
 1. Verify the latest Stage B CI, including original fixture/field-gap tests and native ESP32-S3 build. Fix failing tests before asserting increased coverage.

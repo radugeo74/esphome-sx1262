@@ -43,6 +43,8 @@ Home Assistant sensors.
 | `lansenpu` (pulse channels A/B) | Yes | Yes |
 | `lansendw` (door/window + pulse events) | Yes | Yes |
 | `cma12w` (room temperature, battery) | Yes | Yes |
+| `ultraheat` (heat energy, flow, temperature) | Yes, verified clear short TPL | Yes |
+| `sontex868` (heat allocation and temperature) | Yes, verified clear short TPL | Yes |
 | `minomess` | Yes, clear transport only | Yes |
 | `kamwater` | Yes, clear transport only | Yes |
 | `apator162` | Yes, clear transport only | Yes |

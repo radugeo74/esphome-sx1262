@@ -13,6 +13,8 @@
 #include "lansenpu_plain.h"
 #include "lansendw_plain.h"
 #include "cma12w_plain.h"
+#include "ultraheat_plain.h"
+#include "sontex868_plain.h"
 #include "mkradio4a_plain.h"
 #include "minomess_clear_prefix.h"
 #include "kamwater_clear_pipeline.h"
@@ -195,6 +197,36 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[0]={"current_temperature_c",reading.current_temperature_c};
     output.values[1]={"average_temperature_1h_c",reading.average_temperature_1h_c};
     output.value_count=2;
+    return PureDecodeStatus::Ok;
+  }
+  // Native no-key Ultraheat (LUG) short TPL standard records.
+  if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
+    if(!output.values || output.value_capacity<6)
+      return PureDecodeStatus::DecodeFailure;
+    ultraheat::Reading r{};
+    if(ultraheat::decode(frame,length,r)!=ultraheat::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[output.value_count++]={"heat_kwh",r.heat_kwh};
+    if(r.volume) output.values[output.value_count++]={"volume_m3",r.volume_m3};
+    if(r.power) output.values[output.value_count++]={"power_kw",r.power_kw};
+    if(r.flow) output.values[output.value_count++]={"flow_m3h",r.flow_m3h};
+    if(r.flow_temp) output.values[output.value_count++]={"flow_c",r.flow_c};
+    if(r.return_temp) output.values[output.value_count++]={"return_c",r.return_c};
+    return PureDecodeStatus::Ok;
+  }
+  // Native no-key Sontex868 HCA / temperatures.
+  if(driver_name && std::strcmp(driver_name,"sontex868")==0) {
+    if(!output.values || output.value_capacity<6)
+      return PureDecodeStatus::DecodeFailure;
+    sontex868::Reading r{};
+    if(sontex868::decode(frame,length,r)!=sontex868::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[output.value_count++]={"current_consumption_hca",r.current_hca};
+    if(r.previous) output.values[output.value_count++]={"consumption_at_set_date_hca",r.previous_hca};
+    if(r.flow) output.values[output.value_count++]={"current_temp_c",r.flow_c};
+    if(r.room) output.values[output.value_count++]={"current_room_temp_c",r.room_c};
+    if(r.max_flow) output.values[output.value_count++]={"max_temp_c",r.max_flow_c};
+    if(r.previous_max_flow) output.values[output.value_count++]={"max_temp_previous_period_c",r.previous_max_flow_c};
     return PureDecodeStatus::Ok;
   }
   // Batch-2 native application decoding: a real receiver-code path,
