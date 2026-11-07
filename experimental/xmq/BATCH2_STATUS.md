@@ -9,8 +9,8 @@
 
 ## Current branch status — source compatibility vs firmware admission
 
-**Last green code CI:** `2f518a35c5ce34d56d8c40497755380293a4e4f3`,
-[GitHub Actions run 42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
+**Last green code CI:** `f9b35e392f2e5980ab8c279c21995b649a0996f7`,
+[GitHub Actions run 42398519827](https://github.com/radugeo74/esphome-sx1262/actions/runs/42398519827).
 All three jobs passed, including the native ESPHome Heltec combined
 T1/C1 build. This is **source tests and compilation**, not physical
 RF-to-Home-Assistant verification and not permission to flash.

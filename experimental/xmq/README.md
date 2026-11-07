@@ -23,8 +23,8 @@ restrictions, and verified vs pending CI milestones.
   `meter_drivers`. The full YAML whitelist is
   `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE`. AES still
   requires explicit driver/key in `secure_meters`.
-- **CI green:** GitHub run `42393848471`, code
-  `2f518a35c5ce34d56d8c40497755380293a4e4f3`: all three jobs
+- **CI green (latest):** GitHub run `42398519827`, code
+  `f9b35e392f2e5980ab8c279c21995b649a0996f7`: all three jobs
   passed, including Heltec combined T1/C1 firmware compile
   with Ultraheat/Sontex868 added to the synthetic AUTO bindings.
   No device was flashed.

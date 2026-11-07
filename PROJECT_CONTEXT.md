@@ -33,7 +33,7 @@ claiming this change fully verified.
 
 ## Current native driver and CI checkpoint (2026-11-07)
 
-**Current fully green code commit:** `2f518a35c5ce34d56d8c40497755380293a4e4f3`.
+**Earlier full code-integration checkpoint:** `2f518a35c5ce34d56d8c40497755380293a4e4f3`.
 **GitHub Actions:** [run 42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471), all three jobs PASS:
 `native-packet-input`, `stage-a-espidf-s3-portable-link`,
 `native-esphome-build`. The Heltec T1/C1 build-only YAML compiles

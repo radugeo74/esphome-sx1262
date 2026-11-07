@@ -1,8 +1,8 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
 Updated 2026-11-07 for branch `experimental/xmq-multidriver-auto`.
-**Most recent fully green code run: [`42393848471`](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471),
-commit `2f518a35c5ce34d56d8c40497755380293a4e4f3`.**
+**Most recent fully green code run: [`42398519827`](https://github.com/radugeo74/esphome-sx1262/actions/runs/42398519827),
+commit `f9b35e392f2e5980ab8c279c21995b649a0996f7`.**
 All three jobs passed: native packet/fixture tests, ESP-IDF ESP32-S3
 portable build and ESPHome Heltec T1/C1 combined build. The new
 `ultraheat` and `sontex868` clear native AUTO subsets are included.

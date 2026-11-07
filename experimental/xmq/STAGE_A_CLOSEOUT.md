@@ -9,7 +9,7 @@
 > configuration and dedicated configured-only clear `driver: auto`
 > in the native experimental receiver; keyed transport still requires
 > an explicit key and driver. The latest full code CI is
-> [run 42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471),
+> [run 42398519827](https://github.com/radugeo74/esphome-sx1262/actions/runs/42398519827),
 > including Ultraheat/Sontex868 and the Heltec combined build.
 > Source/CI success is not field-device approval. See
 > [PROJECT_CONTEXT.md](../../PROJECT_CONTEXT.md) for the current

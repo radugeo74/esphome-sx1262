@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last fully green code CI:** [GitHub Actions #42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471)
-(code commit `2f518a35c5ce34d56d8c40497755380293a4e4f3`).
+**Last fully green code CI:** [GitHub Actions #42398519827](https://github.com/radugeo74/esphome-sx1262/actions/runs/42398519827)
+(code commit `f9b35e392f2e5980ab8c279c21995b649a0996f7`, all three jobs passed).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
