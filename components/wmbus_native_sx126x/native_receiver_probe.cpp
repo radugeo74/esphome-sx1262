@@ -201,9 +201,11 @@ bool NativeReceiverProbe::publish_secure_batch2_(
     xmq_portable::CalcValue values[24]{};
     xmq_portable::CalendarDate dates[2]{};
     xmq_portable::DecodedPayload result{values,24,0,dates,2,0};
+    const char *authenticated_status=nullptr;
     const auto status=xmq_portable::batch2_secure::decode_configured(
         frame.data(),frame.size(),id.c_str(),
-        binding.driver.c_str(),binding.key.data(),result);
+        binding.driver.c_str(),binding.key.data(),result,
+        &authenticated_status);
     if (status!=xmq_portable::batch2_secure::Status::Ok ||
         result.value_count==0) {
       static uint32_t blocked_secure=0;
@@ -222,6 +224,16 @@ bool NativeReceiverProbe::publish_secure_batch2_(
               round_for_sensor(result.values[i].value,sensor_binding.output));
           break;
         }
+      }
+    }
+    // The narrow CCM #10 TPL status is made available only after
+    // mbedTLS validates its authentication tag AND all fields pass.
+    // Unknown CCM status bytes cannot turn into guessed text sensors.
+    if (authenticated_status!=nullptr) {
+      for (const auto &text_binding : xmq_text_sensors_) {
+        if(text_binding.meter_id==id && text_binding.field=="status" &&
+           text_binding.output!=nullptr)
+          text_binding.output->publish_state(authenticated_status);
       }
     }
     for (const auto &rssi_binding : rssi_sensors_) {
