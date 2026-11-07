@@ -62,6 +62,8 @@ wmbus_native_sx126x:
       driver: kamwater
     - meter_id: "01282096"
       driver: apator162
+    - meter_id: "00010206"
+      driver: lansenpu
   xmq_sensors:
     - meter_id: "12345678"
       field: total_m3
@@ -79,3 +81,16 @@ wmbus_native_sx126x:
       field: total_m3
       sensor:
         name: "CI No Key Apator Total"
+    - meter_id: "00010206"
+      field: a_counter
+      sensor:
+        name: "CI Lansen Pulse A"
+    - meter_id: "00010206"
+      field: b_counter
+      sensor:
+        name: "CI Lansen Pulse B"
+  xmq_text_sensors:
+    - meter_id: "00010206"
+      field: status
+      sensor:
+        name: "CI Lansen Status"
