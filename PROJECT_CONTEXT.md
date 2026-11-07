@@ -14,9 +14,48 @@
 
 - Hardware target: Heltec ESP32-S3 / SX1262 / 8 MB; ESPHome 2026.10.1, ESP-IDF 5.5.6 in the experimental build context. **The official ESPHome SX126x receiver is the sole radio owner**, with native T1/C1 handling and a bounded `components/wmbus_native_sx126x` application pipeline.
 - Native ingress must verify complete radio/DLL frame format and CRC, independently match the configured meter identity and allowed link mode, enforce valid plaintext/decryption/compact gates, and **only then** decode and publish finite mapped fields. Unconfigured meters can be observed diagnostically but must never auto-publish sensor readings.
-- The original live Techem decoding behavior for **`fhkvdataiii` (manufacturer CI A0)** and **`mkradio4` (CI A2)** must remain unchanged. Their generated IXML tables and sensor mappings remain the field-observed baseline. The native `PORTABLE` manifest now additionally contains **`iperl`, `hydrus`, `lansenpu`, `lansendw`, `cma12w`, `ultraheat`, `sontex868`**. These are tested against public clear-frame fixtures; `mkradio4a` is still post-decrypt-only and not general live RF admission.
+- The original live Techem decoding behavior for **`fhkvdataiii` (manufacturer CI A0)** and **`mkradio4` (CI A2)** must remain unchanged. Their generated IXML tables and sensor mappings remain the field-observed baseline. The native `PORTABLE` manifest contains **`iperl`, `hydrus`, `lansenpu`, `lansendw`, `cma12w`, `ultraheat`, `sontex868`**, all limited to source-verified clear profiles. `mkradio4a` now has a separately configured **`SECURE_ONLY`** AES Mode-5 receiver; it remains unavailable for generic plaintext `meter_drivers`/`auto`.
 - Source of truth: `experimental/xmq/tools/native_driver_specs.py` plus the actual configured dispatcher `components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h`. **`CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")` is software-implemented**. The three are excluded only from generic DLL-only `SUPPORTED` and support dedicated configured-only `driver: auto` plus explicit `meter_drivers` for strictly clear RF. `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE` is the YAML driver whitelist. Their encrypted path is `secure_meters` with an explicit driver and AES key, never automatic key guessing. The legacy `BATCH2_PENDING` category was retired; it must no longer be used to describe the current software status. None is field-approved without real RF/HA validation.
 - Preserve the existing original XMQ generated decoder and T1/C1 algorithms, per-meter RSSI, temperature accuracy, status/dates, no stale or partial publishing on errors, and visibility of unconfigured telegrams where already supported. Never infer a valid decode solely from a matching manufacturer, signature, data CRC or decrypted-looking bytes.
+
+## MK Radio4a configured secure receiver — 2026-11-07 (CI pending)
+
+Owner authorized completing the existing post-decrypt-only `mkradio4a`
+driver. Source `experimental/xmq/drivers/mkradio4a.xmq` has two
+public fixtures, both **Mode-5 `NOKEY` post-decrypted examples**,
+not independently checked original radio ciphertext with an AES key.
+The existing native record interpreter already decodes the two
+reference `target_m3` (`16.1`, `75.2`) and
+`target_date` (`2021-12-31`) fields.
+
+A new strict `secure_meters` route requires explicit
+`driver: mkradio4a`, AES key, TCH/95/37 DLL converter ID
+(`dll_meter_id`), and nested TPL meter ID (`meter_id`).
+The upstream examples use nested HYD/FE/06 and WEH/FE/07.
+The original Mode-5 configuration 0x0530 protects three 16-byte
+blocks; the five additional trailer bytes are ignored as
+non-application data. The existing mbedTLS long-TPL decryptor
+is reused **only on a private bounded truncated copy**, after
+complete radio/DLL CRC and identity checks. The decrypted application
+must pass full native standard DIF/VIF volume and date checks,
+with transactional `target_m3` and secure-only
+`target_date` text publication. CBC lacks a MAC; 2F2F is
+only a structural sanity check, not authentication.
+
+Tests wrap independently AES-encrypted public application records
+with synthetic valid format-B DLL CRC and assert both fields for
+both upstream examples. Negative tests block bad key, missing
+key, wrong gateway/TPL ID, model, ciphertext, source
+`NOKEY` falsely presented as RF, invalid length/mode,
+and CRC. Heltec combined build-only YAML and separate
+keyed ESP32-S3 YAML contain synthetic binding/sensor mappings.
+`SECURE_ONLY = ("mkradio4a",)` replaces its former
+`POST_DECRYPT_ONLY` classification. `SUPPORTED` and
+`CONFIGURABLE` plaintext lists are unchanged.
+
+**Do not claim this new integration green until all three GitHub
+CI jobs complete.** No real MK Radio4a receiver/HA validation, no
+production keys and no installed firmware changes.
 
 ## Manifest cleanup after successful software tests — 2026-11-07
 
@@ -49,8 +88,10 @@ to the previously added models; **no OTA/flash** was performed.
   excluded only from the generic `SUPPORTED` selector.
 - `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE` is the YAML whitelist.
   This is software availability, not approval for physical RF operation.
-- `POST_DECRYPT_ONLY`: `mkradio4a` must not be admitted as
-  independently verified unencrypted live RF.
+- `SECURE_ONLY`: `mkradio4a` has a specifically keyed
+  TCH DLL + nested HYD/WEH TPL long-header AES Mode-5 path.
+  It is deliberately excluded from plaintext `CONFIGURABLE`/`auto`.
+  Hardware field validation remains OPEN.
 
 **AUTO vs explicit:** all 12 listed main drivers can be selected on
 an **explicitly configured meter ID**, using `driver: auto` where

@@ -10,6 +10,23 @@ Earlier RED workflow runs were intermediate source/test iterations.
 No OTA, field parity approval, or production authorization follows
 from a green compile. The physical RF-to-HA gate stays **OPEN**.
 
+## MK Radio4a secure-only native addition — 2026-11-07 (CI pending)
+
+`mkradio4a` is now `SECURE_ONLY`, not post-decrypt-only.
+Its TCH DLL radio converter and HYD/WEH nested TPL meter ID
+must be independently bound, with explicit `secure_meters`
+AES-128 key. Native mbedTLS CBC Mode-5 is used on three
+verified encrypted blocks in the original 76-byte envelope;
+the extra five trailer bytes are never published as records.
+Both public reference applications decode `target_m3` and
+`target_date` in synthetic AES/CRC regressions, but
+the original `NOKEY` fixtures are post-decrypted and
+cannot prove actual encrypted RF compatibility. CBC has
+no authentication tag. No generic plaintext
+`driver: auto` selection, no unconfigured publishing,
+no key guesses, no installed firmware changes.
+CI and physical RF-to-HA acceptance are separate gates.
+
 ## Current configured-only AUTO and hardware gate
 
 The active native branch supports `fhkvdataiii`, `mkradio4`,

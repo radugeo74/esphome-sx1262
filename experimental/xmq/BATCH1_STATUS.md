@@ -7,13 +7,16 @@ meter IDs, private radio captures, or AES keys are stored in this repository.
 | --- | --- | --- |
 | `iperl` | Cleartext CI=7A only | SEN 68/7C; mode-zero TPL; total and max flow; fail closed for encrypted/invalid |
 | `hydrus` | Cleartext CI=72/7A only | DME/HYD; mode-zero TPL; standard DIF/VIF quantities; encrypted frames rejected |
-| `mkradio4a` | **Not live** (post-decryption-only) | Public NOKEY already-clear application decoded; live CI=72 encrypted converter frames **not** decoded/published |
+| `mkradio4a` | **Configured secure AES only** (software integration; device gate OPEN) | TCH/95/37 converter + HYD/FE/06 or WEH/FE/07 long TPL, configured two IDs, AES Mode-5 and validated target/date; both public clear applications wrapped in independent synthetic AES/CRC tests |
 
 The generated and portable live driver catalog is controlled by
 `experimental/xmq/tools/native_driver_specs.py`.
-`POST_DECRYPT_ONLY` is intentionally excluded from `SUPPORTED`,
-`xmq_native_compiled.h`, and ESPHome `meter_drivers` validation. A valid
-CRC alone is insufficient to interpret an encrypted C1 frame.
+`SECURE_ONLY = ("mkradio4a",)` is intentionally excluded from
+generic plaintext `SUPPORTED`, `CONFIGURABLE` and
+`xmq_native_compiled.h`, but `secure_meters` now accepts it
+with an explicitly configured key and converter ID. A valid
+CRC, AES-CBC padding or 2F2F marker alone is insufficient
+to authenticate an encrypted C1/T1 frame.
 
 Run the batch contract as part of the native SX126x CI workflow:
 `experimental/semtech-radio/test_xmq_batch1_driver_contract.cpp`.
@@ -28,5 +31,9 @@ compiles the Heltec laboratory firmware **without flashing a device**.
   YAML configuration, while XMQ decoding and sensor updates require a
   configured, authorized meter.
 - No encrypted live RF data is passed to the cleartext APIs.
-- For a future live `mkradio4a` driver: implement and validate AES/security
-  processing and resolve converter DLL versus target TPL identity first.
+- **Implemented in experimental software:** configured `mkradio4a`
+  secure long-TPL route with explicit AES-128 key and matching
+  DLL/TPL identities; test source applications under independent
+  synthetic encryption and DLL CRC. **Still required:** real
+  MK Radio4a radio capture, actual-key validation, HA sensor
+  observations, and authorized canary/rollback before field use.

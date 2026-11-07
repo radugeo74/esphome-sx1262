@@ -60,6 +60,48 @@ fields, wired M-Bus frames or post-decrypted ELL frames are supported.
 Original source fields and strict negative-frame tests passed
 [run #42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
 
+### Encrypted-only driver: `mkradio4a`
+
+`mkradio4a` is now additionally software-integrated through
+**explicit `secure_meters` only**. The public original XMQ
+examples use Techem `TCH/95/37` radio converters and nested
+`HYD/FE/06` (warm) or `WEH/FE/07` (cold) meter headers. The
+receiver must match **both configured IDs**, validate DLL CRC,
+decrypt exactly three AES-CBC Mode-5 blocks with the explicit AES-128
+key, then validate the original application before publishing
+`target_m3` and `target_date` (ISO `YYYY-MM-DD`).
+
+```yaml
+wmbus_native_sx126x:
+  # ...sx126x_id and radio options from your complete YAML...
+  secure_meters:
+    - meter_id: "12345678"      # synthetic nested TPL ID
+      dll_meter_id: "87654321"  # synthetic radio converter DLL ID
+      driver: mkradio4a
+      key: !secret example_mkradio4a_aes_key
+  xmq_sensors:
+    - meter_id: "12345678"
+      field: target_m3
+      sensor:
+        name: "Example MK Radio 4a target"
+        unit_of_measurement: "m³"
+  xmq_text_sensors:
+    - meter_id: "12345678"
+      field: target_date
+      sensor:
+        name: "Example MK Radio 4a target date"
+```
+
+Use **actual corresponding** meter/convertor IDs and the correct
+private AES key in your own YAML; these values are illustrative.
+The upstream `NOKEY` samples contain post-decrypted application
+records, not verified on-air ciphertext. Regression tests use
+synthetic AES encryption of both original sample applications; there
+is **no real MK Radio 4a RF/HA validation**. AES-CBC and the
+`2F 2F` marker are **not cryptographic authentication**.
+`mkradio4a` is deliberately **not allowed in plaintext
+`meter_drivers` or `driver: auto`**.
+
 ### Software support and acceptance status
 
 **All 12 drivers in the table are software-configurable**, but only
@@ -70,7 +112,9 @@ The active driver manifest defines:
 - `CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")`:
   software-tested native drivers with strict **configured-only** AUTO.
 - `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE`:
-  the names allowed in YAML `meter_drivers`.
+  the 12 names allowed in YAML `meter_drivers`.
+- `SECURE_ONLY = ("mkradio4a",)`: the 13th driver, available only
+  via explicitly keyed `secure_meters`, with separate DLL/TPL identity.
 
 The old `BATCH2_PENDING` category was retired after software
 integration. The three models are **not pending software implementation**;
@@ -166,7 +210,7 @@ wmbus_native_sx126x:
 ```
 
 `secure_meters` supports the separately reviewed keyed paths for
-`minomess`, `kamwater` and `apator162`; it **requires an explicit
+`minomess`, `kamwater`, `apator162` and `mkradio4a`; it **requires an explicit
 driver**, not `auto`. A telegram that claims encryption but lacks a
 configured valid key must not be published as plaintext. Failed
 integrity, identity, payload or cryptographic checks do not publish

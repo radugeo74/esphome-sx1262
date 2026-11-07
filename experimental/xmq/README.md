@@ -34,6 +34,28 @@ restrictions, and verified vs pending CI milestones.
   CRC alone does not prove cryptographic authenticity; an intentionally
   invalid CCM-tag source fixture must remain rejected.
 
+## MK Radio4a: configured AES-only native decoding
+
+`mkradio4a` has advanced from a source-only post-decryption
+interpreter to a **configured secure native** receiver and is
+listed in `SECURE_ONLY`, not in generic plaintext `SUPPORTED`
+or `CONFIGURABLE`. The two original XMQ `NOKEY` examples
+contain already-clear application bytes, so they are **not**
+used as real encrypted-radio evidence. Tests instead encrypt
+their volume/date application fields independently with a
+public synthetic AES key and verify the real native mbedTLS
+long-TPL Mode-5 path on a CRC-verified synthetic radio frame.
+
+In YAML, use `secure_meters` with explicit `meter_id`,
+`dll_meter_id`, `driver: mkradio4a` and a private AES-128
+key, plus `target_m3` numeric and `target_date` text
+sensor bindings. Supported converter is TCH/95/37 with
+nested HYD/FE/06 or WEH/FE/07. CBC/2F2F is not
+cryptographic authentication. Do not add `mkradio4a`
+to plaintext `meter_drivers` or infer `driver: auto`.
+See the [root README](../../README.md) for safe YAML examples.
+The physical RF-to-HA acceptance gate stays OPEN.
+
 ## New keyless models: Lansen DW and Elvaco CMA12w
 
 Two further original XMQ model profiles use checked, genuinely clear
