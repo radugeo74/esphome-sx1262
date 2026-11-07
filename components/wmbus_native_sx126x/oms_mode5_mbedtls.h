@@ -21,8 +21,9 @@ struct Output {
   std::vector<uint8_t> clear_application{};
   uint8_t tpl_status{0};
 };
-inline Status decrypt_short_tpl(const uint8_t *frame,size_t length,
-                                const uint8_t key[16],Output &out) {
+inline Status decrypt_short_tpl_with_prefix(const uint8_t *frame,size_t length,
+                                const uint8_t key[16],Output &out,
+                                bool require_0f) {
   out=Output{};
   wmbus_pure::Header header{};
   if(wmbus_pure::parse_header(frame,length,header)!=
@@ -59,7 +60,7 @@ inline Status decrypt_short_tpl(const uint8_t *frame,size_t length,
     return Status::CryptoFailure;
   }
   if(candidate.size()<3 || candidate[0]!=0x2F ||
-     candidate[1]!=0x2F || candidate[2]!=0x0F) {
+     candidate[1]!=0x2F || (require_0f && candidate[2]!=0x0F)) {
     std::fill(candidate.begin(),candidate.end(),0);
     return Status::BadMarker;
   }
@@ -69,6 +70,18 @@ inline Status decrypt_short_tpl(const uint8_t *frame,size_t length,
   out.tpl_status=frame[12];
   std::fill(candidate.begin(),candidate.end(),0);
   return Status::Ok;
+}
+// Preserve the existing Apator162 strict 2F2F0F policy.
+inline Status decrypt_short_tpl(const uint8_t *frame,size_t length,
+                                const uint8_t key[16],Output &out) {
+  return decrypt_short_tpl_with_prefix(frame,length,key,out,true);
+}
+// Integra Topas clear records begin after 2F2F without an 0F marker.
+// Use ONLY with a strict model-specific complete application decoder.
+// CBC/2F2F has no cryptographic authentication.
+inline Status decrypt_short_tpl_record_payload(const uint8_t *frame,size_t length,
+                                const uint8_t key[16],Output &out) {
+  return decrypt_short_tpl_with_prefix(frame,length,key,out,false);
 }
 // The long-TPL variant carries the actual meter address after CI=0x72;
 // it may be behind a separate DLL radio converter. Per OMS Mode-5, IV:
