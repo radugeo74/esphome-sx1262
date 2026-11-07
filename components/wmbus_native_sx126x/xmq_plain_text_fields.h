@@ -13,7 +13,7 @@
 namespace xmq_portable { namespace text_fields {
 struct Field {
   const char *name{nullptr};
-  char text[24]{};
+  char text[64]{}; // long upstream status bit flags must not be truncated
 };
 struct Result {
   Field fields[4]{};
