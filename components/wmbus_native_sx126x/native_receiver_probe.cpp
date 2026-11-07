@@ -253,8 +253,8 @@ bool NativeReceiverProbe::publish_secure_batch2_(
   const std::string sender_id=native_meter_id(meter_id);
   for (const auto &binding : secure_meters_) {
     if (binding.dll_id!=sender_id) continue;
-    // The decoder verifies the DLL sender and, for Minomess converters,
-    // the distinct TPL meter ID before any reading is published.
+    // The decoder independently verifies both DLL and nested TPL IDs
+    // for Minomess and MK Radio 4a converters before publication.
     const std::string &id=binding.id;
     xmq_portable::CalcValue values[24]{};
     xmq_portable::CalendarDate dates[2]{};
@@ -282,6 +282,23 @@ bool NativeReceiverProbe::publish_secure_batch2_(
               round_for_sensor(result.values[i].value,sensor_binding.output));
           break;
         }
+      }
+    }
+    // Target date belongs to the *successfully decrypted* mkradio4a
+    // application. Never call the plaintext text decoder on Mode-5 RF.
+    if(binding.driver=="mkradio4a" && result.date_count==1 &&
+       result.dates!=nullptr) {
+      const auto &date=result.dates[0];
+      if(date.year>=1 && date.year<=9999 && date.month>=1 &&
+         date.month<=12 && date.day>=1 &&
+         date.day<=xmq_portable::days_in_month(date.year,date.month)) {
+        char text[16]{};
+        std::snprintf(text,sizeof(text),"%04d-%02d-%02d",
+                      date.year,date.month,date.day);
+        for(const auto &field : xmq_text_sensors_)
+          if(field.meter_id==id && field.field=="target_date" &&
+             field.output!=nullptr)
+            field.output->publish_state(text);
       }
     }
     // The narrow CCM #10 TPL status is made available only after

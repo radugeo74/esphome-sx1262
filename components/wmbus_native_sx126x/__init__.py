@@ -79,10 +79,16 @@ def validate_secure_config(config):
         raise cv.Invalid("secure_meters must have unique DLL sender IDs")
     if len(plain_ids) != len(set(plain_ids)) or len(plain_dll) != len(set(plain_dll)):
         raise cv.Invalid("meter_drivers must have unique meter and DLL sender IDs")
-    for entry in secured + plain:
+    for entry in plain:
         if (entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) != entry[CONF_METER_ID]
                 and entry[CONF_DRIVER] not in ("minomess", "auto")):
-            raise cv.Invalid("Separate dll_meter_id is supported only by minomess or auto with validated Minomess TPL")
+            raise cv.Invalid("Separate DLL ID in meter_drivers requires Minomess or a validated auto Minomess TPL")
+    for entry in secured:
+        if (entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) != entry[CONF_METER_ID]
+                and entry[CONF_DRIVER] not in ("minomess", "mkradio4a")):
+            raise cv.Invalid("Separate secure DLL ID requires minomess or mkradio4a")
+        if entry[CONF_DRIVER] == "mkradio4a" and CONF_DLL_METER_ID not in entry:
+            raise cv.Invalid("mkradio4a requires explicit dll_meter_id for its TCH radio converter")
     # One sender cannot dispatch to two different meters, nor to both
     # encrypted and no-key decoding. Avoid any ambiguous cross-binding.
     if (set(plain_ids) | set(plain_dll)) & (set(secure_ids) | set(secure_dll)):
@@ -113,7 +119,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_SECURE_METERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Optional(CONF_DLL_METER_ID): cv.All(cv.string_strict, validate_meter_id),
-        cv.Required(CONF_DRIVER): cv.one_of("minomess", "kamwater", "apator162", lower=True),
+        cv.Required(CONF_DRIVER): cv.one_of("minomess", "kamwater", "apator162", "mkradio4a", lower=True),
         cv.Required(CONF_KEY): validate_secure_key,
     })),
     cv.Optional(CONF_RSSI_SENSORS, default=[]): cv.ensure_list(cv.Schema({

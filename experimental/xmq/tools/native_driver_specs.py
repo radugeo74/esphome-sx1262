@@ -22,9 +22,9 @@ GENERATED = (
 # upstream fixture records. These do not require a generated IXML grammar.
 PORTABLE = ("iperl", "hydrus", "lansenpu", "lansendw", "cma12w",
             "ultraheat", "sontex868")
-# A decoder for trusted, already-decrypted application bytes exists, but it
-# MUST NOT be selected for live RF without an authenticated decrypt stage.
-POST_DECRYPT_ONLY = ("mkradio4a",)
+# Independently configured AES-only receiver. Not safe for generic
+# plaintext meter_drivers, and never guesses keys from "NOKEY" fixtures.
+SECURE_ONLY = ("mkradio4a",)
 # Software-integrated drivers using the dedicated configured-only native
 # decoder. Not included in generic DLL-only AUTO/compiled manifest.
 CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")
@@ -33,9 +33,9 @@ CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE
 
 def validate(root: Path):
     names = [d.name for d in GENERATED]
-    if len(set(CONFIGURABLE + POST_DECRYPT_ONLY)) != len(CONFIGURABLE + POST_DECRYPT_ONLY):
+    if len(set(CONFIGURABLE + SECURE_ONLY)) != len(CONFIGURABLE + SECURE_ONLY):
         raise ValueError("Duplicate native XMQ driver")
-    for name in CONFIGURED_NATIVE + PORTABLE:
+    for name in CONFIGURED_NATIVE + PORTABLE + SECURE_ONLY:
         if not (root / "drivers" / f"{name}.xmq").is_file():
             raise ValueError(f"{name}: missing upstream native XMQ definition")
     for d in GENERATED:

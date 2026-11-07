@@ -15,6 +15,7 @@
 #include "kamwater_tpl79_probe.h"
 #include "kamwater_clear_records.h"
 #include "minomess_clear_prefix.h"
+#include "mkradio4a_plain.h"
 #include "native_identity_probe.h"
 #include "oms_ccm_mbedtls.h"
 #include "kamwater_numeric_semantics.h"
@@ -231,6 +232,65 @@ inline Status decode_minomess_mode5(const uint8_t *frame,size_t length,
     output.values[output.value_count++]={"target_m3",reading.target_m3};
   return Status::Ok;
 }
+// MK Radio 4a: TCH 95/37 radio-converter DLL carrying HYD FE/06
+// long TPL. Public upstream NOKEY fixtures contain post-decrypt
+// application data, not complete trustworthy on-air plaintext.
+// This narrow encrypted path requires an explicitly configured AES key
+// and BOTH identities. It consumes the original 3-block Mode-5 format;
+// the five unencrypted trailing bytes are NOT application measurements.
+// CBC has no authentication: marker + full original application grammar
+// are required but are NOT a MAC.
+inline Status decode_mkradio4a_mode5(const uint8_t *frame,size_t length,
+                                    const char *configured_id,
+                                    const uint8_t key[16],
+                                    DecodedPayload &output,
+                                    const char *expected_dll_id) {
+  output.value_count=0;
+  output.date_count=0;
+  if(!frame || !configured_id || !expected_dll_id || !key)
+    return Status::InvalidFrame;
+  wmbus_pure::Header h{};
+  if(wmbus_pure::parse_header(frame,length,h)!=
+     wmbus_pure::HeaderStatus::Ok) return Status::InvalidFrame;
+  if(wmbus_pure::match_meter_id(h,expected_dll_id)!=
+     wmbus_pure::MatchStatus::Match) return Status::WrongMeter;
+  if(h.manufacturer!=0x5068 || h.version!=0x95 ||
+     h.device_type!=0x37 || h.ci!=0x72 ||
+     length!=76 || frame[21]!=0x30 || frame[22]!=0x05)
+    return Status::WrongModel;
+  const auto address=wmbus_pure::identity::inspect(frame,length);
+  if(address.status!=wmbus_pure::identity::Status::Ok ||
+     !address.has_tpl || !address.tpl.decimal_bcd ||
+     !wmbus_pure::identity::same_id(address.tpl,configured_id) ||
+     address.tpl.manufacturer!=0x2324 ||
+     address.tpl.version!=0xFE ||
+     address.tpl.device_type!=0x06)
+    return Status::WrongModel;
+  if(!output.values || output.value_capacity<1 ||
+     !output.dates || output.date_capacity<1)
+    return Status::MissingCapacity;
+  // The upstream frame has 3 encrypted blocks (48 bytes) followed by
+  // a 5-byte non-application trailer. The existing shared long-TPL
+  // decryptor accepts only the authenticated-by-structure block region.
+  // Adapt a PRIVATE COPY; never change the verified original RF frame.
+  std::vector<uint8_t> crypt(frame,frame+71);
+  crypt[0]=static_cast<uint8_t>(crypt.size()-1);
+  oms_mode5::Output clear{};
+  if(oms_mode5::decrypt_long_tpl(
+       crypt.data(),crypt.size(),key,clear)!=oms_mode5::Status::Ok)
+    return Status::EncryptedDecodeRejected;
+  mkradio4a::Reading water{};
+  if(mkradio4a::decode_clear_application(
+        clear.clear_application.data(),clear.clear_application.size(),
+        water)!=mkradio4a::Status::Ok ||
+     !std::isfinite(water.target_m3) || water.target_m3<0)
+    return Status::ApplicationRejected;
+  output.values[0]={"target_m3",water.target_m3};
+  output.dates[0]={water.year,water.month,water.day};
+  output.value_count=1;
+  output.date_count=1;
+  return Status::Ok;
+}
 // Explicit only: the configured batch-2 driver and its own key must
 // already be bound to this meter in YAML. AUTO and trial-decryption are
 // intentionally forbidden. Input is CRC-stripped AFTER verified::process.
@@ -245,6 +305,9 @@ inline Status decode_configured(const uint8_t *frame,size_t length,
   if(out_status) *out_status=nullptr;
   if(!driver || !key || !frame || length<11)
     return Status::EncryptedDecodeRejected;
+  if(std::strcmp(driver,"mkradio4a")==0)
+    return decode_mkradio4a_mode5(
+        frame,length,configured_id,key,output,expected_dll_id);
   if(std::strcmp(driver,"apator162")==0)
     return decode_apator162_mode5(frame,length,configured_id,key,output);
   if(std::strcmp(driver,"minomess")==0)
