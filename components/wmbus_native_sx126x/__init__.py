@@ -28,6 +28,7 @@ CONF_METER_ID = "meter_id"
 CONF_FIELD = "field"
 CONF_METER_DRIVERS = "meter_drivers"
 CONF_SECURE_METERS = "secure_meters"
+CONF_DLL_METER_ID = "dll_meter_id"
 CONF_KEY = "key"
 CONF_ON_VERIFIED = "on_verified"
 CONF_T1_RAW_DIAGNOSTICS = "t1_raw_diagnostics"
@@ -64,11 +65,21 @@ def validate_secure_key(value):
 def validate_secure_config(config):
     secured = config[CONF_SECURE_METERS]
     ids = [entry[CONF_METER_ID] for entry in secured]
+    dll_ids = [entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) for entry in secured]
     if len(ids) != len(set(ids)):
         raise cv.Invalid("secure_meters must not contain duplicate meter IDs")
+    # A single DLL sender cannot ambiguously dispatch several keyed meters.
+    # This first converter implementation explicitly supports one-to-one
+    # sender-to-meter bindings, not a shared gateway with trial keys.
+    if len(dll_ids) != len(set(dll_ids)):
+        raise cv.Invalid("secure_meters must have unique DLL sender IDs")
+    for entry in secured:
+        if (entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) != entry[CONF_METER_ID]
+                and entry[CONF_DRIVER] != "minomess"):
+            raise cv.Invalid("Separate dll_meter_id is supported only by minomess")
     normal = {entry[CONF_METER_ID] for entry in config[CONF_METER_DRIVERS]}
-    if normal.intersection(ids):
-        raise cv.Invalid("Do not assign a meter to both meter_drivers and secure_meters")
+    if normal.intersection(dll_ids):
+        raise cv.Invalid("A secure DLL sender cannot also use meter_drivers")
     return config
 
 
@@ -92,6 +103,7 @@ CONFIG_SCHEMA = cv.Schema({
     # Keys belong in !secret, never in the repository or diagnostic logs.
     cv.Optional(CONF_SECURE_METERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
+        cv.Optional(CONF_DLL_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Required(CONF_DRIVER): cv.one_of("minomess", "kamwater", "apator162", lower=True),
         cv.Required(CONF_KEY): validate_secure_key,
     })),
@@ -173,7 +185,8 @@ async def to_code(config):
     # configured admission as the existing T1/C1 pipeline.
     configured_ids = set()
     for meter_id in list(config[CONF_CONFIGURED_METER_IDS]) + [
-        item[CONF_METER_ID] for item in config[CONF_SECURE_METERS]
+        item.get(CONF_DLL_METER_ID, item[CONF_METER_ID])
+        for item in config[CONF_SECURE_METERS]
     ]:
         if meter_id not in configured_ids:
             cg.add(var.add_configured_meter_id(meter_id))
@@ -181,7 +194,9 @@ async def to_code(config):
     for item in config[CONF_METER_DRIVERS]:
         cg.add(var.add_meter_driver(item[CONF_METER_ID], item[CONF_DRIVER]))
     for item in config[CONF_SECURE_METERS]:
-        cg.add(var.add_secure_meter(item[CONF_METER_ID], item[CONF_DRIVER], item[CONF_KEY]))
+        cg.add(var.add_secure_meter(
+            item[CONF_METER_ID], item[CONF_DRIVER], item[CONF_KEY],
+            item.get(CONF_DLL_METER_ID, item[CONF_METER_ID])))
     for item in config[CONF_RSSI_SENSORS]:
         obj = await sensor.new_sensor(item["sensor"])
         cg.add(var.add_rssi_sensor(item[CONF_METER_ID], obj))
