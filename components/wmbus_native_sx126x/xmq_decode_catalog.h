@@ -15,6 +15,7 @@
 #include "cma12w_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
+#include "supercal_plain.h"
 #include "mkradio4a_plain.h"
 #include "minomess_clear_prefix.h"
 #include "kamwater_clear_pipeline.h"
@@ -227,6 +228,21 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(r.room) output.values[output.value_count++]={"current_room_temp_c",r.room_c};
     if(r.max_flow) output.values[output.value_count++]={"max_temp_c",r.max_flow_c};
     if(r.previous_max_flow) output.values[output.value_count++]={"max_temp_previous_period_c",r.previous_max_flow_c};
+    return PureDecodeStatus::Ok;
+  }
+  // Sontex Supercal 739: configured, short-TPL clear standard records only.
+  if(driver_name && std::strcmp(driver_name,"supercal")==0) {
+    if(!output.values || output.value_capacity<6)
+      return PureDecodeStatus::DecodeFailure;
+    supercal::Reading r{};
+    if(supercal::decode(frame,length,r)!=supercal::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[output.value_count++]={"total_kwh",r.energy_kwh};
+    output.values[output.value_count++]={"total_m3",r.volume_m3};
+    if(r.power) output.values[output.value_count++]={"power_kw",r.power_kw};
+    if(r.flow) output.values[output.value_count++]={"volume_flow_m3h",r.flow_m3h};
+    if(r.flow_temp) output.values[output.value_count++]={"flow_temperature_c",r.flow_c};
+    if(r.return_temp) output.values[output.value_count++]={"return_temperature_c",r.return_c};
     return PureDecodeStatus::Ok;
   }
   // Batch-2 native application decoding: a real receiver-code path,
