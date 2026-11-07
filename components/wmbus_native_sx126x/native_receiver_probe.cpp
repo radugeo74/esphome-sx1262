@@ -4,6 +4,7 @@
 #include "c1_block_diagnostics.h"
 #include "xmq_auto_registry.h"
 #include "xmq_auto_dispatch.h"
+#include "batch2_auto_identify.h"
 #include "tpl_security_probe.h"
 #include "native_meter_registry.h"
 #include "native_identity_probe.h"
@@ -187,6 +188,59 @@ static void log_verified_identities(
       parsed.has_tpl && parsed.tpl.decimal_bcd ? "yes" : "no",
       static_cast<unsigned>(policy.candidate),
       policy.multiple_configured_ids ? "yes" : "no");
+}
+
+// Metadata-only discovery: both T1 and C1 call this ONLY after their
+// independent full DLL CRC gate. This does not change the AUTO decoder
+// manifest, configured meter bindings, or any sensor publication.
+void NativeReceiverProbe::log_batch2_auto_(
+    const std::vector<uint8_t> &frame,uint32_t dll_meter_id,const char *link) {
+#ifdef WMBUS_NATIVE_XMQ_ENABLED
+  const auto candidate=wmbus_pure::batch2_identify::inspect(
+      frame.data(),frame.size(),
+      wmbus_pure::generated::signatures,
+      wmbus_pure::generated::signature_count);
+  if(candidate.state!=wmbus_pure::batch2_identify::State::Candidate ||
+     candidate.driver==nullptr)
+    return;
+  const uint8_t source=static_cast<uint8_t>(candidate.source);
+  for(size_t i=0;i<batch2_seen_count_;++i) {
+    const auto &previous=batch2_seen_[i];
+    if(previous.dll_id==dll_meter_id &&
+       previous.target_id==candidate.meter_id &&
+       previous.source==source &&
+       previous.driver!=nullptr &&
+       std::strcmp(previous.driver,candidate.driver)==0)
+      return;
+  }
+  batch2_seen_[batch2_seen_cursor_]={
+      dll_meter_id,candidate.meter_id,candidate.driver,source
+  };
+  if(batch2_seen_count_<batch2_seen_.size()) ++batch2_seen_count_;
+  batch2_seen_cursor_=(batch2_seen_cursor_+1)%batch2_seen_.size();
+  const char *origin=candidate.source==wmbus_pure::batch2_identify::Source::Tpl
+      ? "TPL" : candidate.source==wmbus_pure::batch2_identify::Source::Ell
+      ? "ELL" : "DLL";
+  const auto security=wmbus_pure::tpl_security::inspect(
+      frame.data(),frame.size());
+  if(candidate.decimal_bcd) {
+    ESP_LOGI(TAG,"BATCH2 AUTO candidate=%s source=%s link=%s dll=%08u meter=%08u different_dll=%s tpl_security=%s (metadata only; no decode or publication)",
+             candidate.driver,origin,link,
+             static_cast<unsigned>(dll_meter_id),
+             static_cast<unsigned>(candidate.meter_id),
+             candidate.different_dll_id ? "yes" : "no",
+             wmbus_pure::tpl_security::label(security.state));
+  } else {
+    ESP_LOGI(TAG,"BATCH2 AUTO candidate=%s source=%s link=%s dll=%08u meter=non-BCD tpl_security=%s (metadata only; no decode or publication)",
+             candidate.driver,origin,link,
+             static_cast<unsigned>(dll_meter_id),
+             wmbus_pure::tpl_security::label(security.state));
+  }
+#else
+  (void)frame;
+  (void)dll_meter_id;
+  (void)link;
+#endif
 }
 
 // Called exclusively from verified::process/T1 FIFO Verified callbacks.
@@ -483,6 +537,9 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
                  t1_candidate.status == wmbus_pure::DriverSelectionStatus::Found
                      ? t1_candidate.driver : "unknown");
       }
+      // The batch-2 candidate may be nested in the TPL behind a converter.
+      // Recognition is separate from AUTO configured driver selection.
+      self->log_batch2_auto_(frame.bytes,frame.header.meter_id,"T1");
       // Restore the pre-refactor trigger contract: every CRC-verified T1
       // frame is observable by on_verified, regardless of YAML meter IDs.
       // This is a user-defined diagnostic event, not an XMQ sensor update.
@@ -618,6 +675,8 @@ void NativeReceiverProbe::on_c1_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.bytes.size()),
              static_cast<unsigned>(checked.frame.header.ci),
              wmbus_pure::tpl_security::label(security.state));
+    self->log_batch2_auto_(checked.frame.bytes,checked.frame.header.meter_id,
+                           self->c1_format_b_ ? "C1-B" : "C1-A");
     if (!self->publish_secure_batch2_(
             checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm) &&
         !self->publish_plain_batch2_(
@@ -711,6 +770,8 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.header.ci),
              kind == registry::Kind::Configured ? "yes" : "no",
              wmbus_pure::tpl_security::label(security.state));
+    self->log_batch2_auto_(checked.frame.bytes,checked.frame.header.meter_id,
+                           mode==boundary::Mode::C1A ? "C1-A" : "C1-B");
     if (!self->publish_secure_batch2_(
             checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm) &&
         !self->publish_plain_batch2_(
