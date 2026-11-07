@@ -1,69 +1,53 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
 Updated 2026-11-07 for branch `experimental/xmq-multidriver-auto`.
-This is an evidence ledger, not a release approval.
-**Last owner-confirmed CI green: `1d3bbce`** for clear-only
-Minomess/Kamwater/Apator162 native configured dispatch.
-Encrypted native mbedTLS paths are committed; **new CI pending**.
-Historic NVS sections below are not the active development goal.
+**Last owner-confirmed run: `42350691692`, head `8136a346`,
+ALL THREE GitHub jobs PASS.** The complete ESPHome ESP32-S3 build,
+native T1/C1 packet-input host checks and standalone ESP-IDF probe
+are green. This is a code-integration milestone, **NOT approval
+for production or evidence of physical RF-to-HA operation**.
 
-## Direct native encrypted driver integration — pending CI, not yet live
+## Native encrypted Minomess / Kamwater / Apator162 — code integrated, device gate OPEN
 
-The following are now compiled source components in
-`components/wmbus_native_sx126x/` (not legacy wmbusmeters):
-`oms_mode5_mbedtls.h` (short and long TPL AES-CBC Mode 5),
-`kamwater_ell_ctr_mbedtls.h` (ELL AES-CTR with original IV),
-`xmq_batch2_secure_dispatch.h` (trusted input to established
-complete XMQ application decoders).
+All three experimental drivers now connect through the actual
+CRC-verified T1/C1 SX126x receiver callback and an explicit,
+one-per-meter `secure_meters` YAML configuration with
+16-byte AES keys (`!secret` for real private values). Invalid
+security or identity never causes plaintext fallback. The secure
+code and mbedTLS CCM/CMAC are enabled conditionally only when
+`secure_meters` is populated.
 
-The GitHub workflow now executes *native mbedTLS dispatch* regressions:
-Apator162 original encrypted #19 (7.512 m³), Minomess long-TPL
-synthetic encrypted upstream-clear fixture (140.354 / 138.485 m³)
-and Kamwater encrypted ELL synthetic NIST-key / original public
-compact TPL79 (6.408 / 6.408 m³). Negative cases cover wrong key,
-identity, mode, CRC, truncation and stale field outputs. Apator #19
-is a genuine original upstream encrypted payload with a synthetic
-format-B DLL CRC; Minomess and Kamwater ciphertext are intentionally
-synthetic. CBC and ELL CRC do not prove cryptographic authentication.
+- **Minomess:** mbedTLS long-TPL AES-CBC mode 5, native DIF/VIF
+  application interpretation; optional one-to-one `dll_meter_id`
+  if DLL radio converter and long-TPL meter IDs differ.
+  Both IDs MUST independently match configuration. The original
+  published Minomess #6 clear application was encrypted using a
+  public synthetic test key for the positive/negative regression;
+  not an actual source RF ciphertext.
+- **Kamwater:** native ELL AES-CTR (synthetic transport around
+  published compact application) and original public OMS CCM #10
+  authenticated via shared mbedTLS/CMAC source, rejecting the
+  original #9 bad-tag case. Authenticated `status` is published
+  only following complete field acceptance.
+- **Apator162:** native short-TPL AES-CBC mode 5 and actual
+  source encrypted #19 volume decode (7.512 m³) using public
+  sample key and synthetic verified format-B DLL CRC envelope.
 
-A first ESP-IDF CI failure was caused by missing commas between
-Apator #19 fixture initializer rows; fixed in `d072669`.
-**No new CI green is claimed** after that correction.
+**Owner confirmed CI all green** through converter fix
+`8136a346`; run:
+https://github.com/radugeo74/esphome-sx1262/actions/runs/42350691692 .
+Original Techem heat/water builds and behavior were not modified.
+There is no automatic driver selection, no change to
+`BATCH2_PENDING`, and no production firmware flash.
 
-**Remaining integration blocker:** the real SX1262 callback currently
-reaches only the clear decoder; configuration has no per-meter
-batch-2 keys and the live security/publication gate blocks encrypted
-batch-2 packets. No production publication, new YAML admission,
-firmware flash, or auto-selection. Existing Techem unchanged.
-The next work item is explicit per-meter key transport and native
-encrypted dispatcher handoff after DLL verification, then canary
-device validation with owner approval — NOT NVS.
-
-## Native Minomess converter DLL/TPL binding — 2026-11-07, CI pending
-
-Owner-confirmed full GitHub CI green through `d606d72` (run
-`42349861321`), including opt-in ESP32-S3 secure driver link,
-CCM/CMAC and existing non-secure build.
-
-The **original** Minomess XMQ wireless fixtures #3-#5
-show the radio converter DLL ID may differ from the underlying
-water meter's long TPL ID. Requiring DLL==TPL blocked these
-frames even when application decryption was correct.
-The receiver now accepts an **explicit** optional YAML
-`secure_meters[].dll_meter_id` for Minomess only; the DLL
-sender must be configured, and nested TPL identity/model must
-independently match the meter `meter_id` before decoding and
-publishing. There is NO blind gateway trust or automatic key
-selection. Conflicting/ambiguous converter IDs are rejected.
-
-An independent synthetic encrypted Minomess fixture + exact
-CRC-verified DLL validates positive and negative configured
-`batch2_secure::decode_configured` routing, and a build-only
-ESP32-S3 YAML verifies the distinct converter/meter bindings.
-This has **not yet** been confirmed green (run `42350691692`).
-No real radio frames, production keys, installed Heltec firmware
-or sensors are changed. The three batch-2 drivers remain
-experimental, not promoted to AUTO/SUPPORTED.
+**Only the device/RF acceptance gate remains:** no verified
+complete physical on-air frames from the three target devices
+and no observed HA sensor states on the installed Heltec.
+Don't claim 39 full RF-to-HA replays, live device behavior,
+security robustness against deliberate CBC ciphertext manipulation,
+or release authorization based on source JSON or host regression
+alone. No new NVS stages; do not enable drivers on production
+without explicit owner authorization, backup and rollback.
 
 ## Latest verified checkpoint — 2026-11-06
 
