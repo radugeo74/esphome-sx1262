@@ -195,9 +195,12 @@ bool NativeReceiverProbe::publish_secure_batch2_(
     const std::vector<uint8_t> &frame,uint32_t meter_id,float rssi_dbm) {
 #if defined(WMBUS_NATIVE_XMQ_ENABLED) && defined(WMBUS_NATIVE_BATCH2_SECURE_ENABLED)
   if (frame.empty() || secure_meters_.empty()) return false;
-  const std::string id=native_meter_id(meter_id);
+  const std::string sender_id=native_meter_id(meter_id);
   for (const auto &binding : secure_meters_) {
-    if (binding.id!=id) continue;
+    if (binding.dll_id!=sender_id) continue;
+    // The decoder verifies the DLL sender and, for Minomess converters,
+    // the distinct TPL meter ID before any reading is published.
+    const std::string &id=binding.id;
     xmq_portable::CalcValue values[24]{};
     xmq_portable::CalendarDate dates[2]{};
     xmq_portable::DecodedPayload result{values,24,0,dates,2,0};
@@ -205,13 +208,13 @@ bool NativeReceiverProbe::publish_secure_batch2_(
     const auto status=xmq_portable::batch2_secure::decode_configured(
         frame.data(),frame.size(),id.c_str(),
         binding.driver.c_str(),binding.key.data(),result,
-        &authenticated_status);
+        &authenticated_status,binding.dll_id.c_str());
     if (status!=xmq_portable::batch2_secure::Status::Ok ||
         result.value_count==0) {
       static uint32_t blocked_secure=0;
       if (++blocked_secure<=5 || blocked_secure%100==0)
-        ESP_LOGW(TAG,"Configured secure XMQ rejected meter=%s driver=%s status=%u (no publication)",
-                 id.c_str(),binding.driver.c_str(),static_cast<unsigned>(status));
+        ESP_LOGW(TAG,"Configured secure XMQ rejected dll=%s meter=%s driver=%s status=%u (no publication)",
+                 sender_id.c_str(),id.c_str(),binding.driver.c_str(),static_cast<unsigned>(status));
       return true; // no plaintext fallback or RSSI on rejected frame
     }
     for (const auto &sensor_binding : xmq_sensors_) {
@@ -241,8 +244,8 @@ bool NativeReceiverProbe::publish_secure_batch2_(
         rssi_binding.output->publish_state(
             round_for_sensor(rssi_dbm,rssi_binding.output));
     }
-    ESP_LOGI(TAG,"Configured secure XMQ meter=%s driver=%s decoded=%u (mapped sensors only)",
-             id.c_str(),binding.driver.c_str(),static_cast<unsigned>(result.value_count));
+    ESP_LOGI(TAG,"Configured secure XMQ dll=%s meter=%s driver=%s decoded=%u (mapped sensors only)",
+             sender_id.c_str(),id.c_str(),binding.driver.c_str(),static_cast<unsigned>(result.value_count));
     return true;
   }
 #else
