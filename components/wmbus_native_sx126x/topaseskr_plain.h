@@ -1,5 +1,5 @@
 #pragma once
-// Integra Topas ESKR: bounded post-AES-decryption short-TPL record subset.
+// Integra Topas ESKR: bounded already-clear DIF/VIF application records.
 // Original topaseskr.xmq copyright (C) 2017-2022 Fredrik Öhrström
 // and Avandorp; GPL-3.0-or-later. Never call on unknown ciphertext.
 #include <cstddef>
@@ -12,8 +12,9 @@ struct Reading {
   bool total{false},temperature{false},flow{false},year{false};
   double total_m3{0},temperature_c{0},flow_m3h{0},year_m3{0};
 };
-// The supplied data starts after decrypted 2F2F; it must contain full,
-// valid standard DIF/VIF records, never guessed data from an offset.
+// The caller supplies PROVEN clear application data after 2F2F: either
+// verified upstream decryption or an explicitly supplied offline fixture.
+// This function does not decrypt and must never bypass live TPL security.
 inline Status decode_clear_application(const uint8_t *application,size_t length,
                                        Reading &out) {
   out={};
