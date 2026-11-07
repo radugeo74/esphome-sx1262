@@ -159,6 +159,13 @@ async def to_code(config):
         cg.add_build_flag(f"-I{component_dir}")
         cg.add_define("WMBUS_NATIVE_XMQ_ENABLED")
         if config[CONF_SECURE_METERS]:
+            # ESPHome's lean ESP-IDF build can omit CCM and CMAC from
+            # libmbedcrypto even though the headers and source files exist.
+            # Only explicit encrypted meters need these OMS algorithms.
+            from esphome.components import esp32
+
+            esp32.add_idf_sdkconfig_option("CONFIG_MBEDTLS_CCM_C", True)
+            esp32.add_idf_sdkconfig_option("CONFIG_MBEDTLS_CMAC_C", True)
             cg.add_define("WMBUS_NATIVE_BATCH2_SECURE_ENABLED")
     finally:
         sys.path.pop(0)
