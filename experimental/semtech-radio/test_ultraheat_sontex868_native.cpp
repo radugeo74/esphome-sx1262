@@ -26,11 +26,31 @@ static std::vector<uint8_t> hex(const char *s) {
 }
 static void crc_checked(const std::vector<uint8_t> &f) {
   assert(f.size()==static_cast<size_t>(f[0])+1);
-  std::vector<uint8_t> air=f;
-  air[0]=static_cast<uint8_t>(air.size()+1);
-  const auto crc=wmbus_pure::crc16_en13757(air.data(),air.size());
-  air.push_back(static_cast<uint8_t>(crc>>8));
-  air.push_back(static_cast<uint8_t>(crc));
+  // EN13757 format B: >126 DLL bytes use TWO CRC blocks.
+  // The first covers the first 126 bytes, then two CRC bytes, then
+  // the remaining payload followed by a second CRC. Never treat a
+  // long frame as one checksum block.
+  std::vector<uint8_t> air{};
+  air.reserve(f.size()+4);
+  if(f.size()<=126) {
+    air=f;
+    air[0]=static_cast<uint8_t>(f.size()+1);
+    const auto crc=wmbus_pure::crc16_en13757(air.data(),air.size());
+    air.push_back(static_cast<uint8_t>(crc>>8));
+    air.push_back(static_cast<uint8_t>(crc));
+  } else {
+    air.assign(f.begin(),f.begin()+126);
+    air[0]=static_cast<uint8_t>(f.size()+3);
+    const auto first=wmbus_pure::crc16_en13757(air.data(),126);
+    air.push_back(static_cast<uint8_t>(first>>8));
+    air.push_back(static_cast<uint8_t>(first));
+    const auto end=air.size();
+    air.insert(air.end(),f.begin()+126,f.end());
+    const auto second=wmbus_pure::crc16_en13757(
+        air.data()+end,air.size()-end);
+    air.push_back(static_cast<uint8_t>(second>>8));
+    air.push_back(static_cast<uint8_t>(second));
+  }
   wmbus_pure::CompleteFrame checked{};
   assert(wmbus_pure::verify_complete_frame(
       air.data(),air.size(),wmbus_pure::CrcFrameFormat::B,checked)
