@@ -79,11 +79,37 @@ The latter are **not** authorized for the no-key decoder.
 Other Q400 historical, error, forward/backward fields are outside
 this first native subset.
 
-`topaseskr` was examined but **is not integrated or configurable**:
-both public examples use encrypted Mode-5 transport. Its upstream
-`NOKEY` samples are not evidence of plaintext RF. It needs a
-separately validated explicit-key receiver, with negative tests and
-Heltec build before enabling it.
+`topaseskr` (Integra AMT/F1/06 or 07) is additionally wired as
+**explicit-key `SECURE_ONLY`**. Both public `NOKEY` examples have
+already-decrypted Mode-5 applications, not original ciphertext.
+The native receiver requires a matched DLL meter ID, AES-128 key,
+Mode-5 short TPL with a complete 4-block CBC payload, the decrypted
+`2F2F` structural prefix, and independently validated DIF/VIF
+records. It publishes a deliberately narrow numeric subset:
+`total_m3`, `temperature_c`, `current_flow_m3h`, and optional
+`volume_year_period_m3`. Other upstream Topas history/date/battery
+fields are not yet published. CBC/`2F2F` does **not** authenticate a
+telegram. The source applications are re-encrypted with synthetic
+keys for positive/negative CI; real on-air ciphertext and Home
+Assistant operation are still unverified.
+
+```yaml
+wmbus_native_sx126x:
+  # ...sx126x_id and radio options from your complete YAML...
+  secure_meters:
+    - meter_id: "12345678"  # synthetic configured DLL meter ID
+      driver: topaseskr
+      key: !secret example_topaseskr_aes_key
+  xmq_sensors:
+    - meter_id: "12345678"
+      field: total_m3
+      sensor:
+        name: "Example Topas total"
+        unit_of_measurement: "m³"
+```
+
+The `topaseskr` route is **never** part of `meter_drivers`,
+plaintext decoding or `driver: auto`.
 
 These new additions are software-only, not tested with live RF or
 Home Assistant. Keep the last *fully green* CI marker above until
@@ -141,9 +167,10 @@ The active driver manifest defines:
 - `CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")`:
   software-tested native drivers with strict **configured-only** AUTO.
 - `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE`:
-  the 12 names allowed in YAML `meter_drivers`.
-- `SECURE_ONLY = ("mkradio4a",)`: the 13th driver, available only
-  via explicitly keyed `secure_meters`, with separate DLL/TPL identity.
+  the 14 names allowed in YAML `meter_drivers`.
+- `SECURE_ONLY = ("mkradio4a", "topaseskr")`: 2 additional
+  explicit-key drivers (16 software-integrated drivers in total). MK Radio4a
+  requires separate DLL/TPL identities; Topas binds its DLL ID directly.
 
 The old `BATCH2_PENDING` category was retired after software
 integration. The three models are **not pending software implementation**;
