@@ -1,6 +1,6 @@
 # Project context — `experimental/xmq-multidriver-auto`
 
-> **Branch-specific context, updated 2026-11-06.** This section applies **only to `experimental/xmq-multidriver-auto`**. No default branch, legacy experimental branch, local YAML, hardware firmware or server configuration is changed by this documentation update. The older 2026-11-01 `xmq-independent-pipeline` notes are preserved below as historical context and **must not be interpreted as the active architecture on this branch**.
+> **Branch-specific context, updated 2026-11-07.** This section applies **only to `experimental/xmq-multidriver-auto`**. No default branch, legacy experimental branch, local YAML, hardware firmware or server configuration is changed by this documentation update. The older 2026-11-01 `xmq-independent-pipeline` notes are preserved below as historical context and **must not be interpreted as the active architecture on this branch**.
 
 ## Read-first instructions for development assistants (including Codex)
 
@@ -15,7 +15,7 @@
 - Hardware target: Heltec ESP32-S3 / SX1262 / 8 MB; ESPHome 2026.10.1, ESP-IDF 5.5.6 in the experimental build context. **The official ESPHome SX126x receiver is the sole radio owner**, with native T1/C1 handling and a bounded `components/wmbus_native_sx126x` application pipeline.
 - Native ingress must verify complete radio/DLL frame format and CRC, independently match the configured meter identity and allowed link mode, enforce valid plaintext/decryption/compact gates, and **only then** decode and publish finite mapped fields. Unconfigured meters can be observed diagnostically but must never auto-publish sensor readings.
 - The original live Techem decoding behavior for **`fhkvdataiii` (manufacturer CI A0)** and **`mkradio4` (CI A2)** must remain unchanged. Original generated IXML rule tables and their mapping/sensor semantics remain the production baseline on this research branch. The native manifest also lists cleartext portable `iperl` and `hydrus` as supported; `mkradio4a` is post-decrypt-only, **not** general live RF admission.
-- Source of truth for driver availability: `experimental/xmq/tools/native_driver_specs.py`. `BATCH2_PENDING = ("minomess", "kamwater", "apator162")` **must remain excluded from live YAML selection, receiver dispatch, sensor publication and any optimistic fallback** until separate end-to-end gates pass.
+- Source of truth for driver availability: `experimental/xmq/tools/native_driver_specs.py`. `BATCH2_PENDING = ("minomess", "kamwater", "apator162")` remains excluded from `SUPPORTED` and AUTO. Those three can now be **manually selected in experimental `meter_drivers` for strictly unencrypted RF** or in `secure_meters` for AES with explicitly provided key. Neither path is production-authorized before real radio/HA validation.
 - Preserve the existing original XMQ generated decoder and T1/C1 algorithms, per-meter RSSI, temperature accuracy, status/dates, no stale or partial publishing on errors, and visibility of unconfigured telegrams where already supported. Never infer a valid decode solely from a matching manufacturer, signature, data CRC or decrypted-looking bytes.
 
 ## Stage A — completed consolidation, CI green (owner-confirmed)
@@ -90,6 +90,48 @@ unavailable rather than inventing approval. Do not flash, enable
 YAML for real meters, or alter stable Techem paths without owner's
 explicit authorization. Consult
 `experimental/xmq/STAGE_B_GATE_STATUS.md` for historical gates.
+
+## Stage B manual NOKEY / clear RF path — 2026-11-07 (CI PENDING)
+
+Last owner-confirmed green remains `8136a346` (run
+`42350691692`) for the encrypted three-driver build.
+**New no-key C++ changes are committed, but ESP32-S3 CI has NOT
+yet been confirmed green** (run `42378059859`; the packet-input
+job passed at the time of documentation update).
+
+- The `meter_drivers` YAML now accepts explicit `minomess`,
+  `kamwater`, `apator162` **without any `key`**, while the
+  generated `SUPPORTED` / `auto` list remains unchanged.
+  Optional `dll_meter_id` for Minomess lets the configured DLL
+  converter sender differ from the actual TPL meter ID. Duplicate,
+  ambiguous and mixed-key/plain bindings are forbidden.
+- Actual verified T1 and C1 callbacks now route explicit clear
+  batch-2 readings to `xmq_batch2_plain_dispatch.h` before the
+  existing generic plaintext gate. The clear path matches DLL sender,
+  checks Minomess long TPL identity and **TPL security mode 0**, uses
+  existing strict Apator plaintext admission, and Kamwater checks
+  ELL-II mode 0 + independent payload CRC for clear full `78`,
+  compact `79` or short `7A` applications. CRC, model, frame
+  shape or security failures do not publish readings, RSSI or fall
+  back to AUTO/encrypted dispatch. C1 retains its existing
+  `c1_plaintext_publish: true` opt-in.
+- Host tests cover Minomess converter and cipher-mode-5 rejection,
+  Kamwater clear full/compact and bad ELL CRC/AES-CTR refusal,
+  and Apator short plaintext and mode-5 refusal. A **separate
+  build-only keyless ESP32-S3 YAML** confirms all 3 can compile
+  with `meter_drivers`, `xmq_sensors`, no AES keys and no
+  `secure_meters`: `experimental/semtech-radio/ci/native-sx126x-batch2-nokey-lab.yaml`.
+
+**Important:** original upstream `NOKEY` samples may be
+post-decrypted applications rather than actual unencrypted on-air
+telegrams. In particular, original Minomess examples carry TPL
+Mode 5 despite `NOKEY`; never accept that header as plaintext
+without a verified keyed decryptor. Some Kamwater compact profiles
+reference a previously validated full telegram and cannot be
+trusted without that reference. This manual no-key path authorizes
+only independently VERIFIED clear RF; it does not magically
+decode encrypted radio without a key. The on-device proof and
+real HA publication gate remain open; no flash was performed.
 
 ## Next developer workflow
 
