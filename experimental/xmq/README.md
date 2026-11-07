@@ -17,10 +17,11 @@ restrictions, and verified vs pending CI milestones.
   over-the-air validation. Physical RX-to-HA approval is still open.
 - **Native AUTO and Heltec:** `fhkvdataiii` and `mkradio4` remain the
   stable Techem baseline. `iperl`, `hydrus`, `lansenpu`, `lansendw`, `cma12w`, `ultraheat`, `sontex868` are in
-  the compiled `SUPPORTED` manifest. Minomess, Kamwater and
-  Apator162 remain outside that generic manifest but are **selectable
-  through the dedicated, strictly configured `driver: auto` clear
-  transport path**, or through explicit `meter_drivers`. AES still
+  the compiled generic `SUPPORTED` manifest. Minomess, Kamwater
+  and Apator162 are included in `CONFIGURED_NATIVE`, with
+  dedicated configured-only clear `driver: auto` or explicit
+  `meter_drivers`. The full YAML whitelist is
+  `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE`. AES still
   requires explicit driver/key in `secure_meters`.
 - **CI green:** GitHub run `42393848471`, code
   `2f518a35c5ce34d56d8c40497755380293a4e4f3`: all three jobs
@@ -70,6 +71,16 @@ There are no nearby physical Ultraheat/Sontex meters to validate.
 contain non-decimal DLL IDs incompatible with the current strict
 configured-meter ID contract; the address admission policy was
 deliberately left unchanged.
+
+## Native software availability
+
+The previous `BATCH2_PENDING` category was removed after
+Minomess, Kamwater and Apator162 passed the software tests.
+They belong to `CONFIGURED_NATIVE`, not generic DLL-only
+`SUPPORTED`, because model-specific transport/identity gates
+must remain intact. This does **not** prevent configured
+`driver: auto` or explicit driver selection. Actual physical
+RF-to-HA validation remains open.
 
 ## Configured-meter driver selection (native SX126x)
 

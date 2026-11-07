@@ -15,8 +15,21 @@
 - Hardware target: Heltec ESP32-S3 / SX1262 / 8 MB; ESPHome 2026.10.1, ESP-IDF 5.5.6 in the experimental build context. **The official ESPHome SX126x receiver is the sole radio owner**, with native T1/C1 handling and a bounded `components/wmbus_native_sx126x` application pipeline.
 - Native ingress must verify complete radio/DLL frame format and CRC, independently match the configured meter identity and allowed link mode, enforce valid plaintext/decryption/compact gates, and **only then** decode and publish finite mapped fields. Unconfigured meters can be observed diagnostically but must never auto-publish sensor readings.
 - The original live Techem decoding behavior for **`fhkvdataiii` (manufacturer CI A0)** and **`mkradio4` (CI A2)** must remain unchanged. Their generated IXML tables and sensor mappings remain the field-observed baseline. The native `PORTABLE` manifest now additionally contains **`iperl`, `hydrus`, `lansenpu`, `lansendw`, `cma12w`, `ultraheat`, `sontex868`**. These are tested against public clear-frame fixtures; `mkradio4a` is still post-decrypt-only and not general live RF admission.
-- Source of truth: `experimental/xmq/tools/native_driver_specs.py` plus the actual configured dispatcher `components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h`. **`BATCH2_PENDING = ("minomess", "kamwater", "apator162")` remains excluded from generic `SUPPORTED`, but these three DO support dedicated configured-only `driver: auto` as well as explicit `meter_drivers` for strictly clear RF**. Their encrypted path is `secure_meters` with an explicit driver and AES key, never automatic key guessing. This distinction is essential: `BATCH2_PENDING` does not mean their configured native runtime is unavailable. None is field-approved without real RF/HA validation.
+- Source of truth: `experimental/xmq/tools/native_driver_specs.py` plus the actual configured dispatcher `components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h`. **`CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")` is software-implemented**. The three are excluded only from generic DLL-only `SUPPORTED` and support dedicated configured-only `driver: auto` plus explicit `meter_drivers` for strictly clear RF. `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE` is the YAML driver whitelist. Their encrypted path is `secure_meters` with an explicit driver and AES key, never automatic key guessing. The legacy `BATCH2_PENDING` category was retired; it must no longer be used to describe the current software status. None is field-approved without real RF/HA validation.
 - Preserve the existing original XMQ generated decoder and T1/C1 algorithms, per-meter RSSI, temperature accuracy, status/dates, no stale or partial publishing on errors, and visibility of unconfigured telegrams where already supported. Never infer a valid decode solely from a matching manufacturer, signature, data CRC or decrypted-looking bytes.
+
+## Manifest cleanup after successful software tests — 2026-11-07
+
+The obsolete `BATCH2_PENDING` classification has been removed from
+the executable manifest and CI assertions. `CONFIGURED_NATIVE`
+contains Minomess, Kamwater and Apator162, and `CONFIGURABLE`
+includes them in the YAML whitelist. This cleanup **does not**
+insert them into generic DLL-only `SUPPORTED`, change the strict
+configured AUTO selector, guess AES keys, authorize unconfigured
+HA publication, or imply real-meter field validation. Previous
+software baseline was fully green at run `42393848471`; the
+manifest-cleanup CI is a separate check and must be green before
+claiming this change fully verified.
 
 ## Current native driver and CI checkpoint (2026-11-07)
 
@@ -31,9 +44,11 @@ to the previously added models; **no OTA/flash** was performed.
 - `PORTABLE` (native clear application subsets): `iperl`,
   `hydrus`, `lansenpu`, `lansendw`, `cma12w`,
   `ultraheat`, `sontex868`.
-- `BATCH2_PENDING` (excluded from generic `SUPPORTED` but supported
-  by dedicated configured-only clear AUTO/explicit dispatch):
-  `minomess`, `kamwater`, `apator162`.
+- `CONFIGURED_NATIVE`: `minomess`, `kamwater`, `apator162`,
+  with dedicated configured clear AUTO/explicit dispatch; they are
+  excluded only from the generic `SUPPORTED` selector.
+- `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE` is the YAML whitelist.
+  This is software availability, not approval for physical RF operation.
 - `POST_DECRYPT_ONLY`: `mkradio4a` must not be admitted as
   independently verified unencrypted live RF.
 

@@ -60,11 +60,28 @@ fields, wired M-Bus frames or post-decrypted ELL frames are supported.
 Original source fields and strict negative-frame tests passed
 [run #42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
 
-The last three drivers use a **dedicated, strict configured-only AUTO
-path**. They are deliberately **not** in the generic `SUPPORTED`
-manifest; this does not prevent their configured cleartext AUTO
-selection. Detection of a model is not proof that its payload is
-unencrypted or successfully decoded.
+### Software support and acceptance status
+
+**All 12 drivers in the table are software-configurable**, but only
+the Techem baseline has been observed with real nearby meters.
+The active driver manifest defines:
+
+- `SUPPORTED`: generic native compiled/DLL AUTO drivers.
+- `CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")`:
+  software-tested native drivers with strict **configured-only** AUTO.
+- `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE`:
+  the names allowed in YAML `meter_drivers`.
+
+The old `BATCH2_PENDING` category was retired after software
+integration. The three models are **not pending software implementation**;
+they are omitted from generic `SUPPORTED` only because their
+DLL/TPL/ELL identity/security admission requires a separate native
+dispatcher. This restriction does not block `driver: auto` or an
+explicit driver on a configured meter.
+
+A matched manufacturer/model never proves the payload is clear,
+valid or authenticated. **Physical RF-to-Home Assistant validation
+is still open** for the new driver families.
 
 ## YAML: automatic or explicit driver selection
 
