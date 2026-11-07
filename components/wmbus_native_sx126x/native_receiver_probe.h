@@ -98,7 +98,21 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   RxModeStats c1a_stats_{};
   RxModeStats c1b_stats_{};
   uint32_t combined_stats_last_ms_{0};
+  struct Batch2Seen {
+    uint32_t dll_id{0};
+    uint32_t target_id{0};
+    const char *driver{nullptr};
+    uint8_t source{0};
+  };
+  // Fixed-capacity log deduplication; no per-telegram heap accumulation.
+  std::array<Batch2Seen,32> batch2_seen_{};
+  size_t batch2_seen_count_{0};
+  size_t batch2_seen_cursor_{0};
   void log_combined_stats_();
+  // Diagnostic only: metadata recognition from DLL CRC-verified T1/C1.
+  // No dispatch/decoder/key lookup or Home Assistant publication.
+  void log_batch2_auto_(const std::vector<uint8_t> &frame,
+                        uint32_t dll_meter_id,const char *link);
   void publish_xmq_text_(const std::vector<uint8_t> &frame,
                          const std::string &id, const char *driver,
                          const xmq_portable::DecodedPayload &decoded);
