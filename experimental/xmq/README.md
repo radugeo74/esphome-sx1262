@@ -16,16 +16,17 @@ restrictions, and verified vs pending CI milestones.
   remain intentionally rejected; no fixture is treated as real
   over-the-air validation. Physical RX-to-HA approval is still open.
 - **Native AUTO and Heltec:** `fhkvdataiii` and `mkradio4` remain the
-  stable Techem baseline. `iperl`, `hydrus`, `lansenpu`, `lansendw`, `cma12w` are in
+  stable Techem baseline. `iperl`, `hydrus`, `lansenpu`, `lansendw`, `cma12w`, `ultraheat`, `sontex868` are in
   the compiled `SUPPORTED` manifest. Minomess, Kamwater and
   Apator162 remain outside that generic manifest but are **selectable
   through the dedicated, strictly configured `driver: auto` clear
   transport path**, or through explicit `meter_drivers`. AES still
   requires explicit driver/key in `secure_meters`.
-- **CI green:** GitHub run `42391722726`, code
-  `a051a46a2f5de2680ced80c5c47420d1f6518a87`: all three jobs
-  passed, including actual Heltec combined T1/C1 firmware compile
-  with six synthetic or public-fixture AUTO bindings. No device was flashed.
+- **CI green:** GitHub run `42393848471`, code
+  `2f518a35c5ce34d56d8c40497755380293a4e4f3`: all three jobs
+  passed, including Heltec combined T1/C1 firmware compile
+  with Ultraheat/Sontex868 added to the synthetic AUTO bindings.
+  No device was flashed.
   No unconfigured meter automatically creates or publishes sensors.
 - **Detailed Stage B gates:** [`BATCH2_STATUS.md`](BATCH2_STATUS.md),
   host XMQ fixture comparisons, native CI and security isolation checks.
@@ -44,6 +45,31 @@ No unrelated `NOKEY` encrypted frame is accepted as plaintext.
 All four original new-driver fixtures, identity/model mismatches,
 malformed records, encryption negatives and synthetic CRC passed
 in CI run `42391722726`.
+
+## New clear models: Ultraheat and Sontex868
+
+Both models reuse the bounded native EN13757 DIF/VIF parser and
+require a CRC-verified, unencrypted short-TPL `0x7A` application,
+matching both configured DLL ID and original XMQ model metadata.
+
+- `ultraheat` (`LUG/04/04`) supports energy `heat_kwh`,
+  volume `volume_m3`, power `power_kw`, flow `flow_m3h`,
+  and `flow_c`/`return_c`. Original wired M-Bus and
+  ELL/post-decrypted source examples are *not* live clear RF.
+- `sontex868` (`SON/16/08`) supports
+  `current_consumption_hca`, `consumption_at_set_date_hca`,
+  `current_temp_c`, `current_room_temp_c`, `max_temp_c`,
+  and `max_temp_previous_period_c`. This does not claim the
+  original XMQ date/status fields or full-device parity.
+
+Each native public fixture and negative identity, encryption,
+malformed BCD/length, duplicate-record and CRC tests are green in
+[run #42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
+There are no nearby physical Ultraheat/Sontex meters to validate.
+`apator08` was not added because the available public samples
+contain non-decimal DLL IDs incompatible with the current strict
+configured-meter ID contract; the address admission policy was
+deliberately left unchanged.
 
 ## Configured-meter driver selection (native SX126x)
 

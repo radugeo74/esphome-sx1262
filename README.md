@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last fully green code CI:** [GitHub Actions #42391722726](https://github.com/radugeo74/esphome-sx1262/actions/runs/42391722726)
-(code commit `a051a46a2f5de2680ced80c5c47420d1f6518a87`).
+**Last fully green code CI:** [GitHub Actions #42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471)
+(code commit `2f518a35c5ce34d56d8c40497755380293a4e4f3`).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
@@ -48,6 +48,17 @@ Home Assistant sensors.
 | `minomess` | Yes, clear transport only | Yes |
 | `kamwater` | Yes, clear transport only | Yes |
 | `apator162` | Yes, clear transport only | Yes |
+
+The new `ultraheat` and `sontex868` decoders currently cover the
+publicly verified **unencrypted short-TPL numeric subset** only.
+Ultraheat provides `heat_kwh`, `volume_m3`, `power_kw`,
+`flow_m3h`, `flow_c`, `return_c`; Sontex868 provides
+`current_consumption_hca`, `consumption_at_set_date_hca`,
+`current_temp_c`, `current_room_temp_c`, `max_temp_c`,
+`max_temp_previous_period_c`. Do not infer that other upstream
+fields, wired M-Bus frames or post-decrypted ELL frames are supported.
+Original source fields and strict negative-frame tests passed
+[run #42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
 
 The last three drivers use a **dedicated, strict configured-only AUTO
 path**. They are deliberately **not** in the generic `SUPPORTED`

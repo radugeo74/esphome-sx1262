@@ -322,7 +322,7 @@ DW/CMA12w RF receptions or HA publications are claimed.
 Installed Heltec firmware was not modified. Subsequent changes
 to these notes are documentation-only.
 
-## New native drivers: Ultraheat + Sontex868 — 2026-11-07 (CI pending)
+## New native drivers: Ultraheat + Sontex868 — 2026-11-07 (ALL CI GREEN)
 
 Owner requested up to two additional easy drivers. Both use existing
 bounded standard DIF/VIF parser and strict configured-only clear TPL
@@ -345,8 +345,17 @@ GPL-3.0-or-later copyright. No revival of legacy radio or decoder.
   non-BCD radio ID bytes; strict current eight-decimal-digit address
   admission forbids treating them as complete supported RF fixtures.
   No general ID-validation relaxation was performed.
-**Do not declare full CI green or real radio validation from source
-fixture comparisons alone.**
+**Latest verified code commit:** `2f518a35c5ce34d56d8c40497755380293a4e4f3`;
+**GitHub Actions run `42393848471` ALL THREE PASS**:
+`native-packet-input`, `stage-a-espidf-s3-portable-link`,
+`native-esphome-build`. The last includes Heltec T1/C1 combined
+build-only YAML with two new configured AUTO bindings. Original
+Ultraheat and Sontex radio fixtures are validated against numeric
+expected fields; Sontex source is a long (176-byte) format-B frame
+and test now checks the correct two-block CRC envelope. Earlier
+intermediate red runs reflect in-progress fixture/CI corrections,
+not the final source. No physical reception or real HA value
+publication has been verified for these models. No OTA/flash.
 
 ## Next developer workflow
 
