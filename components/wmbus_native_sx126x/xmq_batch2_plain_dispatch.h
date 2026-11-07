@@ -14,7 +14,8 @@ inline bool is_explicit_driver(const char *name) {
   return name &&
      (std::strcmp(name,"minomess")==0 ||
       std::strcmp(name,"kamwater")==0 ||
-      std::strcmp(name,"apator162")==0);
+      std::strcmp(name,"apator162")==0 ||
+      std::strcmp(name,"lansenpu")==0);
 }
 inline PureDecodeStatus decode_configured(
     const uint8_t *frame,size_t length,const char *meter_id,
