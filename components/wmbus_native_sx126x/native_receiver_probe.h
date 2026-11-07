@@ -34,7 +34,10 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   void set_c1_format_b(bool value) { this->c1_format_b_ = value; }
   void set_c1_plaintext_publish(bool value) { this->c1_plaintext_publish_ = value; }
   void add_configured_meter_id(const std::string &value) { this->configured_meter_ids_.push_back(value); }
-  void add_meter_driver(const std::string &id, const std::string &driver) { this->meter_drivers_.push_back({id, driver}); }
+  void add_meter_driver(const std::string &id, const std::string &driver,
+                        const std::string &dll_id) {
+    this->meter_drivers_.push_back({id, driver, {}, dll_id});
+  }
   // Explicit opt-in binding. Convert the !secret-sourced hex key to
   // 16 bytes once; never retain the hexadecimal text or print the key.
   void add_secure_meter(const std::string &id,const std::string &driver,
@@ -106,8 +109,19 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   // including failed/blocked decode (no plaintext fallback).
   bool publish_secure_batch2_(const std::vector<uint8_t> &frame,
                               uint32_t meter_id,float rssi_dbm);
+  // Explicitly configured unencrypted Minomess/Kamwater/Apator162 ONLY.
+  // Returns true for matching binding even on rejected/decrypted-looking
+  // input, guaranteeing no fallback to AUTO or keyed decoding.
+  bool publish_plain_batch2_(const std::vector<uint8_t> &frame,
+                             uint32_t dll_meter_id,float rssi_dbm,
+                             bool publication_enabled);
   std::vector<std::string> configured_meter_ids_{};
-  struct MeterDriver { std::string id; std::string driver; std::string logged_auto_driver; };
+  struct MeterDriver {
+    std::string id; // HA sensor binding / Minomess TPL meter
+    std::string driver;
+    std::string logged_auto_driver;
+    std::string dll_id; // separately configured radio sender
+  };
   std::vector<MeterDriver> meter_drivers_{};
   struct SecureMeter {
     std::string id;       // TPL meter / Home Assistant sensor binding
