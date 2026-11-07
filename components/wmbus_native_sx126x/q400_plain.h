@@ -18,7 +18,7 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   wmbus_pure::Header h{};
   if(wmbus_pure::parse_header(frame,length,h)!=wmbus_pure::HeaderStatus::Ok)
     return Status::Invalid;
-  if(h.manufacturer!=0x0907 || h.device_type!=0x07 ||
+  if(h.manufacturer!=0x0709 || h.device_type!=0x07 ||
       (h.version!=0x01 && h.version!=0x10 && h.version!=0x20) ||
       h.ci!=0x7A) return Status::WrongModel;
   if(wmbus_pure::publication::inspect(frame,length,h.meter_id)!=
