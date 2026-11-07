@@ -10,6 +10,19 @@ compact-only Kamwater call name; the final commit corrected the test
 to check the shared full/compact function and its ELL/CRC gates. This is a code-integration milestone, **NOT approval
 for production or evidence of physical RF-to-HA operation**.
 
+## Four-driver configured AUTO extension — CI pending
+
+Configured `driver: auto` now uses strict DLL/TPL/ELL MVT matching
+for `minomess`, `kamwater`, `apator162`, `lansenpu`.
+Only verified unencrypted RF can reach the existing clear
+decoders. Minomess supports a separate configured
+`dll_meter_id`; Kamwater and Apator require DLL ID equality.
+Encrypted RF still needs an explicitly configured keyed
+`secure_meters` driver; no auto-key guessing. This change
+does not authorize unconfigured publishing, alter the established
+Techem AUTO pipeline, or claim physical field validation.
+CI run status is tracked under this branch's GitHub Actions.
+
 ## Native explicit no-key Minomess / Kamwater / Apator162 — CI green
 
 `meter_drivers` now accepts `minomess`, `kamwater`,

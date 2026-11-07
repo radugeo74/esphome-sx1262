@@ -79,6 +79,13 @@ wmbus_native_sx126x:
       driver: fhkvdataiii
     - meter_id: "00010206"
       driver: auto  # upstream public Lansen test ID, no actual meter
+    - meter_id: "87654321"
+      dll_meter_id: "11223344" # synthetic Minomess converter sender
+      driver: auto
+    - meter_id: "87654322"
+      driver: auto  # synthetic Kamwater
+    - meter_id: "87654323"
+      driver: auto  # synthetic Apator162
   xmq_sensors:
     - meter_id: "00000000"
       field: current_hca

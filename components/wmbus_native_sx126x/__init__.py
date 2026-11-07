@@ -40,7 +40,7 @@ def validate_meter_id(value):
     return value
 
 def validate_driver_name(value):
-    # Batch-2 remains explicit; Lansen may AUTO-decode only configured clear RF.
+    # Batch-2 and Lansen may AUTO-decode only configured verified-clear RF.
     if value == "auto":
         return value
     root = Path(__file__).resolve().parents[2]
@@ -48,8 +48,8 @@ def validate_driver_name(value):
     sys.path.insert(0, str(tool_dir))
     try:
         from native_driver_specs import SUPPORTED, BATCH2_PENDING, MANUAL_PLAIN
-        # BATCH2 is manual clear-only at this interface. Do not place it
-        # in SUPPORTED: generated AUTO must not select untested RF modes.
+        # Batch-2 remains outside generic AUTO manifest: native AUTO
+        # selection checks DLL/TPL identity, security and strict model modes.
         if value not in SUPPORTED + BATCH2_PENDING + MANUAL_PLAIN:
             raise cv.Invalid(f"Native XMQ driver {value!r} is not available")
     finally:
@@ -81,8 +81,8 @@ def validate_secure_config(config):
         raise cv.Invalid("meter_drivers must have unique meter and DLL sender IDs")
     for entry in secured + plain:
         if (entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) != entry[CONF_METER_ID]
-                and entry[CONF_DRIVER] != "minomess"):
-            raise cv.Invalid("Separate dll_meter_id is supported only by minomess")
+                and entry[CONF_DRIVER] not in ("minomess", "auto")):
+            raise cv.Invalid("Separate dll_meter_id is supported only by minomess or auto with validated Minomess TPL")
     # One sender cannot dispatch to two different meters, nor to both
     # encrypted and no-key decoding. Avoid any ambiguous cross-binding.
     if (set(plain_ids) | set(plain_dll)) & (set(secure_ids) | set(secure_dll)):
@@ -102,13 +102,13 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_LINK_MODE, default="C1"): cv.one_of("T1", "C1", "T1_C1", upper=True),
     cv.Optional(CONF_FIFO_PROGRESS_PROBE, default=False): cv.boolean,
     cv.Optional(CONF_T1_RAW_DIAGNOSTICS, default=False): cv.boolean,
-    # Regular supported drivers plus explicit (NEVER AUTO) no-key batch-2.
+    # AUTO for configured clear batch-2 is gated by native DLL/TPL checks.
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Optional(CONF_DLL_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Required(CONF_DRIVER): cv.All(cv.string_strict, validate_driver_name),
     })),
-    # Explicit opt-in: batch-2 remains excluded from AUTO and SUPPORTED.
+    # Explicit AES keys only: no AUTO key selection or guessing.
     # Keys belong in !secret, never in the repository or diagnostic logs.
     cv.Optional(CONF_SECURE_METERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),

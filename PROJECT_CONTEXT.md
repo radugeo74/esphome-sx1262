@@ -240,6 +240,40 @@ from an incorrectly updated manifest length guard;
 two remaining jobs finish successfully. No real physical Lansen
 telegram/HA reading was observed; no Heltec flash was performed.
 
+## Strict configured AUTO for all four imported drivers — 2026-11-07
+
+Owner authorized enabling **configured-only** `driver: auto` for
+`lansenpu`, `minomess`, `kamwater`, `apator162` on Heltec.
+The latter three remain excluded from generic `SUPPORTED`;
+there is NO change to the existing Techem `fhkvdataiii`/
+`mkradio4` AUTO implementation.
+
+Native `xmq_batch2_plain_dispatch.h` selects a candidate using
+the COMPLETE original MVT registry, verified DLL sender ID,
+unambiguous nested TPL/ELL identity, and exact configured meter
+ID. Minomess requires an identified long TPL meter; an optional
+explicit `dll_meter_id` may differ from `meter_id` even when
+`driver: auto`. Kamwater and Apator162 require an identified DLL
+meter matching the configured ID. Any ambiguity/mismatch fails
+closed. A chosen model is not proof of plaintext: the unchanged
+strict per-driver decoder checks actual TPL/ELL security, CRC,
+records and outputs before publishing. The encrypted path still
+uses `secure_meters` with explicit driver and configured AES key.
+No guessing keys, AES-to-plaintext fallback, phantom RSSI or
+unknown-meter sensor publication. Passive read-only recognition
+of all four continues for unconfigured verified T1/C1.
+
+CI includes host tests for all four `auto` candidates and
+negative tests for wrong ID, converter mismatch, MVT collision,
+Minomess Mode-5 and encrypted Kamwater/Apator; compile-only Heltec
+T1/C1 test YAML maps four `driver: auto` entries with synthetic
+IDs, without private meters/secrets. **Physical RF-to-HA
+validation unavailable** for these models; do not flash the
+installed Heltec based on CI alone.
+
+GitHub Actions run is validated separately; record PASS only
+after all jobs finish. No firmware was flashed in this change.
+
 ## Next developer workflow
 
 1. Verify the latest Stage B CI, including original fixture/field-gap tests and native ESP32-S3 build. Fix failing tests before asserting increased coverage.

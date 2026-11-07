@@ -4,6 +4,7 @@
 #include "components/wmbus_native_sx126x/xmq_decode_catalog.h"
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/kamwater_compact_signature.h"
+#include "components/wmbus_native_sx126x/xmq_auto_registry.h"
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -63,6 +64,20 @@ int main() {
     return xmq_portable::batch2_plain::decode_configured(
         bytes.data(),bytes.size(),meter,sender,driver,captures,12,result);
   };
+  // Full generated XMQ registry: configured-only AUTO must resolve each
+  // driver without promoting encrypted, unknown or ambiguous RF.
+  const auto select_auto=[&](const std::vector<uint8_t> &bytes,
+                            const char *meter,const char *sender,
+                            const wmbus_pure::DriverSignature *signatures=
+                                wmbus_pure::generated::signatures,
+                            size_t count=wmbus_pure::generated::signature_count) {
+    return xmq_portable::batch2_plain::select_configured_driver(
+      bytes.data(),bytes.size(),meter,sender,"auto",signatures,count);
+  };
+  assert(select_auto(minomess,"12345678","12345678")!=nullptr);
+  assert(std::strcmp(select_auto(minomess,"12345678","12345678"),
+                     "minomess")==0);
+  assert(select_auto(minomess,"12345679","12345678")==nullptr);
   assert(plain(minomess,"12345678","12345678","minomess")==Status::Ok);
   assert(result.value_count==2);
   // Explicit radio converter binding: DLL ID and long TPL ID are
@@ -71,6 +86,12 @@ int main() {
   converted[4]=0x10;converted[5]=0x64;
   converted[6]=0x03;converted[7]=0x55; // DLL sender = 55036410
   assert(plain(converted,"12345678","55036410","minomess")==Status::Ok);
+  assert(select_auto(converted,"12345678","55036410")!=nullptr);
+  assert(std::strcmp(select_auto(converted,"12345678","55036410"),
+                     "minomess")==0);
+  assert(select_auto(converted,"12345678","12345678")==nullptr);
+  assert(select_auto(converted,"12345679","55036410")==nullptr);
+
   assert(std::fabs(value(result,"total_m3")-140.354)<1e-6);
   assert(plain(converted,"12345678","12345678","minomess")!=Status::Ok);
   assert(result.value_count==0);
@@ -79,6 +100,11 @@ int main() {
   assert(plain(converted,"12345678","55036410","auto")!=Status::Ok);
   assert(result.value_count==0);
   converted[22]=0x05; // MODE 5 from original post-decrypted NOKEY fixture
+  assert(plain(converted,"12345678","55036410","minomess")!=Status::Ok);
+  assert(result.value_count==0);
+  // Even when AUTO recognizes the model, actual Mode-5 encrypted
+  // transmission must still be rejected by keyless decode.
+  assert(select_auto(converted,"12345678","55036410")!=nullptr);
   assert(plain(converted,"12345678","55036410","minomess")!=Status::Ok);
   assert(result.value_count==0);
   // Restore source TPL 0x0550 (high byte 0x05): MODE 5 must reject.
@@ -110,6 +136,17 @@ int main() {
   assert(std::fabs(value(result,"total_m3")-6.408)<1e-6);
   assert(std::fabs(value(result,"target_m3")-6.408)<1e-6);
   assert(plain(kamwater,"12345678","12345678","kamwater")==Status::Ok);
+  assert(select_auto(kamwater,"12345678","12345678")!=nullptr);
+  assert(std::strcmp(select_auto(kamwater,"12345678","12345678"),
+                     "kamwater")==0);
+  assert(select_auto(kamwater,"12345679","12345678")==nullptr);
+  // Conflicting MVTs are not valid AUTO candidates.
+  constexpr wmbus_pure::DriverSignature collision[]={
+    {0x2C2D,0x1B,0x16,"kamwater"},
+    {0x2C2D,0x1B,0x16,"other"}};
+  assert(select_auto(kamwater,"12345678","12345678",
+                     collision,2)==nullptr);
+
   // Clear ELL-II FULL TPL78: require DLL identity, ELL mode zero and
   // actual CRC of the full on-air application; no key needed.
   const uint8_t full_tpl[]={
@@ -130,6 +167,8 @@ int main() {
   full_kamwater[17]^=1;
   assert(plain(full_kamwater,"12345678","12345678","kamwater")!=Status::Ok);
   assert(result.value_count==0);
+  // Valid MVT alone never authorizes encrypted ELL payload.
+  assert(select_auto(kamwater,"12345678","12345678")!=nullptr);
   kamwater[16]=0x20; // ELL AES-CTR, not clear, never guess
   if(decode(kamwater,"12345678","kamwater")==Status::Ok ||
      result.value_count!=0) return 4;
@@ -152,7 +191,13 @@ int main() {
   assert(decode(apator,"01282096","apator162")==Status::Ok);
   assert(std::fabs(value(result,"total_m3")-7.512)<1e-6);
   assert(plain(apator,"01282096","01282096","apator162")==Status::Ok);
+  assert(select_auto(apator,"01282096","01282096")!=nullptr);
+  assert(std::strcmp(select_auto(apator,"01282096","01282096"),
+                     "apator162")==0);
+  assert(select_auto(apator,"01282097","01282096")==nullptr);
+
   assert(result.value_count==1);
+  assert(select_auto(apator,"01282096","01282096")!=nullptr);
   apator[14]=0x05; // mode5 encrypted: must not enter clear decoder
   if(decode(apator,"01282096","apator162")==Status::Ok ||
      result.value_count!=0) return 6;

@@ -896,8 +896,8 @@ void NativeReceiverProbe::setup() {
   }
   ESP_LOGI(TAG, "Native SX126x receiver ready; configured-only XMQ decoding");
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
-  ESP_LOGI(TAG, "XMQ auto recognition enabled: lansenpu configured clear; "
-                "minomess/kamwater/apator162 metadata-only. "
+  ESP_LOGI(TAG, "XMQ AUTO selection: lansenpu/minomess/kamwater/apator162 "
+                "for configured verified-clear meters; encrypted needs explicit key. "
                 "No unconfigured meter publications");
 #endif
 }

@@ -52,7 +52,7 @@ wmbus_native_sx126x:
   t1_raw_diagnostics: true
   configured_meter_ids: []
   c1_plaintext_publish: true
-  # These drivers are EXPLICIT only, never AUTO. All values synthetic.
+  # Both explicit and configured-only AUTO; synthetic IDs only.
   # No secure_meters section and no AES key (including all-zero key).
   meter_drivers:
     - meter_id: "12345678"
@@ -63,7 +63,14 @@ wmbus_native_sx126x:
     - meter_id: "01282096"
       driver: apator162
     - meter_id: "00010206"
-      driver: lansenpu
+      driver: auto
+    - meter_id: "87654321"
+      dll_meter_id: "11223344" # synthetic Minomess gateway / TPL
+      driver: auto
+    - meter_id: "87654322"
+      driver: auto
+    - meter_id: "87654323"
+      driver: auto
   xmq_sensors:
     - meter_id: "12345678"
       field: total_m3
