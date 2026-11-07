@@ -27,6 +27,8 @@ CONF_RSSI_SENSORS = "rssi_sensors"
 CONF_METER_ID = "meter_id"
 CONF_FIELD = "field"
 CONF_METER_DRIVERS = "meter_drivers"
+CONF_SECURE_METERS = "secure_meters"
+CONF_KEY = "key"
 CONF_ON_VERIFIED = "on_verified"
 CONF_T1_RAW_DIAGNOSTICS = "t1_raw_diagnostics"
 CONF_DRIVER = "driver"
@@ -52,6 +54,24 @@ def validate_driver_name(value):
     return value
 
 
+def validate_secure_key(value):
+    value = cv.string_strict(value)
+    if len(value) != 32 or any(c not in "0123456789abcdefABCDEF" for c in value):
+        raise cv.Invalid("secure_meters.key must be exactly 32 hexadecimal characters (AES-128)")
+    return value.upper()
+
+
+def validate_secure_config(config):
+    secured = config[CONF_SECURE_METERS]
+    ids = [entry[CONF_METER_ID] for entry in secured]
+    if len(ids) != len(set(ids)):
+        raise cv.Invalid("secure_meters must not contain duplicate meter IDs")
+    normal = {entry[CONF_METER_ID] for entry in config[CONF_METER_DRIVERS]}
+    if normal.intersection(ids):
+        raise cv.Invalid("Do not assign a meter to both meter_drivers and secure_meters")
+    return config
+
+
 native_ns = cg.esphome_ns.namespace("wmbus_native_sx126x")
 NativeReceiverProbe = native_ns.class_("NativeReceiverProbe", cg.Component)
 VerifiedFrameTrigger = native_ns.class_("VerifiedFrameTrigger", automation.Trigger.template(cg.uint32, cg.float_, cg.std_string, cg.uint32))
@@ -67,6 +87,13 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_METER_DRIVERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Required(CONF_DRIVER): cv.All(cv.string_strict, validate_driver_name),
+    })),
+    # Explicit opt-in: batch-2 remains excluded from AUTO and SUPPORTED.
+    # Keys belong in !secret, never in the repository or diagnostic logs.
+    cv.Optional(CONF_SECURE_METERS, default=[]): cv.ensure_list(cv.Schema({
+        cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
+        cv.Required(CONF_DRIVER): cv.one_of("minomess", "kamwater", "apator162", lower=True),
+        cv.Required(CONF_KEY): validate_secure_key,
     })),
     cv.Optional(CONF_RSSI_SENSORS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
@@ -87,6 +114,7 @@ CONFIG_SCHEMA = cv.Schema({
         {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(VerifiedFrameTrigger)}
     ),
 }).extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, validate_secure_config)
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
@@ -130,12 +158,23 @@ async def to_code(config):
             shutil.copyfile(header, component_dir / header.name)
         cg.add_build_flag(f"-I{component_dir}")
         cg.add_define("WMBUS_NATIVE_XMQ_ENABLED")
+        if config[CONF_SECURE_METERS]:
+            cg.add_define("WMBUS_NATIVE_BATCH2_SECURE_ENABLED")
     finally:
         sys.path.pop(0)
-    for meter_id in config[CONF_CONFIGURED_METER_IDS]:
-        cg.add(var.add_configured_meter_id(meter_id))
+    # Secure bindings must pass through exactly the same DLL-meter
+    # configured admission as the existing T1/C1 pipeline.
+    configured_ids = set()
+    for meter_id in list(config[CONF_CONFIGURED_METER_IDS]) + [
+        item[CONF_METER_ID] for item in config[CONF_SECURE_METERS]
+    ]:
+        if meter_id not in configured_ids:
+            cg.add(var.add_configured_meter_id(meter_id))
+            configured_ids.add(meter_id)
     for item in config[CONF_METER_DRIVERS]:
         cg.add(var.add_meter_driver(item[CONF_METER_ID], item[CONF_DRIVER]))
+    for item in config[CONF_SECURE_METERS]:
+        cg.add(var.add_secure_meter(item[CONF_METER_ID], item[CONF_DRIVER], item[CONF_KEY]))
     for item in config[CONF_RSSI_SENSORS]:
         obj = await sensor.new_sensor(item["sensor"])
         cg.add(var.add_rssi_sensor(item[CONF_METER_ID], obj))
