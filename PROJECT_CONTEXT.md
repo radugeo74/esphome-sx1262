@@ -186,6 +186,60 @@ commit `b9103a7`, GitHub run `42379840181`, where
 `native-packet-input` job passed. Wait for the remaining
 ESP32-S3 build jobs before claiming all CI green.
 
+## New manual clear driver — Lansen Pulse Counter (`lansenpu`), 2026-11-07
+
+**Owner requested a simpler meter driver because no Minomess/Kamwater/
+Apator162 devices are receivable locally.** Selected the Lansen
+two-channel pulse counter for its three original upstream `NOKEY`
+telegrams (A/B pulses and TPL status; no AES in the actual source
+headers). It is a pulse counter, **not intrinsically a water meter**;
+do not label its values m³. Imported original
+`wmbusmeters/wmbusmeters:drivers/src/lansenpu.xmq`, upstream file
+blob SHA `67d5e60247c7bce0cc288aa09d5449c912824c26` with
+original GPL notice intact; original source public IDs only in tests.
+
+`components/wmbus_native_sx126x/lansenpu_plain.h` is a strict,
+independent native implementation: LAS/14/00, LAS/1B/00, LAS/0B/02,
+short TPL 7A with verified security mode 0, exact
+`0E FD 3A` counter A and `8E 40 FD 3A` counter B records,
+six-byte/12-decimal BCD, no guessing, no repeated fields,
+transactional no-stale-values, original TPL status
+`OK`, `POWER_LOW`, and
+`PERMANENT_ERROR POWER_LOW SABOTAGE_ENCLOSURE` only.
+`a_counter` and `b_counter` are **pulse counts**; optional
+`status` is a separate text_sensor field (64-byte bounded text).
+
+New `MANUAL_PLAIN = ("lansenpu",)` in
+`experimental/xmq/tools/native_driver_specs.py` is intentionally
+**excluded from `SUPPORTED` and the decoder AUTO manifest**.
+ESPHome `meter_drivers` accepts `lansenpu` without AES key and
+registers only its explicit numeric DLL ID. The existing CRC-verified
+T1 and C1 callbacks already use `publish_plain_batch2_`, now also
+recognizing the explicit Lansen binding and publishing numeric
+values, TPL status and RSSI only after complete validation.
+All existing Techem and the three previous batch-2 drivers stay
+unchanged. `c1_plaintext_publish` remains opt-in.
+
+`experimental/semtech-radio/test_lansenpu_native_no_key.cpp`
+runs the three upstream examples expecting
+A=4711, B=1234, status=POWER_LOW;
+B=870, status=OK; and
+B=870, status=PERMANENT_ERROR POWER_LOW SABOTAGE_ENCLOSURE.
+It independently adds and verifies synthetic DLL format-B CRC
+around the public CRC-stripped source telegrams and rejects
+invalid ID, AES mode, BCD, unknown TPL status/model, duplicate,
+truncated, and malformed frames. A build-only no-key ESP32-S3
+YAML fixture includes the two numeric and one text Lansen sensors.
+
+**Latest CI run at code revision `3ade338c`: `42381796061`.**
+The `native-packet-input` job is PASS; at time of writing
+the standalone ESP-IDF/ESP32-S3 and full ESPHome build are
+still IN PROGRESS. Earlier intermediate RED workflows resulted
+from an incorrectly updated manifest length guard;
+`3ade338c` fixed that. Do NOT call all CI green until the
+two remaining jobs finish successfully. No real physical Lansen
+telegram/HA reading was observed; no Heltec flash was performed.
+
 ## Next developer workflow
 
 1. Verify the latest Stage B CI, including original fixture/field-gap tests and native ESP32-S3 build. Fix failing tests before asserting increased coverage.
