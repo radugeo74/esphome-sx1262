@@ -425,6 +425,15 @@ jobs:
             -o /tmp/test-supercal-native
           /tmp/test-supercal-native
 
+      - name: Topas ESKR native Mode5 synthetic encrypted original XMQ applications
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_topaseskr_native_mode5.cpp \
+            -o /tmp/test-topaseskr-native-mode5 -lmbedcrypto
+          /tmp/test-topaseskr-native-mode5
+
       - name: Original Axioma Q400 clear-only AUTO parity and encrypted NOKEY rejection
         run: |
           python3 experimental/xmq/tools/build_native_generated.py
