@@ -64,6 +64,11 @@ wmbus_native_sx126x:
     - meter_id: "12340003"
       driver: apator162
       key: "00000000000000000000000000000000"
+  xmq_text_sensors:
+    - meter_id: "12340002"
+      field: status
+      sensor:
+        name: "CI Kamwater Authenticated Status"
   xmq_sensors:
     - meter_id: "12340001"
       field: total_m3
