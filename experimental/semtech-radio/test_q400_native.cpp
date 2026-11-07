@@ -56,7 +56,9 @@ int main(){
         wmbus_pure::generated::signatures,
         wmbus_pure::generated::signature_count);
     assert(driver && std::strcmp(driver,"q400")==0);
-    assert(decode(i,ids[i],"q400")==S::Ok);
+    const auto status=decode(i,ids[i],"q400");
+    if(status!=S::Ok) std::cerr<<"Q400 source case "<<i+1<<" decode status "<<static_cast<int>(status)<<"\\n";
+    assert(status==S::Ok);
   }
   assert(decode(2,ids[2],"q400")==S::Ok);
   assert(value(out,"total_m3",0));
