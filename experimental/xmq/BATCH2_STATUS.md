@@ -21,9 +21,10 @@ RF-to-Home-Assistant verification and not permission to flash.
 | `kamwater` | Explicit verified ELL/compact clear path | Yes, strict model/identity/security/CRC | Only explicit `secure_meters` with key |
 | `apator162` | Explicit verified clear short TPL | Yes, strict model/identity/security | Only explicit `secure_meters` with key |
 
-`BATCH2_PENDING` stays **out of the generic `SUPPORTED`
-manifest**, but that does **not** block the separately reviewed
-configured-only `auto` path through
+`CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")`
+now describes these software-supported drivers. They remain outside
+generic DLL-only `SUPPORTED`, but belong to `CONFIGURABLE` and
+support the separately verified configured-only `auto` path through
 `xmq_batch2_plain_dispatch.h`. A model candidate alone is
 insufficient: verified DLL CRC, configured sender/meter identity,
 plaintext (or explicitly authenticated keyed pathway), supported

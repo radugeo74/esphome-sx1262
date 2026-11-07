@@ -17,12 +17,18 @@ The active native branch supports `fhkvdataiii`, `mkradio4`,
 `ultraheat`, `sontex868`, `minomess`, `kamwater` and
 `apator162` via configured-only `driver: auto` or an explicit
 `meter_drivers` name, **only where the selected transport and
-driver decoder confirm safe plaintext**. The latter three remain
-outside generic `SUPPORTED` and are routed through a distinct
+driver decoder confirm safe plaintext**. The latter three belong to `CONFIGURED_NATIVE` and
+`CONFIGURABLE`, not generic DLL-only `SUPPORTED`, and use a distinct
 configured-only AUTO selector. AES requires an explicit driver
 and actual key in `secure_meters`. Unknown-meter observations
 are diagnostic only. No relaxation of identity, CRC, security
 or published sensor mapping is authorized.
+
+**Current manifest classification:** the old `BATCH2_PENDING`
+name was retired after software tests. Minomess, Kamwater and
+Apator162 are now `CONFIGURED_NATIVE`, included in `CONFIGURABLE`
+for YAML, without changing specialized AUTO or keyed admission.
+This is not a production RF-to-HA acceptance decision.
 
 **Ultraheat and Sontex868:** their supported numeric short-TPL
 mode-zero subsets passed original source-fixture numeric assertions,

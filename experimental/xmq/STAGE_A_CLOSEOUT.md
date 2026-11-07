@@ -1,7 +1,9 @@
 # Stage A closeout — shared C++ algorithm, native ESP-IDF boundaries
 
 > **Historical closeout, not the current driver matrix.** Stage A was
-> a source-consolidation checkpoint. Statements below that `minomess`,
+> a source-consolidation checkpoint. The old `BATCH2_PENDING` label
+> has since been removed from the software manifest and replaced with
+> `CONFIGURED_NATIVE`. Statements below that `minomess`,
 > `kamwater` or `apator162` cannot be configured in YAML described
 > the earlier state. They are now accessible through explicit
 > configuration and dedicated configured-only clear `driver: auto`
