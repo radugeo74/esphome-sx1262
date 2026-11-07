@@ -57,6 +57,17 @@ int main() {
   assert(std::strcmp(got.driver,"minomess")==0);
   assert(got.decimal_bcd && got.meter_id==12345678);
   assert(got.different_dll_id);
+  // Two non-batch2 radio-converter MVTs may overlap. The nested
+  // Minomess identity still wins because there is NO batch2 collision.
+  const DriverSignature converter_overlap[]={
+    {0x5068,0x95,0x72,"unrelated_a"},
+    {0x5068,0x95,0x72,"unrelated_b"},
+    {0x6A49,0x01,0x06,"minomess"}};
+  const auto still_nested=diag::inspect(
+      converter.data(),converter.size(),converter_overlap,3);
+  assert(still_nested.state==State::Candidate &&
+         still_nested.source==Source::Tpl &&
+         std::strcmp(still_nested.driver,"minomess")==0);
   // An unknown nested TPL must not become a guessed Minomess decoder.
   converter[15]=0x68;converter[16]=0x50;
   got=identify(converter);
