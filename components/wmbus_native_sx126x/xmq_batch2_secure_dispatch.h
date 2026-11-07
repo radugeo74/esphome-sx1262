@@ -5,6 +5,7 @@
 // No key storage, no sensor publication, and no legacy wmbusmeters decoder.
 #include <cmath>
 #include <cstddef>
+#include <cstring>
 #include <cstdint>
 #include "driver_runtime.h"
 #include "oms_mode5_mbedtls.h"
@@ -162,5 +163,23 @@ inline Status decode_minomess_mode5(const uint8_t *frame,size_t length,
   if(reading.has_target)
     output.values[output.value_count++]={"target_m3",reading.target_m3};
   return Status::Ok;
+}
+// Explicit only: the configured batch-2 driver and its own key must
+// already be bound to this meter in YAML. AUTO and trial-decryption are
+// intentionally forbidden. Input is CRC-stripped AFTER verified::process.
+inline Status decode_configured(const uint8_t *frame,size_t length,
+                                const char *configured_id,
+                                const char *driver,const uint8_t key[16],
+                                DecodedPayload &output) {
+  output.value_count=0;
+  output.date_count=0;
+  if(!driver || !key) return Status::EncryptedDecodeRejected;
+  if(std::strcmp(driver,"apator162")==0)
+    return decode_apator162_mode5(frame,length,configured_id,key,output);
+  if(std::strcmp(driver,"minomess")==0)
+    return decode_minomess_mode5(frame,length,configured_id,key,output);
+  if(std::strcmp(driver,"kamwater")==0)
+    return decode_kamwater_ell_ctr(frame,length,configured_id,key,output);
+  return Status::WrongModel;
 }
 }} // namespace xmq_portable::batch2_secure
