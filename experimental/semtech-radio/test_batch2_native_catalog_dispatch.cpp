@@ -2,6 +2,7 @@
 // Synthetic clear CRC-stripped envelopes around public XMQ application
 // bytes. These do not prove on-air Mode-5/ELL encryption support.
 #include "components/wmbus_native_sx126x/xmq_decode_catalog.h"
+#include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/kamwater_compact_signature.h"
 #include <cassert>
 #include <cmath>
@@ -57,6 +58,29 @@ int main() {
   assert(decode(minomess,"12345678","minomess")==Status::Ok);
   assert(std::fabs(value(result,"total_m3")-140.354)<1e-6);
   assert(std::fabs(value(result,"target_m3")-138.485)<1e-6);
+  const auto plain=[&](const std::vector<uint8_t> &bytes,const char *meter,
+                       const char *sender,const char *driver) {
+    return xmq_portable::batch2_plain::decode_configured(
+        bytes.data(),bytes.size(),meter,sender,driver,captures,12,result);
+  };
+  assert(plain(minomess,"12345678","12345678","minomess")==Status::Ok);
+  assert(result.value_count==2);
+  // Explicit radio converter binding: DLL ID and long TPL ID are
+  // independently matched. Values belong to the TPL, not the sender.
+  auto converted=minomess;
+  converted[4]=0x10;converted[5]=0x64;
+  converted[6]=0x03;converted[7]=0x55; // DLL sender = 55036410
+  assert(plain(converted,"12345678","55036410","minomess")==Status::Ok);
+  assert(std::fabs(value(result,"total_m3")-140.354)<1e-6);
+  assert(plain(converted,"12345678","12345678","minomess")!=Status::Ok);
+  assert(result.value_count==0);
+  assert(plain(converted,"12345679","55036410","minomess")!=Status::Ok);
+  assert(result.value_count==0);
+  assert(plain(converted,"12345678","55036410","auto")!=Status::Ok);
+  assert(result.value_count==0);
+  converted[22]=0x05; // MODE 5 from original post-decrypted NOKEY fixture
+  assert(plain(converted,"12345678","55036410","minomess")!=Status::Ok);
+  assert(result.value_count==0);
   // Restore source TPL 0x0550 (high byte 0x05): MODE 5 must reject.
   minomess[22]=0x05;
   if(decode(minomess,"12345678","minomess")==Status::Ok) return 1;
@@ -85,6 +109,27 @@ int main() {
   assert(decode(kamwater,"12345678","kamwater")==Status::Ok);
   assert(std::fabs(value(result,"total_m3")-6.408)<1e-6);
   assert(std::fabs(value(result,"target_m3")-6.408)<1e-6);
+  assert(plain(kamwater,"12345678","12345678","kamwater")==Status::Ok);
+  // Clear ELL-II FULL TPL78: require DLL identity, ELL mode zero and
+  // actual CRC of the full on-air application; no key needed.
+  const uint8_t full_tpl[]={
+      0x78,0x04,0x13,0x08,0x19,0x00,0x00,
+      0x44,0x13,0x08,0x19,0x00,0x00};
+  auto full_kamwater=kamwater;
+  full_kamwater.resize(19);
+  full_kamwater.insert(full_kamwater.end(),full_tpl,
+                        full_tpl+sizeof(full_tpl));
+  uint16_t full_crc=xmq_portable::kamwater::signature::crc16_en13757(
+      full_kamwater.data()+19,full_kamwater.size()-19);
+  full_kamwater[17]=static_cast<uint8_t>(full_crc);
+  full_kamwater[18]=static_cast<uint8_t>(full_crc>>8);
+  full_kamwater[0]=static_cast<uint8_t>(full_kamwater.size()-1);
+  assert(plain(full_kamwater,"12345678","12345678","kamwater")==Status::Ok);
+  assert(std::fabs(value(result,"total_m3")-6.408)<1e-6);
+  assert(std::fabs(value(result,"target_m3")-6.408)<1e-6);
+  full_kamwater[17]^=1;
+  assert(plain(full_kamwater,"12345678","12345678","kamwater")!=Status::Ok);
+  assert(result.value_count==0);
   kamwater[16]=0x20; // ELL AES-CTR, not clear, never guess
   if(decode(kamwater,"12345678","kamwater")==Status::Ok ||
      result.value_count!=0) return 4;
@@ -106,8 +151,12 @@ int main() {
   apator[0]=static_cast<uint8_t>(apator.size()-1);
   assert(decode(apator,"01282096","apator162")==Status::Ok);
   assert(std::fabs(value(result,"total_m3")-7.512)<1e-6);
+  assert(plain(apator,"01282096","01282096","apator162")==Status::Ok);
+  assert(result.value_count==1);
   apator[14]=0x05; // mode5 encrypted: must not enter clear decoder
   if(decode(apator,"01282096","apator162")==Status::Ok ||
      result.value_count!=0) return 6;
+  assert(plain(apator,"01282096","01282096","apator162")!=Status::Ok);
+  assert(result.value_count==0);
   return 0;
 }
