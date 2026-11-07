@@ -26,8 +26,20 @@ assert "inline void increment_counter(" not in iv_forwarder
 assert "#include <openssl/" not in iv_source
 assert "EVP_" not in iv_source
 
+# Status mapping has one shared native implementation now. Its former
+# host-only location must remain a forwarding compatibility include,
+# never a second algorithm or OpenSSL dependency.
+native_status = components / "kamwater_authenticated_tpl_status.h"
+host_status = host_only / "kamwater_authenticated_tpl_status.h"
+assert native_status.is_file() and host_status.is_file()
+status_code = native_status.read_text(encoding="utf-8")
+host_status_code = host_status.read_text(encoding="utf-8")
+assert "decode_original_ccm_status(" in status_code
+assert '#include "../../../components/wmbus_native_sx126x/kamwater_authenticated_tpl_status.h"' in host_status_code
+assert "decode_original_ccm_status(" not in host_status_code
+assert "#include <openssl/" not in status_code
+
 for filename in (
-    "kamwater_authenticated_tpl_status.h",
     "kamwater_ell_ctr_openssl.h",
     "kamwater_verified_dll_ingress.h",
     "oms_tpl_ccm_openssl.h",
@@ -62,4 +74,4 @@ for path in components.rglob("*"):
             assert "<openssl/" not in stripped, (
                 f"OpenSSL header included by ESPHome component: {path}"
             )
-print("PASS: portable keyless ELL IV/counter native; OpenSSL decrypt and verified DLL ingress remain host-only")
+print("PASS: native Kamwater IV and authenticated status shared; OpenSSL and host verified-DLL ingress isolated")
