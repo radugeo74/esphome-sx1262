@@ -32,12 +32,25 @@ regressions. The two Q400 upstream Mode-5 NOKEY examples are
 explicitly rejected. Unimplemented extended historic/date fields are
 not represented as supported.
 
-`topaseskr` is NOT integrated. Both upstream examples are Mode-5
-post-decrypted `NOKEY`, and cannot be admitted to plain AUTO.
-It needs its own explicit-key decrypt path, strict application
-verification, and synthetic encrypted fixture tests before
-SECURE_ONLY admission. Do not add it to `CONFIGURABLE` or claim
-16 complete drivers.
+`topaseskr` is newly **software-integrated via SECURE_ONLY**
+(excluded from `CONFIGURABLE` and `driver: auto`). Its original
+two upstream `NOKEY` examples are Mode-5 post-decrypted applications.
+The new narrowly scoped short-TPL decrypt helper supports the
+`2F2F` prefix without changing the existing Apator `2F2F0F`
+requirement. Strict AMT/F1/06 or 07 DLL identity, explicit AES-128 key,
+complete four-block encrypted TPL, and full standard DIF/VIF
+application validation are required before publishing a small numeric
+subset (`total_m3`, `temperature_c`, `current_flow_m3h`,
+`volume_year_period_m3`). Positive tests re-encrypt both original
+applications with a synthetic key, and negative tests reject wrong
+key, identity, mode, model, corruption and truncation. CBC/`2F2F`
+is not a MAC. Real RF, production key and Home Assistant acceptance
+remain OPEN. Do not classify any original `NOKEY` examples as on-air
+ciphertext, or `topaseskr` as a plaintext AUTO driver.
+
+After these additions the manifest contains 14 `CONFIGURABLE`
+and 2 `SECURE_ONLY` driver names, 16 software routes in total,
+**subject to new CI completion**.
 
 Current changes have NOT passed all three CI jobs at the time of this
 note. Last fully green code run remains `42401195133` at `8cb0335`.
