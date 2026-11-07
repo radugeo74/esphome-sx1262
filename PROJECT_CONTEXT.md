@@ -18,6 +18,31 @@
 - Source of truth: `experimental/xmq/tools/native_driver_specs.py` plus the actual configured dispatcher `components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h`. **`CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")` is software-implemented**. The three are excluded only from generic DLL-only `SUPPORTED` and support dedicated configured-only `driver: auto` plus explicit `meter_drivers` for strictly clear RF. `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE` is the YAML driver whitelist. Their encrypted path is `secure_meters` with an explicit driver and AES key, never automatic key guessing. The legacy `BATCH2_PENDING` category was retired; it must no longer be used to describe the current software status. None is field-approved without real RF/HA validation.
 - Preserve the existing original XMQ generated decoder and T1/C1 algorithms, per-meter RSSI, temperature accuracy, status/dates, no stale or partial publishing on errors, and visibility of unconfigured telegrams where already supported. Never infer a valid decode solely from a matching manufacturer, signature, data CRC or decrypted-looking bytes.
 
+## 2026-11-07 addition: Supercal and Q400 clear-only (CI pending)
+
+After code checkpoint `8cb03357806b50316e88e3eb9e25a1cffb7e4813`,
+the branch adds original public XMQ definitions and native configured
+clear-only decoding for `supercal` (SON/1B/04) and `q400`
+(AXI/01,10,20/07). Both require a configured ID, native verified
+DLL CRC and security-mode-zero short TPL, plus strict DIF/VIF
+application validation; no AES fallback or publishing from unconfigured
+telegrams. Original Sontex 739 clear application fixture and three
+original Axioma Q400 plaintext fixtures are checked by new native CI
+regressions. The two Q400 upstream Mode-5 NOKEY examples are
+explicitly rejected. Unimplemented extended historic/date fields are
+not represented as supported.
+
+`topaseskr` is NOT integrated. Both upstream examples are Mode-5
+post-decrypted `NOKEY`, and cannot be admitted to plain AUTO.
+It needs its own explicit-key decrypt path, strict application
+verification, and synthetic encrypted fixture tests before
+SECURE_ONLY admission. Do not add it to `CONFIGURABLE` or claim
+16 complete drivers.
+
+Current changes have NOT passed all three CI jobs at the time of this
+note. Last fully green code run remains `42401195133` at `8cb0335`.
+No new OTA/flash or real RF/HA acceptance occurred.
+
 ## MK Radio4a configured secure receiver — 2026-11-07 (ALL CI GREEN)
 
 Owner authorized completing the existing post-decrypt-only `mkradio4a`
