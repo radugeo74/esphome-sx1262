@@ -1,6 +1,6 @@
 # XMQ — active context on `experimental/xmq-multidriver-auto`
 
-> **Branch update 2026-11-06:** The prior 2026-11-01 text below is archived background for `experimental/xmq-independent-pipeline`. Do not use its claim that native XMQ-only still invokes legacy `handleTelegram` as a description of this branch's `components/wmbus_native_sx126x` implementation.
+> **Branch update 2026-11-07:** The prior 2026-11-01 text below is archived background for `experimental/xmq-independent-pipeline`. Do not use its claim that native XMQ-only still invokes legacy `handleTelegram` as a description of this branch's `components/wmbus_native_sx126x` implementation.
 
 The active branch uses the official ESPHome SX126x radio with our native
 C++ wM-Bus decoder; `wmbusmeters` original XMQ rules and source JSON
@@ -11,17 +11,22 @@ restrictions, and verified vs pending CI milestones.
 
 - **Stage A:** shared-source consolidation complete, CI owner-confirmed green;
   see [`STAGE_A_CLOSEOUT.md`](STAGE_A_CLOSEOUT.md).
-- **Stage B:** batch-2 source-fixture parity ongoing; source JSON subset
-  coverage is **168/181 last confirmed green**, with **177/181 proposed
-  pending CI confirmation** at this update (four remaining fields belong
-  to an intentionally invalid CCM-tag fixture). This is partial evidence,
-  **not** full-frame or per-driver production parity.
-- **Live/pending manifest:** `tools/native_driver_specs.py`.
-  `fhkvdataiii` and `mkradio4` remain the established active baseline;
-  `iperl`/`hydrus` are manifest-supported native cleartext decoders;
-  **`minomess`, `kamwater`, `apator162` remain blocked in
-  `BATCH2_PENDING`**. No YAML activation, flashing, experimental OpenSSL
-  integration, or unknown-meter sensor auto-publication.
+- **Stage B:** original public upstream fixtures are exercised by host
+  source-field regressions. Four originally bad-CCM-tag Kamwater fields
+  remain intentionally rejected; no fixture is treated as real
+  over-the-air validation. Physical RX-to-HA approval is still open.
+- **Native AUTO and Heltec:** `fhkvdataiii` and `mkradio4` remain the
+  stable Techem baseline. `iperl`, `hydrus`, `lansenpu` are in
+  the compiled `SUPPORTED` manifest. Minomess, Kamwater and
+  Apator162 remain outside that generic manifest but are **selectable
+  through the dedicated, strictly configured `driver: auto` clear
+  transport path**, or through explicit `meter_drivers`. AES still
+  requires explicit driver/key in `secure_meters`.
+- **CI green:** GitHub run `42388899090`, code
+  `a4894ee185ae6c9fb0608489c92283d0b351fc28`: all three jobs
+  passed, including actual Heltec combined T1/C1 firmware compile
+  with four synthetic AUTO meter bindings. No device was flashed.
+  No unconfigured meter automatically creates or publishes sensors.
 - **Detailed Stage B gates:** [`BATCH2_STATUS.md`](BATCH2_STATUS.md),
   host XMQ fixture comparisons, native CI and security isolation checks.
   CRC alone does not prove cryptographic authenticity; an intentionally

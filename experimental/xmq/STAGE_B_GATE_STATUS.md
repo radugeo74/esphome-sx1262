@@ -10,7 +10,7 @@ compact-only Kamwater call name; the final commit corrected the test
 to check the shared full/compact function and its ELL/CRC gates. This is a code-integration milestone, **NOT approval
 for production or evidence of physical RF-to-HA operation**.
 
-## Four-driver configured AUTO extension — CI pending
+## Four-driver configured AUTO extension — CI GREEN (hardware gate OPEN)
 
 Configured `driver: auto` now uses strict DLL/TPL/ELL MVT matching
 for `minomess`, `kamwater`, `apator162`, `lansenpu`.
@@ -21,7 +21,11 @@ Encrypted RF still needs an explicitly configured keyed
 `secure_meters` driver; no auto-key guessing. This change
 does not authorize unconfigured publishing, alter the established
 Techem AUTO pipeline, or claim physical field validation.
-CI run status is tracked under this branch's GitHub Actions.
+All three GitHub Actions jobs green: run `42388899090`, code
+head `a4894ee185ae6c9fb0608489c92283d0b351fc28`.
+ESPHome completed the actual combined T1/C1 Heltec build with
+synthetic AUTO mappings for all four, without OTA/flash.
+The hardware and real RF-to-HA validation gate stays OPEN.
 
 ## Native explicit no-key Minomess / Kamwater / Apator162 — CI green
 

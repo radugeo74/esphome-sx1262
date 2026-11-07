@@ -240,7 +240,7 @@ from an incorrectly updated manifest length guard;
 two remaining jobs finish successfully. No real physical Lansen
 telegram/HA reading was observed; no Heltec flash was performed.
 
-## Strict configured AUTO for all four imported drivers — 2026-11-07
+## Strict configured AUTO for all four imported drivers — 2026-11-07 (ALL CI GREEN)
 
 Owner authorized enabling **configured-only** `driver: auto` for
 `lansenpu`, `minomess`, `kamwater`, `apator162` on Heltec.
@@ -271,8 +271,14 @@ IDs, without private meters/secrets. **Physical RF-to-HA
 validation unavailable** for these models; do not flash the
 installed Heltec based on CI alone.
 
-GitHub Actions run is validated separately; record PASS only
-after all jobs finish. No firmware was flashed in this change.
+**GitHub Actions run `42388899090` at `a4894ee185ae6c9fb0608489c92283d0b351fc28`
+ALL GREEN:** `native-packet-input`, `stage-a-espidf-s3-portable-link`,
+`native-esphome-build`. The latter compiled actual Heltec
+T1/C1 combined laboratory YAML with synthetic `auto` mappings
+for all four drivers, in addition to encrypted and no-key ESP32-S3
+CI builds. No actual meter, key or physical RF-to-HA validation
+was available and no installed firmware was changed.
+The subsequent context edits are docs-only.
 
 ## Next developer workflow
 
