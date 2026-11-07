@@ -7,7 +7,7 @@ meter IDs, private radio captures, or AES keys are stored in this repository.
 | --- | --- | --- |
 | `iperl` | Cleartext CI=7A only | SEN 68/7C; mode-zero TPL; total and max flow; fail closed for encrypted/invalid |
 | `hydrus` | Cleartext CI=72/7A only | DME/HYD; mode-zero TPL; standard DIF/VIF quantities; encrypted frames rejected |
-| `mkradio4a` | **Configured secure AES only** (software integration; device gate OPEN) | TCH/95/37 converter + HYD/FE/06 or WEH/FE/07 long TPL, configured two IDs, AES Mode-5 and validated target/date; both public clear applications wrapped in independent synthetic AES/CRC tests |
+| `mkradio4a` | **Configured secure AES only** (CI `42401195133` green; device gate OPEN) | TCH/95/37 converter + HYD/FE/06 or WEH/FE/07 long TPL, configured two IDs, AES Mode-5 and validated target/date; both public clear applications wrapped in independent synthetic AES/CRC tests |
 
 The generated and portable live driver catalog is controlled by
 `experimental/xmq/tools/native_driver_specs.py`.

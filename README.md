@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last fully green code CI:** [GitHub Actions #42398519827](https://github.com/radugeo74/esphome-sx1262/actions/runs/42398519827)
-(code commit `f9b35e392f2e5980ab8c279c21995b649a0996f7`, all three jobs passed).
+**Last fully green code CI:** [GitHub Actions #42401195133](https://github.com/radugeo74/esphome-sx1262/actions/runs/42401195133)
+(code commit `8cb03357806b50316e88e3eb9e25a1cffb7e4813`, all three jobs passed).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
@@ -97,7 +97,7 @@ private AES key in your own YAML; these values are illustrative.
 The upstream `NOKEY` samples contain post-decrypted application
 records, not verified on-air ciphertext. Regression tests use
 synthetic AES encryption of both original sample applications; there
-is **no real MK Radio 4a RF/HA validation**. AES-CBC and the
+is **no real MK Radio 4a RF/HA validation**. All three new-driver CI jobs passed [run #42401195133](https://github.com/radugeo74/esphome-sx1262/actions/runs/42401195133). AES-CBC and the
 `2F 2F` marker are **not cryptographic authentication**.
 `mkradio4a` is deliberately **not allowed in plaintext
 `meter_drivers` or `driver: auto`**.
@@ -246,7 +246,7 @@ It uses synthetic or public upstream example IDs and exercises
 `driver: auto` for the eight newer drivers (including Ultraheat and Sontex868). Check the board revision and real radio pin/TCXO mapping
 before adapting it to your own hardware.
 
-GitHub Actions run [#42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471)
+GitHub Actions run [#42401195133](https://github.com/radugeo74/esphome-sx1262/actions/runs/42401195133)
 passed `native-packet-input`,
 `stage-a-espidf-s3-portable-link` and `native-esphome-build`.
 This establishes host regression coverage and ESP32-S3/Heltec

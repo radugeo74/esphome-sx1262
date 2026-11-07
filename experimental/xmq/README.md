@@ -23,8 +23,8 @@ restrictions, and verified vs pending CI milestones.
   `meter_drivers`. The full YAML whitelist is
   `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE`. AES still
   requires explicit driver/key in `secure_meters`.
-- **CI green (latest):** GitHub run `42398519827`, code
-  `f9b35e392f2e5980ab8c279c21995b649a0996f7`: all three jobs
+- **CI green (latest):** GitHub run `42401195133`, code
+  `8cb03357806b50316e88e3eb9e25a1cffb7e4813`: all three jobs
   passed, including Heltec combined T1/C1 firmware compile
   with Ultraheat/Sontex868 added to the synthetic AUTO bindings.
   No device was flashed.
@@ -54,7 +54,7 @@ nested HYD/FE/06 or WEH/FE/07. CBC/2F2F is not
 cryptographic authentication. Do not add `mkradio4a`
 to plaintext `meter_drivers` or infer `driver: auto`.
 See the [root README](../../README.md) for safe YAML examples.
-The physical RF-to-HA acceptance gate stays OPEN.
+All three CI jobs passed in [run 42401195133](https://github.com/radugeo74/esphome-sx1262/actions/runs/42401195133), including the secure MK Radio4a binding, target_date schema and combined Heltec T1/C1 firmware build. The physical RF-to-HA acceptance gate stays OPEN.
 
 ## New keyless models: Lansen DW and Elvaco CMA12w
 

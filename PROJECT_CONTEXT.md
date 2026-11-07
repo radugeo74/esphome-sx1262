@@ -18,7 +18,7 @@
 - Source of truth: `experimental/xmq/tools/native_driver_specs.py` plus the actual configured dispatcher `components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h`. **`CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")` is software-implemented**. The three are excluded only from generic DLL-only `SUPPORTED` and support dedicated configured-only `driver: auto` plus explicit `meter_drivers` for strictly clear RF. `CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE` is the YAML driver whitelist. Their encrypted path is `secure_meters` with an explicit driver and AES key, never automatic key guessing. The legacy `BATCH2_PENDING` category was retired; it must no longer be used to describe the current software status. None is field-approved without real RF/HA validation.
 - Preserve the existing original XMQ generated decoder and T1/C1 algorithms, per-meter RSSI, temperature accuracy, status/dates, no stale or partial publishing on errors, and visibility of unconfigured telegrams where already supported. Never infer a valid decode solely from a matching manufacturer, signature, data CRC or decrypted-looking bytes.
 
-## MK Radio4a configured secure receiver — 2026-11-07 (CI pending)
+## MK Radio4a configured secure receiver — 2026-11-07 (ALL CI GREEN)
 
 Owner authorized completing the existing post-decrypt-only `mkradio4a`
 driver. Source `experimental/xmq/drivers/mkradio4a.xmq` has two
@@ -53,9 +53,7 @@ keyed ESP32-S3 YAML contain synthetic binding/sensor mappings.
 `POST_DECRYPT_ONLY` classification. `SUPPORTED` and
 `CONFIGURABLE` plaintext lists are unchanged.
 
-**Do not claim this new integration green until all three GitHub
-CI jobs complete.** No real MK Radio4a receiver/HA validation, no
-production keys and no installed firmware changes.
+**All three CI jobs passed** on code commit `8cb03357806b50316e88e3eb9e25a1cffb7e4813`, [run `42401195133`](https://github.com/radugeo74/esphome-sx1262/actions/runs/42401195133). The native test covers both synthetic encrypted versions of the public XMQ clear applications, wrong keys/IDs/security/CRC, while ESP-IDF ESP32-S3 and combined Heltec T1/C1 build are green. Earlier red runs reflect intermediate tests and schema corrections. No real MK Radio4a receiver/HA validation, no production keys and no installed firmware changes.
 
 ## Manifest cleanup after successful software tests — 2026-11-07
 

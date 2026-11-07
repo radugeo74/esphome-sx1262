@@ -1,8 +1,8 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
 Updated 2026-11-07 for branch `experimental/xmq-multidriver-auto`.
-**Most recent fully green code run: [`42398519827`](https://github.com/radugeo74/esphome-sx1262/actions/runs/42398519827),
-commit `f9b35e392f2e5980ab8c279c21995b649a0996f7`.**
+**Most recent fully green code run: [`42401195133`](https://github.com/radugeo74/esphome-sx1262/actions/runs/42401195133),
+commit `8cb03357806b50316e88e3eb9e25a1cffb7e4813`.**
 All three jobs passed: native packet/fixture tests, ESP-IDF ESP32-S3
 portable build and ESPHome Heltec T1/C1 combined build. The new
 `ultraheat` and `sontex868` clear native AUTO subsets are included.
@@ -10,7 +10,7 @@ Earlier RED workflow runs were intermediate source/test iterations.
 No OTA, field parity approval, or production authorization follows
 from a green compile. The physical RF-to-HA gate stays **OPEN**.
 
-## MK Radio4a secure-only native addition — 2026-11-07 (CI pending)
+## MK Radio4a secure-only native addition — 2026-11-07 (ALL CI GREEN)
 
 `mkradio4a` is now `SECURE_ONLY`, not post-decrypt-only.
 Its TCH DLL radio converter and HYD/WEH nested TPL meter ID
@@ -25,7 +25,7 @@ cannot prove actual encrypted RF compatibility. CBC has
 no authentication tag. No generic plaintext
 `driver: auto` selection, no unconfigured publishing,
 no key guesses, no installed firmware changes.
-CI and physical RF-to-HA acceptance are separate gates.
+All three jobs are green in [run 42401195133](https://github.com/radugeo74/esphome-sx1262/actions/runs/42401195133): native AES application/negative tests, ESP-IDF ESP32-S3 build, and Heltec combined T1/C1 firmware build. CI and physical RF-to-HA acceptance are separate gates.
 
 ## Current configured-only AUTO and hardware gate
 
