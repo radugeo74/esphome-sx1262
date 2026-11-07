@@ -182,15 +182,15 @@ carry encrypted TPL Mode 5 and must not be misclassified as clear RF.
 The branch includes a **build-only** Heltec T1/C1 laboratory YAML at
 [experimental/semtech-radio/heltec-sx126x-combined-lab.yaml](experimental/semtech-radio/heltec-sx126x-combined-lab.yaml).
 It uses synthetic or public upstream example IDs and exercises
-`driver: auto` for the six newer drivers. Check the board revision and real radio pin/TCXO mapping
+`driver: auto` for the eight newer drivers (including Ultraheat and Sontex868). Check the board revision and real radio pin/TCXO mapping
 before adapting it to your own hardware.
 
-GitHub Actions run [#42391722726](https://github.com/radugeo74/esphome-sx1262/actions/runs/42391722726)
+GitHub Actions run [#42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471)
 passed `native-packet-input`,
 `stage-a-espidf-s3-portable-link` and `native-esphome-build`.
 This establishes host regression coverage and ESP32-S3/Heltec
 **compilation**, not reception or correct HA publication from real
-Minomess/Kamwater/Apator162/Lansen/Elvaco devices. The known-working Techem
+Minomess/Kamwater/Apator162/Lansen/Elvaco/Ultraheat/Sontex devices. The known-working Techem
 behavior has been observed separately on a Heltec, but does not
 validate every newly added driver.
 
@@ -203,7 +203,8 @@ telegrams.
 For implementation notes, start with
 [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md),
 [experimental/xmq/README.md](experimental/xmq/README.md),
-[experimental/xmq/STAGE_B_GATE_STATUS.md](experimental/xmq/STAGE_B_GATE_STATUS.md)
+[experimental/xmq/STAGE_B_GATE_STATUS.md](experimental/xmq/STAGE_B_GATE_STATUS.md),
+[experimental/xmq/BATCH2_STATUS.md](experimental/xmq/BATCH2_STATUS.md)
 and the [CI workflow](.github/workflows/native-sx126x-adapter.yml).
 
 ## Project origin, credits and licensing

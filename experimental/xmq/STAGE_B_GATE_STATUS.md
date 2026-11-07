@@ -1,14 +1,37 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
 Updated 2026-11-07 for branch `experimental/xmq-multidriver-auto`.
-**Most recent verified run: `42378059859`, head `f6fa1dca`,
-ALL THREE GitHub jobs PASS.** The complete *keyless* ESPHome ESP32-S3
-build, explicitly keyed build, native T1/C1 packet-input host checks
-and standalone ESP-IDF probe are green. Eight earlier intermediate
-runs stayed RED solely because the old Stage A static test required a
-compact-only Kamwater call name; the final commit corrected the test
-to check the shared full/compact function and its ELL/CRC gates. This is a code-integration milestone, **NOT approval
-for production or evidence of physical RF-to-HA operation**.
+**Most recent fully green code run: [`42393848471`](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471),
+commit `2f518a35c5ce34d56d8c40497755380293a4e4f3`.**
+All three jobs passed: native packet/fixture tests, ESP-IDF ESP32-S3
+portable build and ESPHome Heltec T1/C1 combined build. The new
+`ultraheat` and `sontex868` clear native AUTO subsets are included.
+Earlier RED workflow runs were intermediate source/test iterations.
+No OTA, field parity approval, or production authorization follows
+from a green compile. The physical RF-to-HA gate stays **OPEN**.
+
+## Current configured-only AUTO and hardware gate
+
+The active native branch supports `fhkvdataiii`, `mkradio4`,
+`iperl`, `hydrus`, `lansenpu`, `lansendw`, `cma12w`,
+`ultraheat`, `sontex868`, `minomess`, `kamwater` and
+`apator162` via configured-only `driver: auto` or an explicit
+`meter_drivers` name, **only where the selected transport and
+driver decoder confirm safe plaintext**. The latter three remain
+outside generic `SUPPORTED` and are routed through a distinct
+configured-only AUTO selector. AES requires an explicit driver
+and actual key in `secure_meters`. Unknown-meter observations
+are diagnostic only. No relaxation of identity, CRC, security
+or published sensor mapping is authorized.
+
+**Ultraheat and Sontex868:** their supported numeric short-TPL
+mode-zero subsets passed original source-fixture numeric assertions,
+negative identity/security/record/CRC tests, and the Heltec compile
+in [run 42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
+No real-meter radio/HA readings were obtained. The earlier
+headings labeled `CI pending`, `no automatic driver selection`,
+or `source-only` below are historical snapshots, not the current
+branch state.
 
 ## Four-driver configured AUTO extension — CI GREEN (hardware gate OPEN)
 
@@ -37,7 +60,7 @@ T1/C1 callbacks route these manual bindings through
 sender, explicit Minomess nested TPL ID, TPL mode-0/ELL security and
 independent CRC integrity must pass before any mapped sensor or RSSI
 publication. Encrypted input is NEVER interpreted as NOKEY plaintext.
-`auto` / generated `SUPPORTED` remains unchanged.
+At that historical checkpoint, the generic `SUPPORTED` manifest was unchanged; see the current native configured-only AUTO path above.
 
 The build-only fixture
 `experimental/semtech-radio/ci/native-sx126x-batch2-nokey-lab.yaml`
@@ -77,8 +100,10 @@ code and mbedTLS CCM/CMAC are enabled conditionally only when
 `8136a346`; run:
 https://github.com/radugeo74/esphome-sx1262/actions/runs/42350691692 .
 Original Techem heat/water builds and behavior were not modified.
-There is no automatic driver selection, no change to
-`BATCH2_PENDING`, and no production firmware flash.
+At that earlier checkpoint there was no automatic driver selection.
+Later changes added *configured-only* AUTO while leaving
+`BATCH2_PENDING` outside generic `SUPPORTED`.
+No production firmware has been flashed by these changes.
 
 **Only the device/RF acceptance gate remains:** no verified
 complete physical on-air frames from the three target devices

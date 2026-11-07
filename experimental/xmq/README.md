@@ -87,19 +87,20 @@ wmbus_native_sx126x:
 
 To select manually, replace `driver: auto` with
 `driver: fhkvdataiii`, `mkradio4`, `iperl`, `hydrus`,
-`lansenpu`, `lansendw`, `cma12w`, `minomess`, `kamwater` or `apator162`.
+`lansenpu`, `lansendw`, `cma12w`, `ultraheat`, `sontex868`,
+`minomess`, `kamwater` or `apator162`.
 For Minomess radio converters, optionally add
 `dll_meter_id: "87654321"` (synthetic) to bind the separate radio
 sender. The actual data fields must be mapped through `xmq_sensors`
 and `xmq_text_sensors`; `auto` does not create Home Assistant
 entities for unconfigured meters.
 
-AUTO can select all ten on the verified **unencrypted** native
-path. Encrypted telegrams require `secure_meters` with an **explicit
+AUTO can select all twelve supported main driver names for a configured meter on the verified **unencrypted** native
+path, subject to each driver's model/transport restrictions. Encrypted telegrams require `secure_meters` with an **explicit
 driver and AES key**. A matched model alone is not authorization to
 decode or publish. Passive discovery remains metadata-only. The
 latest complete, green Heltec CI run is
-[42391722726](https://github.com/radugeo74/esphome-sx1262/actions/runs/42391722726).
+[42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
 For a full explanation and examples, use the
 [root README](../../README.md).
 

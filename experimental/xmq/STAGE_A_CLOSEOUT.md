@@ -1,5 +1,19 @@
 # Stage A closeout — shared C++ algorithm, native ESP-IDF boundaries
 
+> **Historical closeout, not the current driver matrix.** Stage A was
+> a source-consolidation checkpoint. Statements below that `minomess`,
+> `kamwater` or `apator162` cannot be configured in YAML described
+> the earlier state. They are now accessible through explicit
+> configuration and dedicated configured-only clear `driver: auto`
+> in the native experimental receiver; keyed transport still requires
+> an explicit key and driver. The latest full code CI is
+> [run 42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471),
+> including Ultraheat/Sontex868 and the Heltec combined build.
+> Source/CI success is not field-device approval. See
+> [PROJECT_CONTEXT.md](../../PROJECT_CONTEXT.md) for the current
+> baseline and the remaining physical RF-to-HA gate.
+
+
 **Scope:** consolidation and source ownership, **not** complete wmbusmeters
 semantic parity, encrypted-frame admission, or live driver enablement.
 The user-reported previous Stage A CI passed; this closeout change itself

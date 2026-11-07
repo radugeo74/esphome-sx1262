@@ -1,5 +1,53 @@
 # Batch 2 — initial source import and acceptance gates
 
+> **Current-state notice — 2026-11-07.** This is a chronological
+> engineering ledger. Earlier sections describing Minomess, Kamwater
+> and Apator162 as source-only/host-only or prohibited in YAML
+> describe **past milestones** and must not be read as current branch
+> behavior. Refer to [PROJECT_CONTEXT.md](../../PROJECT_CONTEXT.md)
+> and the current-state summary immediately below.
+
+## Current branch status — source compatibility vs firmware admission
+
+**Last green code CI:** `2f518a35c5ce34d56d8c40497755380293a4e4f3`,
+[GitHub Actions run 42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
+All three jobs passed, including the native ESPHome Heltec combined
+T1/C1 build. This is **source tests and compilation**, not physical
+RF-to-Home-Assistant verification and not permission to flash.
+
+| Driver | Configured clear native RX | Configured `driver: auto` | AES |
+| --- | --- | --- | --- |
+| `minomess` | Explicit `meter_drivers`, verified long TPL | Yes, requires matching actual TPL ID; optional separate DLL sender | Only explicit `secure_meters` with key |
+| `kamwater` | Explicit verified ELL/compact clear path | Yes, strict model/identity/security/CRC | Only explicit `secure_meters` with key |
+| `apator162` | Explicit verified clear short TPL | Yes, strict model/identity/security | Only explicit `secure_meters` with key |
+
+`BATCH2_PENDING` stays **out of the generic `SUPPORTED`
+manifest**, but that does **not** block the separately reviewed
+configured-only `auto` path through
+`xmq_batch2_plain_dispatch.h`. A model candidate alone is
+insufficient: verified DLL CRC, configured sender/meter identity,
+plaintext (or explicitly authenticated keyed pathway), supported
+records and mapped sensors remain mandatory. Never auto-create or
+publish sensors for unconfigured IDs.
+
+**Separate latest driver calup:** `ultraheat` (LUG/04/04)
+and `sontex868` (SON/16/08) are compiled and supported for
+configured-only clear `driver: auto` or explicit driver name.
+They use bounded native DIF/VIF subsets; the actual source
+fixtures and fail-closed tests are green in the same run.
+`apator08` was evaluated but not enabled: public examples use
+nondecimal/non-BCD IDs incompatible with the current strict
+eight-digit decimal address contract. Techem baseline decoding
+remains unchanged; no real Ultraheat/Sontex devices or OTA were
+involved.
+
+**Remaining gate:** real authenticated/configured T1/C1
+RF-to-HA behavior for these additional families, field parity
+outside the explicitly implemented subsets, and canary/rollback.
+CRC alone is never evidence of cryptographic authenticity.
+
+---
+
 Official upstream: `wmbusmeters/wmbusmeters`, branch `master`, directory
 `drivers/src`. The three complete original XMQ files, including their public
 regression fixtures, are present in `experimental/xmq/drivers`.
@@ -10,7 +58,7 @@ regression fixtures, are present in `experimental/xmq/drivers`.
 | kamwater.xmq | 0cd7d5c6fbcb9d3381b7d18966ebab1a53e12485 | Compressed/compact DIF/VIF profiles, status variations and security |
 | apator162.xmq | 116907a3e22314ccc52a0f4cd1ab8ddb10eaab27 | Manufacturer-specific IXML grammar: repetition, alternatives, checksums and FF padding |
 
-## Status
+## Historical initial-import status (superseded by current branch summary)
 
 **In progress:** `minomess_clear_prefix.h` now implements and independently
 tests the bounded original-XMQ clear-application prefix on four upstream

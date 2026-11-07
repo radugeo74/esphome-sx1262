@@ -14,9 +14,58 @@
 
 - Hardware target: Heltec ESP32-S3 / SX1262 / 8 MB; ESPHome 2026.10.1, ESP-IDF 5.5.6 in the experimental build context. **The official ESPHome SX126x receiver is the sole radio owner**, with native T1/C1 handling and a bounded `components/wmbus_native_sx126x` application pipeline.
 - Native ingress must verify complete radio/DLL frame format and CRC, independently match the configured meter identity and allowed link mode, enforce valid plaintext/decryption/compact gates, and **only then** decode and publish finite mapped fields. Unconfigured meters can be observed diagnostically but must never auto-publish sensor readings.
-- The original live Techem decoding behavior for **`fhkvdataiii` (manufacturer CI A0)** and **`mkradio4` (CI A2)** must remain unchanged. Original generated IXML rule tables and their mapping/sensor semantics remain the production baseline on this research branch. The native manifest also lists cleartext portable `iperl` and `hydrus` as supported; `mkradio4a` is post-decrypt-only, **not** general live RF admission.
-- Source of truth for driver availability: `experimental/xmq/tools/native_driver_specs.py`. `BATCH2_PENDING = ("minomess", "kamwater", "apator162")` remains excluded from `SUPPORTED` and AUTO. Those three can now be **manually selected in experimental `meter_drivers` for strictly unencrypted RF** or in `secure_meters` for AES with explicitly provided key. Neither path is production-authorized before real radio/HA validation.
+- The original live Techem decoding behavior for **`fhkvdataiii` (manufacturer CI A0)** and **`mkradio4` (CI A2)** must remain unchanged. Their generated IXML tables and sensor mappings remain the field-observed baseline. The native `PORTABLE` manifest now additionally contains **`iperl`, `hydrus`, `lansenpu`, `lansendw`, `cma12w`, `ultraheat`, `sontex868`**. These are tested against public clear-frame fixtures; `mkradio4a` is still post-decrypt-only and not general live RF admission.
+- Source of truth: `experimental/xmq/tools/native_driver_specs.py` plus the actual configured dispatcher `components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h`. **`BATCH2_PENDING = ("minomess", "kamwater", "apator162")` remains excluded from generic `SUPPORTED`, but these three DO support dedicated configured-only `driver: auto` as well as explicit `meter_drivers` for strictly clear RF**. Their encrypted path is `secure_meters` with an explicit driver and AES key, never automatic key guessing. This distinction is essential: `BATCH2_PENDING` does not mean their configured native runtime is unavailable. None is field-approved without real RF/HA validation.
 - Preserve the existing original XMQ generated decoder and T1/C1 algorithms, per-meter RSSI, temperature accuracy, status/dates, no stale or partial publishing on errors, and visibility of unconfigured telegrams where already supported. Never infer a valid decode solely from a matching manufacturer, signature, data CRC or decrypted-looking bytes.
+
+## Current native driver and CI checkpoint (2026-11-07)
+
+**Current fully green code commit:** `2f518a35c5ce34d56d8c40497755380293a4e4f3`.
+**GitHub Actions:** [run 42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471), all three jobs PASS:
+`native-packet-input`, `stage-a-espidf-s3-portable-link`,
+`native-esphome-build`. The Heltec T1/C1 build-only YAML compiles
+the configured AUTO bindings for Ultraheat and Sontex868 in addition
+to the previously added models; **no OTA/flash** was performed.
+
+- `GENERATED` (established Techem): `fhkvdataiii`, `mkradio4`.
+- `PORTABLE` (native clear application subsets): `iperl`,
+  `hydrus`, `lansenpu`, `lansendw`, `cma12w`,
+  `ultraheat`, `sontex868`.
+- `BATCH2_PENDING` (excluded from generic `SUPPORTED` but supported
+  by dedicated configured-only clear AUTO/explicit dispatch):
+  `minomess`, `kamwater`, `apator162`.
+- `POST_DECRYPT_ONLY`: `mkradio4a` must not be admitted as
+  independently verified unencrypted live RF.
+
+**AUTO vs explicit:** all 12 listed main drivers can be selected on
+an **explicitly configured meter ID**, using `driver: auto` where
+the original signature is unambiguous, or by explicit driver name.
+For a Minomess converter, `dll_meter_id` and long-TPL `meter_id`
+must independently match. For encrypted frames, only explicitly keyed
+`secure_meters` and validated security logic may publish values.
+Unconfigured RF discovery remains **metadata-only** and never creates
+HA entities. Techem has actual device observations; all added
+models retain a separate physical RF-to-HA acceptance gate.
+
+**Ultraheat/Sontex868 boundary:** only genuinely clear short TPL
+`0x7A` records with supported numeric fields are admitted.
+Ultraheat supports `heat_kwh`, `volume_m3`, `power_kw`,
+`flow_m3h`, `flow_c`, `return_c`; Sontex868 supports
+`current_consumption_hca`, `consumption_at_set_date_hca`,
+`current_temp_c`, `current_room_temp_c`, `max_temp_c`,
+`max_temp_previous_period_c`. Date/status, wired-M-Bus and
+ELL/post-decrypted cases are not claimed as supported clear RF.
+Two original public samples, negative tests, a long Sontex
+two-block format-B CRC envelope, and the Heltec compile passed.
+The previous red CI runs were intermediate fixture/test revisions,
+not unresolved failures in this fully green code revision.
+
+**Historical checkpoint rule:** Stage A and earlier Stage B sections
+below preserve evidence **as of their original dates**. Their
+statements that batch-2 drivers were unavailable for YAML/AUTO or
+that current firmware lacks native dispatch are superseded by this
+current status. Do not rewrite historical test counts as full-frame
+parity or assume CI establishes actual device acceptance.
 
 ## Stage A — completed consolidation, CI green (owner-confirmed)
 
@@ -30,7 +79,7 @@ The shared-source C++ application/structural algorithms are located at:
 
 See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits. ESP-IDF CI builds/links the portable probe; compiling `app_main` does not mean its assertions ran on physical hardware. No production firmware was flashed for Stage A.
 
-## Stage B — source-field laboratory coverage complete; full-driver admission OPEN
+## Stage B — historical source-field checkpoint (2026-11-06; device gate still OPEN)
 
 - **Last owner-confirmed green (2026-11-06): 177/177 positive functional JSON fields** across the original 39 upstream fixture cases (`minomess` 6, `kamwater` 14, `apator162` 19). The original JSON contains 181 field occurrences; the other **four** belong to `kamwater #9` with an invalid CCM tag and must remain deliberately rejected, not counted as successful decoded measurements. These are individually demonstrated host-side comparisons, **not 39 full replay passes**.
 - Original `kamwater #10`: host OpenSSL secure ingress checks the configured DLL identity and a synthetic format-B CRC envelope around the original authenticated encrypted payload, and compares `total_m3`, `target_m3`, `status=TEMPORARY_ERROR`, `accoustic_noise=FFFFFFFFFFFF`. Public bad-tag #9 and stale-output regressions reject. The same mbedTLS CCM implementation compiled for ESP-IDF has **executed host Linux CI** verifying original #9/#10 and malformed input. This does not execute `app_main` on the Heltec.
@@ -141,7 +190,7 @@ only independently VERIFIED clear RF; it does not magically
 decode encrypted radio without a key. The on-device proof and
 real HA publication gate remain open; no flash was performed.
 
-## Stage B passive automatic identification — 2026-11-07 (CI pending)
+## Stage B passive automatic identification — 2026-11-07 (historical checkpoint; superseded by green CI above)
 
 **Owner decision:** keep `minomess`, `kamwater`, `apator162`
 **manually configured only for actual decoding**, but identify all
