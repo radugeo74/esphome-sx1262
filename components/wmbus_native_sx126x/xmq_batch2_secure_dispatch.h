@@ -16,6 +16,7 @@
 #include "kamwater_clear_records.h"
 #include "minomess_clear_prefix.h"
 #include "mkradio4a_plain.h"
+#include "topaseskr_plain.h"
 #include "native_identity_probe.h"
 #include "oms_ccm_mbedtls.h"
 #include "kamwater_numeric_semantics.h"
@@ -294,6 +295,43 @@ inline Status decode_mkradio4a_mode5(const uint8_t *frame,size_t length,
   output.date_count=1;
   return Status::Ok;
 }
+// Integra Topas ESKR: encrypted short TPL (AMT/F1/06 or 07).
+// Both original NOKEY fixtures contain POST-DECRYPTED applications.
+// This configured-only path uses actual AES-CBC ciphertext with a
+// user-provided key; no fallback to plaintext or AUTO key guessing.
+inline Status decode_topaseskr_mode5(const uint8_t *frame,size_t length,
+                                     const char *configured_id,
+                                     const uint8_t key[16],
+                                     DecodedPayload &output) {
+  output.value_count=0;output.date_count=0;
+  wmbus_pure::Header h{};
+  if(wmbus_pure::parse_header(frame,length,h)!=
+     wmbus_pure::HeaderStatus::Ok) return Status::InvalidFrame;
+  if(wmbus_pure::match_meter_id(h,configured_id)!=
+     wmbus_pure::MatchStatus::Match) return Status::WrongMeter;
+  if(h.manufacturer!=0x05B4 || h.version!=0xF1 ||
+     (h.device_type!=0x06 && h.device_type!=0x07) ||
+     h.ci!=0x7A) return Status::WrongModel;
+  if(!output.values || output.value_capacity<4)
+    return Status::MissingCapacity;
+  oms_mode5::Output decrypted{};
+  if(oms_mode5::decrypt_short_tpl_record_payload(
+       frame,length,key,decrypted)!=oms_mode5::Status::Ok)
+    return Status::EncryptedDecodeRejected;
+  topaseskr::Reading water{};
+  if(topaseskr::decode_clear_application(
+       decrypted.clear_application.data(),
+       decrypted.clear_application.size(),water)!=topaseskr::Status::Ok ||
+     !std::isfinite(water.total_m3) || water.total_m3<0)
+    return Status::ApplicationRejected;
+  output.values[output.value_count++]={"total_m3",water.total_m3};
+  output.values[output.value_count++]={"temperature_c",water.temperature_c};
+  output.values[output.value_count++]={"current_flow_m3h",water.flow_m3h};
+  if(water.year)
+    output.values[output.value_count++]={
+        "volume_year_period_m3",water.year_m3};
+  return Status::Ok;
+}
 // Explicit only: the configured batch-2 driver and its own key must
 // already be bound to this meter in YAML. AUTO and trial-decryption are
 // intentionally forbidden. Input is CRC-stripped AFTER verified::process.
@@ -308,6 +346,8 @@ inline Status decode_configured(const uint8_t *frame,size_t length,
   if(out_status) *out_status=nullptr;
   if(!driver || !key || !frame || length<11)
     return Status::EncryptedDecodeRejected;
+  if(std::strcmp(driver,"topaseskr")==0)
+    return decode_topaseskr_mode5(frame,length,configured_id,key,output);
   if(std::strcmp(driver,"mkradio4a")==0)
     return decode_mkradio4a_mode5(
         frame,length,configured_id,key,output,expected_dll_id);
