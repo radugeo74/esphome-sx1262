@@ -63,6 +63,34 @@ int main() {
   assert(std::fabs(result.values[0].value-16.1)<1e-9);
   assert(result.dates[0].year==2021 &&
          result.dates[0].month==12 && result.dates[0].day==31);
+  // Original public fixture #2: cold water WEH/FE/07 behind TCH/95/37.
+  // Application 75.2 m3 and 2021-12-31 independently encrypted with
+  // the same published synthetic AES key (NOT actual upstream key).
+  const auto cold=hex(
+    "4B4468508644710095377202007701A85CFE078A003005"
+    "4E98493C8CF7670F54B9D81B75D6AC2209D129DDEA873CEEA1B8669B20"
+    "623F499F8DB95C1E3CE72E9B13E223764E230E2F2F2F2F2F");
+  assert(cold.size()==76 && cold[0]==75);
+  auto cold_air=cold;
+  cold_air[0]=static_cast<uint8_t>(cold_air.size()+1);
+  const auto cold_crc=wmbus_pure::crc16_en13757(
+      cold_air.data(),cold_air.size());
+  cold_air.push_back(static_cast<uint8_t>(cold_crc>>8));
+  cold_air.push_back(static_cast<uint8_t>(cold_crc));
+  wmbus_pure::CompleteFrame checked_cold{};
+  assert(wmbus_pure::verify_complete_frame(
+      cold_air.data(),cold_air.size(),wmbus_pure::CrcFrameFormat::B,
+      checked_cold)==wmbus_pure::CompleteStatus::Ok);
+  assert(decode(checked_cold.bytes,"01770002","00714486",key)==Status::Ok);
+  assert(result.value_count==1 && result.date_count==1);
+  assert(std::fabs(result.values[0].value-75.2)<1e-9);
+  assert(result.dates[0].year==2021 &&
+         result.dates[0].month==12 && result.dates[0].day==31);
+  assert(decode(checked_cold.bytes,"01770003","00714486",key)!=Status::Ok);
+  assert(result.value_count==0 && result.date_count==0);
+  assert(decode(checked_cold.bytes,"01770002","00714487",key)!=Status::Ok);
+  assert(result.value_count==0 && result.date_count==0);
+
   assert(decode(checked.bytes,"66953826","00464936",key)!=Status::Ok);
   assert(result.value_count==0 && result.date_count==0);
   assert(decode(checked.bytes,"66953825","00464937",key)==Status::WrongMeter);
@@ -105,7 +133,7 @@ int main() {
   assert(xmq_portable::batch2_secure::decode_configured(
     encrypted.data(),encrypted.size(),"66953825","auto",
     key,result,nullptr,"00464936")!=Status::Ok);
-  std::cout<<"PASS MK Radio4a configured long-TPL AES Mode5: target/date;"
+  std::cout<<"PASS MK Radio4a configured long-TPL AES Mode5: both original target/date pairs;"
            <<" rejected wrong IDs/key, encrypted NOKEY, CRC, mode, model,"
            <<" truncation; no actual RF hardware validation.\n";
 }
