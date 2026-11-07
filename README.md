@@ -47,6 +47,8 @@ Home Assistant sensors.
 | `sontex868` (heat allocation and temperature) | Yes, verified clear short TPL | Yes |
 | `minomess` | Yes, clear transport only | Yes |
 | `kamwater` | Yes, clear transport only | Yes |
+| `supercal` (Sontex Supercal 739) | Yes, clear CI=7A subset | Yes |
+| `q400` (Axioma Q400) | Yes, clear CI=7A subset only | Yes |
 | `apator162` | Yes, clear transport only | Yes |
 
 The new `ultraheat` and `sontex868` decoders currently cover the
@@ -59,6 +61,33 @@ Ultraheat provides `heat_kwh`, `volume_m3`, `power_kw`,
 fields, wired M-Bus frames or post-decrypted ELL frames are supported.
 Original source fields and strict negative-frame tests passed
 [run #42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
+
+### New clear-only profiles (2026-11-07; CI validation in progress)
+
+`supercal` (SON/1B/04) has one original public clear short-TPL
+fixture and publishes `total_kwh`, `total_m3`, `power_kw`,
+`volume_flow_m3h`, `flow_temperature_c`, and
+`return_temperature_c`. Target/storage-20 dates and values are
+not yet included in this native subset.
+
+`q400` (AXI/01/07, AXI/10/07, AXI/20/07) publishes strict
+clear short-TPL `total_m3` and optional `volume_flow_m3h`,
+`flow_temperature_c`, `battery_pct`. Of five original
+public XMQ cases, three have unencrypted TPL and two are
+Mode-5 `NOKEY` examples with post-decrypted application records.
+The latter are **not** authorized for the no-key decoder.
+Other Q400 historical, error, forward/backward fields are outside
+this first native subset.
+
+`topaseskr` was examined but **is not integrated or configurable**:
+both public examples use encrypted Mode-5 transport. Its upstream
+`NOKEY` samples are not evidence of plaintext RF. It needs a
+separately validated explicit-key receiver, with negative tests and
+Heltec build before enabling it.
+
+These new additions are software-only, not tested with live RF or
+Home Assistant. Keep the last *fully green* CI marker above until
+the new jobs complete.
 
 ### Encrypted-only driver: `mkradio4a`
 
@@ -104,7 +133,7 @@ is **no real MK Radio 4a RF/HA validation**. All three new-driver CI jobs passed
 
 ### Software support and acceptance status
 
-**All 12 drivers in the table are software-configurable**, but only
+**The table lists currently configured software driver candidates; the newly added clear-only Q400/Supercal jobs must pass CI before being counted as fully verified**, but only
 the Techem baseline has been observed with real nearby meters.
 The active driver manifest defines:
 
