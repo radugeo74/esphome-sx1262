@@ -124,11 +124,18 @@ ccm_probe=root/"experimental/xmq/espidf_cpp_probe/main/oms_ccm_mbedtls_probe.h"
 ccm_probe_cpp=(root/"experimental/xmq/espidf_cpp_probe/main/main.cpp").read_text(encoding="utf-8")
 ccm_probe_build=(root/"experimental/xmq/espidf_cpp_probe/main/CMakeLists.txt").read_text(encoding="utf-8")
 ccm_probe_code=ccm_probe.read_text(encoding="utf-8")
+shared_ccm=root/"components/wmbus_native_sx126x/oms_ccm_mbedtls.h"
+shared_ccm_code=shared_ccm.read_text(encoding="utf-8")
 assert '#include "oms_ccm_mbedtls_probe.h"' in ccm_probe_cpp
+assert '#include "../../../../components/wmbus_native_sx126x/oms_ccm_mbedtls.h"' in ccm_probe_code
 assert "REQUIRES log esp_system heap mbedtls" in ccm_probe_build
-assert "mbedtls_cipher_cmac(" in ccm_probe_code
-assert "mbedtls_ccm_auth_decrypt(" in ccm_probe_code
-assert "out={};" in ccm_probe_code
+assert "mbedtls_cipher_cmac(" in shared_ccm_code
+assert "mbedtls_ccm_auth_decrypt(" in shared_ccm_code
+assert "out={};" in shared_ccm_code
+assert "mbedtls_ccm_auth_decrypt(" not in ccm_probe_code
+assert '#include "oms_ccm_mbedtls.h"' in (
+    root/"components/wmbus_native_sx126x/xmq_batch2_secure_dispatch.h"
+).read_text(encoding="utf-8")
 for native in (root/"components/wmbus_native_sx126x").rglob("*"):
     if native.is_file() and native.suffix in (".cpp",".cc",".h",".hpp",".py"):
         lines=native.read_text(encoding="utf-8",errors="replace").splitlines()
@@ -136,6 +143,9 @@ for native in (root/"components/wmbus_native_sx126x").rglob("*"):
             line.lstrip().startswith(("#include","from ","import ")) and
             "oms_ccm_mbedtls_probe" in line for line in lines
         ), f"probe-only CCM imported in active ESPHome: {native}"
+# Original probe crypto is now a compatibility include; the same
+# implementation is compiled in the opt-in live receiver and ESP-IDF probe.
+# Only a verified configured frame can reach the secure dispatcher.
 # Stage B original public encrypted source fixture parity is isolated:
 # CI compiles app_main but cannot claim it ran on a Heltec.
 golden_header=root/"experimental/xmq/espidf_cpp_probe/main/kamwater_ccm_original_fixtures.h"
