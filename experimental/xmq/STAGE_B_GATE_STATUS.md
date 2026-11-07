@@ -1,11 +1,34 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
 Updated 2026-11-07 for branch `experimental/xmq-multidriver-auto`.
-**Last owner-confirmed run: `42350691692`, head `8136a346`,
-ALL THREE GitHub jobs PASS.** The complete ESPHome ESP32-S3 build,
-native T1/C1 packet-input host checks and standalone ESP-IDF probe
-are green. This is a code-integration milestone, **NOT approval
+**Most recent verified run: `42378059859`, head `f6fa1dca`,
+ALL THREE GitHub jobs PASS.** The complete *keyless* ESPHome ESP32-S3
+build, explicitly keyed build, native T1/C1 packet-input host checks
+and standalone ESP-IDF probe are green. Eight earlier intermediate
+runs stayed RED solely because the old Stage A static test required a
+compact-only Kamwater call name; the final commit corrected the test
+to check the shared full/compact function and its ELL/CRC gates. This is a code-integration milestone, **NOT approval
 for production or evidence of physical RF-to-HA operation**.
+
+## Native explicit no-key Minomess / Kamwater / Apator162 — CI green
+
+`meter_drivers` now accepts `minomess`, `kamwater`,
+`apator162` with NO `key` or `secure_meters` for
+**truly unencrypted radio traffic only**. The actual verified
+T1/C1 callbacks route these manual bindings through
+`xmq_batch2_plain_dispatch.h`; manufacturer identity, expected DLL
+sender, explicit Minomess nested TPL ID, TPL mode-0/ELL security and
+independent CRC integrity must pass before any mapped sensor or RSSI
+publication. Encrypted input is NEVER interpreted as NOKEY plaintext.
+`auto` / generated `SUPPORTED` remains unchanged.
+
+The build-only fixture
+`experimental/semtech-radio/ci/native-sx126x-batch2-nokey-lab.yaml`
+configures all three without a key. GitHub run `42378059859`
+passed host regressions and full ESP32-S3 build. Earlier eight red
+runs are obsolete intermediate snapshots of the old static assertion,
+not uncorrected current-branch failures. No physical Heltec run or
+HA field readings were validated, and no device was flashed.
 
 ## Native encrypted Minomess / Kamwater / Apator162 — code integrated, device gate OPEN
 
