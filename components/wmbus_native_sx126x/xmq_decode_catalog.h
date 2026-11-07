@@ -108,14 +108,15 @@ enum class PureDecodeStatus : uint8_t {
 inline PureDecodeStatus decode_configured_plain_frame(
     const uint8_t *frame, size_t length, const char *configured_id,
     const char *driver_name, Capture *captures, size_t capture_capacity,
-    DecodedPayload &output) {
+    DecodedPayload &output, const char *expected_dll_id=nullptr) {
   output.value_count = 0;
   output.date_count = 0;
   wmbus_pure::Header header{};
   if (wmbus_pure::parse_header(frame, length, header) !=
       wmbus_pure::HeaderStatus::Ok)
     return PureDecodeStatus::InvalidFrame;
-  if (wmbus_pure::match_meter_id(header, configured_id) !=
+  if (wmbus_pure::match_meter_id(
+          header,expected_dll_id ? expected_dll_id : configured_id) !=
       wmbus_pure::MatchStatus::Match)
     return PureDecodeStatus::InvalidMeterId;
   // Strict CI=7A Sensus iPERL plaintext path, using official XMQ fixtures.
@@ -176,7 +177,7 @@ inline PureDecodeStatus decode_configured_plain_frame(
       // ELL-II security mode 0 + payload CRC + compact signature/data
       // CRC are checked inside the existing native clear pipeline.
       // Mode 1 AES-CTR is explicitly rejected; no guessed decryption.
-      if(kamwater::pipeline::decode_clear_ell_ii_tpl79(
+      if(kamwater::pipeline::decode_clear_ell_ii(
              frame+10,length-10,{true,true},reading)
          !=kamwater::pipeline::Status::Ok)
         return PureDecodeStatus::DecodeFailure;
@@ -187,23 +188,35 @@ inline PureDecodeStatus decode_configured_plain_frame(
                                              reading.reading.target_m3};
       return PureDecodeStatus::Ok;
     }
-    // Standard TPL can have a second identity. Never publish a
-    // converter's nested TPL reading under an unrelated DLL binding.
-    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
-       wmbus_pure::publication::Decision::Allowed)
-      return PureDecodeStatus::UnsupportedTransport;
     const auto identity=wmbus_pure::identity::inspect(frame,length);
     if(identity.status!=wmbus_pure::identity::Status::Ok ||
        identity.application_offset>=length)
       return PureDecodeStatus::UnsupportedTransport;
+    if(is_minomess) {
+      // Standard long TPL meter behind a separate DLL radio converter:
+      // caller must explicitly configure both addresses independently.
+      // Mode 5 from original NOKEY post-decrypted fixtures is NOT clear RF.
+      if(header.ci!=0x72 || !identity.has_tpl ||
+         !wmbus_pure::identity::same_id(identity.tpl,configured_id) ||
+         identity.tpl.manufacturer!=0x6A49 ||
+         !((identity.tpl.version==0x00 && identity.tpl.device_type==0x07) ||
+           (identity.tpl.version==0x01 &&
+            (identity.tpl.device_type==0x06 ||
+             identity.tpl.device_type==0x16))) ||
+         wmbus_pure::tpl_security::inspect(frame,length).state!=
+             wmbus_pure::tpl_security::State::NotEncrypted)
+        return PureDecodeStatus::UnsupportedTransport;
+    } else {
+      // Apator short/long TPL must pass the existing strict cleartext
+      // admission gate; no converter exception for this driver.
+      if(wmbus_pure::publication::inspect(
+            frame,length,header.meter_id)!=
+         wmbus_pure::publication::Decision::Allowed)
+        return PureDecodeStatus::UnsupportedTransport;
+    }
     const uint8_t *application=frame+identity.application_offset;
     const size_t app_length=length-identity.application_offset;
     if(is_minomess) {
-      if(header.manufacturer!=0x6A49 ||
-         !((header.version==0x00 && header.device_type==0x07) ||
-           (header.version==0x01 &&
-            (header.device_type==0x06 || header.device_type==0x16))))
-        return PureDecodeStatus::UnknownDriver;
       // Keep strict full Minomess history/status shape checks.
       while(application<frame+length && *application==0x2F) {
         ++application;
