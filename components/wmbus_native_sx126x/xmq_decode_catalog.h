@@ -10,6 +10,7 @@
 #include "pure_meter_match.h"
 #include "iperl_plain.h"
 #include "hydrus_plain.h"
+#include "lansenpu_plain.h"
 #include "mkradio4a_plain.h"
 #include "minomess_clear_prefix.h"
 #include "kamwater_clear_pipeline.h"
@@ -143,6 +144,25 @@ inline PureDecodeStatus decode_configured_plain_frame(
                                    output.value_capacity, count) != hydrus::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
     output.value_count = count;
+    return PureDecodeStatus::Ok;
+  }
+  // Explicit-only Lansen pulse counter. Strict manufacturer/version/medium,
+  // mode-zero short TPL, original DIF/VIF byte signatures and 12-digit BCD.
+  // The preceding configured DLL ID is mandatory; no guessed AUTO driver.
+  if(driver_name && std::strcmp(driver_name,"lansenpu")==0) {
+    if(!output.values || output.value_capacity<2)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(
+          frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    lansenpu::Reading counts{};
+    if(lansenpu::decode(frame,length,counts)!=lansenpu::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    if(counts.has_a)
+      output.values[output.value_count++]={"a_counter",counts.a_counter};
+    if(counts.has_b)
+      output.values[output.value_count++]={"b_counter",counts.b_counter};
     return PureDecodeStatus::Ok;
   }
   // Batch-2 native application decoding: a real receiver-code path,
