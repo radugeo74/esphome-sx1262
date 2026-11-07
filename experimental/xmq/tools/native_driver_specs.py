@@ -33,7 +33,7 @@ SUPPORTED = tuple(d.name for d in GENERATED) + PORTABLE
 
 def validate(root: Path):
     names = [d.name for d in GENERATED]
-    if len(set(SUPPORTED + POST_DECRYPT_ONLY + BATCH2_PENDING + MANUAL_PLAIN)) != len(SUPPORTED + POST_DECRYPT_ONLY + BATCH2_PENDING):
+    if len(set(SUPPORTED + POST_DECRYPT_ONLY + BATCH2_PENDING + MANUAL_PLAIN)) != len(SUPPORTED + POST_DECRYPT_ONLY + BATCH2_PENDING + MANUAL_PLAIN):
         raise ValueError("Duplicate native XMQ driver")
     for name in BATCH2_PENDING + MANUAL_PLAIN:
         if not (root / "drivers" / f"{name}.xmq").is_file():
