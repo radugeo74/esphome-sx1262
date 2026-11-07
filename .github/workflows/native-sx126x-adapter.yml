@@ -152,6 +152,14 @@ jobs:
             experimental/semtech-radio/test_kamwater_native_mbedtls_ell_ctr.cpp \
             -o /tmp/test-kamwater-native-ctr -lmbedcrypto
           /tmp/test-kamwater-native-ctr
+      - name: MK Radio4a configured AES Mode5 long-TPL to original target volume/date
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_mkradio4a_native_mode5.cpp \
+            -o /tmp/test-mkradio4a-native-mode5 -lmbedcrypto
+          /tmp/test-mkradio4a-native-mode5
       - name: Minomess native long-TPL mbedTLS Mode5 to XMQ application
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \

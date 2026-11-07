@@ -74,6 +74,11 @@ wmbus_native_sx126x:
   configured_meter_ids: []
   # Synthetic mappings exercise the full native XMQ compile path only.
   # 00000000 is deliberately not configured to receive live RF.
+  secure_meters:
+    - meter_id: "12340004"
+      dll_meter_id: "55036414"  # synthetic converter sender
+      driver: mkradio4a
+      key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
     - meter_id: "00000000"
       driver: fhkvdataiii
@@ -95,6 +100,10 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "12340004"
+      field: target_m3
+      sensor:
+        name: "Lab Secure MK Radio4a Target m3"
     - meter_id: "00000000"
       field: current_hca
       sensor:
@@ -144,6 +153,10 @@ wmbus_native_sx126x:
       sensor:
         name: "Lab AUTO Sontex HCA"
   xmq_text_sensors:
+    - meter_id: "12340004"
+      field: target_date
+      sensor:
+        name: "Lab Secure MK Radio4a Target Date"
     - meter_id: "00010206"
       field: status
       sensor:
