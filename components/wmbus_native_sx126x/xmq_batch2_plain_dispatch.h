@@ -23,7 +23,8 @@ inline bool is_explicit_driver(const char *name) {
       std::strcmp(name,"cma12w")==0 ||
       std::strcmp(name,"ultraheat")==0 ||
       std::strcmp(name,"sontex868")==0 ||
-      std::strcmp(name,"supercal")==0);
+      std::strcmp(name,"supercal")==0 ||
+      std::strcmp(name,"q400")==0);
 }
 // Strict manual or configured AUTO selection for cleartext RF. The radio
 // MUST supply CRC-verified, CRC-stripped DLL frames. Metadata selection
@@ -56,7 +57,8 @@ inline const char *select_configured_driver(
       std::strcmp(resolved.driver,"cma12w")==0 ||
       std::strcmp(resolved.driver,"ultraheat")==0 ||
       std::strcmp(resolved.driver,"sontex868")==0 ||
-      std::strcmp(resolved.driver,"supercal")==0))
+      std::strcmp(resolved.driver,"supercal")==0 ||
+      std::strcmp(resolved.driver,"q400")==0))
     return std::strcmp(meter_id,dll_id)==0 ? resolved.driver : nullptr;
 
   // Batch-2 candidates can use DLL, ELL or nested TPL metadata.
