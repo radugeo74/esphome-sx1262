@@ -91,13 +91,21 @@ YAML for real meters, or alter stable Techem paths without owner's
 explicit authorization. Consult
 `experimental/xmq/STAGE_B_GATE_STATUS.md` for historical gates.
 
-## Stage B manual NOKEY / clear RF path — 2026-11-07 (CI PENDING)
+## Stage B manual NOKEY / clear RF path — 2026-11-07 (CI GREEN; hardware gate OPEN)
 
-Last owner-confirmed green remains `8136a346` (run
-`42350691692`) for the encrypted three-driver build.
-**New no-key C++ changes are committed, but ESP32-S3 CI has NOT
-yet been confirmed green** (run `42378059859`; the packet-input
-job passed at the time of documentation update).
+**Latest verified run `42378059859` at `f6fa1dca` is SUCCESS:
+all three jobs PASS** (`native-packet-input`,
+`stage-a-espidf-s3-portable-link`, `native-esphome-build`).
+The keyless ESPHome YAML config and complete ESP32-S3 compile,
+as well as the separate keyed build, passed. Eight preceding
+intermediate workflow runs (`42377687000` through `42377967849`)
+remain historically RED because the Stage A static guard still
+expected the old Kamwater compact-only
+`decode_clear_ell_ii_tpl79(` call instead of the now-shared
+`decode_clear_ell_ii(` wrapper. Commit `f6fa1dca` updated
+the guard while preserving ELL/CRC/transport checks. Do NOT re-run
+or treat old red commit statuses as failures of current code.
+The post-green changes to this context are docs-only.
 
 - The `meter_drivers` YAML now accepts explicit `minomess`,
   `kamwater`, `apator162` **without any `key`**, while the
