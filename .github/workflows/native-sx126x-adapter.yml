@@ -329,6 +329,15 @@ jobs:
             experimental/semtech-radio/test_native_t1_fifo_contract.cpp \
             -o /tmp/test-native-t1-fifo-contract
           /tmp/test-native-t1-fifo-contract
+      - name: Identify all three batch-2 drivers in T1/C1 metadata without decoding
+        run: |
+          python3 experimental/xmq/tools/generate_driver_registry.py \
+            experimental/xmq/drivers/*.xmq \
+            --out /tmp/xmq_auto_registry.h
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -I/tmp \
+            experimental/semtech-radio/test_batch2_auto_identification.cpp \
+            -o /tmp/test-batch2-auto-identify
+          /tmp/test-batch2-auto-identify
       - name: Test independent DLL TPL address classification
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
