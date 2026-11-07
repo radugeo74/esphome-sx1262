@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "experimental/xmq/tools"))
-from native_driver_specs import CONFIGURED_NATIVE, CONFIGURABLE, SUPPORTED, POST_DECRYPT_ONLY
+from native_driver_specs import CONFIGURED_NATIVE, CONFIGURABLE, SUPPORTED, SECURE_ONLY
 from portable_xmq import parse, validate_driver, blocks, values
 
 EXPECTED = {
@@ -51,7 +51,7 @@ def check(name):
 
 def main():
     assert tuple(EXPECTED) == CONFIGURED_NATIVE
-    assert set(CONFIGURED_NATIVE).isdisjoint(SUPPORTED + POST_DECRYPT_ONLY)
+    assert set(CONFIGURED_NATIVE).isdisjoint(SUPPORTED + SECURE_ONLY)
     assert set(CONFIGURED_NATIVE).issubset(CONFIGURABLE)
     for name in CONFIGURED_NATIVE:
         check(name)
