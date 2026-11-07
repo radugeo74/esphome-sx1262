@@ -56,6 +56,38 @@ Current changes have NOT passed all three CI jobs at the time of this
 note. Last fully green code run remains `42401195133` at `8cb0335`.
 No new OTA/flash or real RF/HA acceptance occurred.
 
+## Topas NOKEY supplied-clear adjustment — 2026-11-07 (CI in progress)
+
+The user verified the first original upstream `topaseskr` telegram
+in the online wmbusmeters analyzer without a supplied AES key. This
+is possible because the upstream sample stores readable EN 13757-3
+DIF/VIF records, even though its short-TPL header declares
+`0x0540` AES-CBC Mode 5 with four blocks. Interpret `NOKEY` as a
+statement about the supplied test bytes, **not** proof of
+unencrypted on-air transmission.
+
+The separate host-only file
+`experimental/semtech-radio/host_only/topaseskr_supplied_clear_fixture.h`
+now parses explicitly supplied already-clear sample frames with no
+key, requiring the original AMT/F1/06|07 metadata, exact 4-block
+`0x0540` layout, `2F2F` fixture prefix, configured expected ID,
+and complete validated EN 13757-3 records. The independent
+`test_topaseskr_supplied_clear.cpp` tests both upstream original
+fixtures, numerical values, negative cases and zero publication
+from the normal live plaintext dispatcher.
+
+This is deliberately a **host-only offline decoder**, not a relaxed
+`native_publication_gate`. An actual live RF packet declaring
+`0x0540` still goes through the existing explicit-key
+`topaseskr` AES Mode-5 receiver; it is never downgraded to
+`driver: auto`/keyless `meter_drivers` based on a marker or
+NOKEY fixture. `SECURE_ONLY` remains unchanged. No OTA/flash or
+physical RF/HA validation was performed.
+
+**Last confirmed all-green code baseline before this addition:**
+`623b03e3`, [GitHub Actions #42404050221](https://github.com/radugeo74/esphome-sx1262/actions/runs/42404050221).
+The new offline-fixture CI must be independently verified.
+
 ## MK Radio4a configured secure receiver — 2026-11-07 (ALL CI GREEN)
 
 Owner authorized completing the existing post-decrypt-only `mkradio4a`
