@@ -17,6 +17,7 @@
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
 #include "xmq_decode_catalog.h"
 #include "xmq_plain_text_fields.h"
+#include "xmq_batch2_plain_dispatch.h"
 #ifdef WMBUS_NATIVE_BATCH2_SECURE_ENABLED
 #include "xmq_batch2_secure_dispatch.h"
 #endif
@@ -256,6 +257,67 @@ bool NativeReceiverProbe::publish_secure_batch2_(
   return false;
 }
 
+// Called only AFTER independent DLL CRC verification by the official
+// SX1262 T1/C1 ingress. This does not accept upstream NOKEY as proof of
+// on-air plaintext. A matched explicit batch-2 binding always consumes
+// the frame, even when its standard TPL/ELL security checks reject it.
+bool NativeReceiverProbe::publish_plain_batch2_(
+    const std::vector<uint8_t> &frame,uint32_t dll_meter_id,float rssi_dbm,
+    bool publication_enabled) {
+#ifdef WMBUS_NATIVE_XMQ_ENABLED
+  if(frame.empty()) return false;
+  const std::string sender=native_meter_id(dll_meter_id);
+  for(const auto &entry : meter_drivers_) {
+    if(entry.dll_id!=sender ||
+       !xmq_portable::batch2_plain::is_explicit_driver(entry.driver.c_str()))
+      continue;
+    if(!publication_enabled) return true; // honor C1 opt-in, no fallback
+    xmq_portable::CalcValue values[24]{};
+    xmq_portable::CalendarDate dates[2]{};
+    xmq_portable::Capture captures[12]{};
+    xmq_portable::DecodedPayload result{values,24,0,dates,2,0};
+    const auto status=xmq_portable::batch2_plain::decode_configured(
+        frame.data(),frame.size(),entry.id.c_str(),sender.c_str(),
+        entry.driver.c_str(),captures,12,result);
+    if(status!=xmq_portable::PureDecodeStatus::Ok ||
+       result.value_count==0) {
+      static uint32_t rejected=0;
+      if(++rejected<=5 || rejected%100==0)
+        ESP_LOGW(TAG,"Plain XMQ rejected dll=%s meter=%s driver=%s status=%u (no publication)",
+                 sender.c_str(),entry.id.c_str(),entry.driver.c_str(),
+                 static_cast<unsigned>(status));
+      return true;
+    }
+    for(const auto &binding : xmq_sensors_) {
+      if(binding.meter_id!=entry.id || binding.output==nullptr) continue;
+      for(size_t i=0;i<result.value_count;++i) {
+        if(result.values[i].name!=nullptr &&
+           binding.field==result.values[i].name &&
+           std::isfinite(result.values[i].value)) {
+          binding.output->publish_state(
+              round_for_sensor(result.values[i].value,binding.output));
+          break;
+        }
+      }
+    }
+    for(const auto &binding : rssi_sensors_) {
+      if(binding.meter_id==entry.id && binding.output!=nullptr)
+        binding.output->publish_state(round_for_sensor(rssi_dbm,binding.output));
+    }
+    ESP_LOGI(TAG,"Plain XMQ dll=%s meter=%s driver=%s decoded=%u (mapped only)",
+             sender.c_str(),entry.id.c_str(),entry.driver.c_str(),
+             static_cast<unsigned>(result.value_count));
+    return true;
+  }
+#else
+  (void)frame;
+  (void)dll_meter_id;
+  (void)rssi_dbm;
+  (void)publication_enabled;
+#endif
+  return false;
+}
+
 // C1 publication is opt-in and accepts only CRC-verified, CRC-stripped
 // frames whose transport is unencrypted (or existing manufacturer-specific
 // plaintext protocol). A 2F2F marker is never used to bypass security.
@@ -430,6 +492,10 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
       if (kind==registry::Kind::Configured &&
           self->publish_secure_batch2_(frame.bytes,frame.header.meter_id,rssi_dbm))
         return;
+      if (kind==registry::Kind::Configured &&
+          self->publish_plain_batch2_(frame.bytes,frame.header.meter_id,
+                                      rssi_dbm,true))
+        return;
       const auto admission=wmbus_pure::publication::inspect(
           frame.bytes.data(),frame.bytes.size(),frame.header.meter_id);
       if (kind==registry::Kind::Configured &&
@@ -553,7 +619,10 @@ void NativeReceiverProbe::on_c1_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.header.ci),
              wmbus_pure::tpl_security::label(security.state));
     if (!self->publish_secure_batch2_(
-            checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm))
+            checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm) &&
+        !self->publish_plain_batch2_(
+            checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm,
+            self->c1_plaintext_publish_))
       self->publish_c1_plaintext_(
           checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm);
   }
@@ -643,7 +712,10 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
              kind == registry::Kind::Configured ? "yes" : "no",
              wmbus_pure::tpl_security::label(security.state));
     if (!self->publish_secure_batch2_(
-            checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm))
+            checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm) &&
+        !self->publish_plain_batch2_(
+            checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm,
+            self->c1_plaintext_publish_))
       self->publish_c1_plaintext_(
           checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm);
     // Identification-only auto catalog (generated from XMQ detect.mvt).
