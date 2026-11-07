@@ -13,6 +13,7 @@
 #include "kamwater_tpl_status_semantics.h"
 #include "minomess_wired_frame.h"
 #include "oms_ccm_mbedtls_probe.h"
+#include "xmq_batch2_secure_dispatch.h"
 #include "kamwater_replay_reservation.h"
 #include "kamwater_nvs_checkpoint.h"
 #include "kamwater_ccm_original_fixtures.h"
@@ -187,6 +188,36 @@ extern "C" void app_main(void) {
     abort();
   }
   ESP_LOGI(TAG, "Shared native Apator162 application regression PASS (not RF)");
+  // Stage B: execute the EXACT native mbedTLS AES-CBC -> Apator162
+  // decoder on original public upstream encrypted #19 on ESP32-S3 if
+  // this standalone diagnostic probe is run. CI builds/links only.
+  // These bytes and the all-zero public fixture key are NOT user data.
+  const uint8_t apator162_encrypted_fixture[]={
+    0x3E,0x44,0x01,0x06,0x96,0x20,0x28,0x01,0x05,0x07,0x7A,0x74
+    0x00,0x30,0x85,0x88,0xF9,0x0B,0x4D,0xBD,0x01,0x2B,0xD7,0x89
+    0xD7,0xB4,0xFB,0x85,0x36,0xB8,0x89,0x42,0x5B,0x86,0x24,0xAE
+    0xE2,0x0A,0x48,0x62,0xE6,0x02,0x23,0x42,0x7E,0x24,0xA9,0x06
+    0x0D,0x0D,0xB7,0xB1,0x12,0xCD,0xD4,0x2A,0x0A,0x82,0x51,0x30
+    0xF3,0x85,0x8A
+  };
+  const uint8_t apator162_public_key[16]{};
+  CalcValue apator162_values[2]{};
+  CalendarDate apator162_dates[1]{};
+  DecodedPayload apator162_decoded{apator162_values,2,0,
+                                   apator162_dates,1,0};
+  if(batch2_secure::decode_apator162_mode5(
+        apator162_encrypted_fixture,
+        sizeof(apator162_encrypted_fixture),"01282096",
+        apator162_public_key,apator162_decoded)!=
+          batch2_secure::Status::Ok ||
+     apator162_decoded.value_count!=1 ||
+     std::strcmp(apator162_values[0].name,"total_m3")!=0 ||
+     std::fabs(apator162_values[0].value-7.512)>1e-9) {
+    ESP_LOGE(TAG,"Native mbedTLS Apator162 encrypted #19 regression failed");
+    abort();
+  }
+  ESP_LOGI(TAG,"Native Apator162 public #19 encrypted mbedTLS regression PASS (not live RF)");
+
 
 
   // Stage A Kamwater: the exact same native C++ pure-application logic is
