@@ -77,7 +77,17 @@ assert "oms_ccm_mbedtls_probe" not in native_catalog
 assert "oms_tpl_cbc" not in native_catalog
 assert "BATCH2_PENDING = (\"minomess\", \"kamwater\", \"apator162\")" in names
 assert "PORTABLE = (\"iperl\", \"hydrus\")" in names
-assert "kamwater" not in native_runtime and "minomess::wired::decode" not in native_runtime
+# Stage B explicitly binds all three encrypted decoders ONLY through an
+# opt-in secure_meters list and a CRC-verified SX1262 callback. Do not
+# rewrite the earlier, proven plaintext publication gate.
+assert "minomess::wired::decode" not in native_runtime
+assert "publish_secure_batch2_(" in native_runtime
+assert "WMBUS_NATIVE_BATCH2_SECURE_ENABLED" in native_runtime
+assert "batch2_secure::decode_configured(" in native_runtime
+assert "self->publish_secure_batch2_(" in native_runtime
+assert "publication::inspect(" in native_runtime
+assert 'secure_meters' in component.read_text(encoding="utf-8")
+assert 'add_secure_meter(' in component.read_text(encoding="utf-8")
 assert "kw_tpl.status!=\"DRY ERROR\"" in cpp
 assert "wired_reading.gateway_rssi_dbm!=-86" in cpp
 # Keyless ELL IV and counter have one shared source; OpenSSL stays host-only.
