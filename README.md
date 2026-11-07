@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last fully green code CI:** [GitHub Actions #42388899090](https://github.com/radugeo74/esphome-sx1262/actions/runs/42388899090)
-(code commit `a4894ee185ae6c9fb0608489c92283d0b351fc28`).
+**Last fully green code CI:** [GitHub Actions #42391722726](https://github.com/radugeo74/esphome-sx1262/actions/runs/42391722726)
+(code commit `a051a46a2f5de2680ced80c5c47420d1f6518a87`).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
@@ -158,7 +158,9 @@ door/window, `a_counter` / `b_counter`, text `status` OPEN/CLOSED,
 text `battery`, `software_version`, `status`).
 Both accept `driver: auto` or the explicit driver name on
 a *configured* eight-digit meter ID. They use strict mode-zero
-TPL frames and original upstream `NOKEY` examples.
+TPL frames and four original upstream `NOKEY` examples. The
+new decoders reject wrong meter/model, encrypted modes and invalid
+records rather than publishing partial sensor updates.
 `lansenth` is **not** enabled: its upstream NOKEY examples
 carry encrypted TPL Mode 5 and must not be misclassified as clear RF.
 
@@ -166,16 +168,16 @@ carry encrypted TPL Mode 5 and must not be misclassified as clear RF.
 
 The branch includes a **build-only** Heltec T1/C1 laboratory YAML at
 [experimental/semtech-radio/heltec-sx126x-combined-lab.yaml](experimental/semtech-radio/heltec-sx126x-combined-lab.yaml).
-It uses synthetic IDs and exercises `driver: auto` for the four newer
-drivers. Check the board revision and real radio pin/TCXO mapping
+It uses synthetic or public upstream example IDs and exercises
+`driver: auto` for the six newer drivers. Check the board revision and real radio pin/TCXO mapping
 before adapting it to your own hardware.
 
-GitHub Actions run [#42388899090](https://github.com/radugeo74/esphome-sx1262/actions/runs/42388899090)
+GitHub Actions run [#42391722726](https://github.com/radugeo74/esphome-sx1262/actions/runs/42391722726)
 passed `native-packet-input`,
 `stage-a-espidf-s3-portable-link` and `native-esphome-build`.
 This establishes host regression coverage and ESP32-S3/Heltec
 **compilation**, not reception or correct HA publication from real
-Minomess/Kamwater/Apator162/Lansen devices. The known-working Techem
+Minomess/Kamwater/Apator162/Lansen/Elvaco devices. The known-working Techem
 behavior has been observed separately on a Heltec, but does not
 validate every newly added driver.
 

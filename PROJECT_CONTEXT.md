@@ -280,7 +280,7 @@ CI builds. No actual meter, key or physical RF-to-HA validation
 was available and no installed firmware was changed.
 The subsequent context edits are docs-only.
 
-## Next two native keyless profiles — 2026-11-07 (CI pending)
+## Next two native keyless profiles — 2026-11-07 (ALL CI GREEN)
 
 Owner requested one or two additional simple drivers. Verified
 upstream `wmbusmeters/wmbusmeters` original XMQ files and their
@@ -305,7 +305,22 @@ new external component or unknown-meter publication is added.
 Status/battery/software fields are mapped only after a successful
 numeric decode. Build-only Heltec YAML includes public original
 fixture IDs and sensor bindings. This is GitHub-only integration,
-NOT physical RF validation. CI pending, no hardware changes.
+NOT physical RF validation. No hardware changes.
+
+**Last full CI GREEN:** GitHub Actions run `42391722726` at
+`a051a46a2f5de2680ced80c5c47420d1f6518a87`, all three jobs
+PASS: `native-packet-input`, `stage-a-espidf-s3-portable-link`,
+`native-esphome-build` (including combined T1/C1 Heltec build).
+New host test `test_lansendw_cma12w_native.cpp` uses the two
+public original fixtures for each driver, checking numeric/text
+values, configured AUTO, wrong identities, MVT collisions, AES
+rejection, malformed input and synthetic DLL CRC verification.
+Three previous RED runs were snapshots of intermediary commits:
+Stage A's old static manifest guard and an extra quote in a
+startup log were corrected before the green run. No real Lansen
+DW/CMA12w RF receptions or HA publications are claimed.
+Installed Heltec firmware was not modified. Subsequent changes
+to these notes are documentation-only.
 
 ## Next developer workflow
 

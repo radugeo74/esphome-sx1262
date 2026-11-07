@@ -22,10 +22,10 @@ restrictions, and verified vs pending CI milestones.
   through the dedicated, strictly configured `driver: auto` clear
   transport path**, or through explicit `meter_drivers`. AES still
   requires explicit driver/key in `secure_meters`.
-- **CI green:** GitHub run `42388899090`, code
-  `a4894ee185ae6c9fb0608489c92283d0b351fc28`: all three jobs
+- **CI green:** GitHub run `42391722726`, code
+  `a051a46a2f5de2680ced80c5c47420d1f6518a87`: all three jobs
   passed, including actual Heltec combined T1/C1 firmware compile
-  with four synthetic AUTO meter bindings. No device was flashed.
+  with six synthetic or public-fixture AUTO bindings. No device was flashed.
   No unconfigured meter automatically creates or publishes sensors.
 - **Detailed Stage B gates:** [`BATCH2_STATUS.md`](BATCH2_STATUS.md),
   host XMQ fixture comparisons, native CI and security isolation checks.
@@ -41,6 +41,9 @@ short TPL `0x7A` Mode-0 frames. `lansendw` maps door/window
 battery/software/status. Both are compiled for Heltec and support
 explicit driver assignment or configured-only `driver: auto`.
 No unrelated `NOKEY` encrypted frame is accepted as plaintext.
+All four original new-driver fixtures, identity/model mismatches,
+malformed records, encryption negatives and synthetic CRC passed
+in CI run `42391722726`.
 
 ## Configured-meter driver selection (native SX126x)
 
@@ -58,19 +61,19 @@ wmbus_native_sx126x:
 
 To select manually, replace `driver: auto` with
 `driver: fhkvdataiii`, `mkradio4`, `iperl`, `hydrus`,
-`lansenpu`, `minomess`, `kamwater` or `apator162`.
+`lansenpu`, `lansendw`, `cma12w`, `minomess`, `kamwater` or `apator162`.
 For Minomess radio converters, optionally add
 `dll_meter_id: "87654321"` (synthetic) to bind the separate radio
 sender. The actual data fields must be mapped through `xmq_sensors`
 and `xmq_text_sensors`; `auto` does not create Home Assistant
 entities for unconfigured meters.
 
-AUTO can select all eight on the verified **unencrypted** native
+AUTO can select all ten on the verified **unencrypted** native
 path. Encrypted telegrams require `secure_meters` with an **explicit
 driver and AES key**. A matched model alone is not authorization to
 decode or publish. Passive discovery remains metadata-only. The
 latest complete, green Heltec CI run is
-[42388899090](https://github.com/radugeo74/esphome-sx1262/actions/runs/42388899090).
+[42391722726](https://github.com/radugeo74/esphome-sx1262/actions/runs/42391722726).
 For a full explanation and examples, use the
 [root README](../../README.md).
 
