@@ -4,6 +4,7 @@
 // independently checks its frame layout, TPL security and block count.
 // CBC offers NO authentication: 2F2F/0F are structural plausibility,
 // not a MAC. No radio, YAML, legacy driver, or HA publication hook here.
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
