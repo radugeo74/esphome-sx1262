@@ -262,14 +262,17 @@ inline Status decode_mkradio4a_mode5(const uint8_t *frame,size_t length,
   if(address.status!=wmbus_pure::identity::Status::Ok ||
      !address.has_tpl || !address.tpl.decimal_bcd ||
      !wmbus_pure::identity::same_id(address.tpl,configured_id) ||
-     address.tpl.manufacturer!=0x2324 ||
-     address.tpl.version!=0xFE ||
-     address.tpl.device_type!=0x06)
+     !((address.tpl.manufacturer==0x2324 &&
+        address.tpl.version==0xFE && address.tpl.device_type==0x06) ||
+       (address.tpl.manufacturer==0x5CA8 &&
+        address.tpl.version==0xFE && address.tpl.device_type==0x07)))
     return Status::WrongModel;
   if(!output.values || output.value_capacity<1 ||
      !output.dates || output.date_capacity<1)
     return Status::MissingCapacity;
-  // The upstream frame has 3 encrypted blocks (48 bytes) followed by
+  // Original upstream fixture #1 uses HYD/FE/06 (warm), while #2 uses
+  // WEH/FE/07 (cold) behind the same TCH/95/37 DLL model.
+  // The upstream frames have 3 encrypted blocks (48 bytes) followed by
   // a 5-byte non-application trailer. The existing shared long-TPL
   // decryptor accepts only the authenticated-by-structure block region.
   // Adapt a PRIVATE COPY; never change the verified original RF frame.
