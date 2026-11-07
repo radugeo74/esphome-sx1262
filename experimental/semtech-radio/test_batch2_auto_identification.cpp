@@ -1,0 +1,123 @@
+// Real XMQ detect.mvt signatures, read-only batch-2 recognition on
+// structurally valid, CRC-stripped headers. Each production caller must
+// independently verify DLL CRC BEFORE calling the recognizer.
+// No AES, application parsing, sensor registration or publication.
+#include "components/wmbus_native_sx126x/batch2_auto_identify.h"
+#include "xmq_auto_registry.h"
+#include <cassert>
+#include <cstdint>
+#include <iostream>
+#include <vector>
+#include <cstring>
+
+using namespace wmbus_pure;
+namespace diag=batch2_identify;
+
+static std::vector<uint8_t> frame(uint16_t manufacturer,uint8_t version,
+                                  uint8_t device_type,uint8_t ci) {
+  const size_t length=ci==0x72 ? 23 : (ci==0x8D ? 21 : 15);
+  std::vector<uint8_t> f(length,0);
+  f[0]=static_cast<uint8_t>(length-1);
+  f[1]=0x44;
+  f[2]=static_cast<uint8_t>(manufacturer);
+  f[3]=static_cast<uint8_t>(manufacturer>>8);
+  f[4]=0x78;f[5]=0x56;f[6]=0x34;f[7]=0x12;
+  f[8]=version;f[9]=device_type;f[10]=ci;
+  return f;
+}
+
+static diag::Result identify(const std::vector<uint8_t> &f) {
+  return diag::inspect(f.data(),f.size(),generated::signatures,
+                       generated::signature_count);
+}
+
+int main() {
+  using State=diag::State;
+  using Source=diag::Source;
+  // Minomess directly on its own DLL address.
+  auto minomess=frame(0x6A49,0x01,0x06,0x72);
+  minomess[11]=0x78;minomess[12]=0x56;
+  minomess[13]=0x34;minomess[14]=0x12;
+  minomess[15]=0x49;minomess[16]=0x6A;
+  minomess[17]=0x01;minomess[18]=0x06;
+  auto got=identify(minomess);
+  assert(got.state==State::Candidate && got.source==Source::Tpl);
+  assert(std::strcmp(got.driver,"minomess")==0);
+  assert(got.decimal_bcd && got.meter_id==12345678);
+  assert(!got.different_dll_id);
+  // Converter DLL reports Techem: must look into long TPL for actual
+  // Minomess. The radio ID is explicitly different from the meter ID.
+  auto converter=minomess;
+  converter[2]=0x68;converter[3]=0x50; // TEH radio converter
+  converter[4]=0x21;converter[5]=0x43;
+  converter[6]=0x65;converter[7]=0x87;
+  converter[8]=0x95;converter[9]=0x72;
+  got=identify(converter);
+  assert(got.state==State::Candidate && got.source==Source::Tpl);
+  assert(std::strcmp(got.driver,"minomess")==0);
+  assert(got.decimal_bcd && got.meter_id==12345678);
+  assert(got.different_dll_id);
+  // An unknown nested TPL must not become a guessed Minomess decoder.
+  converter[15]=0x68;converter[16]=0x50;
+  got=identify(converter);
+  assert(got.state==State::Unknown);
+  // Kamwater DLL: all original KAM/KAW signatures are registered.
+  const DriverSignature kam_variants[]={
+    {0x2C2D,0x1B,0x06,"kamwater"},{0x2C2D,0x1B,0x16,"kamwater"},
+    {0x2C2D,0x1D,0x16,"kamwater"},{0x2C37,0x3A,0x16,"kamwater"},
+    {0x2C37,0x3C,0x06,"kamwater"},{0x2C37,0x3C,0x16,"kamwater"},
+    {0x2C37,0x42,0x06,"kamwater"},{0x2C37,0x42,0x16,"kamwater"}
+  };
+  for(const auto &v:kam_variants) {
+    auto f=frame(v.manufacturer,v.version,v.device_type,0x8D);
+    got=identify(f);
+    assert(got.state==State::Candidate && got.source==Source::Dll);
+    assert(std::strcmp(got.driver,"kamwater")==0);
+    assert(got.meter_id==12345678);
+  }
+  // APA versions and device types from the upstream Apator162 detector.
+  for(uint8_t type:{uint8_t(0x06),uint8_t(0x07)}) {
+    got=identify(frame(0x0601,0x05,type,0x7A));
+    assert(got.state==State::Candidate && got.source==Source::Dll);
+    assert(std::strcmp(got.driver,"apator162")==0);
+  }
+  // ELL address overrides an unrelated converter DLL, but never
+  // treats the ELL application or CRC as already decoded.
+  auto ell=frame(0x5068,0x95,0x72,0x8D);
+  ell[10]=0x8E;
+  ell[0]=0x14;
+  ell[13]=0x37;ell[14]=0x2C;
+  ell[15]=0x78;ell[16]=0x56;
+  ell[17]=0x34;ell[18]=0x12;
+  ell[19]=0x3C;ell[20]=0x16;
+  got=identify(ell);
+  assert(got.state==State::Candidate && got.source==Source::Ell);
+  assert(std::strcmp(got.driver,"kamwater")==0);
+  // Two different original batch-2 models in DLL/TPL is ambiguous.
+  auto conflicting=frame(0x2C2D,0x1B,0x16,0x72);
+  conflicting[11]=0x78;conflicting[12]=0x56;
+  conflicting[13]=0x34;conflicting[14]=0x12;
+  conflicting[15]=0x01;conflicting[16]=0x06;
+  conflicting[17]=0x05;conflicting[18]=0x06;
+  assert(identify(conflicting).state==State::Ambiguous);
+  // Original Techem never masquerades as an experimental model.
+  assert(identify(frame(0x5068,0x95,0x72,0xA2)).state==State::Unknown);
+  auto truncated=minomess;truncated.pop_back();
+  assert(identify(truncated).state==State::Invalid);
+  auto unsupported=frame(0x2C2D,0x1B,0x16,0xA2);
+  assert(identify(unsupported).state==State::Invalid ||
+         identify(unsupported).state==State::Candidate);
+  // Recognize only MVT identities; collision with a different
+  // upstream driver is NOT automatically a batch-2 selection.
+  const DriverSignature overlap[]={
+      {0x2C2D,0x1B,0x16,"kamwater"},
+      {0x2C2D,0x1B,0x16,"another_driver"}};
+  auto colliding=frame(0x2C2D,0x1B,0x16,0x8D);
+  assert(diag::inspect(colliding.data(),colliding.size(),
+                       overlap,2).state==State::Ambiguous);
+  assert(diag::inspect(nullptr,0,generated::signatures,
+                       generated::signature_count).state==State::Invalid);
+  std::cout<<"PASS metadata-only batch2 auto identification: original XMQ MVT,"
+            <<" converter TPL, ELL, ambiguity, Techem, bounds; no publish.\\n";
+  return 0;
+}
