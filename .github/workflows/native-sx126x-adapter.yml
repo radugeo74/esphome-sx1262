@@ -470,6 +470,10 @@ jobs:
         run: esphome config experimental/semtech-radio/ci/native-sx126x-batch2-lab.yaml
       - name: Compile opt-in encrypted native SX1262 receiver on ESP32-S3 (DO NOT FLASH)
         run: esphome compile experimental/semtech-radio/ci/native-sx126x-batch2-lab.yaml
+      - name: Validate explicit NO-KEY Minomess Kamwater Apator162 on SX1262
+        run: esphome config experimental/semtech-radio/ci/native-sx126x-batch2-nokey-lab.yaml
+      - name: Compile three native XMQ no-key drivers without mbedTLS CCM or any AES key (DO NOT FLASH)
+        run: esphome compile experimental/semtech-radio/ci/native-sx126x-batch2-nokey-lab.yaml
       - name: Validate combined T1/C1 Heltec laboratory YAML
         run: esphome config experimental/semtech-radio/heltec-sx126x-combined-lab.yaml
       - name: Compile combined T1/C1 Heltec firmware (not flashed)
