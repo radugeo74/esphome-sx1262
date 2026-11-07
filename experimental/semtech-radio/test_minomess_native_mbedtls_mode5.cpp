@@ -54,6 +54,46 @@ int main() {
     return xmq_portable::batch2_secure::decode_minomess_mode5(
         frame.data(),frame.size(),id,key,decoded);
   };
+  // Original upstream Minomess #3..#5 use a radio-converter DLL ID
+  // distinct from the meter's nested TPL ID. Exercise the actual
+  // configured encrypted dispatcher with a synthetic converter DLL,
+  // preserving exactly the same independently encrypted TPL bytes.
+  auto converter_rf=encrypted;
+  converter_rf[4]=0x10;converter_rf[5]=0x64;
+  converter_rf[6]=0x03;converter_rf[7]=0x55; // DLL 55036410
+  converter_rf[0]=static_cast<uint8_t>(converter_rf.size()+1);
+  const uint16_t converter_crc=wmbus_pure::crc16_en13757(
+      converter_rf.data(),converter_rf.size());
+  converter_rf.push_back(static_cast<uint8_t>(converter_crc>>8));
+  converter_rf.push_back(static_cast<uint8_t>(converter_crc));
+  wmbus_pure::CompleteFrame converter_checked{};
+  assert(wmbus_pure::verify_complete_frame(
+      converter_rf.data(),converter_rf.size(),
+      wmbus_pure::CrcFrameFormat::B,converter_checked)
+      ==wmbus_pure::CompleteStatus::Ok);
+  const auto routed=[&](const char *meter,const char *dll) {
+    return xmq_portable::batch2_secure::decode_configured(
+        converter_checked.bytes.data(),converter_checked.bytes.size(),
+        meter,"minomess",fixture_key,decoded,nullptr,dll);
+  };
+  assert(routed("12345678","55036410")==Status::Ok);
+  assert(decoded.value_count==2);
+  assert(std::fabs(decoded.values[0].value-140.354)<1e-9);
+  assert(std::fabs(decoded.values[1].value-138.485)<1e-9);
+  // No explicit converter binding => DLL and TPL must be identical.
+  assert(routed("12345678",nullptr)==Status::WrongMeter);
+  assert(decoded.value_count==0);
+  assert(routed("12345678","55036411")==Status::WrongMeter);
+  assert(decoded.value_count==0);
+  // The DLL is configured, but the wrong nested TPL meter is never
+  // decoded or published under that configured sensor name.
+  assert(routed("12345679","55036410")==Status::WrongModel);
+  assert(decoded.value_count==0);
+  // Converter ID alone cannot activate another driver.
+  assert(xmq_portable::batch2_secure::decode_configured(
+      converter_checked.bytes.data(),converter_checked.bytes.size(),
+      "12345678","auto",fixture_key,decoded,nullptr,"55036410")!=Status::Ok);
+  assert(decoded.value_count==0);
   assert(decode(verified.bytes,"12345678",fixture_key)==Status::Ok);
   assert(decoded.value_count==2);
   assert(std::strcmp(decoded.values[0].name,"total_m3")==0);
