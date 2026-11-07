@@ -199,7 +199,7 @@ async def to_code(config):
     ] + [
         item.get(CONF_DLL_METER_ID, item[CONF_METER_ID])
         for item in config[CONF_METER_DRIVERS]
-        if item[CONF_DRIVER] in ("minomess", "kamwater", "apator162")
+        if item[CONF_DRIVER] in ("minomess", "kamwater", "apator162", "lansenpu")
     ]:
         if meter_id not in configured_ids:
             cg.add(var.add_configured_meter_id(meter_id))
