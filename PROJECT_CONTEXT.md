@@ -141,6 +141,51 @@ only independently VERIFIED clear RF; it does not magically
 decode encrypted radio without a key. The on-device proof and
 real HA publication gate remain open; no flash was performed.
 
+## Stage B passive automatic identification — 2026-11-07 (CI pending)
+
+**Owner decision:** keep `minomess`, `kamwater`, `apator162`
+**manually configured only for actual decoding**, but identify all
+three automatically in CRC-verified T1/C1 traffic, even for unknown
+`configured_meter_ids`. No new YAML setting or real-meter ID/key
+is necessary for passive recognition. Existing production Techem
+`auto`, explicit `meter_drivers`, `secure_meters`, sensors and
+publication permissions are untouched.
+
+Implementation:
+- `components/wmbus_native_sx126x/batch2_auto_identify.h`:
+  read-only MVT metadata recognition using the FULL generated
+  original XMQ registry. Prefer meter identity from long TPL;
+  otherwise ELL address if available, then DLL. Original
+  Minomess `ZRI/00/07`, `ZRI/01/16`, `ZRI/01/06`;
+  Kamwater `KAM`/`KAW`; Apator162 `APA/05/06` and
+  `APA/05/07` are recognized; ambiguous/conflicting driver
+  signatures never produce a definitive candidate. No payload
+  decryption, metadata-based admission, or record parsing.
+- `NativeReceiverProbe::log_batch2_auto_` is called only after
+  the existing DLL/CRC verification on **T1, standalone C1 and
+  combined-mode C1**. For one candidate it emits
+  `BATCH2 AUTO candidate=<driver> source=TPL|ELL|DLL link=T1|C1-A|C1-B dll=... meter=... different_dll=... tpl_security=... (metadata only; no decode or publication)`.
+  A fixed ring cache of 32 observed candidates prevents per-frame
+  log spam, with no unbounded allocations or per-meter state.
+- The new host regression
+  `experimental/semtech-radio/test_batch2_auto_identification.cpp`
+  compiles with a freshly generated registry made from actual
+  `experimental/xmq/drivers/*.xmq` and tests all original
+  signatures, a distinct Minomess converter DLL/TPL, ELL
+  origin, collisions, ordinary Techem exclusion and malformed
+  headers. A CI job also recompiles ESPHome/ESP32-S3.
+- No changes to the generated `SUPPORTED` driver manifest,
+  to decode `auto`, to `c1_plaintext_publish`, to active YAML,
+  firmware installed on Heltec, or to HA sensor bindings.
+  **An auto candidate is NOT a decoded/validated meter.** No
+  actual Minomess/Kamwater/Apator162 RF packet was observed yet.
+
+CI for this change is **not yet declared green**; initial test
+command lacked the native component include directory. Fixed in
+commit `b9103a7`, GitHub run `42379840181`, where
+`native-packet-input` job passed. Wait for the remaining
+ESP32-S3 build jobs before claiming all CI green.
+
 ## Next developer workflow
 
 1. Verify the latest Stage B CI, including original fixture/field-gap tests and native ESP32-S3 build. Fix failing tests before asserting increased coverage.
