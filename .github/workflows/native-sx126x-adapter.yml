@@ -466,6 +466,10 @@ jobs:
         run: esphome compile experimental/semtech-radio/heltec-sx126x-diagnostic.yaml
       - name: Compile native SX126x receiver
         run: esphome compile experimental/semtech-radio/ci/native-sx126x-esphome.yaml
+      - name: Validate build-only native encrypted Minomess Kamwater Apator162 bindings
+        run: esphome config experimental/semtech-radio/ci/native-sx126x-batch2-lab.yaml
+      - name: Compile opt-in encrypted native SX1262 receiver on ESP32-S3 (DO NOT FLASH)
+        run: esphome compile experimental/semtech-radio/ci/native-sx126x-batch2-lab.yaml
       - name: Validate combined T1/C1 Heltec laboratory YAML
         run: esphome config experimental/semtech-radio/heltec-sx126x-combined-lab.yaml
       - name: Compile combined T1/C1 Heltec firmware (not flashed)
