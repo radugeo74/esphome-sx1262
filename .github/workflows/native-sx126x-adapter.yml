@@ -416,6 +416,15 @@ jobs:
             -o /tmp/test-ultraheat-sontex868-native
           /tmp/test-ultraheat-sontex868-native
 
+      - name: Decode original Sontex Supercal clear fixture with strict AUTO gates
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_supercal_native.cpp \
+            -o /tmp/test-supercal-native
+          /tmp/test-supercal-native
+
       - name: AUTO-select and decode original Lansen NOKEY fixtures with configured-only guards
         run: |
           python3 experimental/xmq/tools/build_native_generated.py
