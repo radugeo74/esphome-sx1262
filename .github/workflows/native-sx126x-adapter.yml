@@ -425,6 +425,18 @@ jobs:
             -o /tmp/test-supercal-native
           /tmp/test-supercal-native
 
+      - name: Original Topas NOKEY supplied-clear offline decode (no key, no RF bypass)
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          python3 experimental/xmq/tools/generate_driver_registry.py \
+            experimental/xmq/drivers/*.xmq \
+            --out components/wmbus_native_sx126x/xmq_auto_registry.h
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_topaseskr_supplied_clear.cpp \
+            -o /tmp/test-topaseskr-supplied-clear
+          /tmp/test-topaseskr-supplied-clear
+
       - name: Topas ESKR native Mode5 synthetic encrypted original XMQ applications
         run: |
           python3 experimental/xmq/tools/build_native_generated.py
