@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last fully green code CI:** [GitHub Actions #42401195133](https://github.com/radugeo74/esphome-sx1262/actions/runs/42401195133)
-(code commit `8cb03357806b50316e88e3eb9e25a1cffb7e4813`, all three jobs passed).
+**Last fully green code CI before the keyless fixture update:** [GitHub Actions #42404050221](https://github.com/radugeo74/esphome-sx1262/actions/runs/42404050221)
+(code commit `623b03e3fee70f6e6d88cc65ce0c8a57fd5b449b`, all three jobs passed).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
@@ -62,7 +62,7 @@ fields, wired M-Bus frames or post-decrypted ELL frames are supported.
 Original source fields and strict negative-frame tests passed
 [run #42393848471](https://github.com/radugeo74/esphome-sx1262/actions/runs/42393848471).
 
-### New clear-only profiles (2026-11-07; CI validation in progress)
+### New clear-only profiles (2026-11-07; previous code CI green)
 
 `supercal` (SON/1B/04) has one original public clear short-TPL
 fixture and publishes `total_kwh`, `total_m3`, `power_kw`,
@@ -110,6 +110,33 @@ wmbus_native_sx126x:
 
 The `topaseskr` route is **never** part of `meter_drivers`,
 plaintext decoding or `driver: auto`.
+
+### Topas NOKEY fixtures: keyless *offline* decode
+
+The two original `topaseskr.xmq` examples supplied by upstream are
+**already-readable EN 13757-3 DIF/VIF application bytes**. They can be
+decoded **without supplying any AES key**, despite their embedded
+`7A ... 40 05 2F 2F` short-TPL header (which declares Mode 5,
+four AES-CBC blocks). The source's `NOKEY` label does not show
+whether their source on-air packets were clear or decrypted before
+publication.
+
+A host-only reference adapter
+`experimental/semtech-radio/host_only/topaseskr_supplied_clear_fixture.h`
+accepts these **explicitly supplied already-clear offline samples**.
+`experimental/semtech-radio/test_topaseskr_supplied_clear.cpp`
+checks the original numeric outputs and malformed/header/identity
+rejections with **no AES key**. It is not imported into the Heltec
+receiver or exposed as a Home Assistant publication path.
+
+For **live RF**, the existing `secure_meters` Mode-5 AES implementation
+and explicit key remain mandatory when a packet advertises
+`0x0540`. A `2F2F` marker alone does not prove decryption or
+authorize bypassing the TPL security gate. Keyless live
+`topaseskr` AUTO/`meter_drivers` support is **not** claimed without
+evidence of a genuine unencrypted radio profile.
+
+
 
 These new additions are software-only, not tested with live RF or
 Home Assistant. Keep the last *fully green* CI marker above until
