@@ -38,14 +38,18 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   // Explicit opt-in binding. Convert the !secret-sourced hex key to
   // 16 bytes once; never retain the hexadecimal text or print the key.
   void add_secure_meter(const std::string &id,const std::string &driver,
-                        const std::string &key_hex) {
-    if (id.size()!=8 || key_hex.size()!=32 ||
-        (driver!="minomess" && driver!="kamwater" && driver!="apator162"))
+                        const std::string &key_hex,
+                        const std::string &dll_id) {
+    if (id.size()!=8 || dll_id.size()!=8 || key_hex.size()!=32 ||
+        (driver!="minomess" && driver!="kamwater" && driver!="apator162") ||
+        (dll_id!=id && driver!="minomess"))
       return;
     for (char c : id)
       if (c<'0' || c>'9') return;
+    for (char c : dll_id)
+      if (c<'0' || c>'9') return;
     for (const auto &meter : secure_meters_)
-      if (meter.id==id) return; // fail closed on duplicate entry
+      if (meter.id==id || meter.dll_id==dll_id) return; // unambiguous
     std::array<uint8_t,16> key{};
     for (size_t i=0;i<16;++i) {
       const auto nibble=[](char c)->int {
@@ -59,7 +63,7 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
       if(high<0 || low<0) return;
       key[i]=static_cast<uint8_t>((high<<4)|low);
     }
-    secure_meters_.push_back({id,driver,key});
+    secure_meters_.push_back({id,dll_id,driver,key});
   }
   void add_xmq_sensor(const std::string &meter_id, const std::string &field,
                       sensor::Sensor *output) {
@@ -106,7 +110,8 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   struct MeterDriver { std::string id; std::string driver; std::string logged_auto_driver; };
   std::vector<MeterDriver> meter_drivers_{};
   struct SecureMeter {
-    std::string id;
+    std::string id;       // TPL meter / Home Assistant sensor binding
+    std::string dll_id;   // explicit radio sender (may be a Minomess converter)
     std::string driver;
     std::array<uint8_t,16> key{};
   };
