@@ -68,7 +68,12 @@ assert "minomess::wired::decode" not in native_runtime
 catalog_branch=native_catalog.split("enum class PureDecodeStatus",1)[1]
 for driver in ("kamwater","minomess","apator162"):
     assert f'std::strcmp(driver_name,"{driver}")==0' in catalog_branch, driver
-assert "decode_clear_ell_ii_tpl79(" in catalog_branch
+assert "decode_clear_ell_ii(" in catalog_branch
+clear_pipeline=(root/"components/wmbus_native_sx126x/kamwater_clear_pipeline.h").read_text(encoding="utf-8")
+assert "decode_clear_ell_ii_tpl79(" in clear_pipeline
+assert "ell::inspect_ell_ii(" in clear_pipeline
+assert "kamwater::decode_clear_records(" in clear_pipeline
+assert "Status::EllRejected" in clear_pipeline
 assert "wmbus_pure::publication::inspect(" in catalog_branch
 assert "minomess::decode_clear_application(" in catalog_branch
 assert "apator162::decode_clear_manufacturer(" in catalog_branch
@@ -85,6 +90,14 @@ assert "publish_secure_batch2_(" in native_runtime
 assert "WMBUS_NATIVE_BATCH2_SECURE_ENABLED" in native_runtime
 assert "batch2_secure::decode_configured(" in native_runtime
 assert "self->publish_secure_batch2_(" in native_runtime
+# No-key decoding is explicitly configured, never AUTO key trial.
+assert "self->publish_plain_batch2_(" in native_runtime
+assert '#include "xmq_batch2_plain_dispatch.h"' in native_runtime
+plain_dispatch=(root/"components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h").read_text(encoding="utf-8")
+assert "decode_configured_plain_frame(" in plain_dispatch
+assert 'std::strcmp(name,"minomess")==0' in plain_dispatch
+assert "is_explicit_driver(driver)" in plain_dispatch
+assert "if(!frame || !meter_id || !dll_id" in plain_dispatch
 assert "publication::inspect(" in native_runtime
 assert 'secure_meters' in component.read_text(encoding="utf-8")
 assert 'add_secure_meter(' in component.read_text(encoding="utf-8")
