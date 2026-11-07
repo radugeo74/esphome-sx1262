@@ -1,10 +1,43 @@
 # Stage B gate status — full-driver acceptance not yet complete
 
-Updated 2026-11-06 for branch `experimental/xmq-multidriver-auto`.
-This is an evidence ledger, not a release approval. The owner confirmed
-CI green through `6bd4d98` (real NVS probe compiled/linked, host fake-NVS
-read/write/commit regressions). The new optional write-ahead counter
-reservation and power-loss behavioral test are **CI pending**.
+Updated 2026-11-07 for branch `experimental/xmq-multidriver-auto`.
+This is an evidence ledger, not a release approval.
+**Last owner-confirmed CI green: `1d3bbce`** for clear-only
+Minomess/Kamwater/Apator162 native configured dispatch.
+Encrypted native mbedTLS paths are committed; **new CI pending**.
+Historic NVS sections below are not the active development goal.
+
+## Direct native encrypted driver integration — pending CI, not yet live
+
+The following are now compiled source components in
+`components/wmbus_native_sx126x/` (not legacy wmbusmeters):
+`oms_mode5_mbedtls.h` (short and long TPL AES-CBC Mode 5),
+`kamwater_ell_ctr_mbedtls.h` (ELL AES-CTR with original IV),
+`xmq_batch2_secure_dispatch.h` (trusted input to established
+complete XMQ application decoders).
+
+The GitHub workflow now executes *native mbedTLS dispatch* regressions:
+Apator162 original encrypted #19 (7.512 m³), Minomess long-TPL
+synthetic encrypted upstream-clear fixture (140.354 / 138.485 m³)
+and Kamwater encrypted ELL synthetic NIST-key / original public
+compact TPL79 (6.408 / 6.408 m³). Negative cases cover wrong key,
+identity, mode, CRC, truncation and stale field outputs. Apator #19
+is a genuine original upstream encrypted payload with a synthetic
+format-B DLL CRC; Minomess and Kamwater ciphertext are intentionally
+synthetic. CBC and ELL CRC do not prove cryptographic authentication.
+
+A first ESP-IDF CI failure was caused by missing commas between
+Apator #19 fixture initializer rows; fixed in `d072669`.
+**No new CI green is claimed** after that correction.
+
+**Remaining integration blocker:** the real SX1262 callback currently
+reaches only the clear decoder; configuration has no per-meter
+batch-2 keys and the live security/publication gate blocks encrypted
+batch-2 packets. No production publication, new YAML admission,
+firmware flash, or auto-selection. Existing Techem unchanged.
+The next work item is explicit per-meter key transport and native
+encrypted dispatcher handoff after DLL verification, then canary
+device validation with owner approval — NOT NVS.
 
 ## Latest verified checkpoint — 2026-11-06
 
