@@ -41,6 +41,8 @@ Home Assistant sensors.
 | `iperl` | Yes (supported clear payloads) | Yes |
 | `hydrus` | Yes (supported clear payloads) | Yes |
 | `lansenpu` (pulse channels A/B) | Yes | Yes |
+| `lansendw` (door/window + pulse events) | Yes | Yes |
+| `cma12w` (room temperature, battery) | Yes | Yes |
 | `minomess` | Yes, clear transport only | Yes |
 | `kamwater` | Yes, clear transport only | Yes |
 | `apator162` | Yes, clear transport only | Yes |
@@ -146,6 +148,19 @@ recognized passively, including Minomess, Kamwater, Apator162 and
 Lansen, using original XMQ manufacturer/version/type signatures.
 Diagnostic `BATCH2 AUTO candidate=...` messages do **not** decode,
 create entities, or publish meter values.
+
+### New cleartext drivers: Lansen DW and Elvaco CMA12w
+
+The native pipeline also supports `lansendw` (Lansen
+door/window, `a_counter` / `b_counter`, text `status` OPEN/CLOSED,
+`error_flags`) and `cma12w` (Elvaco temperature,
+`current_temperature_c`, `average_temperature_1h_c`,
+text `battery`, `software_version`, `status`).
+Both accept `driver: auto` or the explicit driver name on
+a *configured* eight-digit meter ID. They use strict mode-zero
+TPL frames and original upstream `NOKEY` examples.
+`lansenth` is **not** enabled: its upstream NOKEY examples
+carry encrypted TPL Mode 5 and must not be misclassified as clear RF.
 
 ## Building and testing
 

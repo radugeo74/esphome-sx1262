@@ -86,6 +86,10 @@ wmbus_native_sx126x:
       driver: auto  # synthetic Kamwater
     - meter_id: "87654323"
       driver: auto  # synthetic Apator162
+    - meter_id: "00010205"
+      driver: auto  # public Lansen door/window fixture
+    - meter_id: "66666666"
+      driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
     - meter_id: "00000000"
       field: current_hca
@@ -107,11 +111,51 @@ wmbus_native_sx126x:
       sensor:
         name: "Lab AUTO Lansen Pulse B"
         accuracy_decimals: 0
+    - meter_id: "00010205"
+      field: a_counter
+      sensor:
+        name: "Lab AUTO Lansen Door Events"
+        accuracy_decimals: 0
+    - meter_id: "00010205"
+      field: b_counter
+      sensor:
+        name: "Lab AUTO Lansen Door Pulse B"
+        accuracy_decimals: 0
+    - meter_id: "66666666"
+      field: current_temperature_c
+      sensor:
+        name: "Lab AUTO CMA12w Room Temperature"
+        unit_of_measurement: "°C"
+    - meter_id: "66666666"
+      field: average_temperature_1h_c
+      sensor:
+        name: "Lab AUTO CMA12w Average Temperature"
+        unit_of_measurement: "°C"
   xmq_text_sensors:
     - meter_id: "00010206"
       field: status
       sensor:
         name: "Lab AUTO Lansen Status"
+    - meter_id: "00010205"
+      field: status
+      sensor:
+        name: "Lab AUTO Lansen Door State"
+    - meter_id: "00010205"
+      field: error_flags
+      sensor:
+        name: "Lab AUTO Lansen Door Error"
+    - meter_id: "66666666"
+      field: status
+      sensor:
+        name: "Lab AUTO CMA12w Status"
+    - meter_id: "66666666"
+      field: battery
+      sensor:
+        name: "Lab AUTO CMA12w Battery"
+    - meter_id: "66666666"
+      field: software_version
+      sensor:
+        name: "Lab AUTO CMA12w Software Version"
   # Synthetic ID exercises the RSSI YAML schema during CI compilation.
   # It is not a real meter and receives no sensor updates.
   rssi_sensors:

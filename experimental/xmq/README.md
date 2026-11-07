@@ -16,7 +16,7 @@ restrictions, and verified vs pending CI milestones.
   remain intentionally rejected; no fixture is treated as real
   over-the-air validation. Physical RX-to-HA approval is still open.
 - **Native AUTO and Heltec:** `fhkvdataiii` and `mkradio4` remain the
-  stable Techem baseline. `iperl`, `hydrus`, `lansenpu` are in
+  stable Techem baseline. `iperl`, `hydrus`, `lansenpu`, `lansendw`, `cma12w` are in
   the compiled `SUPPORTED` manifest. Minomess, Kamwater and
   Apator162 remain outside that generic manifest but are **selectable
   through the dedicated, strictly configured `driver: auto` clear
@@ -31,6 +31,16 @@ restrictions, and verified vs pending CI milestones.
   host XMQ fixture comparisons, native CI and security isolation checks.
   CRC alone does not prove cryptographic authenticity; an intentionally
   invalid CCM-tag source fixture must remain rejected.
+
+## New keyless models: Lansen DW and Elvaco CMA12w
+
+Two further original XMQ model profiles use checked, genuinely clear
+short TPL `0x7A` Mode-0 frames. `lansendw` maps door/window
+`status`, `error_flags`, and numeric event counters;
+`cma12w` maps current/one-hour temperature and optional text
+battery/software/status. Both are compiled for Heltec and support
+explicit driver assignment or configured-only `driver: auto`.
+No unrelated `NOKEY` encrypted frame is accepted as plaintext.
 
 ## Configured-meter driver selection (native SX126x)
 

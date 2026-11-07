@@ -18,7 +18,9 @@ inline bool is_explicit_driver(const char *name) {
      (std::strcmp(name,"minomess")==0 ||
       std::strcmp(name,"kamwater")==0 ||
       std::strcmp(name,"apator162")==0 ||
-      std::strcmp(name,"lansenpu")==0);
+      std::strcmp(name,"lansenpu")==0 ||
+      std::strcmp(name,"lansendw")==0 ||
+      std::strcmp(name,"cma12w")==0);
 }
 // Strict manual or configured AUTO selection for cleartext RF. The radio
 // MUST supply CRC-verified, CRC-stripped DLL frames. Metadata selection
@@ -45,7 +47,10 @@ inline const char *select_configured_driver(
       requested,signatures,count,header.manufacturer,header.version,
       header.device_type);
   if(resolved.status==wmbus_pure::auto_driver::Status::Ready &&
-     resolved.driver && std::strcmp(resolved.driver,"lansenpu")==0)
+     resolved.driver &&
+     (std::strcmp(resolved.driver,"lansenpu")==0 ||
+      std::strcmp(resolved.driver,"lansendw")==0 ||
+      std::strcmp(resolved.driver,"cma12w")==0))
     return std::strcmp(meter_id,dll_id)==0 ? resolved.driver : nullptr;
 
   // Batch-2 candidates can use DLL, ELL or nested TPL metadata.

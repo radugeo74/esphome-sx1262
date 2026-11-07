@@ -1,5 +1,5 @@
 #pragma once
-// Passive four-driver recognition: batch-2 plus Lansen Pulse Counter.
+// Passive six-driver recognition: batch-2 plus Lansen PU, DW, Elvaco CMA12w.
 // ONLY call with independently verified DLL/CRC-stripped T1/C1 frames.
 // Checks original XMQ detect.mvt metadata, including a long-TPL meter
 // behind a different DLL converter. Never reads AES keys, attempts a
@@ -27,7 +27,9 @@ inline bool is_batch2(const char *name) {
   return name && (std::strcmp(name,"minomess")==0 ||
                   std::strcmp(name,"kamwater")==0 ||
                   std::strcmp(name,"apator162")==0 ||
-                  std::strcmp(name,"lansenpu")==0);
+                  std::strcmp(name,"lansenpu")==0 ||
+                  std::strcmp(name,"lansendw")==0 ||
+                  std::strcmp(name,"cma12w")==0);
 }
 
 inline uint32_t decimal_id(const identity::Address &address) {

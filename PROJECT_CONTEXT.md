@@ -280,6 +280,33 @@ CI builds. No actual meter, key or physical RF-to-HA validation
 was available and no installed firmware was changed.
 The subsequent context edits are docs-only.
 
+## Next two native keyless profiles — 2026-11-07 (CI pending)
+
+Owner requested one or two additional simple drivers. Verified
+upstream `wmbusmeters/wmbusmeters` original XMQ files and their
+complete telegram headers; `lansenth` showed Mode-5 despite
+`NOKEY`, thus was NOT admitted to the clear receiver.
+
+Selected `lansendw` (two original clear TPL7A Mode-0 examples,
+CLOSED/OPEN, event A/B counters and `error_flags`) and
+`cma12w` (two original clear TPL7A Mode-0 examples,
+temperature, one-hour average, battery and software version).
+Independent native strict decoders live under
+`components/wmbus_native_sx126x/*_plain.h`, with source XMQ
+copyright notices preserved. They are included in portable
+`SUPPORTED` / AUTO, independently requiring configured ID,
+verified DLL CRC, exact version/manufacturer/type, transport
+security Mode-0 and documented record layouts. Bad/unknown
+records and security mode reject without HA publication.
+
+Native AUTO uses the same configured no-key handler already
+proven for Lansen PU; no RF stack, old legacy driver, AES key,
+new external component or unknown-meter publication is added.
+Status/battery/software fields are mapped only after a successful
+numeric decode. Build-only Heltec YAML includes public original
+fixture IDs and sensor bindings. This is GitHub-only integration,
+NOT physical RF validation. CI pending, no hardware changes.
+
 ## Next developer workflow
 
 1. Verify the latest Stage B CI, including original fixture/field-gap tests and native ESP32-S3 build. Fix failing tests before asserting increased coverage.

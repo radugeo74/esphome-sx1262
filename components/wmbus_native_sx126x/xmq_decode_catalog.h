@@ -11,6 +11,8 @@
 #include "iperl_plain.h"
 #include "hydrus_plain.h"
 #include "lansenpu_plain.h"
+#include "lansendw_plain.h"
+#include "cma12w_plain.h"
 #include "mkradio4a_plain.h"
 #include "minomess_clear_prefix.h"
 #include "kamwater_clear_pipeline.h"
@@ -163,6 +165,36 @@ inline PureDecodeStatus decode_configured_plain_frame(
       output.values[output.value_count++]={"a_counter",counts.a_counter};
     if(counts.has_b)
       output.values[output.value_count++]={"b_counter",counts.b_counter};
+    return PureDecodeStatus::Ok;
+  }
+  // Lansen door/window: exact documented clear records and BCD
+  // pulse counts; OPEN/CLOSED and error flags are separate text sensors.
+  if(driver_name && std::strcmp(driver_name,"lansendw")==0) {
+    if(!output.values || output.value_capacity<2) return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    lansendw::Reading reading{};
+    if(lansendw::decode(frame,length,reading)!=lansendw::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"a_counter",reading.a_counter};
+    output.values[1]={"b_counter",reading.b_counter};
+    output.value_count=2;
+    return PureDecodeStatus::Ok;
+  }
+  // Elvaco CMA12w: two temperatures in degrees C, battery/software
+  // and OK status as optional text sensors. No general VIF inference.
+  if(driver_name && std::strcmp(driver_name,"cma12w")==0) {
+    if(!output.values || output.value_capacity<2) return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    cma12w::Reading reading{};
+    if(cma12w::decode(frame,length,reading)!=cma12w::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"current_temperature_c",reading.current_temperature_c};
+    output.values[1]={"average_temperature_1h_c",reading.average_temperature_1h_c};
+    output.value_count=2;
     return PureDecodeStatus::Ok;
   }
   // Batch-2 native application decoding: a real receiver-code path,

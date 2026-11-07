@@ -8,6 +8,8 @@
 #include "hydrus_plain.h"
 #include "iperl_plain.h"
 #include "lansenpu_plain.h"
+#include "lansendw_plain.h"
+#include "cma12w_plain.h"
 #include "tpl_security_probe.h"
 
 namespace xmq_portable { namespace text_fields {
@@ -32,6 +34,27 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
   const auto security = wmbus_pure::tpl_security::inspect(frame, size);
   if (security.state != wmbus_pure::tpl_security::State::NotEncrypted)
     return out;
+  if(std::strcmp(driver,"lansendw")==0) {
+    lansendw::Reading reading{};
+    if(lansendw::decode(frame,size,reading)!=lansendw::Status::Ok)
+      return out;
+    append(out,"status",lansendw::state_text(reading.digital_input));
+    append(out,"error_flags",lansendw::error_text(
+        reading.error_flags,reading.tpl_status));
+    return out;
+  }
+  if(std::strcmp(driver,"cma12w")==0) {
+    cma12w::Reading reading{};
+    if(cma12w::decode(frame,size,reading)!=cma12w::Status::Ok)
+      return out;
+    char battery[32]{};
+    std::snprintf(battery,sizeof(battery),"BATTERY_%X",
+                  static_cast<unsigned>(reading.battery_bits));
+    append(out,"status","OK");
+    append(out,"battery",battery);
+    append(out,"software_version",reading.software_version);
+    return out;
+  }
   if (std::strcmp(driver, "lansenpu") == 0) {
     lansenpu::Reading reading{};
     if(lansenpu::decode(frame,size,reading)!=lansenpu::Status::Ok)

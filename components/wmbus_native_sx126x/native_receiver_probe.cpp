@@ -351,7 +351,9 @@ bool NativeReceiverProbe::publish_plain_batch2_(
                entry.id.c_str());
     // Publish only source-validated Lansen TPL status alongside its
     // successfully decoded counters. No status on failed/unknown frames.
-    if(std::strcmp(selected_driver,"lansenpu")==0)
+    if(std::strcmp(selected_driver,"lansenpu")==0 ||
+       std::strcmp(selected_driver,"lansendw")==0 ||
+       std::strcmp(selected_driver,"cma12w")==0)
       publish_xmq_text_(frame,entry.id,selected_driver,result);
     for(const auto &binding : xmq_sensors_) {
       if(binding.meter_id!=entry.id || binding.output==nullptr) continue;
@@ -896,7 +898,8 @@ void NativeReceiverProbe::setup() {
   }
   ESP_LOGI(TAG, "Native SX126x receiver ready; configured-only XMQ decoding");
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
-  ESP_LOGI(TAG, "XMQ AUTO selection: lansenpu/minomess/kamwater/apator162 "
+  ESP_LOGI(TAG, ""XMQ AUTO selection: lansenpu/lansendw/cma12w/"
+                "minomess/kamwater/apator162 "
                 "for configured verified-clear meters; encrypted needs explicit key. "
                 "No unconfigured meter publications");
 #endif

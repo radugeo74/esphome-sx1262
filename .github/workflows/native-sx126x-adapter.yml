@@ -390,6 +390,15 @@ jobs:
             -o /tmp/test-xmq-batch1-contract
           /tmp/test-xmq-batch1-contract
 
+      - name: Decode original Lansen DW and Elvaco CMA12w clear frames through native AUTO
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_lansendw_cma12w_native.cpp \
+            -o /tmp/test-lansen-dw-cma12w-native
+          /tmp/test-lansen-dw-cma12w-native
+
       - name: AUTO-select and decode original Lansen NOKEY fixtures with configured-only guards
         run: |
           python3 experimental/xmq/tools/build_native_generated.py
