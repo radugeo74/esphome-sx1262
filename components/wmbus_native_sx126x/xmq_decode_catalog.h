@@ -16,6 +16,7 @@
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
+#include "q400_plain.h"
 #include "mkradio4a_plain.h"
 #include "minomess_clear_prefix.h"
 #include "kamwater_clear_pipeline.h"
@@ -243,6 +244,19 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(r.flow) output.values[output.value_count++]={"volume_flow_m3h",r.flow_m3h};
     if(r.flow_temp) output.values[output.value_count++]={"flow_temperature_c",r.flow_c};
     if(r.return_temp) output.values[output.value_count++]={"return_temperature_c",r.return_c};
+    return PureDecodeStatus::Ok;
+  }
+  // Axioma Q400: only strictly unencrypted short-TPL standard fields.
+  if(driver_name && std::strcmp(driver_name,"q400")==0) {
+    if(!output.values || output.value_capacity<4)
+      return PureDecodeStatus::DecodeFailure;
+    q400::Reading r{};
+    if(q400::decode(frame,length,r)!=q400::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[output.value_count++]={"total_m3",r.total_m3};
+    if(r.flow) output.values[output.value_count++]={"volume_flow_m3h",r.flow_m3h};
+    if(r.temperature) output.values[output.value_count++]={"flow_temperature_c",r.temperature_c};
+    if(r.battery) output.values[output.value_count++]={"battery_pct",r.battery_pct};
     return PureDecodeStatus::Ok;
   }
   // Batch-2 native application decoding: a real receiver-code path,
