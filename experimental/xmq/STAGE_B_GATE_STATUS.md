@@ -39,6 +39,32 @@ The next work item is explicit per-meter key transport and native
 encrypted dispatcher handoff after DLL verification, then canary
 device validation with owner approval — NOT NVS.
 
+## Native Minomess converter DLL/TPL binding — 2026-11-07, CI pending
+
+Owner-confirmed full GitHub CI green through `d606d72` (run
+`42349861321`), including opt-in ESP32-S3 secure driver link,
+CCM/CMAC and existing non-secure build.
+
+The **original** Minomess XMQ wireless fixtures #3-#5
+show the radio converter DLL ID may differ from the underlying
+water meter's long TPL ID. Requiring DLL==TPL blocked these
+frames even when application decryption was correct.
+The receiver now accepts an **explicit** optional YAML
+`secure_meters[].dll_meter_id` for Minomess only; the DLL
+sender must be configured, and nested TPL identity/model must
+independently match the meter `meter_id` before decoding and
+publishing. There is NO blind gateway trust or automatic key
+selection. Conflicting/ambiguous converter IDs are rejected.
+
+An independent synthetic encrypted Minomess fixture + exact
+CRC-verified DLL validates positive and negative configured
+`batch2_secure::decode_configured` routing, and a build-only
+ESP32-S3 YAML verifies the distinct converter/meter bindings.
+This has **not yet** been confirmed green (run `42350691692`).
+No real radio frames, production keys, installed Heltec firmware
+or sensors are changed. The three batch-2 drivers remain
+experimental, not promoted to AUTO/SUPPORTED.
+
 ## Latest verified checkpoint — 2026-11-06
 
 Owner-confirmed GitHub Actions green through `7e89dec` on
