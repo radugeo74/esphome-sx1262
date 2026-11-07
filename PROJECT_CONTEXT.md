@@ -88,6 +88,30 @@ physical RF/HA validation was performed.
 `623b03e3`, [GitHub Actions #42404050221](https://github.com/radugeo74/esphome-sx1262/actions/runs/42404050221).
 The new offline-fixture CI must be independently verified.
 
+## MK Radio4a NOKEY adjustment — 2026-11-07 (new CI pending)
+
+Following the Topas correction, the two upstream `mkradio4a.xmq`
+`NOKEY` fixtures also decode without any AES key **as supplied
+already-readable data**; this behavior already existed in
+`components/wmbus_native_sx126x/mkradio4a_plain.h`.
+A new separate host-only adapter
+`experimental/semtech-radio/host_only/mkradio4a_supplied_clear_fixture.h`
+adds strict radio converter DLL and nested TPL identity verification,
+model, lengths, Mode-5 `0x0530` fixture layout, and the
+storage-one target/date field validation. New
+`test_mkradio4a_supplied_clear.cpp` checks both original
+warm/cold fixture values, wrong IDs and malformed data, and
+asserts the configured live plaintext decoder still rejects the
+Mode-5 samples.
+
+This is an **offline supplied-clear reference**, not an inference
+that on-air radio frames are unencrypted and not a change to
+`SECURE_ONLY`, `driver: auto`, or the live AES security path.
+Live MK Radio4a with Mode-5 still needs explicit key and two IDs
+in `secure_meters`. No physical Heltec flash, RF or HA claim.
+The new three-job workflow is `42410374030`; keep its result
+separate from the previous proven green code commit `623b03e3`.
+
 ## MK Radio4a configured secure receiver — 2026-11-07 (ALL CI GREEN)
 
 Owner authorized completing the existing post-decrypt-only `mkradio4a`
