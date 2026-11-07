@@ -35,7 +35,7 @@ inline Status decode(const uint8_t *frame, size_t length,
      frame[15]!=0x2F || frame[16]!=0x2F)
     return Status::NotSuppliedClear;
   Reading reading{};
-  if(decode_clear_application(frame+17,length-17,reading)!=Status::Ok)
+  if(decode_clear_application(frame+17,length-17,reading)!=topaseskr::Status::Ok)
     return Status::InvalidRecords;
   out=reading;
   return Status::Ok;
