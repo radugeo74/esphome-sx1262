@@ -42,47 +42,46 @@ See `experimental/xmq/STAGE_A_CLOSEOUT.md` for acceptance details and CI limits.
 
 ## Stage B active driver integration — 2026-11-07
 
-**Last owner-confirmed CI green: `1d3bbce`.** This included
-the actual native `decode_configured_plain_frame` clear-transport
-dispatch branches for **minomess, kamwater, apator162**, compiled host
-regressions and rejection of fake plaintext/encrypted input. Existing
-`fhkvdataiii` and `mkradio4` YAML/runtime behavior remains unchanged.
+**Last owner-confirmed CI green:** all three experimental native
+encrypted mbedTLS decoder paths compiled in the standalone ESP-IDF
+probe and host regressions at `d072669` / related branch commits.
+Do not equate these with live SX1262 reception. The already-green
+native clear-only batch-2 catalog branches and unaffected Techem
+`fhkvdataiii` / `mkradio4` remain the baseline.
 
-**New encrypted integration, CI PENDING (last code commit `d072669`):**
-In the *native receiver component source*, not in the old wmbusmeters
-stack, `oms_mode5_mbedtls.h` handles short/long OMS AES-CBC Mode-5,
-`kamwater_ell_ctr_mbedtls.h` handles ELL-II AES-CTR using the original
-XMQ IV/counter method, and `xmq_batch2_secure_dispatch.h` hands
-cryptographically transformed applications to the reviewed actual
-Minomess/Kamwater/Apator162 XMQ semantic decoders. Host regressions:
-- **Apator162 #19**: ORIGINAL public AES-CBC ciphertext, publicly
-  supplied all-zero source-fixture key, independent DLL CRC, ID,
-  decoded **7.512 m3**, malformed-mode/key/identity negatives.
-- **Kamwater**: synthetic NIST-key ELL AES-CTR around original public
-  compact TPL79; strict CRC/signature and **6.408 m3 total/target**.
-  This is not a genuine captured encrypted RF packet.
-- **Minomess**: synthetic AES-CBC Mode-5 ciphertext constructed from
-  public upstream NOKEY clear application and the original long
-  CI=72 TPL identity, **140.354 / 138.485 m3**; real NOKEY
-  plaintext must NOT be accepted as encrypted RF.
+**Current new change, CI PENDING (commit `1d96f01`):**
+The real `NativeReceiverProbe` now has a strictly opt-in YAML
+`secure_meters` list, each with 8-digit DLL meter ID, explicit
+`minomess` / `kamwater` / `apator162` driver and exactly 16
+AES key bytes supplied as 32 hexadecimal digits (use `!secret`
+in private YAML). The config forbids the same meter in regular
+`meter_drivers` and `secure_meters` and rejects duplicate secure
+meter IDs. Every secure meter automatically enters the configured
+DLL identity registry. The firmware holds only the 16-byte binary
+keys at runtime; keys must never enter project docs/logs.
 
-**Known CI defect corrected:** first ESP-IDF public Apator #19
-initializer lacked row commas; fixed in `d072669`. The new
-ESP-IDF probe + all three host crypto CI runs are not yet confirmed
-green. Do not claim device execution.
+On CRC-verified, CRC-stripped T1 and C1-A/B frames (including combined
+T1_C1), `publish_secure_batch2_` selects only the already-configured
+ID and driver, calls the strict
+`batch2_secure::decode_configured` entrypoint, then publishes
+only successfully decoded mapped numeric values and RSSI.
+Failed decryption or identity/format checks are terminal for
+that secure meter: **no publication and no plaintext/AUTO fallback**.
+Existing `native_publication_gate.h` and all ordinary
+Techem/portable YAML mappings remain untouched. The secure header
+is only compiled when `WMBUS_NATIVE_BATCH2_SECURE_ENABLED`
+is explicitly enabled by a nonempty secure YAML list.
+`BATCH2_PENDING` drivers stay outside ordinary `SUPPORTED` and AUTO.
 
-**What is actually left:** per-meter key configuration and the
-authenticated/decrypted path must be connected from the official
-SX126x complete verified radio callback to the secure native
-dispatcher, with explicit configuration and no fallback on invalid
-crypto/identity; real T1/C1 on-device captures and guarded canary
-OTA require owner authorization. The existing live
-`native_publication_gate.h` still blocks encrypted batch-2
-telegrams; current secure functions are callable but **NOT yet
-published to Home Assistant**. All three names remain
-`BATCH2_PENDING`, 0/3 live enabled, 0/39 real complete
-production-equivalent RF-to-sensor approvals. NO new NVS work:
-it is unrelated to finishing these three drivers.
+CI newly validates/compiles build-only
+`experimental/semtech-radio/ci/native-sx126x-batch2-lab.yaml`
+using three synthetic public IDs and public crypto test keys.
+The user-installed Heltec firmware is not modified; no physical
+radio, HA publication, power or field-key verification is claimed.
+**Still open:** native Kamwater OMS profile-D CCM message format,
+real on-air T1/C1 acceptance and minomess converter secondary
+identity cases; exact full upstream fixture-to-HA parity.
+No NVS work is required for these meter drivers.
 
 ## Next developer workflow
 
