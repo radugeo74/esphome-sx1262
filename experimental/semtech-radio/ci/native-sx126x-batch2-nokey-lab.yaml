@@ -1,0 +1,81 @@
+# CI-only syntax/build fixture. Pins are arbitrary devkit values, NOT Heltec wiring.
+# Build-only synthetic meter IDs; NO AES keys, no hardware pin claim.
+esphome:
+  name: native-sx126x-nokey-ci
+  friendly_name: Native SX126x No Key CI
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+spi:
+  clk_pin: GPIO9
+  mosi_pin: GPIO10
+  miso_pin: GPIO11
+
+external_components:
+  - source:
+      type: local
+      path: ../../../components
+    components: [sx126x, wmbus_native_sx126x]
+
+sx126x:
+  id: native_sx1262
+  hw_version: sx1262
+  modulation: FSK
+  frequency: 868950000
+  bitrate: 100000
+  deviation: 50000
+  bandwidth: 234_3kHz
+  shaping: NONE
+  crc_enable: false
+  whitening_enable: false
+  sync_value: [0x54, 0x3D]
+  preamble_size: 2
+  preamble_detect: 2
+  payload_length: 255
+  rx_start: true
+  rf_switch: false
+  busy_pin: GPIO13
+  dio1_pin: GPIO14
+  rst_pin: GPIO12
+  cs_pin: GPIO8
+
+wmbus_native_sx126x:
+  sx126x_id: native_sx1262
+  c1_format: A
+  link_mode: T1_C1
+  t1_raw_diagnostics: true
+  configured_meter_ids: []
+  c1_plaintext_publish: true
+  # These drivers are EXPLICIT only, never AUTO. All values synthetic.
+  # No secure_meters section and no AES key (including all-zero key).
+  meter_drivers:
+    - meter_id: "12345678"
+      dll_meter_id: "55036410" # synthetic Minomess radio converter
+      driver: minomess
+    - meter_id: "12345679"
+      driver: kamwater
+    - meter_id: "01282096"
+      driver: apator162
+  xmq_sensors:
+    - meter_id: "12345678"
+      field: total_m3
+      sensor:
+        name: "CI No Key Minomess Total"
+    - meter_id: "12345678"
+      field: target_m3
+      sensor:
+        name: "CI No Key Minomess Target"
+    - meter_id: "12345679"
+      field: total_m3
+      sensor:
+        name: "CI No Key Kamwater Total"
+    - meter_id: "01282096"
+      field: total_m3
+      sensor:
+        name: "CI No Key Apator Total"
