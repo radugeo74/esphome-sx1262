@@ -53,21 +53,21 @@ int main() {
   using Status=xmq_portable::batch2_secure::Status;
   const auto decode=[&](const std::vector<uint8_t> &f,
                         const char *meter,const char *dll,
-                        const uint8_t *aes=key) {
+                        const uint8_t *aes) {
     return xmq_portable::batch2_secure::decode_configured(
         f.data(),f.size(),meter,"mkradio4a",aes,result,nullptr,dll);
   };
-  assert(decode(checked.bytes,"66953825","00464936")==Status::Ok);
+  assert(decode(checked.bytes,"66953825","00464936",key)==Status::Ok);
   assert(result.value_count==1 && result.date_count==1);
   assert(std::strcmp(result.values[0].name,"target_m3")==0);
   assert(std::fabs(result.values[0].value-16.1)<1e-9);
   assert(result.dates[0].year==2021 &&
          result.dates[0].month==12 && result.dates[0].day==31);
-  assert(decode(checked.bytes,"66953826","00464936")!=Status::Ok);
+  assert(decode(checked.bytes,"66953826","00464936",key)!=Status::Ok);
   assert(result.value_count==0 && result.date_count==0);
-  assert(decode(checked.bytes,"66953825","00464937")==Status::WrongMeter);
+  assert(decode(checked.bytes,"66953825","00464937",key)==Status::WrongMeter);
   assert(result.value_count==0 && result.date_count==0);
-  assert(decode(checked.bytes,"66953825",nullptr)!=Status::Ok);
+  assert(decode(checked.bytes,"66953825",nullptr,key)!=Status::Ok);
   assert(result.value_count==0 && result.date_count==0);
   uint8_t wrong_key[16]{};std::memcpy(wrong_key,key,16);
   wrong_key[0]^=0x80;
@@ -76,17 +76,17 @@ int main() {
   assert(decode(checked.bytes,"66953825","00464936",nullptr)!=Status::Ok);
   auto modified=checked.bytes;
   modified[17]=0x01; // wrong nested HYD version
-  assert(decode(modified,"66953825","00464936")!=Status::Ok);
+  assert(decode(modified,"66953825","00464936",key)!=Status::Ok);
   modified=checked.bytes;modified[15]^=1; // wrong TPL manufacturer
-  assert(decode(modified,"66953825","00464936")!=Status::Ok);
+  assert(decode(modified,"66953825","00464936",key)!=Status::Ok);
   modified=checked.bytes;modified[22]=0; // security mode removed
-  assert(decode(modified,"66953825","00464936")!=Status::Ok);
+  assert(decode(modified,"66953825","00464936",key)!=Status::Ok);
   modified=checked.bytes;modified[23]^=0x40; // corrupt CBC marker
-  assert(decode(modified,"66953825","00464936")!=Status::Ok);
+  assert(decode(modified,"66953825","00464936",key)!=Status::Ok);
   modified=checked.bytes;modified.resize(71);modified[0]=70;
-  assert(decode(modified,"66953825","00464936")!=Status::Ok);
+  assert(decode(modified,"66953825","00464936",key)!=Status::Ok);
   modified=checked.bytes;modified.push_back(0);modified[0]=76;
-  assert(decode(modified,"66953825","00464936")!=Status::Ok);
+  assert(decode(modified,"66953825","00464936",key)!=Status::Ok);
   // Original source NOKEY is an already-decrypted application,
   // explicitly NOT a verifiable on-air encrypted frame.
   const auto supplied_plain=hex(
@@ -95,7 +95,7 @@ int main() {
     "542CF2DD8BEC869511B2DB8301C3ABA390FB4FDB6F1144DA1F3897"
     "DD55F2AD0D194F68510FF8FADFB9");
   assert(supplied_plain.size()==76);
-  assert(decode(supplied_plain,"66953825","00464936")!=Status::Ok);
+  assert(decode(supplied_plain,"66953825","00464936",key)!=Status::Ok);
   assert(result.value_count==0 && result.date_count==0);
   auto bad_crc=air;bad_crc[23]^=1;
   assert(wmbus_pure::verify_complete_frame(
