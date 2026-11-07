@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "experimental" / "xmq" / "tools"))
-from native_driver_specs import SUPPORTED, GENERATED, PORTABLE, POST_DECRYPT_ONLY, validate, catalog_fragment, compiled_fragment
+from native_driver_specs import SUPPORTED, CONFIGURED_NATIVE, CONFIGURABLE, GENERATED, PORTABLE, POST_DECRYPT_ONLY, validate, catalog_fragment, compiled_fragment
 from build_native_generated import build
 from tempfile import TemporaryDirectory
 from generate_ixml_cpp import generate
@@ -12,6 +12,8 @@ from generate_ixml_cpp import generate
 def main():
     assert SUPPORTED == tuple(d.name for d in GENERATED) + PORTABLE
     assert len(SUPPORTED) == len(set(SUPPORTED))
+    assert CONFIGURED_NATIVE == ("minomess", "kamwater", "apator162")
+    assert CONFIGURABLE == SUPPORTED + CONFIGURED_NATIVE
     assert validate(ROOT / "experimental" / "xmq")
     generated = build(ROOT)
     catalog = generated["xmq_native_descriptors.h"]
@@ -25,16 +27,18 @@ def main():
         assert f'namespace {driver.name} ' in generated["xmq_generated.h"]
     assert "lansenpu" in SUPPORTED
     assert 'std::strcmp(name, "lansenpu")' in compiled
-    for experimental in ("minomess","kamwater","apator162"):
+    for experimental in CONFIGURED_NATIVE:
+        assert experimental in CONFIGURABLE
         assert experimental not in SUPPORTED
         assert f'std::strcmp(name, "{experimental}")' not in compiled
     assert "mkradio4a" in POST_DECRYPT_ONLY
     assert "mkradio4a" not in SUPPORTED
     assert "mkradio4a" not in compiled  # post-decrypt only, never live RF
-    assert set(SUPPORTED).isdisjoint(POST_DECRYPT_ONLY)
+    assert set(CONFIGURABLE).isdisjoint(POST_DECRYPT_ONLY)
     native = (ROOT / "components" / "wmbus_native_sx126x" / "__init__.py").read_text()
     assert 'components" / "wmbus_radio' not in native
     assert "validate_driver_name" in native
+    assert "from native_driver_specs import CONFIGURABLE" in native
     # A new driver containing unsupported numeric operators must fail
     # compilation rather than silently omit a measurement field.
     official = (ROOT / "experimental/xmq/drivers/mkradio4.xmq").read_text()

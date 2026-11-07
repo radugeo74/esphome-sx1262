@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "experimental/xmq/tools"))
-from native_driver_specs import BATCH2_PENDING, SUPPORTED, POST_DECRYPT_ONLY
+from native_driver_specs import CONFIGURED_NATIVE, CONFIGURABLE, SUPPORTED, POST_DECRYPT_ONLY
 from portable_xmq import parse, validate_driver, blocks, values
 
 EXPECTED = {
@@ -46,21 +46,22 @@ def check(name):
         if EXPECTED[name][2] in reference and reference[EXPECTED[name][2]] is not None:
             usable += 1
     assert usable > 0, f"{name}: missing upstream reference for total_m3"
-    print(f"{name}: {len(fixture_blocks)} upstream fixtures, {usable} total readings (not live enabled)")
+    print(f"{name}: {len(fixture_blocks)} upstream fixtures, {usable} total readings (configured native software; physical RF unverified)")
     return len(fixture_blocks)
 
 def main():
-    assert tuple(EXPECTED) == BATCH2_PENDING
-    assert set(BATCH2_PENDING).isdisjoint(SUPPORTED + POST_DECRYPT_ONLY)
-    for name in BATCH2_PENDING:
+    assert tuple(EXPECTED) == CONFIGURED_NATIVE
+    assert set(CONFIGURED_NATIVE).isdisjoint(SUPPORTED + POST_DECRYPT_ONLY)
+    assert set(CONFIGURED_NATIVE).issubset(CONFIGURABLE)
+    for name in CONFIGURED_NATIVE:
         check(name)
     compiled = (ROOT / "components/wmbus_native_sx126x/xmq_native_compiled.h")
     # The generated header exists during CI after build_native_generated.py.
     if compiled.is_file():
         text = compiled.read_text()
-        for name in BATCH2_PENDING:
+        for name in CONFIGURED_NATIVE:
             assert f'std::strcmp(name, "{name}")' not in text
-    print("PASS: official batch-2 sources present; all remain fail-closed")
+    print("PASS: official batch-2 sources present; software-integrated and still fail-closed on invalid frames")
 
 if __name__ == "__main__":
     main()

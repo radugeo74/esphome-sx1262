@@ -47,10 +47,10 @@ def validate_driver_name(value):
     tool_dir = root / "experimental" / "xmq" / "tools"
     sys.path.insert(0, str(tool_dir))
     try:
-        from native_driver_specs import SUPPORTED, BATCH2_PENDING, MANUAL_PLAIN
+        from native_driver_specs import CONFIGURABLE
         # Batch-2 remains outside generic AUTO manifest: native AUTO
         # selection checks DLL/TPL identity, security and strict model modes.
-        if value not in SUPPORTED + BATCH2_PENDING + MANUAL_PLAIN:
+        if value not in CONFIGURABLE:
             raise cv.Invalid(f"Native XMQ driver {value!r} is not available")
     finally:
         sys.path.pop(0)

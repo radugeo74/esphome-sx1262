@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "experimental/xmq/tools"))
-from native_driver_specs import BATCH2_PENDING, SUPPORTED
+from native_driver_specs import CONFIGURED_NATIVE, CONFIGURABLE, SUPPORTED
 from portable_xmq import parse, validate_driver, blocks, values
 from test_batch2_field_gap_audit import tested_fields
 
@@ -64,13 +64,14 @@ def read_cases(driver):
     return cases
 
 def main():
-    assert tuple(EXPECTED_COUNTS) == BATCH2_PENDING
-    assert set(BATCH2_PENDING).isdisjoint(SUPPORTED)
+    assert tuple(EXPECTED_COUNTS) == CONFIGURED_NATIVE
+    assert set(CONFIGURED_NATIVE).isdisjoint(SUPPORTED)
+    assert set(CONFIGURED_NATIVE).issubset(CONFIGURABLE)
     all_cases = {}
     positive_compared=0
     positive_pending=0
     intentionally_rejected=0
-    for driver in BATCH2_PENDING:
+    for driver in CONFIGURED_NATIVE:
         all_cases[driver] = read_cases(driver)
         for row in all_cases[driver]:
             index=row["case"]
@@ -104,6 +105,7 @@ def main():
         "intentionally_rejected_source_fields": intentionally_rejected,
         "all_decodable_source_fields_have_partial_tests": positive_pending==0,
         "full_driver_parity_approved": False,
+        "configured_native_software_available": True,
         "radio_or_firmware_enablement_approved": False,
         "baseline": SUPPORTED_BASELINE,
         "drivers": all_cases,
@@ -124,7 +126,7 @@ def main():
               f"fields outstanding, {intentionally_rejected} fields "
               "from intentionally rejected invalid CCM fixture.")
         print("PASS ledger integrity; all 39 COMPLETE DRIVER parity checks "
-              "remain NOT_RUN. Do not enable batch2 drivers.")
+              "remain NOT_RUN. Configured native software is available; physical RF/HA approval remains open.")
 
 if __name__ == "__main__":
     main()

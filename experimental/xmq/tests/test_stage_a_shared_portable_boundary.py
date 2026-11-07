@@ -20,7 +20,7 @@ assert '#include "../../xmq/portable_cpp/apator162_ixml_fields.h"' in legacy
 assert "decode_clear_manufacturer" not in legacy
 assert '#include "apator162_ixml_fields.h"' in cpp
 assert 'apator162_reading.total_m3 - 7.512' in cpp
-assert "BATCH2_PENDING = (\"minomess\", \"kamwater\", \"apator162\")" in names
+assert "CONFIGURED_NATIVE = (\"minomess\", \"kamwater\", \"apator162\")" in names
 assert "PORTABLE = (" in names
 assert '"ultraheat", "sontex868")' in names
 assert "for header in (xmq / \"portable_cpp\").glob(\"*.h\")" in component.read_text(encoding="utf-8")
@@ -81,7 +81,7 @@ assert "apator162::decode_clear_manufacturer(" in catalog_branch
 assert "kamwater::ell_ctr::decrypt" not in catalog_branch
 assert "oms_ccm_mbedtls_probe" not in native_catalog
 assert "oms_tpl_cbc" not in native_catalog
-assert "BATCH2_PENDING = (\"minomess\", \"kamwater\", \"apator162\")" in names
+assert "CONFIGURED_NATIVE = (\"minomess\", \"kamwater\", \"apator162\")" in names
 assert '"ultraheat", "sontex868")' in names
 # Stage B explicitly binds all three encrypted decoders ONLY through an
 # opt-in secure_meters list and a CRC-verified SX1262 callback. Do not
@@ -128,8 +128,9 @@ assert "kamwater::ell_ctr::decrypt_ell_ii" not in native_catalog
 # parsers. IV remains guarded by its original host golden reference tests;
 # no end-to-end on-device encrypted-frame validation is claimed.
 native_manifest=(root/"experimental/xmq/tools/native_driver_specs.py").read_text(encoding="utf-8")
-assert 'BATCH2_PENDING = ("minomess", "kamwater", "apator162")' in native_manifest
+assert 'CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")' in native_manifest
 assert 'GENERATED = (' in native_manifest
+assert 'CONFIGURABLE = SUPPORTED + CONFIGURED_NATIVE' in native_manifest
 assert "kamwater_ell_ctr_iv.h" not in native_runtime
 
 # Stage B crypto boundary: ESP-IDF mbedTLS probe can compile and link,
@@ -176,4 +177,4 @@ assert "tampered_ccm" in ccm_probe_cpp
 assert "Status::BadTag" in ccm_probe_cpp
 assert "Status::BadTag" in ccm_probe_cpp
 print("PASS stage A: same Apator162, Kamwater status/numeric/TPL and wired Minomess algorithms for host and ESP-IDF, "
-      "pending driver remains unavailable for live YAML and RF publication")
+      "native drivers are configurable while live security/identity gates stay mandatory")
