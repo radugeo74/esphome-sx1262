@@ -390,6 +390,15 @@ jobs:
             -o /tmp/test-xmq-batch1-contract
           /tmp/test-xmq-batch1-contract
 
+      - name: Decode all three original Lansen NOKEY pulse-counter fixtures through configured native RX
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_lansenpu_native_no_key.cpp \
+            -o /tmp/test-lansenpu-native-no-key
+          /tmp/test-lansenpu-native-no-key
+
       - name: Test configured plaintext XMQ dispatch against official fixtures
         run: |
           python3 experimental/xmq/tools/build_native_generated.py
