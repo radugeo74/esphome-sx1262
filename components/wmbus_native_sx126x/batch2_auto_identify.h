@@ -46,6 +46,20 @@ inline DriverSelection select(const DriverSignature *signatures,size_t count,
                        address.version,address.device_type);
 }
 
+inline bool has_batch2_signature(const DriverSignature *signatures,
+                                 size_t count,
+                                 const identity::Address &address) {
+  for(size_t i=0;i<count;++i) {
+    const auto &s=signatures[i];
+    if(s.manufacturer==address.manufacturer &&
+       s.version==address.version &&
+       s.device_type==address.device_type &&
+       is_batch2(s.driver))
+      return true;
+  }
+  return false;
+}
+
 inline Result inspect(const uint8_t *frame,size_t length,
                       const DriverSignature *signatures,size_t count) {
   Result result{};
@@ -61,12 +75,17 @@ inline Result inspect(const uint8_t *frame,size_t length,
       : DriverSelection{DriverSelectionStatus::Unknown,nullptr,0};
 
   // Ambiguous MVT must never be described as a definitive model.
-  if(dll.status==DriverSelectionStatus::Ambiguous ||
-     tpl.status==DriverSelectionStatus::Ambiguous ||
-     ell.status==DriverSelectionStatus::Ambiguous) {
+  if((dll.status==DriverSelectionStatus::Ambiguous &&
+      has_batch2_signature(signatures,count,parsed.dll)) ||
+     (tpl.status==DriverSelectionStatus::Ambiguous &&
+      has_batch2_signature(signatures,count,parsed.tpl)) ||
+     (ell.status==DriverSelectionStatus::Ambiguous &&
+      has_batch2_signature(signatures,count,parsed.ell))) {
     result.state=State::Ambiguous;
     return result;
   }
+  // Unrelated converter-DLL MVT collisions must not hide an
+  // unambiguous Minomess identity in the actual long TPL.
 
   const bool dll_batch=dll.status==DriverSelectionStatus::Found &&
                        is_batch2(dll.driver);
