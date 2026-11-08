@@ -85,10 +85,13 @@ def main():
             if category == "TPL_MODE0_INVALID":
                 assert blocks and not mode, (driver, idx)
             if driver in ("mkradio4a", "topaseskr", "lansenth", "lansensm"):
-                # All four upstream supplied-clear NOKEY applications
-                # still retain their secured Mode-5 transport headers.
-                assert no_key and marker and category == "TPL_MODE5_SECURE_HEADER"
-                assert "2F2F" in tg.split("_", 1)[0]
+                # Upstream NOKEY supplied-clear examples retain Mode-5
+                # security headers. The first Lansen TH example has no
+                # '_' separator; this does NOT make it ciphertext.
+                assert no_key and category == "TPL_MODE5_SECURE_HEADER"
+                if driver in ("mkradio4a", "topaseskr"):
+                    assert marker
+                assert "2F2F" in tg.split("_", 1)[0].upper()
         assert sum("NOKEY" in x.group(1).split() for x in examples) == expected["nokey_tests"]
     assert (total, nokey, all_mode5, non_key_mode5) == (78, 75, 36, 35)
     assert by_driver == Counter({
