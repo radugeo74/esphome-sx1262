@@ -34,7 +34,10 @@ int main() {
   auto water=parse("4E44A5116464646470077AED004005_2F2F01FD08300C13741100007C1300000000FC101300000000FC201300000000726C00000B3B00000002FD748713025A6800C4016D3B177F2ACC011300020000");
   fields=xmq_portable::text_fields::decode(water.data(),water.size(),"hydrus");
   assert(fields.count==0); // original RF mode 5, no decryption
-  water[14]=0; // synthetic mode 0 to validate already-clear application
+  water[14]=0; // M=0 with original N=4 still invalid, no text fields
+  fields=xmq_portable::text_fields::decode(water.data(),water.size(),"hydrus");
+  assert(fields.count==0);
+  water[13]=0; // synthetic valid clear transport: M=N=0
   fields=xmq_portable::text_fields::decode(water.data(),water.size(),"hydrus");
   assert(has(fields,"target_datetime","2019-10-31 23:59"));
   return 0;
