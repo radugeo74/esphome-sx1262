@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last fully green code CI — OMS audit point 2:** [GitHub Actions #42456075410](https://github.com/radugeo74/esphome-sx1262/actions/runs/42456075410)
-(code commit `c87f754e6367e79301febdeeb460cddcfc1a7d8d`, all three jobs passed).
+**Last fully green code CI — AUTO audit point 3:** [GitHub Actions #42457899531](https://github.com/radugeo74/esphome-sx1262/actions/runs/42457899531)
+(code commit `2ebda8be74fd08e84e4c7ff7f6cfcbe9fd9b4866`, all three jobs passed).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
@@ -124,6 +124,12 @@ and `test_batch2_native_catalog_dispatch.cpp` separate
 metadata recognition, decoder readiness, ambiguity and plaintext
 refusal. No changes were made to the AES implementation, actual meter
 keys, active Heltec firmware or configured HA devices.
+
+**CI full green:** [#42457899531](https://github.com/radugeo74/esphome-sx1262/actions/runs/42457899531)
+(native packet tests, ESP-IDF ESP32-S3 link, ESPHome Heltec T1/C1
+builds). The final passive helper also rejects an isolated HYD MVT
+without the required TCH converter and forbids generic DLL fallback
+when a different nested TPL address is present.
 
 ### Supported driver selection
 
