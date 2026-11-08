@@ -20,6 +20,12 @@ inline batch2_identify::Result inspect(const uint8_t *frame,size_t length,
   if(identity_result.status!=identity::Status::Ok ||
      !identity_result.dll.decimal_bcd)
     return result;
+  // A long TPL may carry another meter behind a radio converter.
+  // Never fall back to the converter's generic DLL MVT when the nested
+  // address is different; that would claim the radio's driver as the meter.
+  if(identity_result.has_tpl &&
+     !identity::same_address(identity_result.dll,identity_result.tpl))
+    return result;
   const auto dll=auto_driver::identify(
       signatures,signature_count,identity_result.dll.manufacturer,
       identity_result.dll.version,identity_result.dll.device_type);
