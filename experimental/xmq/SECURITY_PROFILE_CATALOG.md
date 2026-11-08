@@ -78,8 +78,8 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`bfw240radio`:** Sase exemple BFW 240 radio Mode 0, structura producator fixa 55 octeti, curent si precedent HCA. Istoricul proprietar 18 luni si alte formate raman excluse.
 - **`qwaterv2`:** Subset standard CI 7A Mode 0 pentru total_m3, target_year_m3 si target_m3, din 8 exemple publice. CI 78 WalkBy, CI 72 si doua exemple cu cheie explicita nu intra in ruta radio plaintext.
 - **`hydrodigit`:** Patru exemple publice CI 7A Mode 0 pentru volum total. Un exemplu NOKEY cu Mode 5 AES si unul cu CI 8C ELL sunt excluse; campurile proprietare raman nedecodate.
-- **`itron`:** Doua exemple originale Itron ITW CI 7A Mode 0 pentru total_m3 si target_m3. Exemplul CI 72 si cel NOKEY cu AES Mode 5 sunt respinse; flagurile proprietare raman neinterpretate.
-- **`qualcosonic`:** Trei exemple AXI Mode 0 pentru total_m3, flow_temperature_c, return_temperature_c si power_kw. Energiile de incalzire/racire si valorile target cu modificatori VIF necesita un parser suplimentar.
+- **`itron`:** Doua exemple originale Itron ITW cu antet CI 7A Mode 0 publica total_m3 si target_m3. Exemplul CI 72 si un alt exemplu NOKEY AES Mode 5 sunt respinse, fara a interpreta flagurile proprietare.
+- **`qualcosonic`:** Trei exemple originale Qualcosonic Mode 0: total_m3, flow_temperature_c, return_temperature_c si power_kw. Energiile de incalzire/racire si set-date au modificatori VIF nesuportati in acest subset.
   Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
