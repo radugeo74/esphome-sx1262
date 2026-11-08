@@ -50,7 +50,9 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`mkradio4a`:** XMQ deja lizibil cu antet Mode 5; test AES recriptat sintetic. Convertor TCH/95/37 plus HYD/FE/06 ori WEH/FE/07 in TPL.
 - **`topaseskr`:** XMQ NOKEY deja lizibil sub antet Mode 5; AES validat cu date recriptate sintetic.
 - **`lansenth`:** Mode 5 cu cheie explicita, 2 fixture-uri post-decriptare; temperaturi si umiditate.
+  Doua aplicatii XMQ lizibile cu antet TPL Mode 5; CBC testat prin recriptare cu cheie sintetica, nu RF real.
 - **`lansensm`:** Mode 5 cu cheie explicita, 2 fixture-uri post-decriptare; stare fum numai ca telemetrie, NU alarma de incendiu certificata.
+  Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
 
