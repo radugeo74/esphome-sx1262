@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last fully green code CI — AUTO audit point 3:** [GitHub Actions #42457899531](https://github.com/radugeo74/esphome-sx1262/actions/runs/42457899531)
-(code commit `2ebda8be74fd08e84e4c7ff7f6cfcbe9fd9b4866`, all three jobs passed).
+**Last fully green code CI — secure-delivery audit point 4:** [GitHub Actions #42459485622](https://github.com/radugeo74/esphome-sx1262/actions/runs/42459485622)
+(code commit `1efb2ea455d645e193f09f33550a06f0235e1778`, all three jobs passed).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
@@ -71,6 +71,8 @@ No real meter IDs, keys or private RF captures were added.
 No change to `meter_drivers`, key selection, original AES algorithms
 or installed Heltec firmware. Genuine hardware/HA field acceptance
 remains a separate deployment decision.
+
+**CI 3/3 PASS:** [#42459485622](https://github.com/radugeo74/esphome-sx1262/actions/runs/42459485622) — native packet/CRC and mapped output host tests, ESP-IDF S3 link, ESPHome Heltec builds including combined T1/C1.
 
 ### OMS transport-security audit fix (2026-11-08)
 
