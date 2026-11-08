@@ -1,3 +1,18 @@
+
+## Lansen TH / SM — supplied-clear parsers (2026-11-08)
+
+Offline, host-only C++ application parsers were added for `lansenth` and
+`lansensm`, using original public XMQ records, no private meter IDs.
+**These are NOT registered live native drivers**: both upstream NOKEY
+fixtures advertise TPL AES Mode 5. NOKEY does not prove unencrypted RF.
+The parsers accept only deliberately supplied clear applications, reject
+unknown/duplicate/incomplete fields and reset outputs on error.
+A standalone host CI test covers the unencrypted application records,
+not a genuine RF decryption. A configured AES Mode-5 route with
+independent identity, ciphertext and security-negative tests is required
+before adding either to `SECURE_ONLY`, YAML or Home Assistant.
+The current active 16-driver catalog remains unchanged. No flash/OTA.
+
 # Project context — `experimental/xmq-multidriver-auto`
 
 > **Branch-specific context, updated 2026-11-07.** This section applies **only to `experimental/xmq-multidriver-auto`**. No default branch, legacy experimental branch, local YAML, hardware firmware or server configuration is changed by this documentation update. The older 2026-11-01 `xmq-independent-pipeline` notes are preserved below as historical context and **must not be interpreted as the active architecture on this branch**.

@@ -1,3 +1,18 @@
+
+## Lansen TH / SM — supplied-clear parsers (2026-11-08)
+
+Offline, host-only C++ application parsers were added for `lansenth` and
+`lansensm`, using original public XMQ records, no private meter IDs.
+**These are NOT registered live native drivers**: both upstream NOKEY
+fixtures advertise TPL AES Mode 5. NOKEY does not prove unencrypted RF.
+The parsers accept only deliberately supplied clear applications, reject
+unknown/duplicate/incomplete fields and reset outputs on error.
+A standalone host CI test covers the unencrypted application records,
+not a genuine RF decryption. A configured AES Mode-5 route with
+independent identity, ciphertext and security-negative tests is required
+before adding either to `SECURE_ONLY`, YAML or Home Assistant.
+The current active 16-driver catalog remains unchanged. No flash/OTA.
+
 # Native wM-Bus / XMQ on ESPHome SX126x
 
 **Experimental Heltec ESP32-S3 + SX1262 receiver** for wireless M-Bus

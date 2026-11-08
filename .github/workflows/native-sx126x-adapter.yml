@@ -73,6 +73,12 @@ jobs:
             experimental/semtech-radio/test_xmq_auto_registry.cpp \
             -o /tmp/test-xmq-auto-registry
           /tmp/test-xmq-auto-registry
+      - name: Test Lansen TH and SM supplied-clear application parsers (host-only, NOT RF)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_lansen_th_sm_supplied_clear.cpp \
+            -o /tmp/test-lansen-th-sm-supplied-clear
+          /tmp/test-lansen-th-sm-supplied-clear
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 16 drivers
