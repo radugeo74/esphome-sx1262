@@ -353,6 +353,13 @@ jobs:
             experimental/semtech-radio/test_batch2_auto_identification.cpp \
             -o /tmp/test-batch2-auto-identify
           /tmp/test-batch2-auto-identify
+      - name: Test actual T1/C1 passive AUTO adapter for all 16 native XMQ drivers
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x \
+            experimental/semtech-radio/test_passive_auto_identification.cpp \
+            -o /tmp/test-passive-auto-identification
+          /tmp/test-passive-auto-identification
       - name: Test independent DLL TPL address classification
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
