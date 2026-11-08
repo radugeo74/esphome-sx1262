@@ -283,6 +283,36 @@
       ],
       "oms_certified_sku": null,
       "evidence_note": "Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant."
+    },
+    {
+      "driver": "elvsense",
+      "group": "PORTABLE",
+      "mvt": [
+        "ELV/50/1B",
+        "ELV/51/1B",
+        "ELV/52/1B",
+        "ELV/53/1B",
+        "ELV/54/1B"
+      ],
+      "total_tests": 3,
+      "nokey_tests": 3,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Doar exemplul ES1 este TPL Mode 0, cu temperatura si baterie. Celelalte doua NOKEY au antete Mode 5; nu se publica fara decriptare verificata."
+    },
+    {
+      "driver": "lansenrp",
+      "group": "PORTABLE",
+      "mvt": [
+        "LAS/0B/32"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Doua exemple publice Mode 0, schema R4 cu stare, ascultare, contoare si baterie. Variantele neconfirmate sunt refuzate."
     }
   ]
 }

@@ -1,3 +1,27 @@
+## Calup native 19–20: Elvaco Sense + Lansen R4 (2026-11-08)
+
+`elvsense` and `lansenrp` are `PORTABLE` and selectable as an
+explicit `meter_drivers.driver` or as `auto` for a **configured** DLL ID.
+Only original Mode-0 clear frames pass the native publication and
+model-specific exact-record checks; passive AUTO never publishes.
+
+- Elvaco Sense: native temperature (`temperature_c`), battery
+  (`battery_v`), text `status=OK`. The only demonstrated clear profile
+  is upstream ES1; ES2 and synthetic CO2/humidity example are NOKEY
+  **Mode 5** and remain **blocked**. No keyless CO2 or RH claims.
+- Lansen repeater R4: mapped `total_routed_messages_counter`,
+  `used_router_slots_counter`, `seconds_to_mode_change_counter`,
+  `listen_timer_value_counter`, `pause_timer_value_counter`,
+  `start_time_value_counter`, `battery_v`, plus text `status` and
+  `is_repeater_listening` (YES/NO). Only the two published
+  same-layout clear fixtures are supported. Unknown variants reject.
+- Source: original GPL-3.0-or-later wmbusmeters XMQ definitions, copied
+  into `experimental/xmq/drivers`. No legacy receiver stack or private
+  telegrams, IDs or credentials were added.
+- Host tests prove parser/driver mapping, auto-selection and negative
+  security checks. CI ESPHome build is software-only; no OTA/flash or
+  on-air RF acceptance can be inferred.
+
 
 ## Lansen TH / SM — supplied-clear parsers (2026-11-08)
 

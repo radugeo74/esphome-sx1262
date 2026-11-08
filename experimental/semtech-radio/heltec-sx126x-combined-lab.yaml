@@ -90,6 +90,10 @@ wmbus_native_sx126x:
       driver: lansensm
       key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
+    - meter_id: "80008957"
+      driver: auto  # upstream public ES1 clear, not AES Mode 5
+    - meter_id: "00035946"
+      driver: auto  # upstream public Lansen R4 clear
     - meter_id: "00000000"
       driver: fhkvdataiii
     - meter_id: "00010206"
@@ -110,6 +114,14 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "80008957"  # upstream public test, MODE 0 ONLY
+      field: temperature_c
+      sensor:
+        name: "Lab Elvaco Sense Temperature"
+    - meter_id: "00035946"  # upstream public Lansen R4 repeater
+      field: total_routed_messages_counter
+      sensor:
+        name: "Lab Lansen R4 Routed Messages"
     - meter_id: "12340006"
       field: current_temperature_c
       sensor:
