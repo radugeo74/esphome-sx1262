@@ -23,6 +23,10 @@ inline batch2_identify::Result inspect(const uint8_t *frame,size_t length,
   const auto dll=auto_driver::identify(
       signatures,signature_count,identity_result.dll.manufacturer,
       identity_result.dll.version,identity_result.dll.device_type);
+  if(dll.status==auto_driver::RecognitionStatus::Ambiguous) {
+    result.state=batch2_identify::State::Ambiguous;
+    return result;
+  }
   if(dll.status!=auto_driver::RecognitionStatus::Candidate ||
      !dll.driver || batch2_identify::is_batch2(dll.driver))
     return result; // A TCH/95/37 converter alone is not an MK Radio4a meter.
