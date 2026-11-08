@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Native XMQ manifest regression; no personal telegrams or meter IDs."""
 from pathlib import Path
+import re
 import sys
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "experimental" / "xmq" / "tools"))
@@ -43,6 +44,23 @@ def main():
     assert "decode_topaseskr_mode5(" in native_secure
     native_yaml = (ROOT / "components/wmbus_native_sx126x/__init__.py").read_text()
     assert 'cv.one_of("minomess", "kamwater", "apator162", "mkradio4a"' in native_yaml
+    # A successfully compiled YAML must not silently lose secure_meters
+    # bindings at runtime. Cross-check the EXACT YAML and C++ allowlists.
+    cxx_bindings = (ROOT / "components/wmbus_native_sx126x/secure_meter_binding.h").read_text()
+    receiver = (ROOT / "components/wmbus_native_sx126x/native_receiver_probe.h").read_text()
+    yaml_match = re.search(
+        r"cv.Required\(CONF_DRIVER\): cv.one_of\(([^\n]+)", native_yaml)
+    cxx_match = re.search(
+        r"inline bool supported_driver\([^)]*\) \{(.*?)\n\}",
+        cxx_bindings, re.S)
+    assert yaml_match and cxx_match
+    yaml_drivers = set(re.findall(r'"([a-z0-9]+)"', yaml_match.group(1)))
+    runtime_drivers = set(re.findall(r'driver == "([a-z0-9]+)"', cxx_match.group(1)))
+    assert yaml_drivers == runtime_drivers == set(CONFIGURED_NATIVE + SECURE_ONLY), (
+        yaml_drivers, runtime_drivers)
+    assert "secure_bindings::add(this->secure_meters_,id,driver,key_hex,dll_id)" in receiver
+    assert 'driver != "minomess" && driver != "mkradio4a"' in cxx_bindings
+    assert 'entry[CONF_DRIVER] not in ("minomess", "mkradio4a")' in native_yaml
     native = (ROOT / "components" / "wmbus_native_sx126x" / "__init__.py").read_text()
     assert 'components" / "wmbus_radio' not in native
     assert "validate_driver_name" in native
