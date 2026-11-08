@@ -42,7 +42,10 @@ this is a narrowly constrained passive recognizer case ONLY,
 auto-decoding permission**. Conflicting and unknown nested identities
 fail closed and are not confidently named MK Radio4a.
 
-Covered by `test_batch2_auto_identification.cpp`,
+The actual receiver uses the pure `passive_auto_identify.h`
+helper, independently exercised by `test_passive_auto_identification.cpp`
+for all 16 families, converter-only refusal and generic MVT collisions.
+Also covered by `test_batch2_auto_identification.cpp`,
 `test_xmq_auto_registry.cpp`, and
 `test_batch2_native_catalog_dispatch.cpp`, including negative
 ambiguous-MVT and keyless plaintext-refusal cases. Code is
