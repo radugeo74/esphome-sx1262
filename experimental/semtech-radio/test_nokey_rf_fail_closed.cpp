@@ -41,6 +41,7 @@ int main() {
         frame.data(),frame.size(),id,dll,driver,captures,12,out);
   };
   const auto mode5 = [&](const std::vector<uint8_t> &frame) {
+    assert(!frame.empty() && frame.size()==static_cast<size_t>(frame[0])+1);
     const auto s=wmbus_pure::tpl_security::inspect(frame.data(),frame.size());
     assert(s.has_config_word && s.mode==5 && s.state==State::Encrypted);
   };
@@ -83,10 +84,9 @@ int main() {
 
   // Original Minomess upstream NOKEY after '_' is Mode-5 long TPL.
   const auto mino=from_xmq(
-    "6644496A1064035514377251345015496A0007EE0050052F2F_"
-    "0C1359000000026CBE2B82046CA12B8C0413FFFFFFFF8D0493132CFBFE"
-    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
-    "FFFFFFFF02FD1700002F2F");
+    "6644496A1064035514377251345015496A0007EE0050052F2F_0C1359000000026CBE2B8"
+    "2046CA12B8C0413FFFFFFFF8D0493132CFBFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF02FD1700002F2F");
   mode5(mino);
   assert(plain(mino,"15503451","55036410","minomess")!=PureDecodeStatus::Ok);
   assert(out.value_count==0 && out.date_count==0);
