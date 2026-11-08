@@ -50,6 +50,12 @@ only on these tests. Audit point 4 closes the software integration
 coverage gap; a real deployment and physical receive/HA validation
 remain deferred. Audit points 1–3 continue unchanged.
 
+**FULL GREEN (3/3):** [GitHub Actions #42459485622](https://github.com/radugeo74/esphome-sx1262/actions/runs/42459485622),
+code commit `1efb2ea455d645e193f09f33550a06f0235e1778`.
+Jobs: native packet/host tests including mapped output; ESP-IDF ESP32-S3
+portable link; native ESPHome Heltec and combined T1/C1 builds.
+Only software/build validation, no physical flash or RF/HA approval.
+
 ## Audit point 3 — Passive AUTO independent of AES / HA (2026-11-08)
 
 On `experimental/xmq-multidriver-auto`, the native receiver now logs
