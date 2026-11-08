@@ -130,6 +130,9 @@ int main() {
   assert(count==0);
   // Security mode 0 may be decoded only if payload is actually plaintext.
   raw[14]=0x00;
+  // Old fixture mutated only M, leaving N=4: invalid OMS Mode 0.
+  assert(decode_plain_frame(raw.data(),raw.size(),fields,32,count)!=Status::Ok);
+  raw[13]=0x00; // valid synthetic Mode 0 requires M=N=0
   assert(decode_plain_frame(raw.data(),raw.size(),fields,32,count)==Status::Ok);
   assert(std::fabs(value(fields,count,"total_m3")-1.174)<0.00001);
   return 0;
