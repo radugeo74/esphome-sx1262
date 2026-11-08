@@ -10,6 +10,38 @@
 4. Prefer small, auditable commits; include positive **and negative** regression tests; await reported CI green before expanding behavior. Fix CI regressions before moving to the next calup. Never claim CI passed, an `app_main` self-test executed on hardware, or live field validation unless it actually did.
 5. Never commit private meter IDs, captured production telegrams, encryption keys, Wi-Fi credentials, private YAML or other identifying telemetry. Synthetic IDs and original public upstream fixtures only.
 
+## Audit point 1 — secure_meter runtime registration (2026-11-08)
+
+**Implemented in this branch, pending final 3-job CI confirmation:**
+the YAML `secure_meters` schema permitted five drivers but
+`NativeReceiverProbe::add_secure_meter()` silently rejected two:
+`mkradio4a` and `topaseskr`. This is an integration defect,
+separate from their successful native AES decoder tests.
+
+Admission is now shared by
+`components/wmbus_native_sx126x/secure_meter_binding.h` and the
+actual `NativeReceiverProbe::add_secure_meter()` wrapper. The
+allowlist comprises **`minomess`, `kamwater`, `apator162`,
+`mkradio4a`, `topaseskr`**. Only Minomess and MK Radio4a may
+have a separate configured DLL sender; ID, key format and
+duplicate binding checks are preserved. The C++ test
+`experimental/semtech-radio/test_secure_meter_binding.cpp`
+uses the actual runtime admission function and tests all five
+positive registrations and negative cases. The Python manifest
+regression compares the exact YAML and C++ whitelists and verifies
+the receiver calls that function. The synthetic batch-2 ESPHome
+CI fixture now compiles all five keyed bindings, including Topas.
+
+**This is audit item 1 only.** The separate proposed corrections to
+OMS Mode-0/5-bit security inspection, AUTO recognition, and RF/HA
+end-to-end test coverage remain **NOT IMPLEMENTED**. No changes
+to the Techem live decoder, encrypted payload parser, installed
+Heltec firmware, actual meter IDs or AES production keys.
+The most recent confirmed previous full code CI was
+[run #42410374030](https://github.com/radugeo74/esphome-sx1262/actions/runs/42410374030);
+confirm the new CI run independently before marking the audit
+item fully green.
+
 ## Active architecture and working baseline
 
 - Hardware target: Heltec ESP32-S3 / SX1262 / 8 MB; ESPHome 2026.10.1, ESP-IDF 5.5.6 in the experimental build context. **The official ESPHome SX126x receiver is the sole radio owner**, with native T1/C1 handling and a bounded `components/wmbus_native_sx126x` application pipeline.
