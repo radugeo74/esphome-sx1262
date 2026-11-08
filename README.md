@@ -85,6 +85,44 @@ prevent this mismatch recurring. The ESPHome CI fixture now includes
 synthetic bindings for all five AES routes. This is software-only,
 not a claim of successful live RF/HA delivery.
 
+### Audit point 3: AUTO recognition is not AES decryption (2026-11-08)
+
+**Passive AUTO recognition is available for all 16 native driver families**
+on independently DLL-CRC-verified T1/C1 packets. The log label is
+`NATIVE AUTO` and includes `candidate`, `source=DLL/TPL/ELL`,
+`tpl_security`, `tpl_mode`, `driver_class`, and
+`decode_status=not_attempted`. The last field means exactly that:
+recognition alone did not call a decoder, try an AES key or publish any
+Home Assistant values. A verified unknown meter remains diagnostic-only.
+
+**Configured decoding is a separate capability:** 14 drivers remain
+eligible for `meter_drivers: driver: auto` (or an explicit driver)
+**only for supported clear RF profiles**. The remaining two,
+`mkradio4a` and `topaseskr`, remain `SECURE_ONLY`:
+encrypted Mode-5 RF requires an explicit `secure_meters` entry, its
+individual AES key and a successful application decoder. Neither is
+admitted as a plaintext AUTO decoder. A matching MVT is not a key and
+the upstream `NOKEY` fixtures do not permit ciphertext fallback.
+
+**Nested MK Radio4a identity:** the original XMQ warm-water profile
+contains `TCH/95/37` converter DLL and `HYD/FE/06` meter TPL;
+the cold-water profile contains `TCH/95/37` and `WEH/FE/07`.
+The latter is validated by the original upstream fixture but missing
+from `mkradio4a.xmq`'s `detect.mvt`: the passive recognizer accepts
+only that **exact converter + nested TPL pair**. It does **not**
+alter the generated global MVT registry, YAML schema, decoder or
+security/admission requirements. A TCH converter on its own, or a
+conflicting/unknown nested TPL model, is not identified as a confirmed
+MK Radio4a meter. `topaseskr` is identified passively for both
+documented `AMT/F1/06` and `AMT/F1/07` signatures.
+
+Regression tests `test_batch2_auto_identification.cpp`,
+`test_xmq_auto_registry.cpp` and
+`test_batch2_native_catalog_dispatch.cpp` separate
+metadata recognition, decoder readiness, ambiguity and plaintext
+refusal. No changes were made to the AES implementation, actual meter
+keys, active Heltec firmware or configured HA devices.
+
 ### Supported driver selection
 
 | Driver | `driver: auto` for a configured meter | Explicit `meter_drivers` |
@@ -161,8 +199,8 @@ wmbus_native_sx126x:
         unit_of_measurement: "m³"
 ```
 
-The `topaseskr` route is **never** part of `meter_drivers`,
-plaintext decoding or `driver: auto`.
+The `topaseskr` **decoding** route is **never** part of `meter_drivers`,
+plaintext decoding or `driver: auto`; metadata-only recognition is separate.
 
 ### Topas NOKEY fixtures: keyless *offline* decode
 
