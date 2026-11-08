@@ -30,6 +30,8 @@ jobs:
         run: python3 experimental/semtech-radio/ci/privacy_audit.py
       - name: Require Heltec lab YAML to compile same checked-out SX126x and RSSI code
         run: python3 experimental/semtech-radio/ci/test_heltec_lab_source_ref.py
+      - name: Check ESPHome 5.5.6 mirror and cache pins
+        run: python3 experimental/semtech-radio/ci/test_idf_mirror_ci_contract.py
       - name: Build input contract test
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
@@ -569,6 +571,14 @@ jobs:
 
   native-esphome-build:
     runs-on: ubuntu-24.04
+    env:
+      # ESPHome 2026.10.1 understands semicolon-separated framework mirrors.
+      # The first URL preserves the pinned ESPHome archive. Official Espressif
+      # release ZIP provides a fallback if GitHub release downloads return 504.
+      # Archive extraction checks file magic, not the temporary .tar.xz name.
+      ESPHOME_IDF_FRAMEWORK_MIRRORS: "https://github.com/esphome-libs/esp-idf/releases/download/v{VERSION}/esp-idf-v{VERSION}.tar.xz;https://dl.espressif.com/github_assets/espressif/esp-idf/releases/download/v{VERSION}/esp-idf-v{VERSION}.zip"
+      # Official Espressif alternative for xtensa/riscv/ROM toolchain assets.
+      IDF_GITHUB_ASSETS: dl.espressif.com/github_assets
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -576,6 +586,11 @@ jobs:
           python-version: '3.12'
       - name: Install pinned ESPHome
         run: python -m pip install 'esphome==2026.10.1'
+      - name: Restore cache for pinned ESPHome IDF framework and tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/esphome/idf
+          key: ${{ runner.os }}-${{ runner.arch }}-esphome-2026.10.1-idf-5.5.6-py312-v1
       - name: Guard official SX126x 2026.10.1 RX hook
         run: |
           SX126X_CPP=$(python -c 'from pathlib import Path; import esphome; print(Path(esphome.__file__).parent / "components/sx126x/sx126x.cpp")')

@@ -12,6 +12,24 @@
 
 ## Audit point 7 — SX1262 GFSK RSSI source (2026-11-08)
 
+**Follow-up GitHub 504 remediation (2026-11-08):**
+ESPHome 2026.10.1's actual `esphome/espidf/framework.py` accepts
+the semicolon-separated `ESPHOME_IDF_FRAMEWORK_MIRRORS` environment
+variable; archive extraction detects ZIP/XZ via magic bytes rather
+than the temporary download suffix. The `native-esphome-build` job
+now first tries the pinned esphome-libs IDF 5.5.6 tar.xz, then a
+fallback to Espressif's official 5.5.6 ZIP on
+`dl.espressif.com/github_assets`. The
+`IDF_GITHUB_ASSETS=dl.espressif.com/github_assets` flag uses the
+official Espressif mirror for compiler/ROM tool assets. A
+`~/.cache/esphome/idf` actions/cache key includes ESPHome 2026.10.1,
+ESP-IDF 5.5.6, Python 3.12 and architecture to avoid stale
+toolchains once the first successful installation seeds the cache.
+`test_idf_mirror_ci_contract.py` is a host CI policy guard.
+This modifies **only the CI download transport**. On-device RF
+acceptance and exact-commit ESPHome build success are still pending
+until confirmed by the current workflow run. No OTA/flash.
+
 **Follow-up CI source audit:** The T1 lab YAML was incorrectly cloning
 `experimental/semtech-sx126x-sx127x` even when the workflow ran on
 `experimental/xmq-multidriver-auto`. That meant the first ESPHome

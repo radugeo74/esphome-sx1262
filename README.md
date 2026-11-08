@@ -68,6 +68,19 @@ C++ compilation. Tracked in [issue #1](https://github.com/radugeo74/esphome-sx12
 The RSSI change is not considered fully green until this new
 exact-source CI build completes. No firmware was flashed.
 
+**CI download hardening (2026-11-08):** pinned ESPHome 2026.10.1
+supports `ESPHOME_IDF_FRAMEWORK_MIRRORS`. The build now tries its
+original `esphome-libs` ESP-IDF 5.5.6 tar.xz first, then the
+**official Espressif-hosted** 5.5.6 release ZIP as a distinct CDN
+fallback. `IDF_GITHUB_ASSETS=dl.espressif.com/github_assets` routes
+ESP-IDF compiler/ROM tool archives through Espressif's mirror.
+The pinned local tool cache `~/.cache/esphome/idf` is restored and
+saved by `actions/cache@v4` after a successful build. A host CI
+contract test asserts these URLs and both versions to guard future
+changes. No framework version or sensor/decoder behavior was changed.
+**The fallback requires a new successful full ESPHome build before
+this audit point can be called green.**
+
 
 For **GFSK GetPacketStatus (0x14)** the three bytes are
 `RxStatus`, **`RssiSync`** and **`RssiAvg`**. Their scale
