@@ -24,8 +24,9 @@ inline const char *label(State state) {
 // 0x7A: CI + access(1) + status(1) + configuration(2).
 // 0x72: CI + identification(4) + manufacturer(2) + version(1)
 //       + medium(1) + access(1) + status(1) + configuration(2).
-// OMS CF is little endian: security mode M = bits 8..12 (five bits),
-// encrypted block count N = bits 4..7. For mode 0 (no encryption),
+// OMS CF is little endian: security mode M = bits 8..12 (five bits).
+// For Mode 0/5, encrypted block count N = bits 4..7; other modes
+// can define a different configuration layout. For Mode 0,
 // OMS Vol. 2 §7.2.4.2 requires BOTH M=0 and N=0.
 // Other CF flags (B/A/S/C/R/H) do not by themselves imply encryption.
 inline Result inspect(const uint8_t *frame, size_t size) {
