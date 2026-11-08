@@ -1,5 +1,6 @@
 #pragma once
-// Passive six-driver recognition: batch-2 plus Lansen PU, DW, Elvaco CMA12w.
+// Passive identification of native XMQ families, including encrypted-only
+// MK Radio4a and Topas ESKR. This is NEVER a decoder-selection permit.
 // ONLY call with independently verified DLL/CRC-stripped T1/C1 frames.
 // Checks original XMQ detect.mvt metadata, including a long-TPL meter
 // behind a different DLL converter. Never reads AES keys, attempts a
@@ -31,7 +32,9 @@ inline bool is_batch2(const char *name) {
                   std::strcmp(name,"lansendw")==0 ||
                   std::strcmp(name,"cma12w")==0 ||
                   std::strcmp(name,"ultraheat")==0 ||
-                  std::strcmp(name,"sontex868")==0);
+                  std::strcmp(name,"sontex868")==0 ||
+                  std::strcmp(name,"mkradio4a")==0 ||
+                  std::strcmp(name,"topaseskr")==0);
 }
 
 inline uint32_t decimal_id(const identity::Address &address) {
@@ -96,6 +99,25 @@ inline Result inspect(const uint8_t *frame,size_t length,
                        is_batch2(dll.driver);
   const bool tpl_batch=tpl.status==DriverSelectionStatus::Found &&
                        is_batch2(tpl.driver);
+  // Original mkradio4a.xmq fixture #2: TCH/95/37 radio converter with
+  // a WEH/FE/07 cold-water TPL meter. Upstream detect.mvt lists HYD/FE/06
+  // and TCH/95/37, but not WEH. Recognize this exact *nested* fixture
+  // without broadening the generated registry or permitting plaintext.
+  const bool mk_converter=dll_batch &&
+      std::strcmp(dll.driver,"mkradio4a")==0 &&
+      parsed.dll.manufacturer==0x5068 && parsed.dll.version==0x95 &&
+      parsed.dll.device_type==0x37;
+  const bool mk_cold_tpl=mk_converter && parsed.ci==0x72 &&
+      parsed.has_tpl && tpl.status==DriverSelectionStatus::Unknown &&
+      parsed.tpl.manufacturer==0x5CA8 && parsed.tpl.version==0xFE &&
+      parsed.tpl.device_type==0x07;
+  // A TCH converter alone does not prove what meter it carries.
+  // Refuse classification if the nested model is absent or unknown.
+  if(mk_converter && (parsed.ci!=0x72 || !parsed.has_tpl ||
+      (!tpl_batch && !mk_cold_tpl))) {
+    result.state=State::Unknown;
+    return result;
+  }
   const bool ell_batch=ell.status==DriverSelectionStatus::Found &&
                        is_batch2(ell.driver);
   if((tpl_batch && dll_batch && std::strcmp(tpl.driver,dll.driver)!=0) ||
@@ -106,7 +128,11 @@ inline Result inspect(const uint8_t *frame,size_t length,
   }
 
   const identity::Address *chosen=nullptr;
-  if(tpl_batch) {
+  if(mk_cold_tpl) {
+    chosen=&parsed.tpl;
+    result.source=Source::Tpl;
+    result.driver="mkradio4a";
+  } else if(tpl_batch) {
     chosen=&parsed.tpl;
     result.source=Source::Tpl;
     result.driver=tpl.driver;
