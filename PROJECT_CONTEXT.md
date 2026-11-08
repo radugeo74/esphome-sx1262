@@ -10,6 +10,37 @@
 4. Prefer small, auditable commits; include positive **and negative** regression tests; await reported CI green before expanding behavior. Fix CI regressions before moving to the next calup. Never claim CI passed, an `app_main` self-test executed on hardware, or live field validation unless it actually did.
 5. Never commit private meter IDs, captured production telegrams, encryption keys, Wi-Fi credentials, private YAML or other identifying telemetry. Synthetic IDs and original public upstream fixtures only.
 
+## Audit point 2 — OMS TPL security classification (2026-11-08)
+
+Implemented **only on this branch**: `tpl_security_probe.h`
+previously masked security mode with `& 0x0F` (only four bits)
+and accepted mode 0 with nonzero N encrypted-block count.
+OMS Vol. 2 §7.2.4.2, Table 19 (Issue 5.0.1) defines
+M=bits 8..12 (five bits), N=bits 4..7, and requires
+**M=0 and N=0** for no encryption. See
+https://oms-group.org/wp-content/uploads/2024/10/OMS-Spec_Vol2_Primary_v501_01.pdf .
+
+Now `tpl_security::inspect` reads all five bits, allows clear
+only for M=N=0, reports 4/5/7/10/13 as encrypted and treats
+unsupported/reserved security configurations (including
+mode 0 with N!=0, and modes 16..31) as Unknown.
+The existing `native_publication_gate.h` already rejects
+both Encrypted and Unknown, so no decoder changes are needed.
+Keep manufacturer-specific CI A0/A2 on their existing strict
+driver-specific path; this is NOT a blanket approval for
+encrypted payloads or AUTO decryption.
+
+Test source:
+`experimental/semtech-radio/tests/test_tpl_security_probe.cpp`
+checks both short CI=7A and long CI=72 CF offsets,
+M=0,N>0 fail-closed, M=16 not aliased to zero,
+known encrypted modes, and valid clear configurations.
+`experimental/semtech-radio/test_native_publication_gate.cpp`
+asserts denial of Home Assistant publication for both failure
+classes with both CI variants, preserving genuine Mode-0 N=0.
+No flash, RF assertions or unrelated architecture changes.
+**Check the new three-job CI run before claiming fully green.**
+
 ## Audit point 1 — secure_meter runtime registration (2026-11-08)
 
 **Implemented in this branch, pending final 3-job CI confirmation:**
