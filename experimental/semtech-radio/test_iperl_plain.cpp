@@ -21,7 +21,12 @@ int main() {
   using namespace xmq_portable::iperl;
   Reading r{};
   auto a=hex("1E44AE4C9956341268077A36001000_2F2F0413181E0000023B00002F2F2F2F");
-  assert(decode(a.data(),a.size(),r) == Status::Ok);
+  // Upstream #1 says "after decryption", but its CF is M=0,N=1.
+  // The RF entrypoint must REJECT it; only offline clear-app parsing
+  // may read its already-supplied measurement records.
+  assert(decode(a.data(),a.size(),r) == Status::Encrypted);
+  assert(r.total_m3==0.0 && r.max_flow_m3h==0.0);
+  assert(decode_clear_application(a.data()+15,a.size()-15,r)==Status::Ok);
   assert(std::fabs(r.total_m3 - 7.704)<0.00001);
   assert(r.max_flow_m3h == 0.0 && !r.power_low);
   auto b=hex("1844AE4C4455223368077A55000000_041389E20100023B0000");
@@ -37,6 +42,12 @@ int main() {
   assert(r.total_m3==0.0);
   c=b; c[13]=0x00; c[14]=0x05; // AES mode 5 must not be interpreted as plaintext
   assert(decode(c.data(),c.size(),r) == Status::Encrypted);
+  c=b; c[13]=0x10; c[14]=0x00; // Mode 0 with N=1 is INVALID OMS
+  assert(decode(c.data(),c.size(),r) == Status::Encrypted);
+  assert(r.total_m3==0.0);
+  c=b; c[13]=0x00; c[14]=0x10; // 5th mode bit: M=16, NOT M=0
+  assert(decode(c.data(),c.size(),r) == Status::Encrypted);
+  assert(r.total_m3==0.0);
   c=b; c[15]=0x84; // unsupported DIFE must fail closed
   assert(decode(c.data(),c.size(),r) == Status::Unsupported);
   c=b; c.resize(20); c[0]=19; // truncated records with consistent DLL length

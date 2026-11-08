@@ -29,9 +29,18 @@ compiles against **the actual production** `tpl_security::inspect`,
 MK Radio4a and Minomess supplied-clear Mode-5 XMQ specimens
 must NOT decode or publish on the no-key RF path. An iPERL
 valid Mode-0 fixture still decodes; M=0,N=1 is rejected.
-No receiver/parser/driver changes were justified in this
-stage; host tests and the source evidence catalog provide
-the regression fence. Verify *all applicable CI jobs*
+A previously concealed **decoder-level security gap was found by the
+host regression**: `iperl_plain.h::decode` masked only four mode
+bits and accepted a public NOKEY M=0,N=1 invalid Mode-0 header.
+Actual T1/C1 HA publication already blocked it via
+`publication::inspect`, but a direct decoder call could parse it.
+Fix: iPERL's full RF `decode()` now calls the shared five-bit
+`tpl_security::inspect`; the generic configured catalog adds its
+own publication admission gate; a separate
+`decode_clear_application()` preserves offline supplied-clear
+parity without claiming an unencrypted RF packet. Added negative
+tests for N!=0 and M=16, with positive Mode-0 N=0 preserved.
+No real RF, keys, installed firmware or unrelated drivers changed. Verify *all applicable CI jobs*
 for the exact commit; software green != hardware verification.
 
 ## Audit point 5 — OMS security evidence catalog (2026-11-08)

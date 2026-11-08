@@ -37,6 +37,15 @@ ruleaza in CI: exemplele deja lizibile din Q400/Minomess/Topas/
 MK Radio4a nu pot ocoli `publication::inspect` sau
 `batch2_plain::decode_configured`. Un iPERL Mode 0 valid ramane
 acceptat; un Mode 0 cu N nenul este respins.
+
+**Descoperire prin regresie:** vechiul `iperl::decode()` verifica
+numai 4 biti ai modului, fara N. Desi publicarea normala era
+blocata deja de filtrul receptorului, apelul direct putea decoda
+un fixture `NOKEY` cu M=0,N=1. Acum si decodorul iPERL
+aplica filtrul OMS complet, iar `xmq_decode_catalog.h` repeta
+admiterea de publicare. Datele deja lizibile ale fixture-ului
+sunt testate separat prin `decode_clear_application()`, fara
+sa fie prezentate ca un cadru RF necriptat.
 Vezi [catalogul de dovezi](experimental/xmq/SECURITY_PROFILE_CATALOG.md).
 Nu au fost schimbate decodoarele, cheile ori firmware-ul instalat.
 

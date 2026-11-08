@@ -129,6 +129,11 @@ inline PureDecodeStatus decode_configured_plain_frame(
   // Strict CI=7A Sensus iPERL plaintext path, using official XMQ fixtures.
   // Encrypted telegrams cannot enter this path before a validated decryptor.
   if (driver_name && std::strcmp(driver_name, "iperl") == 0) {
+    // Defense in depth: enforce the same OMS/identity gate used by
+    // NativeReceiverProbe, not merely application-record plausibility.
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
     if (!output.values || output.value_capacity < 2)
       return PureDecodeStatus::DecodeFailure;
     iperl::Reading water{};

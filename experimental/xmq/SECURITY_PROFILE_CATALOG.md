@@ -62,6 +62,16 @@ pentru Mode 0 conform OMS, desi fixture-ul foloseste `NOKEY`.
 Alt exemplu iPERL cu **M=0, N=0** este acceptat de ruta nativa
 plaintext. Nu interzicem profilurile realmente necriptate.
 
+**Corectie de securitate descoperita in aceasta etapa:** decodorul
+direct `iperl::decode` verifica anterior numai 4 biti ai lui M si
+nu verifica N; putea citi offline exemplul M=0,N=1 ca si cum ar fi
+un cadru necriptat. Publicarea prin receptor era deja blocata.
+Am unit verificarea iPERL cu `tpl_security::inspect` (M pe 5 biti,
+M=0,N=0 obligatorii), am adaugat un al doilea control in
+`decode_configured_plain_frame` si am separat
+`iperl::decode_clear_application` numai pentru teste offline
+cu date deja lizibile. Nu au fost modificate telegramele XMQ.
+
 **Garantiile din CI:** `test_nokey_fixture_provenance.py` analizeaza
 fiecare sursa XMQ, fara sa deduca securitatea din `NOKEY` sau
 `2F2F`. `test_nokey_rf_fail_closed.cpp` foloseste chiar
