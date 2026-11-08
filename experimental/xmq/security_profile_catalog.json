@@ -375,6 +375,35 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Suport nativ limitat la doua exemple radio Mode 0: energie kWh, volum m3 si target kWh optional; M-Bus cablat si exemplul AES Mode 5 NOKEY sunt excluse."
+    },
+    {
+      "driver": "evo868",
+      "group": "PORTABLE",
+      "mvt": [
+        "MAD/50/06",
+        "MAD/50/07",
+        "MAD/50/16"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Numai doua exemple publice TPL Mode 0 cu total si consum la data de referinta. Istoricul extins si variantele necunoscute nu sunt decodate."
+    },
+    {
+      "driver": "supercom587",
+      "group": "PORTABLE",
+      "mvt": [
+        "SON/3C/06",
+        "SON/3C/07"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Numai profilul clar Sontex 587 demonstrat de doua exemple publice apa rece/calda. Total BCD m3 si stare OK numai dupa verificarea formatului."
     }
   ]
 }

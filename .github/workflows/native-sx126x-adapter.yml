@@ -118,7 +118,7 @@ jobs:
           /tmp/test-evo868-supercom587
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
-      - name: Audit OMS security evidence catalog for all 24 drivers
+      - name: Audit OMS security evidence catalog for all 26 drivers
         run: python3 experimental/xmq/tests/test_security_profile_catalog.py
       - name: Check NOKEY provenance and 40 encrypted-header counterexamples from all XMQ fixtures
         run: python3 experimental/xmq/tests/test_nokey_fixture_provenance.py
