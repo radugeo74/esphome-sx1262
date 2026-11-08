@@ -190,16 +190,40 @@ static void log_verified_identities(
       policy.multiple_configured_ids ? "yes" : "no");
 }
 
-// Metadata-only discovery: both T1 and C1 call this ONLY after their
-// independent full DLL CRC gate. This does not change the AUTO decoder
+// Metadata-only recognition for all 16 native XMQ families: T1 and C1
+// call this ONLY after their independent full DLL CRC gate. This does not change the AUTO decoder
 // manifest, configured meter bindings, or any sensor publication.
-void NativeReceiverProbe::log_batch2_auto_(
+void NativeReceiverProbe::log_native_auto_(
     const std::vector<uint8_t> &frame,uint32_t dll_meter_id,const char *link) {
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
-  const auto candidate=wmbus_pure::batch2_identify::inspect(
+  auto candidate=wmbus_pure::batch2_identify::inspect(
       frame.data(),frame.size(),
       wmbus_pure::generated::signatures,
       wmbus_pure::generated::signature_count);
+  // Nested-aware recognition handles converter/ELL and SECURE_ONLY.
+  // For other supported native families, fall back only to a distinct
+  // unambiguous DLL-MVT candidate. Do NOT downgrade ambiguous nested
+  // headers or classify a TCH/95/37 converter without its TPL meter.
+  if(candidate.state==wmbus_pure::batch2_identify::State::Unknown) {
+    const auto identity=wmbus_pure::identity::inspect(frame.data(),frame.size());
+    if(identity.status==wmbus_pure::identity::Status::Ok &&
+       identity.dll.decimal_bcd) {
+      const auto dll=wmbus_pure::auto_driver::identify(
+          wmbus_pure::generated::signatures,
+          wmbus_pure::generated::signature_count,
+          identity.dll.manufacturer,identity.dll.version,
+          identity.dll.device_type);
+      if(dll.status==wmbus_pure::auto_driver::RecognitionStatus::Candidate &&
+         dll.driver && !wmbus_pure::batch2_identify::is_batch2(dll.driver)) {
+        candidate.state=wmbus_pure::batch2_identify::State::Candidate;
+        candidate.source=wmbus_pure::batch2_identify::Source::Dll;
+        candidate.driver=dll.driver;
+        candidate.meter_id=dll_meter_id;
+        candidate.decimal_bcd=true;
+        candidate.different_dll_id=false;
+      }
+    }
+  }
   if(candidate.state!=wmbus_pure::batch2_identify::State::Candidate ||
      candidate.driver==nullptr)
     return;
@@ -584,7 +608,7 @@ void NativeReceiverProbe::on_t1_stream(void *context, const uint8_t *data,
       }
       // The batch-2 candidate may be nested in the TPL behind a converter.
       // Recognition is separate from AUTO configured driver selection.
-      self->log_batch2_auto_(frame.bytes,frame.header.meter_id,"T1");
+      self->log_native_auto_(frame.bytes,frame.header.meter_id,"T1");
       // Restore the pre-refactor trigger contract: every CRC-verified T1
       // frame is observable by on_verified, regardless of YAML meter IDs.
       // This is a user-defined diagnostic event, not an XMQ sensor update.
@@ -720,7 +744,7 @@ void NativeReceiverProbe::on_c1_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.bytes.size()),
              static_cast<unsigned>(checked.frame.header.ci),
              wmbus_pure::tpl_security::label(security.state));
-    self->log_batch2_auto_(checked.frame.bytes,checked.frame.header.meter_id,
+    self->log_native_auto_(checked.frame.bytes,checked.frame.header.meter_id,
                            self->c1_format_b_ ? "C1-B" : "C1-A");
     if (!self->publish_secure_batch2_(
             checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm) &&
@@ -815,7 +839,7 @@ void NativeReceiverProbe::on_combined_stream(void *context, const uint8_t *data,
              static_cast<unsigned>(checked.frame.header.ci),
              kind == registry::Kind::Configured ? "yes" : "no",
              wmbus_pure::tpl_security::label(security.state));
-    self->log_batch2_auto_(checked.frame.bytes,checked.frame.header.meter_id,
+    self->log_native_auto_(checked.frame.bytes,checked.frame.header.meter_id,
                            mode==boundary::Mode::C1A ? "C1-A" : "C1-B");
     if (!self->publish_secure_batch2_(
             checked.frame.bytes, checked.frame.header.meter_id, rssi_dbm) &&
