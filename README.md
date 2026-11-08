@@ -13,6 +13,40 @@ independent identity, ciphertext and security-negative tests is required
 before adding either to `SECURE_ONLY`, YAML or Home Assistant.
 The current active 16-driver catalog remains unchanged. No flash/OTA.
 
+## Lansen TH / SM — explicit AES Mode 5 native route (2026-11-08)
+
+Both are `SECURE_ONLY` on `experimental/xmq-multidriver-auto`:
+never plaintext `meter_drivers` or AES `driver: auto`.
+The software pipeline is CRC-verified T1/C1 -> explicit configured
+meter ID, driver and AES-128 key -> strict LAS MVT and Mode-5 transport ->
+two-block AES-CBC -> strict complete-application parser -> mapped numeric
+fields and RSSI. The existing `secure_delivery` reject path ensures
+zero sensor publication on mismatched sender or failed decrypt.
+
+The four original public `NOKEY` XMQ examples are supplied-clear
+applications under Mode-5 headers, NOT independent encrypted RF
+golden vectors. Tests re-encrypt them with synthetic keys; live radio
+interoperability has **not** been verified. AES-CBC does **not** provide
+cryptographic authentication. The `lansensm` `smoke_detected` field is
+**telemetry only**, NOT a certified fire/smoke alarm. Do not use it as
+the sole source for life-safety actions.
+
+Example: configure only if you possess the correct genuine AES key.
+```yaml
+wmbus_native_sx126x:
+  secure_meters:
+    - meter_id: "12345678"  # synthetic, replace with actual device ID
+      driver: lansenth
+      key: !secret lansen_th_aes_key
+  xmq_sensors:
+    - meter_id: "12345678"
+      field: current_temperature_c
+      sensor:
+        name: "Example Lansen TH temperature"
+```
+The YAML excerpt is illustrative; the complete SX126x configuration
+is still required. No production OTA/flash was performed.
+
 # Native wM-Bus / XMQ on ESPHome SX126x
 
 **Experimental Heltec ESP32-S3 + SX1262 receiver** for wireless M-Bus

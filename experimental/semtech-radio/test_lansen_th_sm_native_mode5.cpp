@@ -1,6 +1,7 @@
 // End-to-end native keyed dispatch, four original public applications
 // independently re-encrypted with a synthetic AES-128 key. No RF validation.
 #include "components/wmbus_native_sx126x/xmq_batch2_secure_dispatch.h"
+#include "components/wmbus_native_sx126x/secure_meter_delivery.h"
 #include <mbedtls/aes.h>
 #include <cassert>
 #include <cmath>
@@ -60,6 +61,31 @@ int main(){
        bytes.data(),bytes.size(),id,driver,k,out);
    };
    assert(decode(cipher,ids[i],key)==S::Ok);
+   // The actual production secure delivery helper verifies binding,
+   // AES, mapped output callbacks and RSSI without any plaintext fallback.
+   using namespace esphome::wmbus_native_sx126x;
+   std::vector<secure_bindings::Entry> bindings{};
+   const std::string key_hex="0102030405060708090A0B0C0D0E0F10";
+   assert(secure_bindings::add(bindings,ids[i],driver,key_hex,ids[i]));
+   secure_delivery::Result delivery{};
+   assert(secure_delivery::evaluate(cipher.data(),cipher.size(),
+          ids[i],bindings,delivery)==secure_delivery::Outcome::Ready);
+   size_t numeric_calls=0,rssi_calls=0,text_calls=0;
+   secure_delivery::emit_mapped(delivery,-65.0f,
+      [&](const char*,double){++numeric_calls;},
+      [&](const char*,const char*){++text_calls;},
+      [&](float){++rssi_calls;});
+   assert(numeric_calls==(i<2?6u:4u) && text_calls==0 && rssi_calls==1);
+   auto bad_bindings=bindings;
+   bad_bindings[0].key[15]^=1;
+   assert(secure_delivery::evaluate(cipher.data(),cipher.size(),
+          ids[i],bad_bindings,delivery)==secure_delivery::Outcome::Rejected);
+   numeric_calls=rssi_calls=text_calls=0;
+   secure_delivery::emit_mapped(delivery,-65.0f,
+      [&](const char*,double){++numeric_calls;},
+      [&](const char*,const char*){++text_calls;},
+      [&](float){++rssi_calls;});
+   assert(numeric_calls==0 && rssi_calls==0 && text_calls==0);
    if(i==0){assert(field(out,"current_temperature_c",21.8));
             assert(field(out,"current_relative_humidity_rh",43));}
    if(i==1){assert(field(out,"current_temperature_c",-15.73));
