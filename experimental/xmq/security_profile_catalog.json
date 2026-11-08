@@ -430,6 +430,62 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Sase exemple BFW 240 radio Mode 0, structura producator fixa 55 octeti, curent si precedent HCA. Istoricul proprietar 18 luni si alte formate raman excluse."
+    },
+    {
+      "driver": "qwaterv2",
+      "group": "PORTABLE",
+      "mvt": [
+        "QDS/33/37",
+        "QDS/35/06",
+        "QDS/35/07",
+        "QDS/35/37",
+        "QDS/16/06",
+        "QDS/16/07",
+        "QDS/17/06",
+        "QDS/17/07",
+        "QDS/18/06",
+        "QDS/18/07",
+        "QDS/19/06",
+        "QDS/19/07",
+        "QDS/1A/06",
+        "QDS/1A/07",
+        "QDS/1D/06",
+        "QDS/1D/07",
+        "QDS/36/06",
+        "QDS/36/07",
+        "LSE/19/07",
+        "LSE/1A/06",
+        "LSE/1A/07",
+        "LSE/1D/06",
+        "LSE/1D/07",
+        "LSE/33/37",
+        "LSE/35/37",
+        "LSE/36/06",
+        "LSE/36/07"
+      ],
+      "total_tests": 23,
+      "nokey_tests": 21,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Subset standard CI 7A Mode 0 pentru total_m3, target_year_m3 si target_m3, din 8 exemple publice. CI 78 WalkBy, CI 72 si doua exemple cu cheie explicita nu intra in ruta radio plaintext."
+    },
+    {
+      "driver": "hydrodigit",
+      "group": "PORTABLE",
+      "mvt": [
+        "BMT/13/06",
+        "BMT/17/06",
+        "BMT/13/07",
+        "BMT/15/07",
+        "BMT/17/07"
+      ],
+      "total_tests": 6,
+      "nokey_tests": 6,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Patru exemple publice CI 7A Mode 0 pentru volum total. Un exemplu NOKEY cu Mode 5 AES si unul cu CI 8C ELL sunt excluse; campurile proprietare raman nedecodate."
     }
   ]
 }
