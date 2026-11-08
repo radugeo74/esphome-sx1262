@@ -55,7 +55,9 @@ int main() {
     "02FD1700002F2F");
   assert(minomess.size()==size_t(minomess[0])+1u);
   minomess[8]=0x01; minomess[9]=0x06; // match nested TPL
-  minomess[22]=0x00; // MODE 0 synthetic; original is MODE 5
+  minomess[22]=0x00; // M=0, but original N=5 is still INVALID clear CF
+  assert(decode(minomess,"12345678","minomess")!=Status::Ok);
+  minomess[21]=0x00; // synthetic Mode 0 requires M=N=0
   assert(decode(minomess,"12345678","minomess")==Status::Ok);
   assert(std::fabs(value(result,"total_m3")-140.354)<1e-6);
   assert(std::fabs(value(result,"target_m3")-138.485)<1e-6);
@@ -99,7 +101,7 @@ int main() {
   assert(result.value_count==0);
   assert(plain(converted,"12345678","55036410","auto")!=Status::Ok);
   assert(result.value_count==0);
-  converted[22]=0x05; // MODE 5 from original post-decrypted NOKEY fixture
+  converted[21]=0x50;converted[22]=0x05; // restore original Mode 5, N=5
   assert(plain(converted,"12345678","55036410","minomess")!=Status::Ok);
   assert(result.value_count==0);
   // Even when AUTO recognizes the model, actual Mode-5 encrypted
@@ -107,11 +109,11 @@ int main() {
   assert(select_auto(converted,"12345678","55036410")!=nullptr);
   assert(plain(converted,"12345678","55036410","minomess")!=Status::Ok);
   assert(result.value_count==0);
-  // Restore source TPL 0x0550 (high byte 0x05): MODE 5 must reject.
-  minomess[22]=0x05;
+  // Restore source TPL 0x0550 (M=5, N=5): Mode 5 must reject.
+  minomess[21]=0x50;minomess[22]=0x05;
   if(decode(minomess,"12345678","minomess")==Status::Ok) return 1;
   if(result.value_count!=0) return 2;
-  minomess[22]=0x00;
+  minomess[21]=0x00;minomess[22]=0x00; // valid synthetic clear CF
   if(decode(minomess,"12345679","minomess")==Status::Ok ||
      result.value_count!=0) return 3;
 
