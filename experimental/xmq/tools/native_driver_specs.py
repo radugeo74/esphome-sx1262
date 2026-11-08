@@ -22,7 +22,7 @@ GENERATED = (
 # upstream fixture records. These do not require a generated IXML grammar.
 PORTABLE = ("iperl", "hydrus", "lansenpu", "lansendw", "cma12w",
             "ultraheat", "sontex868", "supercal", "q400",
-            "elvsense", "lansenrp", "qsmoke", "qcaloric", "rfmamb", "sensostar", "evo868", "supercom587", "hcae2", "bfw240radio", "qwaterv2", "hydrodigit", "itron", "qualcosonic")
+            "elvsense", "lansenrp", "qsmoke", "qcaloric", "rfmamb", "sensostar", "evo868", "supercom587", "hcae2", "bfw240radio", "qwaterv2", "hydrodigit", "itron", "qualcosonic", "lse_08", "waterstarm")
 # Independently configured AES-only receiver. Not safe for generic
 # plaintext meter_drivers, and never guesses keys from "NOKEY" fixtures.
 SECURE_ONLY = ("mkradio4a", "topaseskr", "lansenth", "lansensm")

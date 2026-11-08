@@ -35,6 +35,8 @@ inline bool is_explicit_driver(const char *name) {
       std::strcmp(name,"hydrodigit")==0 ||
       std::strcmp(name,"itron")==0 ||
       std::strcmp(name,"qualcosonic")==0 ||
+      std::strcmp(name,"lse_08")==0 ||
+      std::strcmp(name,"waterstarm")==0 ||
       std::strcmp(name,"ultraheat")==0 ||
       std::strcmp(name,"sontex868")==0 ||
       std::strcmp(name,"supercal")==0 ||
@@ -83,6 +85,8 @@ inline const char *select_configured_driver(
       std::strcmp(resolved.driver,"hydrodigit")==0 ||
       std::strcmp(resolved.driver,"itron")==0 ||
       std::strcmp(resolved.driver,"qualcosonic")==0 ||
+      std::strcmp(resolved.driver,"lse_08")==0 ||
+      std::strcmp(resolved.driver,"waterstarm")==0 ||
       std::strcmp(resolved.driver,"ultraheat")==0 ||
       std::strcmp(resolved.driver,"sontex868")==0 ||
       std::strcmp(resolved.driver,"supercal")==0 ||

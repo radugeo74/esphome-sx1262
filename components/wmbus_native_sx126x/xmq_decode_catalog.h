@@ -27,6 +27,8 @@
 #include "hydrodigit_plain.h"
 #include "itron_plain.h"
 #include "qualcosonic_plain.h"
+#include "lse_08_plain.h"
+#include "waterstarm_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -424,6 +426,33 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[2]={"return_temperature_c",r.return_temperature_c};
     output.values[3]={"power_kw",r.power_kw};
     output.value_count=4;return PureDecodeStatus::Ok;
+  }
+  // LSE heat cost allocator: exact source-validated 01/08 clear TPL profile.
+  if(driver_name && std::strcmp(driver_name,"lse_08")==0) {
+    if(!output.values || output.value_capacity<1)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    lse_08::Reading r{};
+    if(lse_08::decode(frame,length,r)!=lse_08::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"consumption_at_set_date_hca",r.consumption_at_set_date_hca};
+    output.value_count=1;return PureDecodeStatus::Ok;
+  }
+  // DWZ Waterstarm: two clear fixed 151-byte upstream public profiles.
+  if(driver_name && std::strcmp(driver_name,"waterstarm")==0) {
+    if(!output.values || output.value_capacity<2)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    waterstarm::Reading r{};
+    if(waterstarm::decode(frame,length,r)!=waterstarm::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_m3",r.total_m3};
+    output.values[1]={"consumption_at_set_date_m3",r.consumption_at_set_date_m3};
+    output.value_count=2;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
