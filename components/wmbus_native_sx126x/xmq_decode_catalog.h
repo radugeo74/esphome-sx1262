@@ -25,6 +25,8 @@
 #include "bfw240radio_plain.h"
 #include "qwaterv2_plain.h"
 #include "hydrodigit_plain.h"
+#include "itron_plain.h"
+#include "qualcosonic_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -392,6 +394,36 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"total_m3",r.total_m3};
     output.value_count=1;return PureDecodeStatus::Ok;
+  }
+  // Itron/Allmess: two public CI7A Mode0 short application variants.
+  if(driver_name && std::strcmp(driver_name,"itron")==0) {
+    if(!output.values || output.value_capacity<2)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    itron::Reading r{};
+    if(itron::decode(frame,length,r)!=itron::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_m3",r.total_m3};
+    output.values[1]={"target_m3",r.target_m3};
+    output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // Qualcosonic: 3 public clear Mode0 records, standard volume/temp/power.
+  if(driver_name && std::strcmp(driver_name,"qualcosonic")==0) {
+    if(!output.values || output.value_capacity<4)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    qualcosonic::Reading r{};
+    if(qualcosonic::decode(frame,length,r)!=qualcosonic::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_m3",r.total_m3};
+    output.values[1]={"flow_temperature_c",r.flow_temperature_c};
+    output.values[2]={"return_temperature_c",r.return_temperature_c};
+    output.values[3]={"power_kw",r.power_kw};
+    output.value_count=4;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {

@@ -14,6 +14,8 @@
 #include "lansenrp_plain.h"
 #include "rfmamb_plain.h"
 #include "sensostar_plain.h"
+#include "itron_plain.h"
+#include "qualcosonic_plain.h"
 #include "evo868_plain.h"
 #include "supercom587_plain.h"
 #include "hcae2_plain.h"
@@ -65,6 +67,18 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     if(hcae2::decode(frame,size,r)!=hcae2::Status::Ok)return out;
     const char *status=hcae2::known_status(r);
     if(status) append(out,"status",status);
+    return out;
+  }
+  if(std::strcmp(driver,"itron")==0) {
+    itron::Reading reading{};
+    if(itron::decode(frame,size,reading)!=itron::Status::Ok)return out;
+    append(out,"status","OK"); // only zero-status original Mode0 frames
+    return out;
+  }
+  if(std::strcmp(driver,"qualcosonic")==0) {
+    qualcosonic::Reading reading{};
+    if(qualcosonic::decode(frame,size,reading)!=qualcosonic::Status::Ok)return out;
+    append(out,"status","OK"); // no unverified alarm-bit interpretation
     return out;
   }
   if(std::strcmp(driver,"evo868")==0) {
