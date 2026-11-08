@@ -65,7 +65,7 @@ int main(){
  }
  auto bad=e1;bad[14]=0x25;
  assert(parse(bad,"80008957","elvsense")!=PureDecodeStatus::Ok);
- bad=e1;bad[18]=0xFF;
+ bad=e1;bad[17]=0xFF;bad[18]=0x7F; // +327.67 C invalid
  assert(parse(bad,"80008957","elvsense")!=PureDecodeStatus::Ok);
  bad=e1;bad[0]++;
  assert(parse(bad,"80008957","elvsense")!=PureDecodeStatus::Ok);
