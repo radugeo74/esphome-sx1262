@@ -9,6 +9,7 @@
 #include "components/wmbus_native_sx126x/passive_auto_identify.h"
 #include "xmq_auto_registry.h"
 #include <mbedtls/aes.h>
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
