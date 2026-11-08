@@ -52,7 +52,7 @@ wmbus_native_sx126x:
   link_mode: T1_C1
   t1_raw_diagnostics: true
   configured_meter_ids: []
-  # Deliberate opt-in for the three still-experimental encrypted decoders.
+  # Deliberate synthetic bindings for all five AES-enabled native drivers.
   # These IDs are synthetic and do not correspond to installed meters.
   secure_meters:
     - meter_id: "12340001"
@@ -68,6 +68,9 @@ wmbus_native_sx126x:
     - meter_id: "12340004"
       dll_meter_id: "55036414"  # synthetic TCH radio converter
       driver: mkradio4a
+      key: "000102030405060708090A0B0C0D0E0F"
+    - meter_id: "12340005"  # synthetic Integra Topas direct DLL
+      driver: topaseskr
       key: "000102030405060708090A0B0C0D0E0F"
   xmq_text_sensors:
     - meter_id: "12340004"
@@ -95,3 +98,7 @@ wmbus_native_sx126x:
       field: target_m3
       sensor:
         name: "CI MK Radio4a Target Volume"
+    - meter_id: "12340005"
+      field: total_m3
+      sensor:
+        name: "CI Topas ESKR Total Volume"
