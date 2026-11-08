@@ -116,6 +116,13 @@ jobs:
             experimental/semtech-radio/test_evo868_supercom587_native.cpp \
             -o /tmp/test-evo868-supercom587
           /tmp/test-evo868-supercom587
+      - name: Test HCA E2 and BFW240 native Mode-0 subset with original fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_hcae2_bfw240radio_native.cpp \
+            -o /tmp/test-hcae2-bfw240
+          /tmp/test-hcae2-bfw240
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 26 drivers

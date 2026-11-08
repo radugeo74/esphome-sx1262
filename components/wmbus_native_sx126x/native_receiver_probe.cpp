@@ -370,7 +370,8 @@ bool NativeReceiverProbe::publish_plain_batch2_(
        std::strcmp(selected_driver,"rfmamb")==0 ||
        std::strcmp(selected_driver,"sensostar")==0 ||
        std::strcmp(selected_driver,"evo868")==0 ||
-       std::strcmp(selected_driver,"supercom587")==0)
+       std::strcmp(selected_driver,"supercom587")==0 ||
+       std::strcmp(selected_driver,"hcae2")==0)
       publish_xmq_text_(frame,entry.id,selected_driver,result);
     for(const auto &binding : xmq_sensors_) {
       if(binding.meter_id!=entry.id || binding.output==nullptr) continue;

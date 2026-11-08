@@ -21,6 +21,8 @@
 #include "sensostar_plain.h"
 #include "evo868_plain.h"
 #include "supercom587_plain.h"
+#include "hcae2_plain.h"
+#include "bfw240radio_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -334,6 +336,32 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"total_m3",r.total_m3};
     output.value_count=1;return PureDecodeStatus::Ok;
+  }
+  // Engelmann HCA E2: source-validated T1 Mode-0 consumption subset.
+  if(driver_name && std::strcmp(driver_name,"hcae2")==0) {
+    if(!output.values || output.value_capacity<2)return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    hcae2::Reading r{};
+    if(hcae2::decode(frame,length,r)!=hcae2::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"consumption_hca",r.consumption_hca};
+    output.values[1]={"target_hca",r.target_hca};
+    output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // BFW240radio: proprietary offset-specific clear-TPL HCA subset.
+  if(driver_name && std::strcmp(driver_name,"bfw240radio")==0) {
+    if(!output.values || output.value_capacity<2)return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    bfw240radio::Reading r{};
+    if(bfw240radio::decode(frame,length,r)!=bfw240radio::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"current_hca",r.current_hca};
+    output.values[1]={"prev_hca",r.prev_hca};
+    output.value_count=2;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {

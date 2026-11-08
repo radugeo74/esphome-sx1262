@@ -16,6 +16,7 @@
 #include "sensostar_plain.h"
 #include "evo868_plain.h"
 #include "supercom587_plain.h"
+#include "hcae2_plain.h"
 #include "tpl_security_probe.h"
 
 namespace xmq_portable { namespace text_fields {
@@ -57,6 +58,13 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     if(reading.tpl_status==0) append(out,"status","OK");
     else if(reading.tpl_status==0x08)
       append(out,"status","MODULE_REMOVED");
+    return out;
+  }
+  if(std::strcmp(driver,"hcae2")==0) {
+    hcae2::Reading r{};
+    if(hcae2::decode(frame,size,r)!=hcae2::Status::Ok)return out;
+    const char *status=hcae2::known_status(r);
+    if(status) append(out,"status",status);
     return out;
   }
   if(std::strcmp(driver,"evo868")==0) {
