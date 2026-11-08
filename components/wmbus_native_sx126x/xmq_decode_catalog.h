@@ -15,6 +15,8 @@
 #include "cma12w_plain.h"
 #include "elvsense_plain.h"
 #include "lansenrp_plain.h"
+#include "qsmoke_plain.h"
+#include "qcaloric_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -240,6 +242,35 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[5]={"start_time_value_counter",reading.start_time_value_counter};
     output.values[6]={"battery_v",reading.battery_v};
     output.value_count=7;return PureDecodeStatus::Ok;
+  }
+  // QSmoke is telemetry (test/alarm counters), NOT a fire alarm signal.
+  if(driver_name && std::strcmp(driver_name,"qsmoke")==0){
+    if(!output.values || output.value_capacity<2)return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    qsmoke::Reading r{};
+    if(qsmoke::decode(frame,length,r)!=qsmoke::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"alarm_counter",r.alarm_counter};
+    output.values[1]={"test_button_counter",r.test_button_counter};
+    output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // QCaloric: standard unencrypted HCA records only; no vendor WalkBy.
+  if(driver_name && std::strcmp(driver_name,"qcaloric")==0){
+    if(!output.values || output.value_capacity<2)return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    qcaloric::Reading r{};
+    if(qcaloric::decode(frame,length,r)!=qcaloric::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"current_consumption_hca",r.current_consumption_hca};
+    output.value_count=1;
+    if(r.has_set)
+      output.values[output.value_count++]=
+        {"consumption_at_set_date_hca",r.consumption_at_set_date_hca};
+    return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
