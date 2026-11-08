@@ -5,13 +5,17 @@ Two new portable native `meter_drivers` on
 with upstream XMQ and fixture regression tests.
 
 - `hcae2` (Engelmann EFE/31/08): `consumption_hca` and
-  `target_hca` from three original Mode-0 T1 XMQ samples (including
-  a 242/373 HCA positive reading). Exact two observed `status`
-  variants are exposed as a text sensor; unrecognized status codes
+  `target_hca`. Two original Mode-0 T1 examples validate 0/0 HCA
+  readings and a documented status. The original nonzero 242/373
+  `ActiveLong` fixture has a **Mode-5 AES header**, even though
+  upstream XMQ supplies readable application bytes: the original
+  fixture MUST be rejected as on-air plaintext. A separately labeled
+  **host-only synthetic** Mode-0 transport tests the numerical
+  242/373 parser; it is NOT RF evidence. Other TPL status codes
   are not interpreted. The manufacturer flags are not a substitute
-  for safety/tamper hardware. C1 examples in upstream XMQ carry
-  trailing CRC and are not admitted as already stripped RF frames;
-  the 30 half-month historical deltas are out of scope.
+  for safety/tamper hardware. The two C1 upstream fixtures carry
+  trailing CRC not claimed as CRC-stripped RF here; the 30
+  half-month historical deltas are out of scope.
 - `bfw240radio` (BFW/02/08): `current_hca` and `prev_hca`
   from six original public, Mode-0 XMQ examples, including
   904/961, 909/961 and 256/324 HCA. The manufacturer-specific

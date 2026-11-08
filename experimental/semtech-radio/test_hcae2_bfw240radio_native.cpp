@@ -55,7 +55,15 @@ int main() {
  assert(has(out,"target_hca",0));
  assert(decode(h2,"54423117","hcae2")!=PureDecodeStatus::Ok); // raw upstream C1 CRC-bearing not eligible
  assert(decode(h3,"54423117","hcae2")!=PureDecodeStatus::Ok); // raw upstream C1 CRC-bearing not eligible
- assert(decode(h4,"23412960","hcae2")==PureDecodeStatus::Ok);
+ // The original ActiveLong header is Mode 5 (CF=0x25C0):
+ // its NOKEY XMQ application was ALREADY DECRYPTED upstream.
+ // Never treat that upstream supplied-clear payload as on-air plaintext.
+ assert(decode(h4,"23412960","hcae2")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ auto synthetic_clear=h4;
+ synthetic_clear[13]=0;
+ synthetic_clear[14]=0; // host-only synthetic Mode 0, NOT an RF fixture
+ assert(decode(synthetic_clear,"23412960","hcae2")==PureDecodeStatus::Ok);
  assert(has(out,"consumption_hca",242));
  assert(has(out,"target_hca",373));
  assert(decode(b0,"00707788","bfw240radio")==PureDecodeStatus::Ok);
@@ -80,15 +88,17 @@ int main() {
  assert(hstatus.count==1 && std::strcmp(hstatus.fields[0].name,"status")==0);
  assert(std::strcmp(hstatus.fields[0].text,
    "ALARM OPEN_C PERMANENT_ERROR SENSOR_BREAK UNEXPECTED_RST")==0);
- const auto hstatus_ok=text_fields::decode(h4.data(),h4.size(),"hcae2");
+ assert(text_fields::decode(h4.data(),h4.size(),"hcae2").count==0);
+ const auto hstatus_ok=text_fields::decode(
+    synthetic_clear.data(),synthetic_clear.size(),"hcae2");
  assert(hstatus_ok.count==1 && std::strcmp(hstatus_ok.fields[0].text,"OK")==0);
  assert(decode(h0,"54423118","hcae2")!=PureDecodeStatus::Ok);
  assert(decode(b0,"00707789","bfw240radio")!=PureDecodeStatus::Ok);
  auto bad=h0;bad[14]=0x25;
  assert(decode(bad,"54423117","hcae2")!=PureDecodeStatus::Ok);
- bad=h4;bad[8]=0x30;
+ bad=synthetic_clear;bad[8]=0x30;
  assert(decode(bad,"23412960","hcae2")!=PureDecodeStatus::Ok);
- bad=h4;bad[23]=0xFF;
+ bad=synthetic_clear;bad[23]=0xFF;
  assert(decode(bad,"23412960","hcae2")!=PureDecodeStatus::Ok);
  bad=b0;bad[14]=0x25;
  assert(decode(bad,"00707788","bfw240radio")!=PureDecodeStatus::Ok);

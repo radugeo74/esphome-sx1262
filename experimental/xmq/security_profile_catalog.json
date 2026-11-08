@@ -416,7 +416,7 @@
       "clear_route": "clear_only",
       "keyed_routes": [],
       "oms_certified_sku": null,
-      "evidence_note": "Doar 3 exemple Engelmann HCA E2 T1 Mode 0: consum curent, target HCA si stari exact validate. Cele doua exemple C1 cu CRC suplimentar nu valideaza aici flux RF CRC-stripped; istoricul delta este exclus."
+      "evidence_note": "Doua exemple T1 Mode 0 originale confirma HCA 0/0; C1 include CRC separat. ActiveLong cu 242/373 este antet AES Mode 5 deja lizibil in XMQ, respins pe RF. Test numeric 242/373 numai cu antet Mode 0 sintetic, etichetat non-RF."
     },
     {
       "driver": "bfw240radio",

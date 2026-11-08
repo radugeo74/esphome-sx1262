@@ -70,16 +70,16 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`sensostar`:** Suport nativ limitat la doua exemple radio Mode 0: energie kWh, volum m3 si target kWh optional; M-Bus cablat si exemplul AES Mode 5 NOKEY sunt excluse.
 - **`evo868`:** Numai doua exemple publice TPL Mode 0 cu total si consum la data de referinta. Istoricul extins si variantele necunoscute nu sunt decodate.
 - **`supercom587`:** Numai profilul clar Sontex 587 demonstrat de doua exemple publice apa rece/calda. Total BCD m3 si stare OK numai dupa verificarea formatului.
-- **`hcae2`:** Doar 3 exemple Engelmann HCA E2 T1 Mode 0: consum curent, target HCA si stari exact validate. Cele doua exemple C1 cu CRC suplimentar nu valideaza aici flux RF CRC-stripped; istoricul delta este exclus.
+- **`hcae2`:** Doua exemple T1 Mode 0 originale confirma HCA 0/0; C1 include CRC separat. ActiveLong cu 242/373 este antet AES Mode 5 deja lizibil in XMQ, respins pe RF. Test numeric 242/373 numai cu antet Mode 0 sintetic, etichetat non-RF.
 - **`bfw240radio`:** Sase exemple BFW 240 radio Mode 0, structura producator fixa 55 octeti, curent si precedent HCA. Istoricul proprietar 18 luni si alte formate raman excluse.
   Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
 
 Am inspectat automat toate cele **116** de fixture XMQ din cele 16
-drivere: **112** ruleaza fara cheie in test, dar **40** dintre cele
+drivere: **112** ruleaza fara cheie in test, dar **41** dintre cele
 `NOKEY` pastreaza in antet un **TPL Mode 5 / AES-CBC**. Inca un
-fixture Apator162 are Mode 5 cu cheie explicita (deci **42** antete
+fixture Apator162 are Mode 5 cu cheie explicita (deci **43** antete
 Mode 5). Nu le etichetam ca RF fara cheie: unele contin date deja
 decriptate dupa `_`, altele sunt cadre criptate din teste.
 
