@@ -149,6 +149,12 @@ int main() {
   assert(std::strcmp(got.driver,"mkradio4a")==0);
   assert(got.decimal_bcd && got.meter_id==66953825);
   assert(got.different_dll_id);
+  // HYD/FE/06 without its documented TCH converter is not enough to
+  // name the deployed MK Radio4a radio profile.
+  assert(identify(frame(0x2324,0xFE,0x06,0x7A)).state==State::Unknown);
+  auto wrong_converter=mk_warm;
+  wrong_converter[9]=0x72; // not TCH/95/37
+  assert(identify(wrong_converter).state==State::Unknown);
   // Original cold-water fixture has WEH/FE/07 in TPL, absent from the
   // upstream detect.mvt declarations. Admit ONLY this exact nested pair.
   auto mk_cold=mk_warm;
