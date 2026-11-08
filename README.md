@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last fully green code CI before the binding audit fix:** [GitHub Actions #42410374030](https://github.com/radugeo74/esphome-sx1262/actions/runs/42410374030)
-(code commit `9170c1ccd010066c42e835b022e79b1a1dfa5997`, all three jobs passed).
+**Last confirmed full green CI before the OMS security-audit fix:** [GitHub Actions #42454231643](https://github.com/radugeo74/esphome-sx1262/actions/runs/42454231643)
+(code commit `0d90ccc0055ff9d8063bcca821ebee04bc3a7939`, all three jobs passed).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
@@ -31,6 +31,32 @@ Home Assistant sensors.
   `xmq_sensors`, `xmq_text_sensors` or `rssi_sensors` can publish
   values. Unknown meters may be recognized in diagnostics, but do not
   cause entities or readings to be created.
+
+### OMS transport-security audit fix (2026-11-08)
+
+Read-only audit item 2 identified two independent failures in
+`components/wmbus_native_sx126x/tpl_security_probe.h`: it extracted
+only the low **four** security-mode bits (instead of OMS **five**,
+CF bits 8..12), and it accepted Mode 0 even when CF bits 4..7
+declared nonzero encrypted blocks. Per [OMS Vol. 2 §7.2.4.2
+and Table 19](https://oms-group.org/wp-content/uploads/2024/10/OMS-Spec_Vol2_Primary_v501_01.pdf),
+**clear transport requires M=0 and N=0**. A nonzero N with M=0
+is inconsistent and must stay `Unknown`/fail-closed; a fifth
+mode bit must never alias reserved Mode 16 to clear Mode 0.
+
+The native probe now reads M with `(CF >> 8) & 0x1F` and N with
+`(CF >> 4) & 0x0F`. Known encrypted modes 4 (legacy compatibility),
+5, 7, 10 and 13 are flagged as encrypted, while unsupported modes
+remain `Unknown`. Existing valid Mode-0 frames with N=0 and
+allowed link-control flags still pass. The publication gate continues
+to block anything other than `NotEncrypted`.
+
+Positive/negative regressions now cover both `CI=7A` short TPL and
+`CI=72` long TPL in `test_tpl_security_probe.cpp` and
+`test_native_publication_gate.cpp`. This change does **not**
+introduce new AES decoding, bypass existing secure bindings,
+alter the manufacturer's clear-specific A0/A2 decoding, or
+change any installed Heltec firmware.
 
 ### Secure-meter admission audit fix (2026-11-08)
 
