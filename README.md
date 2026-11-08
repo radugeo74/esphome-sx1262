@@ -32,6 +32,46 @@ Home Assistant sensors.
   values. Unknown meters may be recognized in diagnostics, but do not
   cause entities or readings to be created.
 
+### Audit point 4: verified T1/C1 to mapped sensor delivery (2026-11-08)
+
+Native encrypted publication now uses the shared, host-testable
+`components/wmbus_native_sx126x/secure_meter_delivery.h` from the
+**actual** `NativeReceiverProbe::publish_secure_batch2_()`. It
+performs the same configured sender binding, native AES-driver decode,
+result validation, and mapping callback invocation as the firmware;
+the receiver connects these callbacks to explicit `xmq_sensors`,
+`xmq_text_sensors`, and `rssi_sensors` entities. When a configured
+secure sender is recognized but decoding fails, its frame remains
+**consumed and rejected**, with **zero** numeric/date/status/RSSI
+updates and no fallback to plaintext/AUTO. Unconfigured senders
+produce no HA updates. Recognition alone never reaches this
+delivery gate.
+
+The new `test_secure_rx_to_mapped_sensors.cpp` feeds packets through
+the production `verified::process` path, covering **T1 3-of-6 plus
+format-A DLL CRC, C1-A CRC and C1-B CRC**, configured meter binding,
+the real mbedTLS native decoder and the shared mapped-output callbacks
+with simulated HA sensor objects. Positive cases include an original
+public encrypted `apator162` frame (`total_m3=7.512`), an
+independently re-encrypted public `topaseskr` application
+(`total_m3=481.899`), and an independently encrypted public
+`mkradio4a` converter/TPL frame (`target_m3=16.1`,
+`target_date=2021-12-31`). Test keys are public/synthetic.
+Negative cases include bad DLL CRC, wrong AES key, wrong meter identity,
+wrong model/security mode, no configured binding, and upstream
+already-decrypted `NOKEY` material presented as on-air ciphertext.
+The structural Stage-A regression now checks the shared header is
+**actually wired into the receiver**, not just a host-only duplicate.
+
+**Limitations:** this is host integration and ESP-IDF/ESPHome
+*build-only* validation, not RF/IRQ/FIFO operation on physical
+Heltec hardware and not an actual Home Assistant API assertion.
+The existing clear-profile T1/C1 fixture tests remain separate.
+No real meter IDs, keys or private RF captures were added.
+No change to `meter_drivers`, key selection, original AES algorithms
+or installed Heltec firmware. Genuine hardware/HA field acceptance
+remains a separate deployment decision.
+
 ### OMS transport-security audit fix (2026-11-08)
 
 Read-only audit item 2 identified two independent failures in
