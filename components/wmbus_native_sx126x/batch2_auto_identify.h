@@ -111,6 +111,18 @@ inline Result inspect(const uint8_t *frame,size_t length,
       parsed.has_tpl && tpl.status==DriverSelectionStatus::Unknown &&
       parsed.tpl.manufacturer==0x5CA8 && parsed.tpl.version==0xFE &&
       parsed.tpl.device_type==0x07;
+  // The currently implemented secure MK Radio4a receiver is strictly
+  // TCH/95/37 + nested HYD/FE/06 or WEH/FE/07. An isolated HYD
+  // identity or an unrelated DLL converter is only an MVT match, not
+  // evidence for this verified receiver profile. Never claim it here.
+  const bool mk_in_any_address=
+      (dll_batch && std::strcmp(dll.driver,"mkradio4a")==0) ||
+      (tpl_batch && std::strcmp(tpl.driver,"mkradio4a")==0) ||
+      (ell_batch && std::strcmp(ell.driver,"mkradio4a")==0);
+  if(mk_in_any_address && !mk_converter) {
+    result.state=State::Unknown;
+    return result;
+  }
   // A TCH converter alone does not prove what meter it carries.
   // Refuse classification if the nested model is absent or unknown.
   if(mk_converter && (parsed.ci!=0x72 || !parsed.has_tpl ||
