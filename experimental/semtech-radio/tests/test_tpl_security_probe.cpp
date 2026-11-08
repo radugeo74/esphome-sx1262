@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
+#include <initializer_list>
 #include "../../../components/wmbus_native_sx126x/tpl_security_probe.h"
 
 using wmbus_pure::tpl_security::State;
