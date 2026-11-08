@@ -26,12 +26,25 @@ int main() {
   for (const uint8_t ci : {uint8_t{0x72},uint8_t{0x7A}}) {
     auto f=make(ci);
     const size_t mode_at=ci==0x72?22:14;
+    const size_t blocks_at=ci==0x72?21:13;
+    // Valid Mode-0: M=N=0. Preserve this accepted clear transport.
     assert(inspect(f.data(),f.size(),id)==Decision::Allowed);
-    for (const uint8_t mode : {uint8_t{4},uint8_t{5},uint8_t{15}}) {
+    // Invalid Mode-0: nonzero encrypted block count MUST fail closed.
+    f[blocks_at]=0x20;
+    assert(inspect(f.data(),f.size(),id)==Decision::UnverifiedSecurity);
+    f[blocks_at]=0;
+    // The former 4-bit mask treated 0x1000 (M=16) as plain Mode-0.
+    for (const uint8_t mode : {uint8_t{4}, uint8_t{5}, uint8_t{7},
+                               uint8_t{10}, uint8_t{13}, uint8_t{15},
+                               uint8_t{16}, uint8_t{31}}) {
       f[mode_at]=mode;
       assert(inspect(f.data(),f.size(),id)==Decision::UnverifiedSecurity);
     }
     f[mode_at]=0;
+    // M=0,N=0 remains clear with the OMS C/R/H message flags set.
+    f[blocks_at]=0x0F;
+    assert(inspect(f.data(),f.size(),id)==Decision::Allowed);
+    f[blocks_at]=0;
     f[0]++;
     assert(inspect(f.data(),f.size(),id)==Decision::InvalidFrame);
     f[0]--;
