@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-11-08",
+  "purpose": "Capabilities on experimental/xmq-multidriver-auto; never infer key requirements for all firmware/device variants from a driver name or NOKEY fixture.",
+  "oms_catalog": "https://oms-group.org/en/certified-products/",
+  "xmq_upstream": "https://github.com/wmbusmeters/wmbusmeters/tree/master/drivers/src",
+  "drivers": [
+    {
+      "driver": "fhkvdataiii",
+      "group": "GENERATED",
+      "mvt": [
+        "TCH/69/80",
+        "TCH/94/80"
+      ],
+      "total_tests": 3,
+      "nokey_tests": 3,
+      "clear_route": "manufacturer_specific",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Exemple CI A0/A2; suport proprietar Techem, fara ruta OMS AES generica."
+    },
+    {
+      "driver": "mkradio4",
+      "group": "GENERATED",
+      "mvt": [
+        "TCH/95/62",
+        "TCH/70/62",
+        "TCH/95/72",
+        "TCH/70/72"
+      ],
+      "total_tests": 1,
+      "nokey_tests": 1,
+      "clear_route": "manufacturer_specific",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Exemplu CI A2. NOKEY in XMQ nu inseamna certificare fara cheie pentru toate variantele."
+    },
+    {
+      "driver": "iperl",
+      "group": "PORTABLE",
+      "mvt": [
+        "SEN/68/06",
+        "SEN/68/07",
+        "SEN/7C/07"
+      ],
+      "total_tests": 3,
+      "nokey_tests": 3,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Un fixture upstream spune explicit ca telegrama este deja decriptata; altele au CF Mode 0."
+    },
+    {
+      "driver": "hydrus",
+      "group": "PORTABLE",
+      "mvt": [
+        "DME/70/07",
+        "DME/76/07",
+        "HYD/24/07",
+        "HYD/8B/07",
+        "HYD/8B/06",
+        "DME/70/06",
+        "DME/70/16"
+      ],
+      "total_tests": 7,
+      "nokey_tests": 7,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Teste mixte TPL/ELL, unele cu antet Mode 5; decodorul PORTABLE accepta doar profiluri clare."
+    },
+    {
+      "driver": "lansenpu",
+      "group": "PORTABLE",
+      "mvt": [
+        "LAS/14/00",
+        "LAS/1B/00",
+        "LAS/0B/02"
+      ],
+      "total_tests": 3,
+      "nokey_tests": 3,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Exemple NOKEY; nu se deduce comportamentul tuturor versiunilor LAS."
+    },
+    {
+      "driver": "lansendw",
+      "group": "PORTABLE",
+      "mvt": [
+        "LAS/07/1D"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Exemple NOKEY; ruta locala decodifica numai profilul clar compatibil."
+    },
+    {
+      "driver": "cma12w",
+      "group": "PORTABLE",
+      "mvt": [
+        "ELV/20/1B",
+        "ELV/1F/1B"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Exemple NOKEY cu separator in datele testului; statutul RF brut nu este certificat."
+    },
+    {
+      "driver": "ultraheat",
+      "group": "PORTABLE",
+      "mvt": [
+        "LUG/04/04"
+      ],
+      "total_tests": 3,
+      "nokey_tests": 3,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Teste mixte M-Bus cablat si wireless; cablat nu demonstreaza RF fara criptare."
+    },
+    {
+      "driver": "sontex868",
+      "group": "PORTABLE",
+      "mvt": [
+        "SON/16/08"
+      ],
+      "total_tests": 1,
+      "nokey_tests": 1,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Exemplu NOKEY; fara ruta AES implementata pentru aceasta familie."
+    },
+    {
+      "driver": "supercal",
+      "group": "PORTABLE",
+      "mvt": [
+        "SON/1B/04"
+      ],
+      "total_tests": 1,
+      "nokey_tests": 1,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Exemplu NOKEY; fara ruta AES implementata pentru aceasta familie."
+    },
+    {
+      "driver": "q400",
+      "group": "PORTABLE",
+      "mvt": [
+        "AXI/01/07",
+        "AXI/10/07",
+        "AXI/20/07"
+      ],
+      "total_tests": 5,
+      "nokey_tests": 5,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "XMQ include atat CF Mode 0 cat si antete Mode 5 cu continut furnizat lizibil."
+    },
+    {
+      "driver": "minomess",
+      "group": "CONFIGURED_NATIVE",
+      "mvt": [
+        "ZRI/00/07",
+        "ZRI/01/16",
+        "ZRI/01/06"
+      ],
+      "total_tests": 6,
+      "nokey_tests": 6,
+      "clear_route": "configured_clear",
+      "keyed_routes": [
+        "TPL_AES_CBC_MODE5"
+      ],
+      "oms_certified_sku": null,
+      "evidence_note": "Teste cablate si TPL lung Mode 5 deja lizibil; AES testat software cu cheie."
+    },
+    {
+      "driver": "kamwater",
+      "group": "CONFIGURED_NATIVE",
+      "mvt": [
+        "KAM/1B/06",
+        "KAM/1B/16",
+        "KAW/3A/16",
+        "KAW/3C/16",
+        "KAW/3C/06",
+        "KAM/1D/16",
+        "KAW/42/06",
+        "KAW/42/16"
+      ],
+      "total_tests": 14,
+      "nokey_tests": 12,
+      "clear_route": "configured_clear",
+      "keyed_routes": [
+        "ELL_AES_CTR",
+        "TPL_AES_CCM_MODE10"
+      ],
+      "oms_certified_sku": null,
+      "evidence_note": "Teste publice ELL CTR si CCM autentificat; rute AES distincte, fara fallback."
+    },
+    {
+      "driver": "apator162",
+      "group": "CONFIGURED_NATIVE",
+      "mvt": [
+        "APA/05/06",
+        "APA/05/07"
+      ],
+      "total_tests": 19,
+      "nokey_tests": 18,
+      "clear_route": "configured_clear",
+      "keyed_routes": [
+        "TPL_AES_CBC_MODE5"
+      ],
+      "oms_certified_sku": null,
+      "evidence_note": "Include exemplu public criptat AES Mode 5 si alte exemple NOKEY; profilele difera."
+    },
+    {
+      "driver": "mkradio4a",
+      "group": "SECURE_ONLY",
+      "mvt": [
+        "HYD/FE/06",
+        "TCH/95/37"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "none",
+      "keyed_routes": [
+        "TPL_AES_CBC_MODE5"
+      ],
+      "oms_certified_sku": null,
+      "evidence_note": "XMQ deja lizibil cu antet Mode 5; test AES recriptat sintetic. Convertor TCH/95/37 plus HYD/FE/06 ori WEH/FE/07 in TPL."
+    },
+    {
+      "driver": "topaseskr",
+      "group": "SECURE_ONLY",
+      "mvt": [
+        "AMT/F1/06",
+        "AMT/F1/07"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "none",
+      "keyed_routes": [
+        "TPL_AES_CBC_MODE5"
+      ],
+      "oms_certified_sku": null,
+      "evidence_note": "XMQ NOKEY deja lizibil sub antet Mode 5; AES validat cu date recriptate sintetic."
+    }
+  ]
+}

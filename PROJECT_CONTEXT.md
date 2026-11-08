@@ -10,6 +10,23 @@
 4. Prefer small, auditable commits; include positive **and negative** regression tests; await reported CI green before expanding behavior. Fix CI regressions before moving to the next calup. Never claim CI passed, an `app_main` self-test executed on hardware, or live field validation unless it actually did.
 5. Never commit private meter IDs, captured production telegrams, encryption keys, Wi-Fi credentials, private YAML or other identifying telemetry. Synthetic IDs and original public upstream fixtures only.
 
+## Audit point 5 — OMS security evidence catalog (2026-11-08)
+
+Catalog 16/16 native drivers:
+`experimental/xmq/security_profile_catalog.json` and
+`experimental/xmq/SECURITY_PROFILE_CATALOG.md`.
+Records runtime clear/keyed capabilities, actual public XMQ
+MVT signatures and fixture counts, and limits of inference from
+`NOKEY`/pre-decrypted tests. OMS product certificate matching
+is deliberately unknown for every entry until a specific SKU,
+generation and certificate can be verified. The independent
+`experimental/xmq/tests/test_security_profile_catalog.py`
+guards consistency with `native_driver_specs.py`, all original
+XMQ files, keyed decoder implementations and documentation;
+it is included in the native GitHub Actions workflow.
+**No firmware, active driver, encryption, YAML, keys or HA changes.**
+Check CI for this commit before describing it as validated.
+
 ## Audit point 4 — Host integration through actual native delivery (2026-11-08)
 
 Only on `experimental/xmq-multidriver-auto`. The secure publication

@@ -9,6 +9,8 @@ on:
     paths:
       - 'components/wmbus_native_sx126x/**'
       - 'experimental/xmq/drivers/**'
+      - 'experimental/xmq/security_profile_catalog.json'
+      - 'experimental/xmq/SECURITY_PROFILE_CATALOG.md'
       - 'experimental/xmq/tools/generate_driver_registry.py'
       - 'experimental/xmq/tools/**'
       - 'experimental/xmq/tests/**'
@@ -69,6 +71,8 @@ jobs:
           /tmp/test-xmq-auto-registry
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
+      - name: Audit OMS security evidence catalog for all 16 drivers
+        run: python3 experimental/xmq/tests/test_security_profile_catalog.py
       - name: Test upstream XMQ C-style comment tokenization
         run: python3 experimental/xmq/tests/test_portable_xmq_block_comments.py
       - name: Audit second driver batch official XMQ fixture inventory and fail-closed publication

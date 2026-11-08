@@ -15,6 +15,17 @@ Home Assistant sensors.
 > not copy their YAML into this branch. The current architecture and
 > safety rules are recorded in [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
 
+## Catalog de securitate (audit punctul 5)
+
+[**Catalogul wM-Bus / OMS**](experimental/xmq/SECURITY_PROFILE_CATALOG.md)
+descrie pentru toate cele 16 drivere MVT-urile, fixture-urile XMQ
+si rutele clare/securizate implementate, fara sa presupuna ca
+`NOKEY` inseamna RF necriptat. Datele structurate sunt in
+[`security_profile_catalog.json`](experimental/xmq/security_profile_catalog.json).
+CI verifica automat catalogul fata de manifest si sursele XMQ.
+Nu atribuim certificate OMS pana nu este identificat modelul comercial exact.
+Documentatie si CI numai; nu afecteaza decoderul sau firmware-ul.
+
 ## Architecture
 
 - **Radio:** ESPHome's SX126x component, locally patched for T1/C1
