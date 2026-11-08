@@ -2,6 +2,7 @@
 // Generated original application payloads, no private telegrams or keys.
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/xmq_auto_registry.h"
+#include "components/wmbus_native_sx126x/xmq_plain_text_fields.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -44,6 +45,10 @@ int main(){
  assert(selected(e1,"80008957") && std::strcmp(selected(e1,"80008957"),"elvsense")==0);
  assert(parse(e1,"80008957","elvsense")==PureDecodeStatus::Ok);
  assert(has(out,"temperature_c",21.59)&&has(out,"battery_v",3.681));
+ const auto elvtext=text_fields::decode(e1.data(),e1.size(),"elvsense");
+ assert(elvtext.count==1 && std::strcmp(elvtext.fields[0].name,"status")==0);
+ assert(std::strcmp(elvtext.fields[0].text,"OK")==0);
+
  assert(selected(e1,"80008958")==nullptr);
  assert(parse(e1,"80008958","elvsense")!=PureDecodeStatus::Ok);
  assert(!selected(r1,"00035947"));
@@ -54,6 +59,13 @@ int main(){
  assert(has(out,"total_routed_messages_counter",616340));
  assert(has(out,"used_router_slots_counter",96));
  assert(has(out,"battery_v",3.28));
+ const auto rptext=text_fields::decode(ptr->data(),ptr->size(),"lansenrp");
+ assert(rptext.count==2);
+ assert(std::strcmp(rptext.fields[0].name,"status")==0);
+ assert(std::strcmp(rptext.fields[0].text,ptr==&r1?"OK":"POWER_LOW")==0);
+ assert(std::strcmp(rptext.fields[1].name,"is_repeater_listening")==0);
+ assert(std::strcmp(rptext.fields[1].text,ptr==&r1?"NO":"YES")==0);
+
  }
  assert(parse(r1,"00035947","lansenrp")!=PureDecodeStatus::Ok);
  // XMQ is NOKEY, but both elvsense examples have Mode-5 CF;
