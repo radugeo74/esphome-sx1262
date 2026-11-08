@@ -78,16 +78,16 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`bfw240radio`:** Sase exemple BFW 240 radio Mode 0, structura producator fixa 55 octeti, curent si precedent HCA. Istoricul proprietar 18 luni si alte formate raman excluse.
 - **`qwaterv2`:** Subset standard CI 7A Mode 0 pentru total_m3, target_year_m3 si target_m3, din 8 exemple publice. CI 78 WalkBy, CI 72 si doua exemple cu cheie explicita nu intra in ruta radio plaintext.
 - **`hydrodigit`:** Patru exemple publice CI 7A Mode 0 pentru volum total. Un exemplu NOKEY cu Mode 5 AES si unul cu CI 8C ELL sunt excluse; campurile proprietare raman nedecodate.
-- **`itron`:** Doua exemple originale Itron ITW cu antet CI 7A Mode 0 publica total_m3 si target_m3. Exemplul CI 72 si un alt exemplu NOKEY AES Mode 5 sunt respinse, fara a interpreta flagurile proprietare.
+- **`itron`:** Doua exemple Itron ITW Mode 0 permit total_m3 si target_m3. Celelalte doua fixture NOKEY sunt ambele AES Mode 5: unul CI 72 TPL lung si unul CI 7A TPL scurt; respinse la publicare.
 - **`qualcosonic`:** Trei exemple originale Qualcosonic Mode 0: total_m3, flow_temperature_c, return_temperature_c si power_kw. Energiile de incalzire/racire si set-date au modificatori VIF nesuportati in acest subset.
   Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
 
 Am inspectat automat toate cele **152** de fixture XMQ din cele 32
-drivere: **146** ruleaza fara cheie in test, dar **43** dintre cele
+drivere: **146** ruleaza fara cheie in test, dar **44** dintre cele
 `NOKEY` pastreaza in antet un **TPL Mode 5 / AES-CBC**. Inca un
-fixture Apator162 are Mode 5 cu cheie explicita (deci **45** antete
+fixture Apator162 are Mode 5 cu cheie explicita (deci **46** antete
 Mode 5). Nu le etichetam ca RF fara cheie: unele contin date deja
 decriptate dupa `_`, altele sunt cadre criptate din teste.
 

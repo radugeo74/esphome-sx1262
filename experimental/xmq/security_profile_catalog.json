@@ -501,7 +501,7 @@
       "clear_route": "clear_only",
       "keyed_routes": [],
       "oms_certified_sku": null,
-      "evidence_note": "Doua exemple originale Itron ITW cu antet CI 7A Mode 0 publica total_m3 si target_m3. Exemplul CI 72 si un alt exemplu NOKEY AES Mode 5 sunt respinse, fara a interpreta flagurile proprietare."
+      "evidence_note": "Doua exemple Itron ITW Mode 0 permit total_m3 si target_m3. Celelalte doua fixture NOKEY sunt ambele AES Mode 5: unul CI 72 TPL lung si unul CI 7A TPL scurt; respinse la publicare."
     },
     {
       "driver": "qualcosonic",

@@ -93,7 +93,7 @@ def main():
                     assert marker
                 assert "2F2F" in tg.split("_", 1)[0].upper()
         assert sum("NOKEY" in x.group(1).split() for x in examples) == expected["nokey_tests"]
-    assert (total, nokey, all_mode5, non_key_mode5) == (152, 146, 45, 43)
+    assert (total, nokey, all_mode5, non_key_mode5) == (152, 146, 46, 44)
     assert by_driver == Counter({
         "hydrus": 3, "q400": 2, "minomess": 4, "apator162": 18,
         "mkradio4a": 2, "topaseskr": 2,
@@ -103,7 +103,7 @@ def main():
         "sensostar": 1,
         "hcae2": 1,
         "hydrodigit": 1,
-        "itron": 1,
+        "itron": 2,
     }), by_driver
     # Public iperl example #1 says "after decryption" and declares M=0,
     # N=1. The OMS Mode-0 gate correctly rejects that inconsistent CF;

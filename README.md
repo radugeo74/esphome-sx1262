@@ -7,9 +7,8 @@ explicitly configured / configured-`auto` clear-only profiles.
 - **`itron`** (ITW/00-03-33/07): bounded original 57-byte short-TPL
   CI `7A`, Mode-0 water records: `total_m3` and `target_m3`,
   from two independent upstream clear fixtures (4.605/3.888 m³,
-  111.968/87.980 m³). One upstream gateway long-TPL CI `72` and
-  one `NOKEY`-tagged **Mode-5 AES** fixture are excluded from the
-  no-key path. Proprietary status/identity bytes are not interpreted.
+  111.968/87.980 m³). Two upstream `NOKEY`-tagged **Mode-5 AES** fixtures (one long
+  CI `72` and one short CI `7A`) are excluded from the no-key path. Proprietary status/identity bytes are not interpreted.
 - **`qualcosonic`** (AXI/0B-0C/0D): three original Mode-0 short
   TPL 119/155-byte fixtures publish `total_m3`,
   `flow_temperature_c`, `return_temperature_c`, and `power_kw`
