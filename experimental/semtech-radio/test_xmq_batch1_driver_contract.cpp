@@ -68,6 +68,10 @@ int main() {
   assert(out.value_count==0 && out.date_count==0);
   // A synthetic security-mode zero variant tests the real plaintext path.
   hydrus[14]=0;
+  // M=0 but original N=4 is an invalid security configuration.
+  assert(wmbus_pure::publication::inspect(hydrus.data(),hydrus.size(),64646464)
+      ==wmbus_pure::publication::Decision::UnverifiedSecurity);
+  hydrus[13]=0; // valid synthetic clear CF M=N=0
   assert(wmbus_pure::publication::inspect(hydrus.data(),hydrus.size(),64646464)
       ==wmbus_pure::publication::Decision::Allowed);
   assert(decode_configured_plain_frame(hydrus.data(),hydrus.size(),
