@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last fully green code CI before the keyless fixture update:** [GitHub Actions #42404050221](https://github.com/radugeo74/esphome-sx1262/actions/runs/42404050221)
-(code commit `623b03e3fee70f6e6d88cc65ce0c8a57fd5b449b`, all three jobs passed).
+**Last fully green code CI before the binding audit fix:** [GitHub Actions #42410374030](https://github.com/radugeo74/esphome-sx1262/actions/runs/42410374030)
+(code commit `9170c1ccd010066c42e835b022e79b1a1dfa5997`, all three jobs passed).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
@@ -31,6 +31,29 @@ Home Assistant sensors.
   `xmq_sensors`, `xmq_text_sensors` or `rssi_sensors` can publish
   values. Unknown meters may be recognized in diagnostics, but do not
   cause entities or readings to be created.
+
+### Secure-meter admission audit fix (2026-11-08)
+
+The `secure_meters` YAML schema already accepted all five keyed native
+routes, but the old C++ `NativeReceiverProbe::add_secure_meter()` rejected
+`mkradio4a` and `topaseskr` at runtime. This made successfully
+compiled configurations silently drop those two bindings.
+
+The receiver now delegates registration to the host-tested
+`secure_meter_binding.h`, whose explicit allowlist covers
+`minomess`, `kamwater`, `apator162`, `mkradio4a` and
+`topaseskr`. The DLL/TPL rule remains unchanged: only
+`minomess` and `mkradio4a` may bind a distinct `dll_meter_id`.
+Registration still rejects invalid decimal IDs, invalid AES hex keys
+and duplicate bindings; keys remain private and AUTO/cleartext
+fallback remains forbidden for encrypted packets.
+
+`test_secure_meter_binding.cpp` executes the **same** admission
+function that the native receiver calls. The native manifest test
+also compares the Python YAML and C++ secure-driver allowlists to
+prevent this mismatch recurring. The ESPHome CI fixture now includes
+synthetic bindings for all five AES routes. This is software-only,
+not a claim of successful live RF/HA delivery.
 
 ### Supported driver selection
 
