@@ -51,8 +51,15 @@ Also covered by `test_batch2_auto_identification.cpp`,
 ambiguous-MVT and keyless plaintext-refusal cases. Code is
 software-only, no physical RF or HA validation; no installed Heltec
 OTA, no changes to AES decoder, Techem generated tables or security
-filters. Await CI validation of the latest code checkpoint before
-claiming full 3/3 green.
+filters. **FULL GREEN:** [GitHub Actions #42457899531](https://github.com/radugeo74/esphome-sx1262/actions/runs/42457899531),
+code commit `2ebda8be74fd08e84e4c7ff7f6cfcbe9fd9b4866`;
+all three jobs passed (native packet host regressions, ESP-IDF ESP32-S3
+link, native ESPHome/Heltec including combined T1/C1 builds).
+The shared `passive_auto_identify.h` also rejects a bare HYD/FE/06
+signature and unrelated DLL gateways as a complete MK Radio4a profile;
+the tests guard this and prevent generic DLL fallback from suppressing a
+distinct nested TPL identity. Never interpret the 3/3 CI result as a
+real on-air RF or Home Assistant test.
 
 ## Audit point 2 — OMS TPL security classification (2026-11-08)
 
