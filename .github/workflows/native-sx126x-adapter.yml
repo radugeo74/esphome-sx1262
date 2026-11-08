@@ -345,6 +345,13 @@ jobs:
             experimental/semtech-radio/test_native_meter_registry.cpp \
             -o /tmp/test-native-meter-registry
           /tmp/test-native-meter-registry
+      - name: Test Semtech GFSK sync RSSI against packet average and HA source contract
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_sx126x_gfsk_rssi.cpp \
+            -o /tmp/test-sx126x-gfsk-rssi
+          /tmp/test-sx126x-gfsk-rssi
+          python3 experimental/semtech-radio/ci/test_gfsk_rssi_source_contract.py
       - name: Test progressive T1 FIFO collector
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \

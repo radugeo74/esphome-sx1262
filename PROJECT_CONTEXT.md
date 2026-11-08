@@ -10,6 +10,33 @@
 4. Prefer small, auditable commits; include positive **and negative** regression tests; await reported CI green before expanding behavior. Fix CI regressions before moving to the next calup. Never claim CI passed, an `app_main` self-test executed on hardware, or live field validation unless it actually did.
 5. Never commit private meter IDs, captured production telegrams, encryption keys, Wi-Fi credentials, private YAML or other identifying telemetry. Synthetic IDs and original public upstream fixtures only.
 
+## Audit point 7 — SX1262 GFSK RSSI source (2026-11-08)
+
+Verified Semtech GFSK `GetPacketStatus(0x14)` after status byte:
+`[0] RxStatus`, `[1] RssiSync` latched at synchronization,
+`[2] RssiAvg` latched after RxDone. Both use UNSIGNED `-raw/2`
+dBm. Standalone and combined T1/C1 here consume a progressive FIFO
+stream, potentially before RxDone; do not substitute byte [2]
+merely because it is commonly used by normal ESPHome RxDone.
+The currently selected byte [1] was already correct in the
+previous code checkpoint; this audit makes it explicit and
+tests it against a pure shared helper, without silently changing
+the measured field.
+
+Implementation: `components/sx126x/gfsk_rssi.h` and
+`components/sx126x/sx126x.cpp`; actual receiver calls the helper
+and forwards `measurement.sync_dbm` before RX reset.
+Opt-in `t1_raw_diagnostics: true` logs bounded sync and average
+raw/dBm and a packet_received flag to identify stale pre-RxDone
+averages in actual radio logs. This does NOT alter RSSI mapping,
+numeric precision, decoding or any sensor publication policy.
+Tests: `test_sx126x_gfsk_rssi.cpp` and
+`ci/test_gfsk_rssi_source_contract.py` in native CI.
+Unlike a lab compile, **only same-device RF observation can validate
+whether the reported -114 dBm becomes realistic**.
+No installed Heltec firmware was changed. Check current CI run
+for exact commit before claiming green.
+
 ## Audit point 6 — NOKEY is not plaintext RF authorization (2026-11-08)
 
 CI regression only (no runtime, hardware, crypto-key or YAML changes).

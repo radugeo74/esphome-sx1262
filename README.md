@@ -49,6 +49,36 @@ sa fie prezentate ca un cadru RF necriptat.
 Vezi [catalogul de dovezi](experimental/xmq/SECURITY_PROFILE_CATALOG.md).
 Nu au fost schimbate decodoarele, cheile ori firmware-ul instalat.
 
+### Audit 7 — RSSI SX1262 (2026-11-08)
+
+For **GFSK GetPacketStatus (0x14)** the three bytes are
+`RxStatus`, **`RssiSync`** and **`RssiAvg`**. Their scale
+is `-raw/2.0 dBm`. Our progressive T1 and combined T1/C1 receive
+path collects a full FIFO frame **before** a reliable `RxDone`;
+therefore the HA RSSI source is **`RssiSync` (byte [1])**, latched
+at synchronization. The packet average (byte [2]) is reliable only
+after packet completion and is diagnostic-only here. The normal
+upstream FSK `RxDone` path continues using the packet average.
+
+The single source of truth is
+[`gfsk_rssi.h`](components/sx126x/gfsk_rssi.h), used **by the actual
+radio firmware** and [the host test](experimental/semtech-radio/test_sx126x_gfsk_rssi.cpp).
+[The integration guard](experimental/semtech-radio/ci/test_gfsk_rssi_source_contract.py)
+ensures that the same sync value is forwarded to the native receiver
+and mapped HA sensors. When `t1_raw_diagnostics: true`, the local
+log prints bounded `sync_raw`, `avg_raw`, both converted dBm and
+the `packet_received` status; no meter IDs or AES keys are logged
+by this specific diagnostic. **No artificial RSSI offset, smoothing,
+or guessing from the old RTL receiver is introduced.**
+
+**Status:** software / build validation only. The historically
+reported approximately -114 dBm may come from packet average or from
+the firmware previously installed on the Heltec. A valid sync RSSI
+still can differ from the older RTL2832U receiver due to hardware
+and RF frontend. We cannot claim the physical discrepancy is resolved
+until actual RF on the same device is observed. Never flash
+without preserving the existing stable firmware.
+
 ## Architecture
 
 - **Radio:** ESPHome's SX126x component, locally patched for T1/C1

@@ -1,4 +1,5 @@
 #include "sx126x.h"
+#include "gfsk_rssi.h"
 #include <algorithm>
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
@@ -590,12 +591,27 @@ void SX126x::t1_stream_loop_() {
     ++completed;
     if (completed <= 10)
       ESP_LOGI(TAG, "T1 PHY stream collected bytes=%u", static_cast<unsigned>(this->t1_stream_received_));
-    // Progressive T1 uses RSSI sampled at sync; packet-average RSSI is
-    // not reliable before RX_DONE. Keep packet status for the current frame
-    // and let the verified-frame logger report its RSSI and meter ID.
+    // Complete FIFO may precede RxDone. GetPacketStatus GFSK fields:
+    // [0]=RxStatus, [1]=RssiSync latched at sync, [2]=RssiAvg latched
+    // only after packet done. Publish sync, NEVER premature average.
+    // This is the same Semtech rule for standalone T1 and combined T1/C1.
     uint8_t packet_status[3] = {};
     this->read_opcode_(RADIO_GET_PACKETSTATUS, packet_status, 3);
-    const float rssi_dbm = -static_cast<float>(packet_status[1]) / 2.0f;
+    const auto measurement = gfsk_rssi::parse(packet_status);
+    const float rssi_dbm = measurement.sync_dbm;
+    // Bounded, opt-in diagnostics: compare raw values on actual hardware.
+    // Do not use RssiAvg as a fallback, calibration, or sensor value.
+    if (this->t1_stream_diagnostics_) {
+      static uint32_t rssi_samples = 0;
+      if (++rssi_samples <= 24 || rssi_samples % 100 == 0) {
+        ESP_LOGI(TAG, "T1/C1 GFSK RSSI source=sync sync_raw=%u sync=%.1f dBm avg_raw=%u avg=%.1f dBm packet_received=%s (avg unreliable before RxDone)",
+                 static_cast<unsigned>(measurement.sync_raw),
+                 measurement.sync_dbm,
+                 static_cast<unsigned>(measurement.average_raw),
+                 measurement.average_dbm,
+                 measurement.packet_received ? "yes" : "no");
+      }
+    }
     // RX must be re-armed BEFORE potentially expensive logger/XMQ callbacks.
     // The entire encoded frame has already been copied into the adapter's RAM.
     // In the previous sequence, RX remained inactive during processing.
@@ -630,6 +646,8 @@ void SX126x::loop() {
         rssi = buf[0];
         snr = buf[1];
       } else {
+        // Standard RX_DONE GFSK path: [2] is valid packet average.
+        // Progressive T1/C1 uses the separate sync reading above.
         rssi = buf[2];
         snr = 0;
       }
