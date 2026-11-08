@@ -90,6 +90,10 @@ wmbus_native_sx126x:
       driver: lansensm
       key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
+    - meter_id: "79787776"  # upstream public EVO868 Mode-0 example
+      driver: auto
+    - meter_id: "12345678"  # upstream public Supercom587 water example
+      driver: auto
     - meter_id: "11772288"  # original public RFM-AMB clear example
       driver: auto
     - meter_id: "02752560"  # original public Sensostar clear example
@@ -118,6 +122,21 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "79787776"
+      field: total_m3
+      sensor:
+        name: "Lab EVO868 Total Volume"
+        unit_of_measurement: "m³"
+    - meter_id: "79787776"
+      field: consumption_at_set_date_m3
+      sensor:
+        name: "Lab EVO868 Previous Billing Volume"
+        unit_of_measurement: "m³"
+    - meter_id: "12345678"
+      field: total_m3
+      sensor:
+        name: "Lab Supercom587 Total Volume"
+        unit_of_measurement: "m³"
     - meter_id: "11772288"
       field: current_temperature_c
       sensor:

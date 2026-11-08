@@ -1,3 +1,28 @@
+## Calupul 25–26: EVO868 + Supercom 587 (2026-11-08)
+
+Two more `PORTABLE` native families are integrated on
+`experimental/xmq-multidriver-auto`: `evo868` (Maddalena MAD/50/06,07,16)
+and `supercom587` (Sontex SON/3C/06,07). Both are selectable as
+explicit `meter_drivers` or as configured `driver: auto`; passive
+recognition alone never publishes measurements.
+
+- EVO868: `total_m3` and `consumption_at_set_date_m3` from the
+  two upstream short-TPL, actual Mode-0 public examples (IDs 79787776
+  and 21031894). The wider monthly history and vendor data are not
+  implemented in this bounded clear-only subset.
+- Supercom 587: `total_m3` from the two upstream warm/cold-water
+  short-TPL Mode-0 examples (IDs 12345678 and 11111111), reading the
+  standard BCD record; no general manufacturer extension support.
+- Both require the official receiver's validated/CRC-stripped DLL
+  input, a configured matching meter ID, exact model/profile checks,
+  a demonstrably unencrypted TPL and a structurally valid application
+  subset. A `NOKEY` upstream sample is never itself treated as
+  evidence that all firmware revisions are keyless.
+- Example build-only mappings are in
+  `experimental/semtech-radio/heltec-sx126x-combined-lab.yaml`.
+  No personal IDs, no actual AES keys, no legacy receiver.
+  No firmware was flashed and no RF operation is implied by CI.
+
 ## Calupul 23–24: RFM-AMB + Sensostar (2026-11-08)
 
 `rfmamb` and `sensostar` are native `PORTABLE` clear-subset drivers.
