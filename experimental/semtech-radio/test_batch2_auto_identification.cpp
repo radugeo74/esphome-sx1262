@@ -126,6 +126,59 @@ int main() {
   conflicting[15]=0x01;conflicting[16]=0x06;
   conflicting[17]=0x05;conflicting[18]=0x06;
   assert(identify(conflicting).state==State::Ambiguous);
+  // Topas ESKR: BOTH original AMT/F1/06 and F1/07 variants are
+  // identified from DLL metadata, with no key and no application decode.
+  for (uint8_t t : {uint8_t{0x06}, uint8_t{0x07}}) {
+    auto topas=frame(0x05B4,0xF1,t,0x7A);
+    got=identify(topas);
+    assert(got.state==State::Candidate && got.source==Source::Dll);
+    assert(std::strcmp(got.driver,"topaseskr")==0);
+    assert(got.decimal_bcd && got.meter_id==12345678);
+    assert(!got.different_dll_id);
+  }
+  // Original MK Radio4a warm-water fixture: TCH/95/37 is only the
+  // radio converter, nested HYD/FE/06 is the meter behind it.
+  auto mk_warm=frame(0x5068,0x95,0x37,0x72);
+  mk_warm[4]=0x36;mk_warm[5]=0x49;mk_warm[6]=0x46;mk_warm[7]=0x00;
+  mk_warm[11]=0x25;mk_warm[12]=0x38;
+  mk_warm[13]=0x95;mk_warm[14]=0x66;
+  mk_warm[15]=0x24;mk_warm[16]=0x23;
+  mk_warm[17]=0xFE;mk_warm[18]=0x06;
+  got=identify(mk_warm);
+  assert(got.state==State::Candidate && got.source==Source::Tpl);
+  assert(std::strcmp(got.driver,"mkradio4a")==0);
+  assert(got.decimal_bcd && got.meter_id==66953825);
+  assert(got.different_dll_id);
+  // Original cold-water fixture has WEH/FE/07 in TPL, absent from the
+  // upstream detect.mvt declarations. Admit ONLY this exact nested pair.
+  auto mk_cold=mk_warm;
+  mk_cold[11]=0x02;mk_cold[12]=0x00;
+  mk_cold[13]=0x77;mk_cold[14]=0x01;
+  mk_cold[15]=0xA8;mk_cold[16]=0x5C;
+  mk_cold[17]=0xFE;mk_cold[18]=0x07;
+  got=identify(mk_cold);
+  assert(got.state==State::Candidate && got.source==Source::Tpl);
+  assert(std::strcmp(got.driver,"mkradio4a")==0);
+  assert(got.meter_id==1770002 && got.different_dll_id);
+  // A converter by itself, or one with an unrecognized nested meter,
+  // cannot be promoted to a verified mkradio4a device.
+  assert(identify(frame(0x5068,0x95,0x37,0x7A)).state==State::Unknown);
+  auto mk_unknown=mk_cold;
+  mk_unknown[17]=0xFD; // not WEH/FE/07
+  assert(identify(mk_unknown).state==State::Unknown);
+  // A converter advertising a *different supported* nested driver is
+  // ambiguous; it must not be silently called MK Radio4a.
+  auto mk_conflict=mk_warm;
+  mk_conflict[15]=0xB4;mk_conflict[16]=0x05;
+  mk_conflict[17]=0xF1;mk_conflict[18]=0x06;
+  assert(identify(mk_conflict).state==State::Ambiguous);
+  // MVT overlap on a new secure-only model must fail closed.
+  constexpr DriverSignature topas_collision[]={
+    {0x05B4,0xF1,0x06,"topaseskr"},
+    {0x05B4,0xF1,0x06,"other_driver"}};
+  auto topas_ambiguous=frame(0x05B4,0xF1,0x06,0x7A);
+  assert(diag::inspect(topas_ambiguous.data(),topas_ambiguous.size(),
+                       topas_collision,2).state==State::Ambiguous);
   // Original Techem never masquerades as an experimental model.
   assert(identify(frame(0x5068,0x95,0x72,0xA2)).state==State::Unknown);
   auto truncated=minomess;truncated.pop_back();
@@ -143,7 +196,8 @@ int main() {
                        overlap,2).state==State::Ambiguous);
   assert(diag::inspect(nullptr,0,generated::signatures,
                        generated::signature_count).state==State::Invalid);
-  std::cout<<"PASS metadata-only batch2 auto identification: original XMQ MVT,"
-            <<" converter TPL, ELL, ambiguity, Techem, bounds; no publish.\\n";
+  std::cout<<"PASS metadata-only native AUTO: Topas F1/06/07, MK Radio4a "
+            <<"warm HYD/cold WEH converter-TPL, conflicts, ELL and bounds; "
+            <<"no AES/decoder/publication.\\n";
   return 0;
 }
