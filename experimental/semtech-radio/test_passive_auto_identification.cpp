@@ -95,6 +95,14 @@ int main() {
   assert(recognize(frame(0x5068,0x95,0x37,0x7A)).state==diag::State::Unknown);
   cold[17]=0xF0; // unrecognized TPL version, no converter-only promotion
   assert(recognize(cold).state==diag::State::Unknown);
+  // A generic DLL MVT must not eclipse a different nested TPL
+  // identity: radio-converter metadata is not the target meter model.
+  auto nested_other=frame(0x5068,0x95,0x62,0x72);
+  nested_other[11]=0x25;nested_other[12]=0x38;
+  nested_other[13]=0x95;nested_other[14]=0x66;
+  nested_other[15]=0x24;nested_other[16]=0x23;
+  nested_other[17]=0xFE;nested_other[18]=0x06;
+  assert(recognize(nested_other).state==diag::State::Unknown);
   auto unknown=frame(0x5068,0x95,0x38,0x7A);
   assert(recognize(unknown).state==diag::State::Unknown);
   const DriverSignature colliding[]={
