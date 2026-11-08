@@ -62,10 +62,15 @@ int main() {
   assert(decode_clear_wireless_frame(upstream_rf.data(),
                                     upstream_rf.size(),reading)==Status::Unsupported);
   assert(reading.total_m3==0 && !reading.has_target);
-  // Only a synthetic, MODE ZERO version may exercise the clear TPL path.
+  // Only a synthetic, valid MODE ZERO version (M=N=0) may exercise the
+  // clear TPL path; the original Mode-5 frame carries N=5 encrypted blocks.
   // The DLL radio version differs from the embedded TPL version; match
   // the latter for identification, but DO NOT authorize publication.
   upstream_rf[22]=0x00;
+  // Mode 0 with N=5 remains an INVALID CF, not a clear packet.
+  assert(decode_clear_wireless_frame(upstream_rf.data(),
+                                    upstream_rf.size(),reading)==Status::Unsupported);
+  upstream_rf[21]=0x00; // synthetic CF 0x0000: M=0 AND N=0
   assert(decode_clear_wireless_frame(upstream_rf.data(),
                                     upstream_rf.size(),reading)==Status::Ok);
   assert(std::fabs(reading.total_m3-140.354)<1e-8);
@@ -97,13 +102,16 @@ int main() {
 
   // All four official wireless Minomess golden fixtures, including
   // both upstream missing-target encodings. Their original mode 5 is
-  // rejected; only synthetic mode zero exercises clear record parsing.
+  // rejected; only synthetic mode zero with N=0 exercises clear records.
   {
     auto frame=unhex("6644496A1064035514377251345015496A0007EE0050052F2F0C1359000000026CBE2B82046CA12B8C0413FFFFFFFF8D0493132CFBFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF02FD1700002F2F");
     assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
            ==Status::Unsupported);
     assert(reading.total_m3==0);
-    frame[22]=0; // synthetic clear transport; never mutate the XMQ source
+    frame[22]=0; // M=0 with N=5 is invalid, not valid clear transport
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Unsupported);
+    frame[21]=0; // synthetic M=N=0; original source fixture stays untouched
     assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
            ==Status::Ok);
     assert(std::fabs(reading.total_m3-0.059)<1e-8);
@@ -112,7 +120,10 @@ int main() {
     assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
            ==Status::Unsupported);
     assert(reading.total_m3==0);
-    frame[22]=0; // synthetic clear transport; never mutate the XMQ source
+    frame[22]=0; // M=0 with N=5 is invalid, not valid clear transport
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Unsupported);
+    frame[21]=0; // synthetic M=N=0; original source fixture stays untouched
     assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
            ==Status::Ok);
     assert(std::fabs(reading.total_m3-0.055)<1e-8);
@@ -121,7 +132,10 @@ int main() {
     assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
            ==Status::Unsupported);
     assert(reading.total_m3==0);
-    frame[22]=0; // synthetic clear transport; never mutate the XMQ source
+    frame[22]=0; // M=0 with N=5 is invalid, not valid clear transport
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Unsupported);
+    frame[21]=0; // synthetic M=N=0; original source fixture stays untouched
     assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
            ==Status::Ok);
     assert(std::fabs(reading.total_m3-0.057)<1e-8);
@@ -130,7 +144,10 @@ int main() {
     assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
            ==Status::Unsupported);
     assert(reading.total_m3==0);
-    frame[22]=0; // synthetic clear transport; never mutate the XMQ source
+    frame[22]=0; // M=0 with N=5 is invalid, not valid clear transport
+    assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
+           ==Status::Unsupported);
+    frame[21]=0; // synthetic M=N=0; original source fixture stays untouched
     assert(decode_clear_wireless_frame(frame.data(),frame.size(),reading)
            ==Status::Ok);
     assert(std::fabs(reading.total_m3-140.354)<1e-8);
