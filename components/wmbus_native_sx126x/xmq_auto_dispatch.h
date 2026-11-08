@@ -7,6 +7,29 @@
 #include "pure_driver_registry.h"
 namespace wmbus_pure { namespace auto_driver {
 #include "xmq_native_compiled.h"
+// Passive recognition is intentionally independent of decoder availability.
+// A positive match is NOT a permission to decrypt, select a key, publish
+// sensors, or bypass TPL/ELL security. The live AUTO decoder still calls
+// resolve(), which returns NotCompiled for secure-only drivers.
+enum class RecognitionStatus : uint8_t { Candidate, Unknown, Ambiguous, Invalid };
+struct Recognition {
+  RecognitionStatus status{RecognitionStatus::Invalid};
+  const char *driver{nullptr};
+  bool compiled_plaintext{false};
+};
+inline Recognition identify(const DriverSignature *signatures, size_t count,
+                             uint16_t manufacturer, uint8_t version,
+                             uint8_t type) {
+  const auto match=select_driver(signatures,count,manufacturer,version,type);
+  if(match.status==DriverSelectionStatus::Ambiguous)
+    return {RecognitionStatus::Ambiguous,nullptr,false};
+  if(match.status==DriverSelectionStatus::Unknown)
+    return {RecognitionStatus::Unknown,nullptr,false};
+  if(match.status!=DriverSelectionStatus::Found || !match.driver)
+    return {RecognitionStatus::Invalid,nullptr,false};
+  return {RecognitionStatus::Candidate,match.driver,
+          native_xmq_driver_compiled(match.driver)};
+}
 enum class Status : uint8_t { Ready, Unknown, Ambiguous, NotCompiled, Invalid };
 struct Result { Status status; const char *driver; };
 inline Result resolve(const char *requested, const DriverSignature *signatures,
