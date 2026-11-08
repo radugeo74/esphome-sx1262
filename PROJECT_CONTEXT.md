@@ -10,6 +10,46 @@
 4. Prefer small, auditable commits; include positive **and negative** regression tests; await reported CI green before expanding behavior. Fix CI regressions before moving to the next calup. Never claim CI passed, an `app_main` self-test executed on hardware, or live field validation unless it actually did.
 5. Never commit private meter IDs, captured production telegrams, encryption keys, Wi-Fi credentials, private YAML or other identifying telemetry. Synthetic IDs and original public upstream fixtures only.
 
+## Audit point 4 — Host integration through actual native delivery (2026-11-08)
+
+Only on `experimental/xmq-multidriver-auto`. The secure publication
+logic formerly embedded inside
+`NativeReceiverProbe::publish_secure_batch2_()` is now factored into
+the pure C++ `secure_meter_delivery.h` used by **both** the receiver
+and `experimental/semtech-radio/test_secure_rx_to_mapped_sensors.cpp`.
+The shared `evaluate()` matches exact configured DLL-sender IDs,
+invokes the real `batch2_secure::decode_configured()` with that
+meter's AES key, prevents partial/stale fields after rejection, and
+returns `Unmatched`, `Rejected`, or `Ready`. A rejected secure
+binding **consumes** the frame, with no clear fallback. `emit_mapped()`
+calls exactly the numeric/text/RSSI callbacks also used by production
+HA entities, and does so **only** after `Ready`. The receiver still
+enforces configured sensor-ID/field bindings and rounds to each HA
+sensor's configured precision. It never publishes from a passive
+AUTO candidate.
+
+CI's new host integration test exercises actual
+`verified::process()` on T1 3-of-6/format-A CRC, C1-A CRC, C1-B
+CRC; `registry::classify()`; runtime AES binding; the same
+native AES decoder and mapped output callbacks. Positive:
+original public encrypted Apator162 fixture, public
+Topas and MK Radio4a application fixtures independently encrypted
+with synthetic keys; numeric, text date and RSSI output gates.
+Negative: corrupt DLL CRC (blocks before AES), wrong key,
+meter ID, model, security mode, absent config, and already-clear
+upstream `NOKEY` content that must not be treated as on-air AES.
+No secret/real meter material was committed. Existing clear-profile
+T1/C1 and driver-level secure positive/negative tests remain in CI.
+The Stage-A structural guard asserts production actually imports
+and uses this common delivery logic.
+
+**Critical status distinction:** host/ESP-IDF/ESPHome builds do
+not constitute a physical Heltec radio test or a Home Assistant
+server result. Do NOT OTA/flash or mark live RF/HA acceptance based
+only on these tests. Audit point 4 closes the software integration
+coverage gap; a real deployment and physical receive/HA validation
+remain deferred. Audit points 1–3 continue unchanged.
+
 ## Audit point 3 — Passive AUTO independent of AES / HA (2026-11-08)
 
 On `experimental/xmq-multidriver-auto`, the native receiver now logs
