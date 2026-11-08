@@ -116,9 +116,11 @@ conflicting/unknown nested TPL model, is not identified as a confirmed
 MK Radio4a meter. `topaseskr` is identified passively for both
 documented `AMT/F1/06` and `AMT/F1/07` signatures.
 
-Regression tests `test_batch2_auto_identification.cpp`,
-`test_xmq_auto_registry.cpp` and
-`test_batch2_native_catalog_dispatch.cpp` separate
+The actual receiver uses the host-tested `passive_auto_identify.h`
+helper, covering all 16 families and the converter-only rejection.
+Regression tests `test_passive_auto_identification.cpp`,
+`test_batch2_auto_identification.cpp`, `test_xmq_auto_registry.cpp`
+and `test_batch2_native_catalog_dispatch.cpp` separate
 metadata recognition, decoder readiness, ambiguity and plaintext
 refusal. No changes were made to the AES implementation, actual meter
 keys, active Heltec firmware or configured HA devices.
