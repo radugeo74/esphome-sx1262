@@ -18,6 +18,35 @@ int main() {
   auto override_driver = auto_driver::resolve("fhkvdataiii", signatures, signature_count, 0, 0, 0);
   assert(override_driver.status == auto_driver::Status::Ready);
   assert(std::strcmp(override_driver.driver, "fhkvdataiii") == 0);
+  // Passive identification and live plaintext decode eligibility are
+  // independent. Secure-only drivers are recognized WITHOUT any AES key,
+  // but the existing live resolver must never authorize AUTO decoding.
+  const auto mk_meta=auto_driver::identify(signatures,signature_count,
+                                           0x5068,0x95,0x37);
+  const auto topas_meta=auto_driver::identify(signatures,signature_count,
+                                              0x05B4,0xF1,0x06);
+  assert(mk_meta.status==auto_driver::RecognitionStatus::Candidate &&
+         std::strcmp(mk_meta.driver,"mkradio4a")==0 &&
+         !mk_meta.compiled_plaintext);
+  assert(topas_meta.status==auto_driver::RecognitionStatus::Candidate &&
+         std::strcmp(topas_meta.driver,"topaseskr")==0 &&
+         !topas_meta.compiled_plaintext);
+  const auto topas_v7=auto_driver::identify(signatures,signature_count,
+                                            0x05B4,0xF1,0x07);
+  assert(topas_v7.status==auto_driver::RecognitionStatus::Candidate &&
+         std::strcmp(topas_v7.driver,"topaseskr")==0 &&
+         !topas_v7.compiled_plaintext);
+  const auto ready_meta=auto_driver::identify(signatures,signature_count,
+                                              0x5068,0x95,0x62);
+  assert(ready_meta.status==auto_driver::RecognitionStatus::Candidate &&
+         ready_meta.compiled_plaintext);
+  assert(auto_driver::identify(signatures,signature_count,
+                               0x1234,0xFF,0xFF).status==
+         auto_driver::RecognitionStatus::Unknown);
+  const auto topas_auto_decode=auto_driver::resolve("auto",signatures,
+                                 signature_count,0x05B4,0xF1,0x06);
+  assert(topas_auto_decode.status==auto_driver::Status::NotCompiled &&
+         topas_auto_decode.driver==nullptr);
   auto not_compiled = auto_driver::resolve("auto", signatures, signature_count, 0x5068, 0x95, 0x37);
   assert(not_compiled.status == auto_driver::Status::NotCompiled);
   assert(not_compiled.driver == nullptr);
@@ -67,6 +96,8 @@ int main() {
   auto conflict = select_driver(collision, 2, 0x5068, 0x95, 0x37);
   assert(conflict.status == DriverSelectionStatus::Ambiguous);
   assert(conflict.driver == nullptr);
+  assert(auto_driver::identify(collision,2,0x5068,0x95,0x37).status==
+         auto_driver::RecognitionStatus::Ambiguous);
   auto ambiguous = auto_driver::resolve("auto", collision, 2, 0x5068, 0x95, 0x37);
   assert(ambiguous.status == auto_driver::Status::Ambiguous && ambiguous.driver == nullptr);
   // Duplicate signature with same driver is not ambiguous.
