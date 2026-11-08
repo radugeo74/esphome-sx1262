@@ -13,6 +13,8 @@
 #include "lansenpu_plain.h"
 #include "lansendw_plain.h"
 #include "cma12w_plain.h"
+#include "elvsense_plain.h"
+#include "lansenrp_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -205,6 +207,39 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[1]={"average_temperature_1h_c",reading.average_temperature_1h_c};
     output.value_count=2;
     return PureDecodeStatus::Ok;
+  }
+  // Elvaco Sense only verified Mode-0 short TPL and strict records.
+  if(driver_name && std::strcmp(driver_name,"elvsense")==0){
+    if(!output.values || output.value_capacity<2)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    elvsense::Reading reading{};
+    if(elvsense::decode(frame,length,reading)!=elvsense::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"temperature_c",reading.temperature_c};
+    output.values[1]={"battery_v",reading.battery_v};
+    output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // Lansen R4 repeater, two public clear Mode-0 fixed-profile examples.
+  if(driver_name && std::strcmp(driver_name,"lansenrp")==0){
+    if(!output.values || output.value_capacity<7)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    lansenrp::Reading reading{};
+    if(lansenrp::decode(frame,length,reading)!=lansenrp::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_routed_messages_counter",reading.total_routed_messages_counter};
+    output.values[1]={"used_router_slots_counter",reading.used_router_slots_counter};
+    output.values[2]={"seconds_to_mode_change_counter",reading.seconds_to_mode_change_counter};
+    output.values[3]={"listen_timer_value_counter",reading.listen_timer_value_counter};
+    output.values[4]={"pause_timer_value_counter",reading.pause_timer_value_counter};
+    output.values[5]={"start_time_value_counter",reading.start_time_value_counter};
+    output.values[6]={"battery_v",reading.battery_v};
+    output.value_count=7;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {

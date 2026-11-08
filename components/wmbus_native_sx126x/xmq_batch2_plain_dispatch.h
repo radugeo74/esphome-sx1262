@@ -21,6 +21,8 @@ inline bool is_explicit_driver(const char *name) {
       std::strcmp(name,"lansenpu")==0 ||
       std::strcmp(name,"lansendw")==0 ||
       std::strcmp(name,"cma12w")==0 ||
+      std::strcmp(name,"elvsense")==0 ||
+      std::strcmp(name,"lansenrp")==0 ||
       std::strcmp(name,"ultraheat")==0 ||
       std::strcmp(name,"sontex868")==0 ||
       std::strcmp(name,"supercal")==0 ||
@@ -55,6 +57,8 @@ inline const char *select_configured_driver(
      (std::strcmp(resolved.driver,"lansenpu")==0 ||
       std::strcmp(resolved.driver,"lansendw")==0 ||
       std::strcmp(resolved.driver,"cma12w")==0 ||
+      std::strcmp(resolved.driver,"elvsense")==0 ||
+      std::strcmp(resolved.driver,"lansenrp")==0 ||
       std::strcmp(resolved.driver,"ultraheat")==0 ||
       std::strcmp(resolved.driver,"sontex868")==0 ||
       std::strcmp(resolved.driver,"supercal")==0 ||
