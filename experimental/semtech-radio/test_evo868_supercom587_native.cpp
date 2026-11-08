@@ -1,6 +1,7 @@
 // Configured-only official upstream EVO868 + Supercom 587 clear TPL fixtures.
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/xmq_auto_registry.h"
+#include "components/wmbus_native_sx126x/xmq_plain_text_fields.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -40,6 +41,9 @@ int main(){
  assert(decode(evo1,"79787776","evo868")==PureDecodeStatus::Ok);
  assert(has(out,"total_m3",1.798));
  assert(has(out,"consumption_at_set_date_m3",1.225));
+ const auto evo_status=text_fields::decode(evo1.data(),evo1.size(),"evo868");
+ assert(evo_status.count==1 && std::strcmp(evo_status.fields[0].name,"status")==0);
+ assert(std::strcmp(evo_status.fields[0].text,"OK")==0);
  assert(decode(evo2,"21031894","evo868")==PureDecodeStatus::Ok);
  assert(has(out,"total_m3",34.134));
  assert(has(out,"consumption_at_set_date_m3",25.296));
@@ -47,6 +51,9 @@ int main(){
         std::strcmp(auto_driver(superwarm,"12345678"),"supercom587")==0);
  assert(decode(superwarm,"12345678","supercom587")==PureDecodeStatus::Ok);
  assert(has(out,"total_m3",5.548));
+ const auto super_status=text_fields::decode(superwarm.data(),superwarm.size(),"supercom587");
+ assert(super_status.count==1 && std::strcmp(super_status.fields[0].name,"status")==0);
+ assert(std::strcmp(super_status.fields[0].text,"OK")==0);
  assert(decode(supercold,"11111111","supercom587")==PureDecodeStatus::Ok);
  assert(has(out,"total_m3",4.989));
  assert(decode(evo1,"79787777","evo868")!=PureDecodeStatus::Ok);
@@ -63,6 +70,7 @@ int main(){
  assert(decode(bad,"12345678","supercom587")!=PureDecodeStatus::Ok);
  bad=superwarm;bad[17]=0xAF; // bad BCD digit
  assert(decode(bad,"12345678","supercom587")!=PureDecodeStatus::Ok);
+ assert(text_fields::decode(bad.data(),bad.size(),"supercom587").count==0);
  bad=superwarm;bad.pop_back();bad[0]=uint8_t(bad.size()-1);
  assert(decode(bad,"12345678","supercom587")!=PureDecodeStatus::Ok);
  assert(out.value_count==0);

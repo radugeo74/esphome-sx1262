@@ -14,6 +14,8 @@
 #include "lansenrp_plain.h"
 #include "rfmamb_plain.h"
 #include "sensostar_plain.h"
+#include "evo868_plain.h"
+#include "supercom587_plain.h"
 #include "tpl_security_probe.h"
 
 namespace xmq_portable { namespace text_fields {
@@ -55,6 +57,18 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     if(reading.tpl_status==0) append(out,"status","OK");
     else if(reading.tpl_status==0x08)
       append(out,"status","MODULE_REMOVED");
+    return out;
+  }
+  if(std::strcmp(driver,"evo868")==0) {
+    evo868::Reading reading{};
+    if(evo868::decode(frame,size,reading)!=evo868::Status::Ok)return out;
+    append(out,"status","OK");
+    return out;
+  }
+  if(std::strcmp(driver,"supercom587")==0) {
+    supercom587::Reading reading{};
+    if(supercom587::decode(frame,size,reading)!=supercom587::Status::Ok)return out;
+    append(out,"status","OK");
     return out;
   }
   if(std::strcmp(driver,"sensostar")==0) {
