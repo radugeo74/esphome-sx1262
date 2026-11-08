@@ -404,6 +404,32 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Numai profilul clar Sontex 587 demonstrat de doua exemple publice apa rece/calda. Total BCD m3 si stare OK numai dupa verificarea formatului."
+    },
+    {
+      "driver": "hcae2",
+      "group": "PORTABLE",
+      "mvt": [
+        "EFE/31/08"
+      ],
+      "total_tests": 5,
+      "nokey_tests": 5,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Doar 3 exemple Engelmann HCA E2 T1 Mode 0: consum curent, target HCA si stari exact validate. Cele doua exemple C1 cu CRC suplimentar nu valideaza aici flux RF CRC-stripped; istoricul delta este exclus."
+    },
+    {
+      "driver": "bfw240radio",
+      "group": "PORTABLE",
+      "mvt": [
+        "BFW/02/08"
+      ],
+      "total_tests": 6,
+      "nokey_tests": 6,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Sase exemple BFW 240 radio Mode 0, structura producator fixa 55 octeti, curent si precedent HCA. Istoricul proprietar 18 luni si alte formate raman excluse."
     }
   ]
 }

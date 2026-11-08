@@ -41,11 +41,11 @@ def verify():
     assert data["oms_catalog"]=="https://oms-group.org/en/certified-products/"
     records=data["drivers"]
     expected=set().union(*GROUPS.values())
-    assert len(records)==len(expected)==26
+    assert len(records)==len(expected)==28
     assert {r["driver"] for r in records}==expected
-    assert len({r["driver"] for r in records})==26
+    assert len({r["driver"] for r in records})==28
     doc_rows=re.findall(r"^\| \[\x60([a-z0-9]+)\x60\]\(drivers/[^)]+\.xmq\) \|",doc,re.M)
-    assert len(doc_rows)==26 and set(doc_rows)==expected,doc_rows
+    assert len(doc_rows)==28 and set(doc_rows)==expected,doc_rows
     total=0
     for record in records:
         name=record["driver"]

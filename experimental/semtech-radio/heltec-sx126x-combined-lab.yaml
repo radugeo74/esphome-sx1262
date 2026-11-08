@@ -90,6 +90,10 @@ wmbus_native_sx126x:
       driver: lansensm
       key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
+    - meter_id: "54423117"  # upstream public HCA E2 T1 fixture; build-only
+      driver: auto
+    - meter_id: "00707788"  # upstream public BFW240 fixture; build-only
+      driver: auto
     - meter_id: "79787776"  # upstream public EVO868 Mode-0 example
       driver: auto
     - meter_id: "12345678"  # upstream public Supercom587 water example
@@ -122,6 +126,26 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "54423117"
+      field: consumption_hca
+      sensor:
+        name: "Lab Engelmann HCA E2 Current"
+        accuracy_decimals: 0
+    - meter_id: "54423117"
+      field: target_hca
+      sensor:
+        name: "Lab Engelmann HCA E2 Target"
+        accuracy_decimals: 0
+    - meter_id: "00707788"
+      field: current_hca
+      sensor:
+        name: "Lab BFW240 Current HCA"
+        accuracy_decimals: 0
+    - meter_id: "00707788"
+      field: prev_hca
+      sensor:
+        name: "Lab BFW240 Previous HCA"
+        accuracy_decimals: 0
     - meter_id: "79787776"
       field: total_m3
       sensor:

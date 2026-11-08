@@ -1,3 +1,30 @@
+## Calupul 27–28: HCA E2 + BFW240radio (2026-11-08)
+
+Two new portable native `meter_drivers` on
+`experimental/xmq-multidriver-auto`, explicit or configured `driver: auto`,
+with upstream XMQ and fixture regression tests.
+
+- `hcae2` (Engelmann EFE/31/08): `consumption_hca` and
+  `target_hca` from three original Mode-0 T1 XMQ samples (including
+  a 242/373 HCA positive reading). Exact two observed `status`
+  variants are exposed as a text sensor; unrecognized status codes
+  are not interpreted. The manufacturer flags are not a substitute
+  for safety/tamper hardware. C1 examples in upstream XMQ carry
+  trailing CRC and are not admitted as already stripped RF frames;
+  the 30 half-month historical deltas are out of scope.
+- `bfw240radio` (BFW/02/08): `current_hca` and `prev_hca`
+  from six original public, Mode-0 XMQ examples, including
+  904/961, 909/961 and 256/324 HCA. The manufacturer-specific
+  18-month history is not claimed; only fixed-layout 55-byte
+  application with checked date and official upstream counters.
+- Receiver validation: source-only metadata and bound DLL IDs,
+  strict CRC-verified/CRC-stripped radio frames, TPL Mode-0 gate,
+  fixed model + subtype and complete structural decoding. No
+  inferred decryption from upstream `NOKEY` fixture tags.
+- `experimental/semtech-radio/heltec-sx126x-combined-lab.yaml` is
+  **build-only** with public test IDs, no real meter IDs, no flash.
+  Existing Techem decoders and live Heltec remain unchanged.
+
 ## Calupul 25–26: EVO868 + Supercom 587 (2026-11-08)
 
 Two more `PORTABLE` native families are integrated on
