@@ -121,6 +121,8 @@ int main() {
   // reach the configured no-key/plain decoder or trigger a key trial.
   assert(!xmq_portable::batch2_plain::is_explicit_driver("mkradio4a"));
   assert(!xmq_portable::batch2_plain::is_explicit_driver("topaseskr"));
+  assert(!xmq_portable::batch2_plain::is_explicit_driver("lansenth"));
+  assert(!xmq_portable::batch2_plain::is_explicit_driver("lansensm"));
   auto mk_radio=from_hex(
     "4B44685036494600953772253895662423FE064E0030052F2F"
     "4315A10000426CBF2C0F542CF2DD8BEC869511B2DB8301C3ABA390FB4FDB6F1144DA1F3897DD55F2AD0D194F68510FF8FADFB9");

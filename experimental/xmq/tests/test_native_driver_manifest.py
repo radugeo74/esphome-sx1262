@@ -32,11 +32,13 @@ def main():
         assert experimental in CONFIGURABLE
         assert experimental not in SUPPORTED
         assert f'std::strcmp(name, "{experimental}")' not in compiled
-    assert SECURE_ONLY == ("mkradio4a", "topaseskr")
+    assert SECURE_ONLY == ("mkradio4a", "topaseskr", "lansenth", "lansensm")
     assert "mkradio4a" not in CONFIGURABLE
     assert "topaseskr" not in CONFIGURABLE
+    assert "lansenth" not in CONFIGURABLE and "lansensm" not in CONFIGURABLE
     assert "mkradio4a" not in compiled
     assert "topaseskr" not in compiled  # not generic plaintext/AUTO
+    assert "lansenth" not in compiled and "lansensm" not in compiled
     assert set(CONFIGURABLE).isdisjoint(SECURE_ONLY)
     native_secure = (ROOT / "components/wmbus_native_sx126x/xmq_batch2_secure_dispatch.h").read_text()
     assert 'std::strcmp(driver,"mkradio4a")==0' in native_secure

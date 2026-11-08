@@ -19,9 +19,11 @@ int main() {
   assert(add(bindings,"12340003","apator162",key,"12340003"));
   assert(add(bindings,"12340004","mkradio4a",key,"55036414"));
   assert(add(bindings,"12340005","topaseskr",key,"12340005"));
-  assert(bindings.size()==5);
-  const char *drivers[]={"minomess","kamwater","apator162","mkradio4a","topaseskr"};
-  for(size_t i=0;i<5;++i) {
+  assert(add(bindings,"12340006","lansenth",key,"12340006"));
+  assert(add(bindings,"12340007","lansensm",key,"12340007"));
+  assert(bindings.size()==7);
+  const char *drivers[]={"minomess","kamwater","apator162","mkradio4a","topaseskr","lansenth","lansensm"};
+  for(size_t i=0;i<7;++i) {
     assert(supported_driver(drivers[i]));
     assert(bindings[i].driver==drivers[i]);
     assert(bindings[i].key[0]==0x00);
@@ -43,7 +45,7 @@ int main() {
     assert(bindings.size()==before);
   };
   rejected("12340004","mkradio4a",key,"55036417"); // duplicated actual meter
-  rejected("12340007","mkradio4a",key,"55036414"); // duplicated DLL sender
+  rejected("12340008","mkradio4a",key,"55036414"); // duplicated DLL sender
   rejected("12340008","topaseskr",key,"55036418"); // different DLL prohibited
   rejected("12340009","kamwater",key,"55036419"); // different DLL prohibited
   rejected("12340010","apator162",key,"55036420"); // different DLL prohibited
@@ -55,8 +57,8 @@ int main() {
   rejected("12340015","topaseskr",key,"1234001Z");
   rejected("12340016","topaseskr",key.substr(0,30),"12340016");
   rejected("12340017","topaseskr","000102030405060708090A0B0C0D0E0Z","12340017");
-  assert(bindings.size()==5);
+  assert(bindings.size()==7);
   // Failure after parsing several valid bytes must not add a partial key.
-  std::puts("PASS runtime secure_meters registration 5/5; both new drivers bound; "
+  std::puts("PASS runtime secure_meters registration 7/7; Lansen TH/SM bound; "
             "invalid IDs, keys, duplicate bindings and unsupported AUTO fail closed.");
 }
