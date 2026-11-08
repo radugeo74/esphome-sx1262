@@ -117,6 +117,23 @@ int main() {
   if(decode(minomess,"12345679","minomess")==Status::Ok ||
      result.value_count!=0) return 3;
 
+  // SECURE_ONLY profiles may be found by metadata AUTO, but can NEVER
+  // reach the configured no-key/plain decoder or trigger a key trial.
+  assert(!xmq_portable::batch2_plain::is_explicit_driver("mkradio4a"));
+  assert(!xmq_portable::batch2_plain::is_explicit_driver("topaseskr"));
+  auto mk_radio=from_hex(
+    "4B44685036494600953772253895662423FE064E0030052F2F"
+    "4315A10000426CBF2C0F542CF2DD8BEC869511B2DB8301C3ABA390FB4FDB6F1144DA1F3897DD55F2AD0D194F68510FF8FADFB9");
+  assert(select_auto(mk_radio,"66953825","00464936")==nullptr);
+  assert(plain(mk_radio,"66953825","00464936","mkradio4a")!=Status::Ok);
+  assert(result.value_count==0);
+  auto topas_radio=from_hex(
+    "4E44B40512345678F1077A310040052F2F"
+    "01FD08040C13991848004C1359423500CC101300000000CC201359423500426C7F2C0B3B00000002FD74DA10025AD300C4016D3B179F27CC011387124600");
+  assert(select_auto(topas_radio,"78563412","78563412")==nullptr);
+  assert(plain(topas_radio,"78563412","78563412","topaseskr")!=Status::Ok);
+  assert(result.value_count==0);
+
   // Kamwater: genuine public compact TPL bytes, synthetic clear ELL-II
   // envelope and known KAM MULTICAL21 model identity.
   const uint8_t compact_tpl[]={
