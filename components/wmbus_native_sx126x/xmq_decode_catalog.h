@@ -23,6 +23,8 @@
 #include "supercom587_plain.h"
 #include "hcae2_plain.h"
 #include "bfw240radio_plain.h"
+#include "qwaterv2_plain.h"
+#include "hydrodigit_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -362,6 +364,34 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[0]={"current_hca",r.current_hca};
     output.values[1]={"prev_hca",r.prev_hca};
     output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // Qundis QWater V2: source-tested standard CI7A Mode0 BCD volume subset.
+  if(driver_name && std::strcmp(driver_name,"qwaterv2")==0) {
+    if(!output.values || output.value_capacity<3)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    qwaterv2::Reading r{};
+    if(qwaterv2::decode(frame,length,r)!=qwaterv2::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_m3",r.total_m3};
+    output.values[1]={"target_year_m3",r.target_year_m3};
+    output.values[2]={"target_m3",r.target_m3};
+    output.value_count=3;return PureDecodeStatus::Ok;
+  }
+  // B.Meters Hydrodigit: only genuinely Mode0 standard water total.
+  if(driver_name && std::strcmp(driver_name,"hydrodigit")==0) {
+    if(!output.values || output.value_capacity<1)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    hydrodigit::Reading r{};
+    if(hydrodigit::decode(frame,length,r)!=hydrodigit::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_m3",r.total_m3};
+    output.value_count=1;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
