@@ -102,6 +102,13 @@ jobs:
             experimental/semtech-radio/test_qsmoke_qcaloric_native.cpp \
             -o /tmp/test-qsmoke-qcaloric
           /tmp/test-qsmoke-qcaloric
+      - name: Test RFM-AMB and Sensostar clear-only native profiles
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_rfmamb_sensostar_native.cpp \
+            -o /tmp/test-rfmamb-sensostar
+          /tmp/test-rfmamb-sensostar
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 22 drivers

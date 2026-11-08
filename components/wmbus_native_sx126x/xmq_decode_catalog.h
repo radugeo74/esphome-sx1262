@@ -17,6 +17,8 @@
 #include "lansenrp_plain.h"
 #include "qsmoke_plain.h"
 #include "qcaloric_plain.h"
+#include "rfmamb_plain.h"
+#include "sensostar_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -270,6 +272,40 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(r.has_set)
       output.values[output.value_count++]=
         {"consumption_at_set_date_hca",r.consumption_at_set_date_hca};
+    return PureDecodeStatus::Ok;
+  }
+  // BMeters RFM-AMB: six timestamp-independent temperature and RH fields.
+  // Mode-5 encrypted original example is NEVER a no-key RF golden vector.
+  if(driver_name && std::strcmp(driver_name,"rfmamb")==0) {
+    if(!output.values || output.value_capacity<6)return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    rfmamb::Reading r{};
+    if(rfmamb::decode(frame,length,r)!=rfmamb::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"current_temperature_c",r.current_temperature_c};
+    output.values[1]={"average_temperature_1h_c",r.average_temperature_1h_c};
+    output.values[2]={"average_temperature_24h_c",r.average_temperature_24h_c};
+    output.values[3]={"current_relative_humidity_rh",r.current_relative_humidity_rh};
+    output.values[4]={"average_relative_humidity_1h_rh",r.average_relative_humidity_1h_rh};
+    output.values[5]={"average_relative_humidity_24h_rh",r.average_relative_humidity_24h_rh};
+    output.value_count=6;return PureDecodeStatus::Ok;
+  }
+  // Engelmann Sensostar: original clear short-TPL energy/volume/target.
+  // Other vendor, wired and AES formats require separate proof.
+  if(driver_name && std::strcmp(driver_name,"sensostar")==0) {
+    if(!output.values || output.value_capacity<3)return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    sensostar::Reading r{};
+    if(sensostar::decode(frame,length,r)!=sensostar::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_kwh",r.total_kwh};
+    output.values[1]={"total_water_m3",r.total_water_m3};
+    output.value_count=2;
+    if(r.has_target_kwh)output.values[output.value_count++]={"target_kwh",r.target_kwh};
     return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
