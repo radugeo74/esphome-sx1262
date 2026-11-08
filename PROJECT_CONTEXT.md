@@ -12,6 +12,23 @@
 
 ## Audit point 7 — SX1262 GFSK RSSI source (2026-11-08)
 
+**Follow-up CI source audit:** The T1 lab YAML was incorrectly cloning
+`experimental/semtech-sx126x-sx127x` even when the workflow ran on
+`experimental/xmq-multidriver-auto`. That meant the first ESPHome
+build could compile stale SX126x code; the 504 download failure masked
+the issue before source compilation began. The T1 and combined Heltec
+lab fixtures now use the checked-out `../../components` path,
+consistent with the diagnostic lab and the SHA being tested.
+`experimental/semtech-radio/ci/test_heltec_lab_source_ref.py` is
+now a first-class host CI regression gate. No actual receiver source
+or installed Heltec firmware was changed by this fix. The ESPHome
+dependency download blocker is recorded at
+https://github.com/radugeo74/esphome-sx1262/issues/1.
+Do NOT mark RSSI audit fully green until exact-commit ESPHome
+compilation completes. External GitHub HTTP 504 cannot be fixed
+by changing the C++ parser.
+
+
 Verified Semtech GFSK `GetPacketStatus(0x14)` after status byte:
 `[0] RxStatus`, `[1] RssiSync` latched at synchronization,
 `[2] RssiAvg` latched after RxDone. Both use UNSIGNED `-raw/2`

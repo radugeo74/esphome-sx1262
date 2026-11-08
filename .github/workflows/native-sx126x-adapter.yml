@@ -28,6 +28,8 @@ jobs:
       - uses: actions/checkout@v5
       - name: Repository-wide privacy audit (all branch HEADs)
         run: python3 experimental/semtech-radio/ci/privacy_audit.py
+      - name: Require Heltec lab YAML to compile same checked-out SX126x and RSSI code
+        run: python3 experimental/semtech-radio/ci/test_heltec_lab_source_ref.py
       - name: Build input contract test
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \

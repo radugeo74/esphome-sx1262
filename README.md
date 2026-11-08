@@ -51,6 +51,24 @@ Nu au fost schimbate decodoarele, cheile ori firmware-ul instalat.
 
 ### Audit 7 — RSSI SX1262 (2026-11-08)
 
+**CI source-fidelity fix (2026-11-08):** the Heltec T1 lab YAML
+used to clone the old `experimental/semtech-sx126x-sx127x` branch,
+which did **not** exercise changes in the active RSSI code branch.
+T1, combined T1/C1, and diagnostic lab YAMLs now compile the **local
+checkout** `../../components`, identical to the GitHub Actions
+commit under test. A fast CI guard
+[`test_heltec_lab_source_ref.py`](experimental/semtech-radio/ci/test_heltec_lab_source_ref.py)
+rejects future remote-branch regressions. These build-only YAMLs must
+be run from inside this repository, not copied without their
+`../../components` dependency.
+
+At commit `57232901`, ESPHome compilation remained blocked by
+GitHub release assets returning HTTP 504 during ESP-IDF setup, not by
+C++ compilation. Tracked in [issue #1](https://github.com/radugeo74/esphome-sx1262/issues/1).
+The RSSI change is not considered fully green until this new
+exact-source CI build completes. No firmware was flashed.
+
+
 For **GFSK GetPacketStatus (0x14)** the three bytes are
 `RxStatus`, **`RssiSync`** and **`RssiAvg`**. Their scale
 is `-raw/2.0 dBm`. Our progressive T1 and combined T1/C1 receive
