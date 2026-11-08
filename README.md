@@ -26,6 +26,20 @@ CI verifica automat catalogul fata de manifest si sursele XMQ.
 Nu atribuim certificate OMS pana nu este identificat modelul comercial exact.
 Documentatie si CI numai; nu afecteaza decoderul sau firmware-ul.
 
+### Audit punctul 6: siguranta `NOKEY` versus RF (2026-11-08)
+
+Dintre 74 de fixture XMQ, 71 sunt `NOKEY`, insa **31 dintre
+acestea au antet TPL AES Mode 5**. Aparitia `NOKEY` sau a
+markerului `2F2F` nu permite decodarea fara cheie.
+[Testul de provenienta](experimental/xmq/tests/test_nokey_fixture_provenance.py)
+si [testul de securitate RF](experimental/semtech-radio/test_nokey_rf_fail_closed.cpp)
+ruleaza in CI: exemplele deja lizibile din Q400/Minomess/Topas/
+MK Radio4a nu pot ocoli `publication::inspect` sau
+`batch2_plain::decode_configured`. Un iPERL Mode 0 valid ramane
+acceptat; un Mode 0 cu N nenul este respins.
+Vezi [catalogul de dovezi](experimental/xmq/SECURITY_PROFILE_CATALOG.md).
+Nu au fost schimbate decodoarele, cheile ori firmware-ul instalat.
+
 ## Architecture
 
 - **Radio:** ESPHome's SX126x component, locally patched for T1/C1

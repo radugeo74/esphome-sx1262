@@ -10,6 +10,30 @@
 4. Prefer small, auditable commits; include positive **and negative** regression tests; await reported CI green before expanding behavior. Fix CI regressions before moving to the next calup. Never claim CI passed, an `app_main` self-test executed on hardware, or live field validation unless it actually did.
 5. Never commit private meter IDs, captured production telegrams, encryption keys, Wi-Fi credentials, private YAML or other identifying telemetry. Synthetic IDs and original public upstream fixtures only.
 
+## Audit point 6 — NOKEY is not plaintext RF authorization (2026-11-08)
+
+CI regression only (no runtime, hardware, crypto-key or YAML changes).
+All 74 official XMQ fixtures from 16 drivers are re-read by
+`experimental/xmq/tests/test_nokey_fixture_provenance.py`.
+71 are `NOKEY`, yet 31 retain Mode-5 (AES) TPL security
+headers. Never treat `NOKEY`, a `2F2F` filler or an XMQ
+`_` clear-application separator as proof of an unencrypted
+original radio capture. A separate iPERL NOKEY fixture has
+M=0,N=1 (invalid Mode 0) and must be denied; iPERL M=N=0
+is a positive real Mode-0 compatibility case.
+
+`experimental/semtech-radio/test_nokey_rf_fail_closed.cpp`
+compiles against **the actual production** `tpl_security::inspect`,
+`publication::inspect` and
+`batch2_plain::decode_configured` gates. Q400, Topas,
+MK Radio4a and Minomess supplied-clear Mode-5 XMQ specimens
+must NOT decode or publish on the no-key RF path. An iPERL
+valid Mode-0 fixture still decodes; M=0,N=1 is rejected.
+No receiver/parser/driver changes were justified in this
+stage; host tests and the source evidence catalog provide
+the regression fence. Verify *all applicable CI jobs*
+for the exact commit; software green != hardware verification.
+
 ## Audit point 5 — OMS security evidence catalog (2026-11-08)
 
 Catalog 16/16 native drivers:

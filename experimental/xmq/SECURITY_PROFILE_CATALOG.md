@@ -48,6 +48,35 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`mkradio4a`:** XMQ deja lizibil cu antet Mode 5; test AES recriptat sintetic. Convertor TCH/95/37 plus HYD/FE/06 ori WEH/FE/07 in TPL.
 - **`topaseskr`:** XMQ NOKEY deja lizibil sub antet Mode 5; AES validat cu date recriptate sintetic.
 
+## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
+
+Am inspectat automat toate cele **74** de fixture XMQ din cele 16
+drivere: **71** ruleaza fara cheie in test, dar **31** dintre cele
+`NOKEY` pastreaza in antet un **TPL Mode 5 / AES-CBC**. Inca un
+fixture Apator162 are Mode 5 cu cheie explicita (deci **32** antete
+Mode 5). Nu le etichetam ca RF fara cheie: unele contin date deja
+decriptate dupa `_`, altele sunt cadre criptate din teste.
+
+Un exemplu `iperl` declara **M=0, N=1** in CF, combinatie invalida
+pentru Mode 0 conform OMS, desi fixture-ul foloseste `NOKEY`.
+Alt exemplu iPERL cu **M=0, N=0** este acceptat de ruta nativa
+plaintext. Nu interzicem profilurile realmente necriptate.
+
+**Garantiile din CI:** `test_nokey_fixture_provenance.py` analizeaza
+fiecare sursa XMQ, fara sa deduca securitatea din `NOKEY` sau
+`2F2F`. `test_nokey_rf_fail_closed.cpp` foloseste chiar
+`tpl_security::inspect`, `publication::inspect` si
+`batch2_plain::decode_configured` pentru fixture-urile Q400,
+Topas, MK Radio4a, Minomess si iPERL. Orice antet Mode 5
+este respins pe ruta clara, chiar daca dupa separator se afla
+date deja lizibile. Aceasta verificare se adauga testelor AES
+cu cheie explicita de la punctul 4.
+
+**Limita:** sintaxa XMQ nu confirma niciodata singura ce a transmis
+fizic contorul. CI necunoscut, ELL, antet TPL incomplet si moduri
+proprietare raman `unknown` pana la probe reale, nu sunt clasificate
+automat ca `fara cheie`.
+
 ## OMS Group: certificare versus implementare
 
 OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 16 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.

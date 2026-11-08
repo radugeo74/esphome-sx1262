@@ -73,6 +73,15 @@ jobs:
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 16 drivers
         run: python3 experimental/xmq/tests/test_security_profile_catalog.py
+      - name: Check NOKEY provenance and 31 encrypted-header counterexamples from all XMQ fixtures
+        run: python3 experimental/xmq/tests/test_nokey_fixture_provenance.py
+      - name: Test live clear admission never trusts upstream NOKEY AES headers
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_nokey_rf_fail_closed.cpp \
+            -o /tmp/test-nokey-rf-fail-closed
+          /tmp/test-nokey-rf-fail-closed
       - name: Test upstream XMQ C-style comment tokenization
         run: python3 experimental/xmq/tests/test_portable_xmq_block_comments.py
       - name: Audit second driver batch official XMQ fixture inventory and fail-closed publication
