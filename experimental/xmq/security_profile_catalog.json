@@ -313,6 +313,42 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Doua exemple publice Mode 0, schema R4 cu stare, ascultare, contoare si baterie. Variantele neconfirmate sunt refuzate."
+    },
+    {
+      "driver": "qsmoke",
+      "group": "PORTABLE",
+      "mvt": [
+        "QDS/21/1A",
+        "QDS/23/1A",
+        "LSE/21/1A",
+        "LSE/23/1A"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Numai exemplul QSmokep CI 7A / Mode 0 este admis. Doar contoare istorice; NU este alarma de incendiu si nici verificarea unui detector certificat."
+    },
+    {
+      "driver": "qcaloric",
+      "group": "PORTABLE",
+      "mvt": [
+        "LSE/34/08",
+        "LSE/35/08",
+        "QDS/35/08",
+        "QDS/34/08",
+        "QDS/36/08",
+        "QDS/3A/08",
+        "LSE/18/08",
+        "ZRI/FD/08"
+      ],
+      "total_tests": 10,
+      "nokey_tests": 10,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Numai subsetul CI 7A, Mode 0, DIF/VIF standard HCA; exclude WalkBy CI 78, Mode 5 post-decriptat si variantele proprietare."
     }
   ]
 }

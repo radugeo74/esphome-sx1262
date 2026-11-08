@@ -1,4 +1,4 @@
-# Catalogul de securitate wM-Bus / OMS — 20 drivere native
+# Catalogul de securitate wM-Bus / OMS — 22 drivere native
 
 **Revizie:** 2026-11-08. **Branch:** `experimental/xmq-multidriver-auto`. **Stadiu:** dovada software, nu certificare de echipament sau validare hardware.
 
@@ -30,6 +30,8 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 | [`lansensm`](drivers/lansensm.xmq) | `SECURE_ONLY` | `LAS/03/1A` | 2 (2 `NOKEY`) | Nu | OMS A / TPL Mode 5 |
 | [`elvsense`](drivers/elvsense.xmq) | `PORTABLE` | `ELV/50/1B`, `ELV/51/1B`, `ELV/52/1B`, `ELV/53/1B`, `ELV/54/1B` | 3 (3 `NOKEY`) | Profil clar limitat | — |
 | [`lansenrp`](drivers/lansenrp.xmq) | `PORTABLE` | `LAS/0B/32` | 2 (2 `NOKEY`) | Profil clar R4 | — |
+| [`qsmoke`](drivers/qsmoke.xmq) | `PORTABLE` | `QDS/21/1A`, `QDS/23/1A`, `LSE/21/1A`, `LSE/23/1A` | 2 (2 `NOKEY`) | Doar CI 7A Mode 0 | — |
+| [`qcaloric`](drivers/qcaloric.xmq) | `PORTABLE` | `LSE/34/08`, `LSE/35/08`, `QDS/35/08`, `QDS/34/08`, `QDS/36/08`, `QDS/3A/08`, `LSE/18/08`, `ZRI/FD/08` | 10 (10 `NOKEY`) | Doar CI 7A Mode 0 | — |
 
 **Legenda:** un profil clar este admis numai cu verificarile de integritate, identitate si securitate aferente; nu inseamna «orice dispozitiv din familie este necriptat». Pentru profilele AES, cheia este configurata explicit in `secure_meters`, iar un cadru respins nu revine la decoderul plaintext. Cele doua drivere `SECURE_ONLY` pot fi doar recunoscute diagnostic fara cheie.
 
@@ -56,14 +58,16 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`lansensm`:** Mode 5 cu cheie explicita, 2 fixture-uri post-decriptare; stare fum numai ca telemetrie, NU alarma de incendiu certificata.
 - **`elvsense`:** Doar exemplul ES1 este TPL Mode 0, cu temperatura si baterie. Celelalte doua NOKEY au antete Mode 5; nu se publica fara decriptare verificata.
 - **`lansenrp`:** Doua exemple publice Mode 0, schema R4 cu stare, ascultare, contoare si baterie. Variantele neconfirmate sunt refuzate.
+- **`qsmoke`:** Numai exemplul QSmokep CI 7A / Mode 0 este admis. Doar contoare istorice; NU este alarma de incendiu si nici verificarea unui detector certificat.
+- **`qcaloric`:** Numai subsetul CI 7A, Mode 0, DIF/VIF standard HCA; exclude WalkBy CI 78, Mode 5 post-decriptat si variantele proprietare.
   Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
 
-Am inspectat automat toate cele **83** de fixture XMQ din cele 16
-drivere: **80** ruleaza fara cheie in test, dar **37** dintre cele
+Am inspectat automat toate cele **95** de fixture XMQ din cele 16
+drivere: **92** ruleaza fara cheie in test, dar **39** dintre cele
 `NOKEY` pastreaza in antet un **TPL Mode 5 / AES-CBC**. Inca un
-fixture Apator162 are Mode 5 cu cheie explicita (deci **38** antete
+fixture Apator162 are Mode 5 cu cheie explicita (deci **40** antete
 Mode 5). Nu le etichetam ca RF fara cheie: unele contin date deja
 decriptate dupa `_`, altele sunt cadre criptate din teste.
 
@@ -99,7 +103,7 @@ automat ca `fara cheie`.
 
 ## OMS Group: certificare versus implementare
 
-OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 20 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
+OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 22 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
 
 Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES-CBC Mode 5** si **D / AES-CCM Mode 10**. Implementarea ELL AES-CTR este un traseu separat, care nu trebuie reclasificat automat ca profil A/B/D. **Mode 7 (OMS B) si Mode 13** sunt detectate de filtrul de securitate, dar nu au aici un decodor general. Aceasta este o harta de compatibilitate, nu o lista de contoare care sigur nu necesita cheie.
 
@@ -110,4 +114,4 @@ Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES
 3. Decodare completa a valorilor reale fara cheie si potrivirea producatorului, versiunii si tipului.
 4. Daca exista model comercial exact, identificare OMS independenta cu certificat si generatie; fara a incarca date private in GitHub.
 
-**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 20 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.
+**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 22 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.

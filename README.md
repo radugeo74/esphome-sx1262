@@ -1,3 +1,24 @@
+## Calup 21–22 — QSmoke / QCaloric (2026-11-08)
+
+Native configured-only clear-TPL subset for `qsmoke` and `qcaloric`.
+Both have upstream GPL-3.0-or-later XMQ source in the native project.
+Only CRC-verified DLL frames with a verified Mode 0 TPL are admitted;
+`NOKEY` in fixtures does not prove that all deployed models are clear.
+
+- QSmoke: `alarm_counter` and `test_button_counter` only, from
+  the original QSmokep CI 7A/Mode 0 sample. The QSmokeo CI 78
+  variant is NOT accepted. **These are historical test/alarm counters,
+  NOT real-time fire/smoke alarm states. Do not use this decoder for
+  life-safety notifications or actions.**
+- QCaloric: `current_consumption_hca`, optional
+  `consumption_at_set_date_hca`, only standard unencrypted CI 7A
+  DIF/VIF HCA records. Manufacturer WalkBy CI 78, encrypted Mode 5
+  and unverified proprietary formats are rejected; no claim of
+  full driver parity with upstream.
+- Both explicitly supported in `meter_drivers` and configured
+  `driver: auto`; never authorize unconfigured readings.
+- No Heltec OTA/flash, no modification to running Techem decoders.
+
 ## Calup native 19–20: Elvaco Sense + Lansen R4 (2026-11-08)
 
 `elvsense` and `lansenrp` are `PORTABLE` and selectable as an

@@ -39,7 +39,7 @@ int main() {
     "lansenpu","lansendw","cma12w","ultraheat","sontex868",
     "supercal","q400","minomess","kamwater","apator162",
     "mkradio4a","topaseskr","lansenth","lansensm",
-    "elvsense","lansenrp"
+    "elvsense","lansenrp","qsmoke","qcaloric"
   };
   size_t recognized=0;
   for(const char *name : drivers) {
@@ -92,7 +92,7 @@ int main() {
   assert(candidate.source==diag::Source::Tpl);
   assert(candidate.meter_id==1770002 && candidate.different_dll_id);
 
-  assert(recognized==20);
+  assert(recognized==22);
   assert(recognize(frame(0x5068,0x95,0x37,0x7A)).state==diag::State::Unknown);
   cold[17]=0xF0; // unrecognized TPL version, no converter-only promotion
   assert(recognize(cold).state==diag::State::Unknown);
