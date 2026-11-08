@@ -173,6 +173,13 @@ jobs:
             experimental/semtech-radio/test_minomess_native_mbedtls_mode5.cpp \
             -o /tmp/test-minomess-native-mode5 -lmbedcrypto
           /tmp/test-minomess-native-mode5
+      - name: Verify T1/C1 CRC through real secure AES binding and mapped HA sensor callbacks
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_secure_rx_to_mapped_sensors.cpp \
+            -o /tmp/test-secure-rx-to-mapped-sensors -lmbedcrypto
+          /tmp/test-secure-rx-to-mapped-sensors
       - name: Test real Kamwater ESP-IDF NVS adapter with host fake (no physical flash)
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
