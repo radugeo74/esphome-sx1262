@@ -24,7 +24,7 @@ PORTABLE = ("iperl", "hydrus", "lansenpu", "lansendw", "cma12w",
             "ultraheat", "sontex868", "supercal", "q400")
 # Independently configured AES-only receiver. Not safe for generic
 # plaintext meter_drivers, and never guesses keys from "NOKEY" fixtures.
-SECURE_ONLY = ("mkradio4a", "topaseskr")
+SECURE_ONLY = ("mkradio4a", "topaseskr", "lansenth", "lansensm")
 # Software-integrated drivers using the dedicated configured-only native
 # decoder. Not included in generic DLL-only AUTO/compiled manifest.
 CONFIGURED_NATIVE = ("minomess", "kamwater", "apator162")

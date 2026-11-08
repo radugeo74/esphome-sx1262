@@ -23,7 +23,8 @@ struct Entry {
 inline bool supported_driver(const std::string &driver) {
   return driver == "minomess" || driver == "kamwater" ||
          driver == "apator162" || driver == "mkradio4a" ||
-         driver == "topaseskr";
+         driver == "topaseskr" || driver == "lansenth" ||
+         driver == "lansensm";
 }
 
 inline bool decimal_meter_id(const std::string &id) {

@@ -119,7 +119,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_SECURE_METERS, default=[]): cv.ensure_list(cv.Schema({
         cv.Required(CONF_METER_ID): cv.All(cv.string_strict, validate_meter_id),
         cv.Optional(CONF_DLL_METER_ID): cv.All(cv.string_strict, validate_meter_id),
-        cv.Required(CONF_DRIVER): cv.one_of("minomess", "kamwater", "apator162", "mkradio4a", "topaseskr", lower=True),
+        cv.Required(CONF_DRIVER): cv.one_of("minomess", "kamwater", "apator162", "mkradio4a", "topaseskr", "lansenth", "lansensm", lower=True),
         cv.Required(CONF_KEY): validate_secure_key,
     })),
     cv.Optional(CONF_RSSI_SENSORS, default=[]): cv.ensure_list(cv.Schema({
