@@ -39,7 +39,13 @@ known encrypted modes, and valid clear configurations.
 asserts denial of Home Assistant publication for both failure
 classes with both CI variants, preserving genuine Mode-0 N=0.
 No flash, RF assertions or unrelated architecture changes.
-**Check the new three-job CI run before claiming fully green.**
+The original WMBusmeters fixtures were not modified; only synthetic
+Minomess/Hydrus test variants were corrected to M=N=0.
+**FULL GREEN:** [GitHub Actions #42456075410](https://github.com/radugeo74/esphome-sx1262/actions/runs/42456075410),
+code commit `c87f754e6367e79301febdeeb460cddcfc1a7d8d`,
+all three jobs passed: native packet/host regressions,
+ESP-IDF ESP32-S3 link, and ESPHome/Heltec builds.
+
 
 ## Audit point 1 — secure_meter runtime registration (2026-11-08)
 
