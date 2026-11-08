@@ -252,6 +252,37 @@
       ],
       "oms_certified_sku": null,
       "evidence_note": "XMQ NOKEY deja lizibil sub antet Mode 5; AES validat cu date recriptate sintetic."
+    },
+    {
+      "driver": "lansenth",
+      "group": "SECURE_ONLY",
+      "mvt": [
+        "LAS/07/1B",
+        "LAS/09/1B"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "none",
+      "keyed_routes": [
+        "TPL_AES_CBC_MODE5"
+      ],
+      "oms_certified_sku": null,
+      "evidence_note": "Doua aplicatii XMQ lizibile cu antet TPL Mode 5; CBC testat prin recriptare cu cheie sintetica, nu RF real."
+    },
+    {
+      "driver": "lansensm",
+      "group": "SECURE_ONLY",
+      "mvt": [
+        "LAS/03/1A"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "none",
+      "keyed_routes": [
+        "TPL_AES_CBC_MODE5"
+      ],
+      "oms_certified_sku": null,
+      "evidence_note": "Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant."
     }
   ]
 }

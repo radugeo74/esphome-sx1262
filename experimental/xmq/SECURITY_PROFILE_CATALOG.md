@@ -1,4 +1,4 @@
-# Catalogul de securitate wM-Bus / OMS — 16 drivere native
+# Catalogul de securitate wM-Bus / OMS — 18 drivere native
 
 **Revizie:** 2026-11-08. **Branch:** `experimental/xmq-multidriver-auto`. **Stadiu:** dovada software, nu certificare de echipament sau validare hardware.
 
@@ -26,6 +26,8 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 | [`apator162`](drivers/apator162.xmq) | `CONFIGURED_NATIVE` | `APA/05/06`, `APA/05/07` | 19 (18 `NOKEY`) | Profil clar configurat | OMS A / TPL Mode 5 |
 | [`mkradio4a`](drivers/mkradio4a.xmq) | `SECURE_ONLY` | `HYD/FE/06`, `TCH/95/37` | 2 (2 `NOKEY`) | Nu | OMS A / TPL Mode 5 |
 | [`topaseskr`](drivers/topaseskr.xmq) | `SECURE_ONLY` | `AMT/F1/06`, `AMT/F1/07` | 2 (2 `NOKEY`) | Nu | OMS A / TPL Mode 5 |
+| [`lansenth`](drivers/lansenth.xmq) | `SECURE_ONLY` | `LAS/07/1B`, `LAS/09/1B` | 2 (2 `NOKEY`) | Nu | OMS A / TPL Mode 5 |
+| [`lansensm`](drivers/lansensm.xmq) | `SECURE_ONLY` | `LAS/03/1A` | 2 (2 `NOKEY`) | Nu | OMS A / TPL Mode 5 |
 
 **Legenda:** un profil clar este admis numai cu verificarile de integritate, identitate si securitate aferente; nu inseamna «orice dispozitiv din familie este necriptat». Pentru profilele AES, cheia este configurata explicit in `secure_meters`, iar un cadru respins nu revine la decoderul plaintext. Cele doua drivere `SECURE_ONLY` pot fi doar recunoscute diagnostic fara cheie.
 
@@ -47,13 +49,15 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`apator162`:** Include exemplu public criptat AES Mode 5 si alte exemple NOKEY; profilele difera.
 - **`mkradio4a`:** XMQ deja lizibil cu antet Mode 5; test AES recriptat sintetic. Convertor TCH/95/37 plus HYD/FE/06 ori WEH/FE/07 in TPL.
 - **`topaseskr`:** XMQ NOKEY deja lizibil sub antet Mode 5; AES validat cu date recriptate sintetic.
+- **`lansenth`:** Mode 5 cu cheie explicita, 2 fixture-uri post-decriptare; temperaturi si umiditate.
+- **`lansensm`:** Mode 5 cu cheie explicita, 2 fixture-uri post-decriptare; stare fum numai ca telemetrie, NU alarma de incendiu certificata.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
 
-Am inspectat automat toate cele **74** de fixture XMQ din cele 16
-drivere: **71** ruleaza fara cheie in test, dar **31** dintre cele
+Am inspectat automat toate cele **78** de fixture XMQ din cele 16
+drivere: **75** ruleaza fara cheie in test, dar **35** dintre cele
 `NOKEY` pastreaza in antet un **TPL Mode 5 / AES-CBC**. Inca un
-fixture Apator162 are Mode 5 cu cheie explicita (deci **32** antete
+fixture Apator162 are Mode 5 cu cheie explicita (deci **36** antete
 Mode 5). Nu le etichetam ca RF fara cheie: unele contin date deja
 decriptate dupa `_`, altele sunt cadre criptate din teste.
 
@@ -89,7 +93,7 @@ automat ca `fara cheie`.
 
 ## OMS Group: certificare versus implementare
 
-OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 16 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
+OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 18 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
 
 Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES-CBC Mode 5** si **D / AES-CCM Mode 10**. Implementarea ELL AES-CTR este un traseu separat, care nu trebuie reclasificat automat ca profil A/B/D. **Mode 7 (OMS B) si Mode 13** sunt detectate de filtrul de securitate, dar nu au aici un decodor general. Aceasta este o harta de compatibilitate, nu o lista de contoare care sigur nu necesita cheie.
 
@@ -100,4 +104,4 @@ Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES
 3. Decodare completa a valorilor reale fara cheie si potrivirea producatorului, versiunii si tipului.
 4. Daca exista model comercial exact, identificare OMS independenta cu certificat si generatie; fara a incarca date private in GitHub.
 
-**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 16 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.
+**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 18 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.

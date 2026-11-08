@@ -22,6 +22,8 @@ ROUTES={
     "apator162":["TPL_AES_CBC_MODE5"],
     "mkradio4a":["TPL_AES_CBC_MODE5"],
     "topaseskr":["TPL_AES_CBC_MODE5"],
+    "lansenth":["TPL_AES_CBC_MODE5"],
+    "lansensm":["TPL_AES_CBC_MODE5"],
 }
 CLEAR={
     "GENERATED":"manufacturer_specific",
@@ -39,11 +41,11 @@ def verify():
     assert data["oms_catalog"]=="https://oms-group.org/en/certified-products/"
     records=data["drivers"]
     expected=set().union(*GROUPS.values())
-    assert len(records)==len(expected)==16
+    assert len(records)==len(expected)==18
     assert {r["driver"] for r in records}==expected
-    assert len({r["driver"] for r in records})==16
+    assert len({r["driver"] for r in records})==18
     doc_rows=re.findall(r"^\| \[\x60([a-z0-9]+)\x60\]\(drivers/[^)]+\.xmq\) \|",doc,re.M)
-    assert len(doc_rows)==16 and set(doc_rows)==expected,doc_rows
+    assert len(doc_rows)==18 and set(doc_rows)==expected,doc_rows
     total=0
     for record in records:
         name=record["driver"]
@@ -74,6 +76,7 @@ def verify():
     src=(ROOT/"components/wmbus_native_sx126x/xmq_batch2_secure_dispatch.h").read_text()
     for token in ("decode_minomess_mode5(","decode_apator162_mode5(",
                   "decode_mkradio4a_mode5(","decode_topaseskr_mode5(",
+                  "decode_lansen_mode5(",
                   "kamwater::ell_ctr_mbedtls::decrypt_ell_ii(","oms_ccm_idf_probe"):
         assert token in src,token
     security=(ROOT/"components/wmbus_native_sx126x/tpl_security_probe.h").read_text()

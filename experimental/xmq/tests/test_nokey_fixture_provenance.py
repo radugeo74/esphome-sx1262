@@ -52,7 +52,7 @@ def classify(tg: str):
 def main():
     catalog = json.loads((BASE / "security_profile_catalog.json").read_text())
     names = tuple(d.name for d in GENERATED) + PORTABLE + CONFIGURED_NATIVE + SECURE_ONLY
-    assert len(names) == 16 and len(set(names)) == 16
+    assert len(names) == 18 and len(set(names)) == 18
     assert {x["driver"] for x in catalog["drivers"]} == set(names)
     total = nokey = non_key_mode5 = all_mode5 = 0
     by_driver = Counter()
@@ -84,16 +84,17 @@ def main():
                     assert category != "TPL_MODE0_CANDIDATE"
             if category == "TPL_MODE0_INVALID":
                 assert blocks and not mode, (driver, idx)
-            if driver in ("mkradio4a", "topaseskr"):
+            if driver in ("mkradio4a", "topaseskr", "lansenth", "lansensm"):
                 # All four upstream supplied-clear NOKEY applications
                 # still retain their secured Mode-5 transport headers.
                 assert no_key and marker and category == "TPL_MODE5_SECURE_HEADER"
                 assert "2F2F" in tg.split("_", 1)[0]
         assert sum("NOKEY" in x.group(1).split() for x in examples) == expected["nokey_tests"]
-    assert (total, nokey, all_mode5, non_key_mode5) == (74, 71, 32, 31)
+    assert (total, nokey, all_mode5, non_key_mode5) == (78, 75, 36, 35)
     assert by_driver == Counter({
         "hydrus": 3, "q400": 2, "minomess": 4, "apator162": 18,
         "mkradio4a": 2, "topaseskr": 2,
+        "lansenth": 2, "lansensm": 2,
     }), by_driver
     # Public iperl example #1 says "after decryption" and declares M=0,
     # N=1. The OMS Mode-0 gate correctly rejects that inconsistent CF;
