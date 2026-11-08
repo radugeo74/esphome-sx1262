@@ -19,6 +19,8 @@
 #include "qcaloric_plain.h"
 #include "rfmamb_plain.h"
 #include "sensostar_plain.h"
+#include "evo868_plain.h"
+#include "supercom587_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -307,6 +309,31 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.value_count=2;
     if(r.has_target_kwh)output.values[output.value_count++]={"target_kwh",r.target_kwh};
     return PureDecodeStatus::Ok;
+  }
+  // Maddalena EVO868: bounded standard Mode-0 water and billing volume.
+  if(driver_name && std::strcmp(driver_name,"evo868")==0) {
+    if(!output.values || output.value_capacity<2)return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    evo868::Reading r{};
+    if(evo868::decode(frame,length,r)!=evo868::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_m3",r.total_m3};
+    output.values[1]={"consumption_at_set_date_m3",r.consumption_at_set_date_m3};
+    output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // Sontex Supercom 587: bounded standard Mode-0 BCD total only.
+  if(driver_name && std::strcmp(driver_name,"supercom587")==0) {
+    if(!output.values || output.value_capacity<1)return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    supercom587::Reading r{};
+    if(supercom587::decode(frame,length,r)!=supercom587::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_m3",r.total_m3};
+    output.value_count=1;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
