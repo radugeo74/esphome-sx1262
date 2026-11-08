@@ -82,6 +82,8 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
     uint32_t target_id{0};
     const char *driver{nullptr};
     uint8_t source{0};
+    uint8_t tpl_mode{0xFF};
+    uint8_t tpl_security{0};
   };
   // Fixed-capacity log deduplication; no per-telegram heap accumulation.
   std::array<Batch2Seen,32> batch2_seen_{};
