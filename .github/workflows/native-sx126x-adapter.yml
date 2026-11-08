@@ -79,6 +79,13 @@ jobs:
             experimental/semtech-radio/test_lansen_th_sm_supplied_clear.cpp \
             -o /tmp/test-lansen-th-sm-supplied-clear
           /tmp/test-lansen-th-sm-supplied-clear
+      - name: Test explicit-key native Lansen TH and SM Mode-5 AES (synthetic ciphertext)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_lansen_th_sm_native_mode5.cpp \
+            -o /tmp/test-lansen-th-sm-native-aes -lmbedcrypto
+          /tmp/test-lansen-th-sm-native-aes
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 16 drivers

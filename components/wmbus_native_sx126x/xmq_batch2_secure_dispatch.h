@@ -17,6 +17,8 @@
 #include "minomess_clear_prefix.h"
 #include "mkradio4a_plain.h"
 #include "topaseskr_plain.h"
+#include "lansenth_clear_application.h"
+#include "lansensm_clear_application.h"
 #include "native_identity_probe.h"
 #include "oms_ccm_mbedtls.h"
 #include "kamwater_numeric_semantics.h"
@@ -332,6 +334,66 @@ inline Status decode_topaseskr_mode5(const uint8_t *frame,size_t length,
         "volume_year_period_m3",water.year_m3};
   return Status::Ok;
 }
+
+// Lansen TH/SM: original NOKEY fixtures retain Mode-5 TPL headers.
+// Synthetic-key Mode-5 CBC only; strictly configured ID + MVT.
+// AES-CBC and the 2F2F prefix are NOT a cryptographic MAC. Never treat
+// these smoke measurements as a certified safety/fire alarm.
+inline Status decode_lansen_mode5(const uint8_t *frame,size_t length,
+                                  const char *configured_id,
+                                  const uint8_t key[16],
+                                  const char *driver,
+                                  DecodedPayload &output) {
+  output.value_count=0;output.date_count=0;
+  if(!frame || !configured_id || !driver || !key)
+    return Status::InvalidFrame;
+  wmbus_pure::Header header{};
+  if(wmbus_pure::parse_header(frame,length,header)!=
+     wmbus_pure::HeaderStatus::Ok) return Status::InvalidFrame;
+  if(wmbus_pure::match_meter_id(header,configured_id)!=
+     wmbus_pure::MatchStatus::Match) return Status::WrongMeter;
+  if(header.manufacturer!=0x3033 || header.ci!=0x7A || length!=47)
+    return Status::WrongModel;
+  const bool th=std::strcmp(driver,"lansenth")==0 &&
+                header.device_type==0x1B &&
+                (header.version==0x07 || header.version==0x09);
+  const bool sm=std::strcmp(driver,"lansensm")==0 &&
+                header.device_type==0x1A && header.version==0x03;
+  if(!th && !sm) return Status::WrongModel;
+  if(!output.values || output.value_capacity<(th?6u:4u))
+    return Status::MissingCapacity;
+  oms_mode5::Output decrypted{};
+  if(oms_mode5::decrypt_short_tpl_record_payload(frame,length,key,decrypted)!=
+     oms_mode5::Status::Ok) return Status::EncryptedDecodeRejected;
+  // Shared decryptor has removed the 2F2F marker; restore it ONLY
+  // for the strict supplied-clear application parser below.
+  std::vector<uint8_t> app{0x2F,0x2F};
+  app.insert(app.end(),decrypted.clear_application.begin(),
+             decrypted.clear_application.end());
+  if(th) {
+    lansenth_clear::Reading reading{};
+    if(lansenth_clear::decode(app.data(),app.size(),reading)!=
+       lansenth_clear::Status::Ok) return Status::ApplicationRejected;
+    output.values[0]={"current_temperature_c",reading.temperature_c};
+    output.values[1]={"average_temperature_1h_c",reading.temperature_1h_c};
+    output.values[2]={"average_temperature_24h_c",reading.temperature_24h_c};
+    output.values[3]={"current_relative_humidity_rh",reading.humidity_rh};
+    output.values[4]={"average_relative_humidity_1h_rh",reading.humidity_1h_rh};
+    output.values[5]={"average_relative_humidity_24h_rh",reading.humidity_24h_rh};
+    output.value_count=6;
+  } else {
+    lansensm_clear::Reading reading{};
+    if(lansensm_clear::decode(app.data(),app.size(),reading)!=
+       lansensm_clear::Status::Ok) return Status::ApplicationRejected;
+    output.values[0]={"smoke_detected",reading.smoke?1.0:0.0};
+    output.values[1]={"error_flags",double(reading.flags)};
+    output.values[2]={"async_msg_id_counter",double(reading.message_counter)};
+    output.values[3]={"minutes_since_last_manual_test_counter",
+                      double(reading.minutes_since_test)};
+    output.value_count=4;
+  }
+  return Status::Ok;
+}
 // Explicit only: the configured batch-2 driver and its own key must
 // already be bound to this meter in YAML. AUTO and trial-decryption are
 // intentionally forbidden. Input is CRC-stripped AFTER verified::process.
@@ -346,6 +408,9 @@ inline Status decode_configured(const uint8_t *frame,size_t length,
   if(out_status) *out_status=nullptr;
   if(!driver || !key || !frame || length<11)
     return Status::EncryptedDecodeRejected;
+  if(std::strcmp(driver,"lansenth")==0 ||
+     std::strcmp(driver,"lansensm")==0)
+    return decode_lansen_mode5(frame,length,configured_id,key,driver,output);
   if(std::strcmp(driver,"topaseskr")==0)
     return decode_topaseskr_mode5(frame,length,configured_id,key,output);
   if(std::strcmp(driver,"mkradio4a")==0)

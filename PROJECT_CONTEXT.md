@@ -13,6 +13,18 @@ independent identity, ciphertext and security-negative tests is required
 before adding either to `SECURE_ONLY`, YAML or Home Assistant.
 The current active 16-driver catalog remains unchanged. No flash/OTA.
 
+## Lansen TH / SM — keyed decoder build verification (2026-11-08)
+A model- and meter-ID-bound synthetic CBC Mode-5 native decoder has
+been added for both original Lansen TH / SM profiles, exercising four
+public already-clear XMQ payloads re-encrypted under synthetic keys.
+It rejects wrong AES key, configured ID, MVT, CF mode, truncated frames
+and raw supplied-clear NOKEY pretending to be on-air ciphertext.
+The parser adds TH humidity one-byte VIF-1B variant from the second
+original fixture. This step validates C++ decoder behavior only; do
+not advertise AES availability in YAML until registration, catalog and
+mapped HA integration are independently verified. CBC is not authenticated
+and smoke outputs are NOT certified fire safety alarms. No real RF.
+
 # Project context — `experimental/xmq-multidriver-auto`
 
 > **Branch-specific context, updated 2026-11-07.** This section applies **only to `experimental/xmq-multidriver-auto`**. No default branch, legacy experimental branch, local YAML, hardware firmware or server configuration is changed by this documentation update. The older 2026-11-01 `xmq-independent-pipeline` notes are preserved below as historical context and **must not be interpreted as the active architecture on this branch**.
