@@ -90,9 +90,10 @@ class NativeReceiverProbe : public Component, public sx126x::SX126xListener {
   size_t batch2_seen_count_{0};
   size_t batch2_seen_cursor_{0};
   void log_combined_stats_();
-  // Diagnostic only: metadata recognition from DLL CRC-verified T1/C1.
+  // Diagnostic only: all 16 native-driver MVTs from verified T1/C1;
+  // nested TPL/ELL identities never authorize decode/publication.
   // No dispatch/decoder/key lookup or Home Assistant publication.
-  void log_batch2_auto_(const std::vector<uint8_t> &frame,
+  void log_native_auto_(const std::vector<uint8_t> &frame,
                         uint32_t dll_meter_id,const char *link);
   void publish_xmq_text_(const std::vector<uint8_t> &frame,
                          const std::string &id, const char *driver,
