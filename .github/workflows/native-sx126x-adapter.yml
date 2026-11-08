@@ -33,6 +33,12 @@ jobs:
             -o /tmp/test-native-packet-input
       - name: Run input contract test
         run: /tmp/test-native-packet-input
+      - name: Test runtime secure_meters registration for all five AES drivers
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_secure_meter_binding.cpp \
+            -o /tmp/test-secure-meter-binding
+          /tmp/test-secure-meter-binding
       - name: Build and test C1 post-sync framing
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
