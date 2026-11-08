@@ -5,8 +5,8 @@ T1 and C1, with a native C++ parsing/decoding pipeline and configurable
 Home Assistant sensors.
 
 **Active branch:** `experimental/xmq-multidriver-auto`  
-**Last confirmed full green CI before the OMS security-audit fix:** [GitHub Actions #42454231643](https://github.com/radugeo74/esphome-sx1262/actions/runs/42454231643)
-(code commit `0d90ccc0055ff9d8063bcca821ebee04bc3a7939`, all three jobs passed).
+**Last fully green code CI — OMS audit point 2:** [GitHub Actions #42456075410](https://github.com/radugeo74/esphome-sx1262/actions/runs/42456075410)
+(code commit `c87f754e6367e79301febdeeb460cddcfc1a7d8d`, all three jobs passed).
 
 > This branch is a distinct native implementation. It **does not use
 > `wmbus_radio` / `wmbus_meter` or the old
@@ -53,7 +53,11 @@ to block anything other than `NotEncrypted`.
 
 Positive/negative regressions now cover both `CI=7A` short TPL and
 `CI=72` long TPL in `test_tpl_security_probe.cpp` and
-`test_native_publication_gate.cpp`. This change does **not**
+`test_native_publication_gate.cpp`.
+The Minomess and Hydrus host tests now construct valid synthetic Mode-0
+frames by clearing **both** M and N; upstream encrypted XMQ fixtures
+remain unchanged. CI #42456075410 passed all three jobs (host tests,
+ESP-IDF ESP32-S3 link, and ESPHome Heltec builds). This change does **not**
 introduce new AES decoding, bypass existing secure bindings,
 alter the manufacturer's clear-specific A0/A2 decoding, or
 change any installed Heltec firmware.
