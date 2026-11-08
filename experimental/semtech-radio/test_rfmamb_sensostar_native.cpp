@@ -1,6 +1,7 @@
 // Original upstream RFM-AMB / Sensostar fixtures under strict Mode-0 admission.
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/xmq_auto_registry.h"
+#include "components/wmbus_native_sx126x/xmq_plain_text_fields.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -45,6 +46,9 @@ int main() {
         std::strcmp(automatic(r1,"11772288"),"rfmamb")==0);
  assert(parse(r1,"11772288","rfmamb")==PureDecodeStatus::Ok);
  assert(out.value_count==6);
+ const auto rfm_text=text_fields::decode(r1.data(),r1.size(),"rfmamb");
+ assert(rfm_text.count==1 && std::strcmp(rfm_text.fields[0].name,"status")==0);
+ assert(std::strcmp(rfm_text.fields[0].text,"MODULE_REMOVED")==0);
  assert(has(out,"current_temperature_c",22.08));
  assert(has(out,"average_temperature_1h_c",21.91));
  assert(has(out,"average_temperature_24h_c",22.07));
@@ -57,11 +61,15 @@ int main() {
  assert(has(out,"total_kwh",5699));
  assert(has(out,"total_water_m3",389.136));
  assert(has(out,"target_kwh",3671));
+ const auto ss_text=text_fields::decode(s1.data(),s1.size(),"sensostar");
+ assert(ss_text.count==1 && std::strcmp(ss_text.fields[0].name,"status")==0);
+ assert(std::strcmp(ss_text.fields[0].text,"OK")==0);
  assert(parse(s2,"21750444","sensostar")==PureDecodeStatus::Ok);
  assert(has(out,"total_kwh",18312));
  assert(has(out,"total_water_m3",4229.774));
  assert(parse(r2,"23699558","rfmamb")!=PureDecodeStatus::Ok);
  assert(out.value_count==0); // actual AES-5 RF cannot enter Mode0 path
+ assert(text_fields::decode(r2.data(),r2.size(),"rfmamb").count==0);
  assert(parse(encrypted,"45457891","sensostar")!=PureDecodeStatus::Ok);
  assert(out.value_count==0); // Mode-5 supplied-clear XMQ suffix is NOT clear RF
  assert(parse(wired,"20480057","sensostar")!=PureDecodeStatus::Ok);

@@ -12,6 +12,8 @@
 #include "cma12w_plain.h"
 #include "elvsense_plain.h"
 #include "lansenrp_plain.h"
+#include "rfmamb_plain.h"
+#include "sensostar_plain.h"
 #include "tpl_security_probe.h"
 
 namespace xmq_portable { namespace text_fields {
@@ -43,6 +45,22 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     append(out,"status",lansendw::state_text(reading.digital_input));
     append(out,"error_flags",lansendw::error_text(
         reading.error_flags,reading.tpl_status));
+    return out;
+  }
+  if(std::strcmp(driver,"rfmamb")==0) {
+    rfmamb::Reading reading{};
+    if(rfmamb::decode(frame,size,reading)!=rfmamb::Status::Ok)return out;
+    // The original clear fixture has TPL 0x08 = MODULE_REMOVED.
+    // Do not invent semantics for unrecognized status combinations.
+    if(reading.tpl_status==0) append(out,"status","OK");
+    else if(reading.tpl_status==0x08)
+      append(out,"status","MODULE_REMOVED");
+    return out;
+  }
+  if(std::strcmp(driver,"sensostar")==0) {
+    sensostar::Reading reading{};
+    if(sensostar::decode(frame,size,reading)!=sensostar::Status::Ok)return out;
+    append(out,"status","OK"); // only zero-status clear frames admitted
     return out;
   }
   if(std::strcmp(driver,"elvsense")==0) {
