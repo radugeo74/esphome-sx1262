@@ -5,6 +5,7 @@
 #include "xmq_auto_registry.h"
 #include "xmq_auto_dispatch.h"
 #include "batch2_auto_identify.h"
+#include "passive_auto_identify.h"
 #include "tpl_security_probe.h"
 #include "native_meter_registry.h"
 #include "native_identity_probe.h"
@@ -196,34 +197,10 @@ static void log_verified_identities(
 void NativeReceiverProbe::log_native_auto_(
     const std::vector<uint8_t> &frame,uint32_t dll_meter_id,const char *link) {
 #ifdef WMBUS_NATIVE_XMQ_ENABLED
-  auto candidate=wmbus_pure::batch2_identify::inspect(
+  const auto candidate=wmbus_pure::passive_auto::inspect(
       frame.data(),frame.size(),
       wmbus_pure::generated::signatures,
       wmbus_pure::generated::signature_count);
-  // Nested-aware recognition handles converter/ELL and SECURE_ONLY.
-  // For other supported native families, fall back only to a distinct
-  // unambiguous DLL-MVT candidate. Do NOT downgrade ambiguous nested
-  // headers or classify a TCH/95/37 converter without its TPL meter.
-  if(candidate.state==wmbus_pure::batch2_identify::State::Unknown) {
-    const auto identity=wmbus_pure::identity::inspect(frame.data(),frame.size());
-    if(identity.status==wmbus_pure::identity::Status::Ok &&
-       identity.dll.decimal_bcd) {
-      const auto dll=wmbus_pure::auto_driver::identify(
-          wmbus_pure::generated::signatures,
-          wmbus_pure::generated::signature_count,
-          identity.dll.manufacturer,identity.dll.version,
-          identity.dll.device_type);
-      if(dll.status==wmbus_pure::auto_driver::RecognitionStatus::Candidate &&
-         dll.driver && !wmbus_pure::batch2_identify::is_batch2(dll.driver)) {
-        candidate.state=wmbus_pure::batch2_identify::State::Candidate;
-        candidate.source=wmbus_pure::batch2_identify::Source::Dll;
-        candidate.driver=dll.driver;
-        candidate.meter_id=dll_meter_id;
-        candidate.decimal_bcd=true;
-        candidate.different_dll_id=false;
-      }
-    }
-  }
   if(candidate.state!=wmbus_pure::batch2_identify::State::Candidate ||
      candidate.driver==nullptr)
     return;
