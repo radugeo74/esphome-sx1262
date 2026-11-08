@@ -1,6 +1,7 @@
 // Public upstream itron.xmq and qualcosonic.xmq Mode-0 examples.
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/xmq_auto_registry.h"
+#include "components/wmbus_native_sx126x/xmq_plain_text_fields.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -51,6 +52,8 @@ int main(){
  assert(out.value_count==2);
  assert(has(out,"total_m3",4.605));
  assert(has(out,"target_m3",3.888));
+ const auto itron_status=text_fields::decode(i0.data(),i0.size(),"itron");
+ assert(itron_status.count==1 && std::strcmp(itron_status.fields[0].text,"OK")==0);
  assert(decode(i2,"20310959","itron")==PureDecodeStatus::Ok);
  assert(out.value_count==2);
  assert(has(out,"total_m3",111.968));
@@ -61,6 +64,8 @@ int main(){
  assert(has(out,"flow_temperature_c",7.04));
  assert(has(out,"return_temperature_c",13.24));
  assert(has(out,"power_kw",-3.706));
+ const auto qual_status=text_fields::decode(q0.data(),q0.size(),"qualcosonic");
+ assert(qual_status.count==1 && std::strcmp(qual_status.fields[0].text,"OK")==0);
  assert(decode(q1,"29481002","qualcosonic")==PureDecodeStatus::Ok);
  assert(out.value_count==4);
  assert(has(out,"total_m3",99.875));
@@ -78,6 +83,7 @@ int main(){
  assert(out.value_count==0);
  assert(decode(i3,"23362098","itron")!=PureDecodeStatus::Ok);
  assert(out.value_count==0);
+ assert(text_fields::decode(i3.data(),i3.size(),"itron").count==0);
  auto bad=i0;bad[14]=0xA5;
  assert(decode(bad,"12345698","itron")!=PureDecodeStatus::Ok);
  bad=i0;bad[16]=0x6E;

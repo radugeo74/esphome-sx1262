@@ -1,3 +1,31 @@
+## Calupul 31–32: Itron + Qualcosonic (2026-11-08)
+
+The `experimental/xmq-multidriver-auto` branch now contains
+**32 integrated native XMQ driver families**, including two additional,
+explicitly configured / configured-`auto` clear-only profiles.
+
+- **`itron`** (ITW/00-03-33/07): bounded original 57-byte short-TPL
+  CI `7A`, Mode-0 water records: `total_m3` and `target_m3`,
+  from two independent upstream clear fixtures (4.605/3.888 m³,
+  111.968/87.980 m³). One upstream gateway long-TPL CI `72` and
+  one `NOKEY`-tagged **Mode-5 AES** fixture are excluded from the
+  no-key path. Proprietary status/identity bytes are not interpreted.
+- **`qualcosonic`** (AXI/0B-0C/0D): three original Mode-0 short
+  TPL 119/155-byte fixtures publish `total_m3`,
+  `flow_temperature_c`, `return_temperature_c`, and `power_kw`
+  from unambiguous standard DIF/VIF. The separate heating/cooling
+  energies and target readings involve VIF modifiers; they are
+  **not claimed** in this subset. Known clear zero-status only
+  becomes optional `status: OK`; no guessed alarm states.
+- Both use the official receiver's CRC-verified/CRC-stripped frame,
+  configured DLL meter ID, exact MVT and clear-TPL publication gate.
+  Recognition of a model is not authorization to publish a frame.
+  `NOKEY` in XMQ does not prove a meter is unencrypted on RF.
+- Updated `experimental/semtech-radio/heltec-sx126x-combined-lab.yaml`
+  is **build-only**, uses original public upstream fixture IDs, and
+  must **not** be flashed. No user-private IDs/keys, no legacy radio,
+  no changes to the production Heltec.
+
 ## Calupul 29–30: QWater V2 + Hydrodigit (2026-11-08)
 
 Native `PORTABLE` Mode-0 profiles were added on

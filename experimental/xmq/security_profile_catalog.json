@@ -486,6 +486,36 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Patru exemple publice CI 7A Mode 0 pentru volum total. Un exemplu NOKEY cu Mode 5 AES si unul cu CI 8C ELL sunt excluse; campurile proprietare raman nedecodate."
+    },
+    {
+      "driver": "itron",
+      "group": "PORTABLE",
+      "mvt": [
+        "ITW/00/07",
+        "ITW/03/07",
+        "ITW/33/07",
+        "ITW/00/16"
+      ],
+      "total_tests": 4,
+      "nokey_tests": 4,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Doua exemple originale Itron ITW cu antet CI 7A Mode 0 publica total_m3 si target_m3. Exemplul CI 72 si un alt exemplu NOKEY AES Mode 5 sunt respinse, fara a interpreta flagurile proprietare."
+    },
+    {
+      "driver": "qualcosonic",
+      "group": "PORTABLE",
+      "mvt": [
+        "AXI/0B/0D",
+        "AXI/0C/0D"
+      ],
+      "total_tests": 3,
+      "nokey_tests": 3,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Trei exemple originale Qualcosonic Mode 0: total_m3, flow_temperature_c, return_temperature_c si power_kw. Energiile de incalzire/racire si set-date au modificatori VIF nesuportati in acest subset."
     }
   ]
 }

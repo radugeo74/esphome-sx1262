@@ -139,9 +139,9 @@ jobs:
           /tmp/test-itron-qualcosonic
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
-      - name: Audit OMS security evidence catalog for all 30 drivers
+      - name: Audit OMS security evidence catalog for all 32 drivers
         run: python3 experimental/xmq/tests/test_security_profile_catalog.py
-      - name: Check NOKEY provenance and 40 encrypted-header counterexamples from all XMQ fixtures
+      - name: Check NOKEY provenance and 43 encrypted-header counterexamples from all XMQ fixtures
         run: python3 experimental/xmq/tests/test_nokey_fixture_provenance.py
       - name: Test live clear admission never trusts upstream NOKEY AES headers
         run: |

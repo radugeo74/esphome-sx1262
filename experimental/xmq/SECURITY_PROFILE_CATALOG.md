@@ -1,4 +1,4 @@
-# Catalogul de securitate wM-Bus / OMS — 30 drivere native
+# Catalogul de securitate wM-Bus / OMS — 32 drivere native
 
 **Revizie:** 2026-11-08. **Branch:** `experimental/xmq-multidriver-auto`. **Stadiu:** dovada software, nu certificare de echipament sau validare hardware.
 
@@ -40,6 +40,8 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 | [`bfw240radio`](drivers/bfw240radio.xmq) | `PORTABLE` | `BFW/02/08` | 6 (6 `NOKEY`) | HCA curent/precedent Mode 0 | — |
 | [`qwaterv2`](drivers/qwaterv2.xmq) | `PORTABLE` | `QDS/33/37`, `QDS/35/06`, `QDS/35/07`, `QDS/35/37`, `QDS/16/06`, `QDS/16/07`, `QDS/17/06`, `QDS/17/07`, `QDS/18/06`, `QDS/18/07`, `QDS/19/06`, `QDS/19/07`, `QDS/1A/06`, `QDS/1A/07`, `QDS/1D/06`, `QDS/1D/07`, `QDS/36/06`, `QDS/36/07`, `LSE/19/07`, `LSE/1A/06`, `LSE/1A/07`, `LSE/1D/06`, `LSE/1D/07`, `LSE/33/37`, `LSE/35/37`, `LSE/36/06`, `LSE/36/07` | 23 (21 `NOKEY`) | Doar CI 7A Mode 0 | — |
 | [`hydrodigit`](drivers/hydrodigit.xmq) | `PORTABLE` | `BMT/13/06`, `BMT/17/06`, `BMT/13/07`, `BMT/15/07`, `BMT/17/07` | 6 (6 `NOKEY`) | Doar CI 7A Mode 0 | — |
+| [`itron`](drivers/itron.xmq) | `PORTABLE` | `ITW/00/07`, `ITW/03/07`, `ITW/33/07`, `ITW/00/16` | 4 (4 `NOKEY`) | Consum total și target, Mode 0 | — |
+| [`qualcosonic`](drivers/qualcosonic.xmq) | `PORTABLE` | `AXI/0B/0D`, `AXI/0C/0D` | 3 (3 `NOKEY`) | Volum/temperaturi/putere, Mode 0 | — |
 
 **Legenda:** un profil clar este admis numai cu verificarile de integritate, identitate si securitate aferente; nu inseamna «orice dispozitiv din familie este necriptat». Pentru profilele AES, cheia este configurata explicit in `secure_meters`, iar un cadru respins nu revine la decoderul plaintext. Cele doua drivere `SECURE_ONLY` pot fi doar recunoscute diagnostic fara cheie.
 
@@ -76,14 +78,16 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`bfw240radio`:** Sase exemple BFW 240 radio Mode 0, structura producator fixa 55 octeti, curent si precedent HCA. Istoricul proprietar 18 luni si alte formate raman excluse.
 - **`qwaterv2`:** Subset standard CI 7A Mode 0 pentru total_m3, target_year_m3 si target_m3, din 8 exemple publice. CI 78 WalkBy, CI 72 si doua exemple cu cheie explicita nu intra in ruta radio plaintext.
 - **`hydrodigit`:** Patru exemple publice CI 7A Mode 0 pentru volum total. Un exemplu NOKEY cu Mode 5 AES si unul cu CI 8C ELL sunt excluse; campurile proprietare raman nedecodate.
+- **`itron`:** Doua exemple originale Itron ITW CI 7A Mode 0 pentru total_m3 si target_m3. Exemplul CI 72 si cel NOKEY cu AES Mode 5 sunt respinse; flagurile proprietare raman neinterpretate.
+- **`qualcosonic`:** Trei exemple AXI Mode 0 pentru total_m3, flow_temperature_c, return_temperature_c si power_kw. Energiile de incalzire/racire si valorile target cu modificatori VIF necesita un parser suplimentar.
   Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
 
-Am inspectat automat toate cele **145** de fixture XMQ din cele 16
-drivere: **139** ruleaza fara cheie in test, dar **42** dintre cele
+Am inspectat automat toate cele **152** de fixture XMQ din cele 32
+drivere: **146** ruleaza fara cheie in test, dar **43** dintre cele
 `NOKEY` pastreaza in antet un **TPL Mode 5 / AES-CBC**. Inca un
-fixture Apator162 are Mode 5 cu cheie explicita (deci **44** antete
+fixture Apator162 are Mode 5 cu cheie explicita (deci **45** antete
 Mode 5). Nu le etichetam ca RF fara cheie: unele contin date deja
 decriptate dupa `_`, altele sunt cadre criptate din teste.
 
@@ -119,7 +123,7 @@ automat ca `fara cheie`.
 
 ## OMS Group: certificare versus implementare
 
-OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 30 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
+OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 32 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
 
 Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES-CBC Mode 5** si **D / AES-CCM Mode 10**. Implementarea ELL AES-CTR este un traseu separat, care nu trebuie reclasificat automat ca profil A/B/D. **Mode 7 (OMS B) si Mode 13** sunt detectate de filtrul de securitate, dar nu au aici un decodor general. Aceasta este o harta de compatibilitate, nu o lista de contoare care sigur nu necesita cheie.
 
@@ -130,4 +134,4 @@ Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES
 3. Decodare completa a valorilor reale fara cheie si potrivirea producatorului, versiunii si tipului.
 4. Daca exista model comercial exact, identificare OMS independenta cu certificat si generatie; fara a incarca date private in GitHub.
 
-**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 30 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.
+**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 32 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.
