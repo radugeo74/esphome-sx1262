@@ -75,6 +75,12 @@ int main() {
   assert(candidate.driver && std::strcmp(candidate.driver,"mkradio4a")==0);
   assert(candidate.meter_id==66953825 && candidate.different_dll_id);
   ++recognized;
+  // A bare HYD signature (or unrelated DLL gateway) does not prove
+  // the actual MK Radio4a converter + nested-TPL profile.
+  assert(recognize(frame(0x2324,0xFE,0x06,0x7A)).state==diag::State::Unknown);
+  auto bad_gateway=converter;
+  bad_gateway[9]=0x72;
+  assert(recognize(bad_gateway).state==diag::State::Unknown);
   auto cold=converter;
   cold[11]=0x02;cold[12]=0x00;
   cold[13]=0x77;cold[14]=0x01;
