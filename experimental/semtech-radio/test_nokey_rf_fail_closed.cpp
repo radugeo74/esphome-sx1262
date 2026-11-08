@@ -91,6 +91,13 @@ int main() {
   assert(plain(mino,"15503451","55036410","minomess")!=PureDecodeStatus::Ok);
   assert(out.value_count==0 && out.date_count==0);
 
+  // iPERL is a portable compiled driver on the generic native path,
+  // not in the dedicated batch-2 plain dispatcher. Exercise the same
+  // decode_configured_plain_frame() function used for iPERL in T1/C1.
+  auto iperl_plain = [&](const std::vector<uint8_t> &frame,const char *id) {
+    return xmq_portable::decode_configured_plain_frame(
+        frame.data(),frame.size(),id,"iperl",captures,12,out);
+  };
   // In contrast, the genuine Mode-0 N=0 iPERL fixture is valid
   // as clear test data; we must not ban legitimate keyless profiles.
   const auto iperl_clear=from_xmq(
@@ -100,7 +107,7 @@ int main() {
   assert(clear.state==State::NotEncrypted && clear.mode==0);
   assert(wmbus_pure::publication::inspect(iperl_clear.data(),
           iperl_clear.size(),33225544)==Decision::Allowed);
-  assert(plain(iperl_clear,"33225544","33225544","iperl")==PureDecodeStatus::Ok);
+  assert(iperl_plain(iperl_clear,"33225544")==PureDecodeStatus::Ok);
   assert(out.value_count>0);
 
   // Another iPERL NOKEY example has M=0 but N=1; never publish.
@@ -113,7 +120,7 @@ int main() {
   assert(wmbus_pure::publication::inspect(
       iperl_inconsistent.data(),iperl_inconsistent.size(),
       12345699)==Decision::UnverifiedSecurity);
-  assert(plain(iperl_inconsistent,"12345699","12345699","iperl")!=
+  assert(iperl_plain(iperl_inconsistent,"12345699")!=
          PureDecodeStatus::Ok);
   assert(out.value_count==0 && out.date_count==0);
   std::puts("PASS NOKEY transport: Q400/Topas/MK/Minomess Mode5 refused; "
