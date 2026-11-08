@@ -89,7 +89,16 @@ assert '"ultraheat", "sontex868", "supercal", "q400")' in names
 assert "minomess::wired::decode" not in native_runtime
 assert "publish_secure_batch2_(" in native_runtime
 assert "WMBUS_NATIVE_BATCH2_SECURE_ENABLED" in native_runtime
-assert "batch2_secure::decode_configured(" in native_runtime
+# Audit point 4: the production receiver and host end-to-end tests share
+# the *same* configured secure decode and mapped-field emission helper.
+# A source relocation must not be confused with crypto-path removal.
+delivery=(root/"components/wmbus_native_sx126x/secure_meter_delivery.h").read_text(encoding="utf-8")
+assert '#include "secure_meter_delivery.h"' in native_runtime
+assert "secure_delivery::evaluate(" in native_runtime
+assert "secure_delivery::emit_mapped(" in native_runtime
+assert "batch2_secure::decode_configured(" in delivery
+assert "out.outcome=Outcome::Rejected" in delivery
+assert "if(result.outcome!=Outcome::Ready" in delivery
 assert "self->publish_secure_batch2_(" in native_runtime
 # No-key decoding is explicitly configured, never AUTO key trial.
 assert "self->publish_plain_batch2_(" in native_runtime
