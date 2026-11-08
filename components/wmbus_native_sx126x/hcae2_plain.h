@@ -33,9 +33,8 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
  bool current=false,target=false,flags=false;
  for(size_t i=0;i<count;++i) {
    const auto &r=records[i];
-   if(!r.numeric || r.modifier_count || r.tariff || r.subunit ||
-      r.function)continue;
-   if(r.vif_extension_count==0 && r.vif==0x6E &&
+   if(!r.numeric || r.modifier_count || r.tariff || r.subunit)continue;
+   if(r.function==0 && r.vif_extension_count==0 && r.vif==0x6E &&
       (r.storage==0 || r.storage==1)) {
      if(r.value<0 || r.value>10000000)return Status::BadRecords;
      if(r.storage==0) {
@@ -45,7 +44,7 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
        if(target)return Status::Duplicate;
        target=true;next.target_hca=r.value;
      }
-   } else if(r.dif==0x31 && r.vif==0x7F &&
+   } else if(r.dif==0x31 && r.function==3 && r.vif==0x7F &&
              r.vif_extension_count==0 && r.storage==0) {
      if(flags || r.value<0 || r.value>255)return Status::BadRecords;
      flags=true;next.manufacturer_flags=static_cast<uint8_t>(r.value);
