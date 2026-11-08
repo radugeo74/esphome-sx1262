@@ -23,6 +23,8 @@ if(r.flags&~uint16_t(0x013e))return Status::Unsupported;
 r.smoke=(r.flags&4u)!=0;}
 else if(slot==1)r.message_counter=le32(v);else r.minutes_since_test=le32(v);
 mask|=1u<<slot;i+=hdr+bytes;}
-if(mask!=7)return Status::Missing;out=r;return Status::Ok;
+if(mask!=7) return Status::Missing;
+out=r;
+return Status::Ok;
 }
 }}

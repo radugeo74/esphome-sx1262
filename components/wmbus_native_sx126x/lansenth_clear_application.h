@@ -29,6 +29,8 @@ switch(slot){case 0:r.temperature_c=v;break;case 1:r.temperature_1h_c=v;break;
 case 2:r.temperature_24h_c=v;break;case 3:r.humidity_rh=v;break;
 case 4:r.humidity_1h_rh=v;break;case 5:r.humidity_24h_rh=v;break;}
 mask|=1u<<slot;i+=hdr+2;}
-if(mask!=63)return Status::Missing;out=r;return Status::Ok;
+if(mask!=63) return Status::Missing;
+out=r;
+return Status::Ok;
 }
 }}
