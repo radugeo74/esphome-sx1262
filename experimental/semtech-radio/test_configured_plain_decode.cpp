@@ -110,6 +110,10 @@ int main() {
   // synthetic mode-zero TPL flag. The original mode-five frame above
   // must remain rejected: no decryption is attempted.
   mode5[14]=0x00;
+  // Original N=4 cannot be used with Mode 0: no fake clear admission.
+  assert(decode_configured_plain_frame(mode5.data(),mode5.size(),"64646464",
+      "hydrus",captures,12,result)!=PureDecodeStatus::Ok);
+  mode5[13]=0x00; // synthetic mode 0 AND N=0
   assert(decode_configured_plain_frame(mode5.data(),mode5.size(),"64646464",
       "hydrus",captures,12,result)==PureDecodeStatus::Ok);
   assert(std::fabs(get(result,"total_m3")-1.174)<1e-6);
