@@ -1,3 +1,31 @@
+## Calupul 29–30: QWater V2 + Hydrodigit (2026-11-08)
+
+Native `PORTABLE` Mode-0 profiles were added on
+`experimental/xmq-multidriver-auto`, bringing the native catalog to
+**30 XMQ driver families**.
+
+- **Qundis QWater V2** (`qwaterv2`): `total_m3`,
+  `target_year_m3`, `target_m3` from eight original, genuinely clear
+  CI `7A` / Mode-0 XMQ examples. Limited to standard DIF/VIF 0C13,
+  4C13, CC0813 volume records and demonstrated fixed application
+  lengths. Other XMQ examples use WalkBy CI `78`, nested CI `72`,
+  or an explicit AES key; **none** are admitted through this no-key path.
+- **B.Meters Hydrodigit** (`hydrodigit`): `total_m3` from four
+  original, genuinely Mode-0 CI `7A` examples, including 99999.999 m³
+  and 0.030 m³. Historical monthly data, fraud/leak signals, backflow
+  and battery voltage are vendor-specific and not published from
+  unverified offsets. One NOKEY XMQ example is **Mode-5 AES** and
+  another has ELL CI `8C`; both are excluded.
+- Both support configured `driver: auto` and explicit driver settings,
+  but only after CRC-verified / CRC-stripped RF, a configured meter ID,
+  matching source MVT, Mode-0 security confirmation and strict standard
+  record admission. Neither family is declared fully parity-complete
+  with upstream XMQ and `NOKEY` is not interpreted as a universal
+  no-AES statement.
+- Build-only Heltec YAML uses **public XMQ fixture IDs**. No personal
+  device identifiers or credentials were added. No flash/OTA has
+  been performed and the live Techem pipeline is unchanged.
+
 ## Calupul 27–28: HCA E2 + BFW240radio (2026-11-08)
 
 Two new portable native `meter_drivers` on

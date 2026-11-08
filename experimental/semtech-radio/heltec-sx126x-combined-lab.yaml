@@ -90,6 +90,10 @@ wmbus_native_sx126x:
       driver: lansensm
       key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
+    - meter_id: "12353648"  # public QWater V2 short TPL Mode-0 fixture, lab only
+      driver: auto
+    - meter_id: "23746391"  # public Hydrodigit Mode-0 fixture, lab only
+      driver: auto
     - meter_id: "54423117"  # upstream public HCA E2 T1 fixture; build-only
       driver: auto
     - meter_id: "00707788"  # upstream public BFW240 fixture; build-only
@@ -126,6 +130,26 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "12353648"
+      field: total_m3
+      sensor:
+        name: "Lab QWater V2 Total"
+        unit_of_measurement: "m³"
+    - meter_id: "12353648"
+      field: target_m3
+      sensor:
+        name: "Lab QWater V2 Billing"
+        unit_of_measurement: "m³"
+    - meter_id: "12353648"
+      field: target_year_m3
+      sensor:
+        name: "Lab QWater V2 Year Target"
+        unit_of_measurement: "m³"
+    - meter_id: "23746391"
+      field: total_m3
+      sensor:
+        name: "Lab Hydrodigit Total"
+        unit_of_measurement: "m³"
     - meter_id: "54423117"
       field: consumption_hca
       sensor:
