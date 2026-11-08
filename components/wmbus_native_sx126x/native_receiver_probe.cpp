@@ -203,38 +203,53 @@ void NativeReceiverProbe::log_batch2_auto_(
   if(candidate.state!=wmbus_pure::batch2_identify::State::Candidate ||
      candidate.driver==nullptr)
     return;
+  const auto security=wmbus_pure::tpl_security::inspect(
+      frame.data(),frame.size());
   const uint8_t source=static_cast<uint8_t>(candidate.source);
+  const uint8_t mode=security.has_config_word ? security.mode : 0xFF;
+  const uint8_t security_state=static_cast<uint8_t>(security.state);
+  // Cache only passive metadata; security changes on the same meter must
+  // get a separate log entry, without growing memory per RF telegram.
   for(size_t i=0;i<batch2_seen_count_;++i) {
     const auto &previous=batch2_seen_[i];
     if(previous.dll_id==dll_meter_id &&
        previous.target_id==candidate.meter_id &&
        previous.source==source &&
+       previous.tpl_mode==mode &&
+       previous.tpl_security==security_state &&
        previous.driver!=nullptr &&
        std::strcmp(previous.driver,candidate.driver)==0)
       return;
   }
   batch2_seen_[batch2_seen_cursor_]={
-      dll_meter_id,candidate.meter_id,candidate.driver,source
+      dll_meter_id,candidate.meter_id,candidate.driver,source,
+      mode,security_state
   };
   if(batch2_seen_count_<batch2_seen_.size()) ++batch2_seen_count_;
   batch2_seen_cursor_=(batch2_seen_cursor_+1)%batch2_seen_.size();
   const char *origin=candidate.source==wmbus_pure::batch2_identify::Source::Tpl
       ? "TPL" : candidate.source==wmbus_pure::batch2_identify::Source::Ell
       ? "ELL" : "DLL";
-  const auto security=wmbus_pure::tpl_security::inspect(
-      frame.data(),frame.size());
+  const bool secure_only=std::strcmp(candidate.driver,"mkradio4a")==0 ||
+                         std::strcmp(candidate.driver,"topaseskr")==0;
+  // The mode and source are observations, NOT decode/publication status.
+  // A Mode-5 candidate is never passed to the plaintext AUTO resolver.
   if(candidate.decimal_bcd) {
-    ESP_LOGI(TAG,"BATCH2 AUTO candidate=%s source=%s link=%s dll=%08u meter=%08u different_dll=%s tpl_security=%s (metadata only; no decode or publication)",
+    ESP_LOGI(TAG,"BATCH2 AUTO candidate=%s source=%s link=%s dll=%08u meter=%08u different_dll=%s tpl_security=%s tpl_mode=%u driver_class=%s decode_status=not_attempted (metadata only; no publication)",
              candidate.driver,origin,link,
              static_cast<unsigned>(dll_meter_id),
              static_cast<unsigned>(candidate.meter_id),
              candidate.different_dll_id ? "yes" : "no",
-             wmbus_pure::tpl_security::label(security.state));
+             wmbus_pure::tpl_security::label(security.state),
+             static_cast<unsigned>(mode),
+             secure_only ? "secure_only" : "configured_clear_possible");
   } else {
-    ESP_LOGI(TAG,"BATCH2 AUTO candidate=%s source=%s link=%s dll=%08u meter=non-BCD tpl_security=%s (metadata only; no decode or publication)",
+    ESP_LOGI(TAG,"BATCH2 AUTO candidate=%s source=%s link=%s dll=%08u meter=non-BCD tpl_security=%s tpl_mode=%u driver_class=%s decode_status=not_attempted (metadata only; no publication)",
              candidate.driver,origin,link,
              static_cast<unsigned>(dll_meter_id),
-             wmbus_pure::tpl_security::label(security.state));
+             wmbus_pure::tpl_security::label(security.state),
+             static_cast<unsigned>(mode),
+             secure_only ? "secure_only" : "configured_clear_possible");
   }
 #else
   (void)frame;
