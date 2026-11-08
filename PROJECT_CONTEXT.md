@@ -10,6 +10,47 @@
 4. Prefer small, auditable commits; include positive **and negative** regression tests; await reported CI green before expanding behavior. Fix CI regressions before moving to the next calup. Never claim CI passed, an `app_main` self-test executed on hardware, or live field validation unless it actually did.
 5. Never commit private meter IDs, captured production telegrams, encryption keys, Wi-Fi credentials, private YAML or other identifying telemetry. Synthetic IDs and original public upstream fixtures only.
 
+## Audit point 3 — Passive AUTO independent of AES / HA (2026-11-08)
+
+On `experimental/xmq-multidriver-auto`, the native receiver now logs
+**metadata-only `NATIVE AUTO`** candidates for all 16 integrated
+native XMQ families, after the existing DLL/CRC verification gate on
+T1 and C1. Each diagnostic has `candidate`, `source`, `dll`,
+`meter` when BCD, `tpl_security`, `tpl_mode`,
+`driver_class`, and **`decode_status=not_attempted`**.
+The bounded per-meter deduplication also distinguishes changes in the
+observed TPL security mode. This is not a Home Assistant entity or a
+validated measurement.
+
+The new `xmq_auto_dispatch.h::identify` returns a **candidate** plus
+whether a *plaintext* decoder is compiled; it never grants access to
+the decoder. Existing `resolve` and configured-only dispatch remain
+unchanged. `mkradio4a` and `topaseskr` are both recognized
+passively but still return `NotCompiled` from plaintext AUTO and
+**remain exclusively keyed `secure_meters` for encrypted RF**.
+No live AES key selection, no fallback, no sensor publication on mere
+identification. Nonconfigured meters continue to be diagnostic-only.
+
+The nested-aware identification `batch2_auto_identify.h` recognizes
+both `AMT/F1/06` and `AMT/F1/07` as Topas. For MK Radio4a,
+the raw converter `TCH/95/37` is **insufficient**; the explicit
+nested long TPL must also carry either `HYD/FE/06` (warm water) or
+`WEH/FE/07` (cold water), as in upstream `mkradio4a.xmq`
+public original fixtures. Upstream `detect.mvt` omits WEH;
+this is a narrowly constrained passive recognizer case ONLY,
+**not a generated global signature, decoder change or new
+auto-decoding permission**. Conflicting and unknown nested identities
+fail closed and are not confidently named MK Radio4a.
+
+Covered by `test_batch2_auto_identification.cpp`,
+`test_xmq_auto_registry.cpp`, and
+`test_batch2_native_catalog_dispatch.cpp`, including negative
+ambiguous-MVT and keyless plaintext-refusal cases. Code is
+software-only, no physical RF or HA validation; no installed Heltec
+OTA, no changes to AES decoder, Techem generated tables or security
+filters. Await CI validation of the latest code checkpoint before
+claiming full 3/3 green.
+
 ## Audit point 2 — OMS TPL security classification (2026-11-08)
 
 Implemented **only on this branch**: `tpl_security_probe.h`
@@ -49,7 +90,7 @@ ESP-IDF ESP32-S3 link, and ESPHome/Heltec builds.
 
 ## Audit point 1 — secure_meter runtime registration (2026-11-08)
 
-**Implemented in this branch, pending final 3-job CI confirmation:**
+**Implemented and 3/3 software CI green in #42454231643:**
 the YAML `secure_meters` schema permitted five drivers but
 `NativeReceiverProbe::add_secure_meter()` silently rejected two:
 `mkradio4a` and `topaseskr`. This is an integration defect,
@@ -69,9 +110,9 @@ regression compares the exact YAML and C++ whitelists and verifies
 the receiver calls that function. The synthetic batch-2 ESPHome
 CI fixture now compiles all five keyed bindings, including Topas.
 
-**This is audit item 1 only.** The separate proposed corrections to
-OMS Mode-0/5-bit security inspection, AUTO recognition, and RF/HA
-end-to-end test coverage remain **NOT IMPLEMENTED**. No changes
+**Historical audit-1 scope:** Subsequent audit points 2 and 3 are
+now implemented as documented above. The separate RF/HA end-to-end
+test coverage remains **NOT IMPLEMENTED**. No changes
 to the Techem live decoder, encrypted payload parser, installed
 Heltec firmware, actual meter IDs or AES production keys.
 The most recent confirmed previous full code CI was
