@@ -516,6 +516,37 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Trei exemple originale Qualcosonic Mode 0: total_m3, flow_temperature_c, return_temperature_c si power_kw. Energiile de incalzire/racire si set-date au modificatori VIF nesuportati in acest subset."
+    },
+    {
+      "driver": "lse_08",
+      "group": "PORTABLE",
+      "mvt": [
+        "LSE/01/08"
+      ],
+      "total_tests": 1,
+      "nokey_tests": 1,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Un exemplu public TPL Mode 0 LSE/01/08: consumption_at_set_date_hca=321 si status TPL_STS_128 (nu OK). Fara dovezi pentru consumul curent sau alte modele; variantele necunoscute nu se publica."
+    },
+    {
+      "driver": "waterstarm",
+      "group": "PORTABLE",
+      "mvt": [
+        "DWZ/00/06",
+        "DWZ/02/06",
+        "DWZ/02/07",
+        "EFE/03/07",
+        "EFE/70/07",
+        "DWZ/00/07"
+      ],
+      "total_tests": 8,
+      "nokey_tests": 5,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Doar doua exemple radio DWZ/00/06 si DWZ/00/07 cu TPL Mode 0 si 151 octeti: total_m3 si consumption_at_set_date_m3. Patru exemple TPL Mode 5, dintre care doua NOKEY deja decriptate, si doua ELL sunt excluse; istoricul lunar nu este publicat."
     }
   ]
 }

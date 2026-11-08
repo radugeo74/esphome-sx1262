@@ -1,3 +1,31 @@
+## Calupul 33–34: LSE 08 + Waterstarm (2026-11-08)
+
+The native XMQ catalog on `experimental/xmq-multidriver-auto` now
+contains **34 integrated driver families**, including two new strict,
+configured-only Mode-0 profiles:
+
+- **`lse_08`** (LSE/01/08, HCA): `consumption_at_set_date_hca`
+  from the only public original XMQ short-TPL clear example, 321 HCA.
+  Its TPL status is **`TPL_STS_128`**, not OK, and is published only
+  as an optional text status from that verified profile. No claim about
+  current HCA, other alarm states, or alternative firmware.
+- **`waterstarm`** (DWZ/00/06 and DWZ/00/07): `total_m3` and
+  `consumption_at_set_date_m3` from the two original 151-byte clear
+  Mode-0 examples (55.360/27.650 and 6.800/4.819 m³).
+  The wider historical volume series and EFE vendor variants are
+  excluded. The remaining original examples include **four Mode-5
+  AES TPL headers** (two with NOKEY supplied-clear application)
+  and **two ELL transports**, all rejected for this no-key profile.
+- Both support explicit `meter_drivers` and configured `driver: auto`.
+  Admission requires the official native receiver's CRC-verified,
+  CRC-stripped frame, a configured matching DLL meter ID, strict
+  MVT/profile recognition, real Mode-0 security, and validated records.
+  A NOKEY fixture is not decryption or RF proof.
+- `experimental/semtech-radio/heltec-sx126x-combined-lab.yaml`
+  remains **build-only**, using public upstream fixture IDs, no actual
+  personal meter identifiers or credentials, and **NO FLASH/OTA**.
+  Existing production Techem firmware and runtime stay unchanged.
+
 ## Calupul 31–32: Itron + Qualcosonic (2026-11-08)
 
 The `experimental/xmq-multidriver-auto` branch now contains
