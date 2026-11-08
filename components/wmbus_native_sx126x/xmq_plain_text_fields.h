@@ -10,6 +10,8 @@
 #include "lansenpu_plain.h"
 #include "lansendw_plain.h"
 #include "cma12w_plain.h"
+#include "elvsense_plain.h"
+#include "lansenrp_plain.h"
 #include "tpl_security_probe.h"
 
 namespace xmq_portable { namespace text_fields {
@@ -41,6 +43,21 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     append(out,"status",lansendw::state_text(reading.digital_input));
     append(out,"error_flags",lansendw::error_text(
         reading.error_flags,reading.tpl_status));
+    return out;
+  }
+  if(std::strcmp(driver,"elvsense")==0) {
+    elvsense::Reading reading{};
+    if(elvsense::decode(frame,size,reading)!=elvsense::Status::Ok)
+      return out;
+    append(out,"status","OK");
+    return out;
+  }
+  if(std::strcmp(driver,"lansenrp")==0) {
+    lansenrp::Reading reading{};
+    if(lansenrp::decode(frame,size,reading)!=lansenrp::Status::Ok)
+      return out;
+    append(out,"status",reading.power_low?"POWER_LOW":"OK");
+    append(out,"is_repeater_listening",reading.listening?"YES":"NO");
     return out;
   }
   if(std::strcmp(driver,"cma12w")==0) {
