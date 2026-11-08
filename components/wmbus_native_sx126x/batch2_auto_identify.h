@@ -99,6 +99,8 @@ inline Result inspect(const uint8_t *frame,size_t length,
                        is_batch2(dll.driver);
   const bool tpl_batch=tpl.status==DriverSelectionStatus::Found &&
                        is_batch2(tpl.driver);
+  const bool ell_batch=ell.status==DriverSelectionStatus::Found &&
+                       is_batch2(ell.driver);
   // Original mkradio4a.xmq fixture #2: TCH/95/37 radio converter with
   // a WEH/FE/07 cold-water TPL meter. Upstream detect.mvt lists HYD/FE/06
   // and TCH/95/37, but not WEH. Recognize this exact *nested* fixture
@@ -130,8 +132,6 @@ inline Result inspect(const uint8_t *frame,size_t length,
     result.state=State::Unknown;
     return result;
   }
-  const bool ell_batch=ell.status==DriverSelectionStatus::Found &&
-                       is_batch2(ell.driver);
   if((tpl_batch && dll_batch && std::strcmp(tpl.driver,dll.driver)!=0) ||
      (ell_batch && dll_batch && std::strcmp(ell.driver,dll.driver)!=0) ||
      (tpl_batch && ell_batch && std::strcmp(tpl.driver,ell.driver)!=0)) {
