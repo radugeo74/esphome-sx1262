@@ -349,6 +349,32 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Numai subsetul CI 7A, Mode 0, DIF/VIF standard HCA; exclude WalkBy CI 78, Mode 5 post-decriptat si variantele proprietare."
+    },
+    {
+      "driver": "rfmamb",
+      "group": "PORTABLE",
+      "mvt": [
+        "BMT/10/1B"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 1,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Suport nativ numai pentru exemplul RFM-AMB Mode 0: 3 temperaturi si 3 umiditati; exemplul AES Mode 5 cu cheie nu are ruta nativa de decriptare."
+    },
+    {
+      "driver": "sensostar",
+      "group": "PORTABLE",
+      "mvt": [
+        "EFE/00/04"
+      ],
+      "total_tests": 4,
+      "nokey_tests": 4,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Suport nativ limitat la doua exemple radio Mode 0: energie kWh, volum m3 si target kWh optional; M-Bus cablat si exemplul AES Mode 5 NOKEY sunt excluse."
     }
   ]
 }

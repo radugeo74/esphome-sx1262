@@ -52,7 +52,7 @@ def classify(tg: str):
 def main():
     catalog = json.loads((BASE / "security_profile_catalog.json").read_text())
     names = tuple(d.name for d in GENERATED) + PORTABLE + CONFIGURED_NATIVE + SECURE_ONLY
-    assert len(names) == 22 and len(set(names)) == 22
+    assert len(names) == 24 and len(set(names)) == 24
     assert {x["driver"] for x in catalog["drivers"]} == set(names)
     total = nokey = non_key_mode5 = all_mode5 = 0
     by_driver = Counter()
@@ -93,13 +93,14 @@ def main():
                     assert marker
                 assert "2F2F" in tg.split("_", 1)[0].upper()
         assert sum("NOKEY" in x.group(1).split() for x in examples) == expected["nokey_tests"]
-    assert (total, nokey, all_mode5, non_key_mode5) == (95, 92, 40, 39)
+    assert (total, nokey, all_mode5, non_key_mode5) == (101, 97, 42, 40)
     assert by_driver == Counter({
         "hydrus": 3, "q400": 2, "minomess": 4, "apator162": 18,
         "mkradio4a": 2, "topaseskr": 2,
         "lansenth": 2, "lansensm": 2,
         "elvsense": 2,
         "qcaloric": 2,
+        "sensostar": 1,
     }), by_driver
     # Public iperl example #1 says "after decryption" and declares M=0,
     # N=1. The OMS Mode-0 gate correctly rejects that inconsistent CF;

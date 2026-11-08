@@ -1,3 +1,27 @@
+## Calupul 23–24: RFM-AMB + Sensostar (2026-11-08)
+
+`rfmamb` and `sensostar` are native `PORTABLE` clear-subset drivers.
+Both are available to **configured** `meter_drivers`, including
+`driver: auto` when the original manufacturer/version/medium matches.
+All live input MUST be CRC-verified and stripped by the official
+SX126x receiver, match an independently configured DLL meter ID and
+pass strict CI=7A / Mode 0 / complete standard DIF-VIF decoding.
+
+- `rfmamb` (BMT/10/1B) maps `current_temperature_c`,
+  `average_temperature_1h_c`, `average_temperature_24h_c`,
+  `current_relative_humidity_rh`,
+  `average_relative_humidity_1h_rh`,
+  `average_relative_humidity_24h_rh` using the single original
+  clear RF example. The second original fixture is actual Mode-5
+  ciphertext with a supplied test key, unsupported by the no-key route.
+- `sensostar` (EFE/00/04) maps `total_kwh`, `total_water_m3`
+  and optional `target_kwh` for the two original unencrypted radio
+  examples. Upstream also includes wired M-Bus and an already-readable
+  Mode-5 example; both are excluded from native plaintext publication.
+- Software coverage is profile-scoped, not full upstream XMQ parity.
+  No real meter identifiers or AES keys, no new legacy dependencies.
+  The live Heltec firmware remains untouched. RF validation is separate.
+
 ## Calup 21–22 — QSmoke / QCaloric (2026-11-08)
 
 Native configured-only clear-TPL subset for `qsmoke` and `qcaloric`.

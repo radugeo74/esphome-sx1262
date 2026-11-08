@@ -90,6 +90,10 @@ wmbus_native_sx126x:
       driver: lansensm
       key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
+    - meter_id: "11772288"  # original public RFM-AMB clear example
+      driver: auto
+    - meter_id: "02752560"  # original public Sensostar clear example
+      driver: auto
     - meter_id: "80008957"
       driver: auto  # upstream public ES1 clear, not AES Mode 5
     - meter_id: "00035946"
@@ -114,6 +118,22 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "11772288"
+      field: current_temperature_c
+      sensor:
+        name: "Lab RFM-AMB Current Temperature"
+    - meter_id: "11772288"
+      field: current_relative_humidity_rh
+      sensor:
+        name: "Lab RFM-AMB Relative Humidity"
+    - meter_id: "02752560"
+      field: total_kwh
+      sensor:
+        name: "Lab Sensostar Total kWh"
+    - meter_id: "02752560"
+      field: total_water_m3
+      sensor:
+        name: "Lab Sensostar Total Volume m3"
     - meter_id: "80008957"  # upstream public test, MODE 0 ONLY
       field: temperature_c
       sensor:
