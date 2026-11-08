@@ -259,7 +259,7 @@ void NativeReceiverProbe::log_native_auto_(
   // The mode and source are observations, NOT decode/publication status.
   // A Mode-5 candidate is never passed to the plaintext AUTO resolver.
   if(candidate.decimal_bcd) {
-    ESP_LOGI(TAG,"BATCH2 AUTO candidate=%s source=%s link=%s dll=%08u meter=%08u different_dll=%s tpl_security=%s tpl_mode=%u driver_class=%s decode_status=not_attempted (metadata only; no publication)",
+    ESP_LOGI(TAG,"NATIVE AUTO candidate=%s source=%s link=%s dll=%08u meter=%08u different_dll=%s tpl_security=%s tpl_mode=%u driver_class=%s decode_status=not_attempted (metadata only; no publication)",
              candidate.driver,origin,link,
              static_cast<unsigned>(dll_meter_id),
              static_cast<unsigned>(candidate.meter_id),
@@ -268,7 +268,7 @@ void NativeReceiverProbe::log_native_auto_(
              static_cast<unsigned>(mode),
              secure_only ? "secure_only" : "configured_clear_possible");
   } else {
-    ESP_LOGI(TAG,"BATCH2 AUTO candidate=%s source=%s link=%s dll=%08u meter=non-BCD tpl_security=%s tpl_mode=%u driver_class=%s decode_status=not_attempted (metadata only; no publication)",
+    ESP_LOGI(TAG,"NATIVE AUTO candidate=%s source=%s link=%s dll=%08u meter=non-BCD tpl_security=%s tpl_mode=%u driver_class=%s decode_status=not_attempted (metadata only; no publication)",
              candidate.driver,origin,link,
              static_cast<unsigned>(dll_meter_id),
              wmbus_pure::tpl_security::label(security.state),
