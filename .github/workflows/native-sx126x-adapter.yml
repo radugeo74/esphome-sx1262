@@ -200,9 +200,16 @@ jobs:
             experimental/semtech-radio/test_apatoreitn_gransystems_native.cpp \
             -o /tmp/test-apatoreitn-gransystems
           /tmp/test-apatoreitn-gransystems
+      - name: Test original Techem Compact5 and Vario451 CI A2
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_compact5_vario451_native.cpp \
+            -o /tmp/test-compact5-vario451
+          /tmp/test-compact5-vario451
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
-      - name: Audit OMS security evidence catalog for all 50 drivers
+      - name: Audit OMS security evidence catalog for all 52 drivers
         run: python3 experimental/xmq/tests/test_security_profile_catalog.py
       - name: Check NOKEY provenance and 44 encrypted-header counterexamples from all XMQ fixtures
         run: python3 experimental/xmq/tests/test_nokey_fixture_provenance.py

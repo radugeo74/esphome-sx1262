@@ -795,6 +795,37 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Doua exemple reale GSS/01/02 CI 78 (121/159 octeti, fara antet TPL) confirma energie totala 0.916/0 kWh si tarife 1=0.873/0, 2=0.043/0 kWh. Parserul dedicat admite numai cele doua structuri originale, cu ID DLL, MVT si DIF/VIF validate. Nu exista exceptie generala CI78 in gate-ul OMS; nu se publica status OK, deoarece exemplul trifazat raporteaza RTC_ERROR."
+    },
+    {
+      "driver": "compact5",
+      "group": "PORTABLE",
+      "mvt": [
+        "TCH/45/04",
+        "TCH/45/C3",
+        "TCH/22/43",
+        "TCH/45/43",
+        "TCH/39/43"
+      ],
+      "total_tests": 4,
+      "nokey_tests": 4,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Patru fixture upstream Compact5 NOKEY; DOAR doua TCH/39/43 CI A2 radio 56 octeti sunt decodate (total_kwh 25250/58018, current_kwh 284/7567, previous_kwh 24966/50451). Cele doua CI A1 TCH/45/43 raman neacceptate, fara exceptie la gate-ul OMS si fara inferenta despre criptare."
+    },
+    {
+      "driver": "vario451",
+      "group": "PORTABLE",
+      "mvt": [
+        "TCH/27/04",
+        "TCH/27/C3"
+      ],
+      "total_tests": 1,
+      "nokey_tests": 1,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Un fixture original Techem TCH/27/C3 CI A2 radio 56 octeti permite conversia mGJ la kWh: total_kwh=6371.666667, current_kwh=2729.444444, previous_kwh=3642.222222. Fara profile suplimentare, status sau interpretare coada proprietara."
     }
   ]
 }

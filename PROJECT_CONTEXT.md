@@ -1,3 +1,26 @@
+## Calupul 51–52: Techem Compact5 + Vario451 (2026-11-09)
+
+The `experimental/xmq-multidriver-auto` branch contains **52 source-anchored
+native XMQ driver families**. Both additions require CRC-verified and
+CRC-stripped SX126x frames, configured decimal DLL ID, exact MVT and CI:
+
+- **`compact5`**: only two original TCH/39/43 CI A2 56-byte examples
+  with `total_kwh=25250/58018`, `current_kwh=284/7567` and
+  `previous_kwh=24966/50451`. The other two original TCH/45/43
+  **CI A1** examples are NOT supported or used for publication; no
+  relaxation of the generic publication gate.
+- **`vario451`**: one genuine TCH/27/C3 CI A2 56-byte example;
+  two 16-bit counters converted from mGJ to kWh by /3.6 yield
+  `total_kwh=6371.666667`, `current_kwh=2729.444444`,
+  `previous_kwh=3642.222222`.
+- Both support configured `driver: auto` and explicit driver name,
+  but no unconfigured publication, AES guessing, or proprietary
+  status/alarm inference. All original fixtures and deliberate
+  wrong-ID/layout/model negatives have a host CI test. Build-only
+  Heltec YAML includes only public upstream example IDs.
+- No deployed firmware, private meters, Home Assistant/OTA settings or
+  security keys have been changed. Software CI is NOT hardware RF validation.
+
 ## Calupul 49–50: Apator E-ITN + Gran Systems (2026-11-09)
 
 The `experimental/xmq-multidriver-auto` branch now contains **50

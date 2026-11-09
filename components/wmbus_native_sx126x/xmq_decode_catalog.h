@@ -45,6 +45,8 @@
 #include "engelmann_faw_plain.h"
 #include "apatoreitn_plain.h"
 #include "gransystems_plain.h"
+#include "compact5_plain.h"
+#include "vario451_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -718,6 +720,30 @@ inline PureDecodeStatus decode_configured_plain_frame(
                       r.total_energy_consumption_tariff_1_kwh};
     output.values[2]={"total_energy_consumption_tariff_2_kwh",
                       r.total_energy_consumption_tariff_2_kwh};
+    output.value_count=3;return PureDecodeStatus::Ok;
+  }
+  // The A1 Compact5 fixtures remain deliberately unsupported.
+  if(driver_name && std::strcmp(driver_name,"compact5")==0) {
+    if(!output.values || output.value_capacity<3)
+      return PureDecodeStatus::DecodeFailure;
+    compact5::Reading r{};
+    if(compact5::decode(frame,length,r)!=compact5::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_kwh",r.total_kwh};
+    output.values[1]={"current_kwh",r.current_kwh};
+    output.values[2]={"previous_kwh",r.previous_kwh};
+    output.value_count=3;return PureDecodeStatus::Ok;
+  }
+  // Techem Vario451 strict configured-only A2 manufacturer profile.
+  if(driver_name && std::strcmp(driver_name,"vario451")==0) {
+    if(!output.values || output.value_capacity<3)
+      return PureDecodeStatus::DecodeFailure;
+    vario451::Reading r{};
+    if(vario451::decode(frame,length,r)!=vario451::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_kwh",r.total_kwh};
+    output.values[1]={"current_kwh",r.current_kwh};
+    output.values[2]={"previous_kwh",r.previous_kwh};
     output.value_count=3;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.

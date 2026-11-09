@@ -1,4 +1,4 @@
-# Catalogul de securitate wM-Bus / OMS — 50 drivere native
+# Catalogul de securitate wM-Bus / OMS — 52 drivere native
 
 **Revizie:** 2026-11-08. **Branch:** `experimental/xmq-multidriver-auto`. **Stadiu:** dovada software, nu certificare de echipament sau validare hardware.
 
@@ -60,6 +60,8 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 | [`engelmann_faw`](drivers/engelmann_faw.xmq) | `PORTABLE` | `EFE/00/07` | 2 (1 `NOKEY`) | Consum la raportare și două valori istorice CI72 Mode0, DLL/TPL distincte; AES respins | — |
 | [`apatoreitn`](drivers/apatoreitn.xmq) | `PORTABLE` | `APA/04/08`, `APT/04/08` | 3 (3 `NOKEY`) | HCA/temperaturi și stare ESB, numai A0 și două forme B6 validate | — |
 | [`gransystems`](drivers/gransystems.xmq) | `PORTABLE` | `GSS/01/02` | 2 (2 `NOKEY`) | Consum total electric și tarife 1/2, CI78 exact, fără TPL | — |
+| [`compact5`](drivers/compact5.xmq) | `PORTABLE` | `TCH/45/04`, `TCH/45/C3`, `TCH/22/43`, `TCH/45/43`, `TCH/39/43` | 4 (4 `NOKEY`) | CI A2, profil clar limitat | — | Patru fixture upstream Compact5 NOKEY; DOAR doua TCH/39/43 CI A2 radio 56 octeti sunt decodate (total_kwh 25250/58018, current_kwh 284/7567, previous_kwh 24966/50451). Cele doua CI A1 TCH/45/43 raman neacceptate, fara exceptie la gate-ul OMS si fara inferenta despre criptare. |
+| [`vario451`](drivers/vario451.xmq) | `PORTABLE` | `TCH/27/04`, `TCH/27/C3` | 1 (1 `NOKEY`) | CI A2, profil clar limitat | — | Un fixture original Techem TCH/27/C3 CI A2 radio 56 octeti permite conversia mGJ la kWh: total_kwh=6371.666667, current_kwh=2729.444444, previous_kwh=3642.222222. Fara profile suplimentare, status sau interpretare coada proprietara. |
 
 **Legenda:** un profil clar este admis numai cu verificarile de integritate, identitate si securitate aferente; nu inseamna «orice dispozitiv din familie este necriptat». Pentru profilele AES, cheia este configurata explicit in `secure_meters`, iar un cadru respins nu revine la decoderul plaintext. Cele doua drivere `SECURE_ONLY` pot fi doar recunoscute diagnostic fara cheie.
 
