@@ -11,6 +11,7 @@
 #include "xmq_decode_catalog.h"
 #include "xmq_auto_dispatch.h"
 #include "batch2_auto_identify.h"
+#include "bound_long_tpl_plain.h"
 
 namespace xmq_portable { namespace batch2_plain {
 inline bool is_explicit_driver(const char *name) {
@@ -49,6 +50,8 @@ inline bool is_explicit_driver(const char *name) {
       std::strcmp(name,"abbb23")==0 ||
       std::strcmp(name,"ei6500")==0 ||
       std::strcmp(name,"apatoreitn40")==0 ||
+      std::strcmp(name,"elf")==0 ||
+      std::strcmp(name,"engelmann_faw")==0 ||
       std::strcmp(name,"ultraheat")==0 ||
       std::strcmp(name,"sontex868")==0 ||
       std::strcmp(name,"supercal")==0 ||
@@ -70,6 +73,45 @@ inline const char *select_configured_driver(
      wmbus_pure::match_meter_id(header,dll_id)!=
      wmbus_pure::MatchStatus::Match)
     return nullptr;
+  // Two original clear long-TPL radio profiles with DIFFERENT DLL and
+  // TPL meter identities. Require explicit configured target AND DLL.
+  // No header-wide exception or fallback to the single-address gate.
+  // AUTO selects only an unambiguous TPL model proven by XMQ.
+  if(std::strcmp(meter_id,dll_id)!=0 &&
+     (std::strcmp(requested,"auto")==0 ||
+      std::strcmp(requested,"elf")==0 ||
+      std::strcmp(requested,"engelmann_faw")==0)) {
+    const auto nested=wmbus_pure::identity::inspect(frame,length);
+    if(nested.status==wmbus_pure::identity::Status::Ok &&
+       nested.has_tpl && nested.tpl.decimal_bcd &&
+       wmbus_pure::identity::same_id(nested.tpl,meter_id)) {
+      const auto selected=wmbus_pure::auto_driver::resolve(
+          "auto",signatures,count,nested.tpl.manufacturer,
+          nested.tpl.version,nested.tpl.device_type);
+      if(selected.status==wmbus_pure::auto_driver::Status::Ready &&
+         selected.driver &&
+         (std::strcmp(selected.driver,"elf")==0 ||
+          std::strcmp(selected.driver,"engelmann_faw")==0) &&
+         (std::strcmp(requested,"auto")==0 ||
+          std::strcmp(requested,selected.driver)==0)) {
+        const auto&name=selected.driver;
+        const auto verified=std::strcmp(name,"elf")==0
+          ? bound_long_tpl::inspect(frame,length,meter_id,dll_id,
+                       0x0601,0x40,0x04,0x8601,0x18,0x37)
+          : bound_long_tpl::inspect(frame,length,meter_id,dll_id,
+                       0x14C5,0x00,0x07,0x14C5,0x01,0x07);
+        if(verified==bound_long_tpl::Status::Ok &&
+           length==(std::strcmp(name,"elf")==0?82u:144u))
+          return name;
+      }
+    }
+    // For explicit dual-ID models, never fall through to an unrelated
+    // DLL signature or generic manual-driver authorization.
+    if(std::strcmp(requested,"auto")!=0)return nullptr;
+  }
+  if(std::strcmp(requested,"elf")==0 ||
+     std::strcmp(requested,"engelmann_faw")==0)
+    return nullptr;  // must be dual-bound before any decoder authorization
   if(std::strcmp(requested,"auto")!=0)
     return is_explicit_driver(requested) ? requested : nullptr;
   // Public "Heat_lower_case" Itronheat frame explicitly uses ITW code
@@ -143,6 +185,8 @@ inline const char *select_configured_driver(
       std::strcmp(resolved.driver,"abbb23")==0 ||
       std::strcmp(resolved.driver,"ei6500")==0 ||
       std::strcmp(resolved.driver,"apatoreitn40")==0 ||
+      std::strcmp(resolved.driver,"elf")==0 ||
+      std::strcmp(resolved.driver,"engelmann_faw")==0 ||
       std::strcmp(resolved.driver,"ultraheat")==0 ||
       std::strcmp(resolved.driver,"sontex868")==0 ||
       std::strcmp(resolved.driver,"supercal")==0 ||

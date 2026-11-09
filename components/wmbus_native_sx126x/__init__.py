@@ -81,8 +81,11 @@ def validate_secure_config(config):
         raise cv.Invalid("meter_drivers must have unique meter and DLL sender IDs")
     for entry in plain:
         if (entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) != entry[CONF_METER_ID]
-                and entry[CONF_DRIVER] not in ("minomess", "auto")):
-            raise cv.Invalid("Separate DLL ID in meter_drivers requires Minomess or a validated auto Minomess TPL")
+                and entry[CONF_DRIVER] not in ("minomess", "elf", "engelmann_faw", "auto")):
+            raise cv.Invalid("Separate DLL ID requires Minomess, ELF, Engelmann FAW or strict configured auto TPL")
+        if (entry[CONF_DRIVER] in ("elf", "engelmann_faw")
+                and entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) == entry[CONF_METER_ID]):
+            raise cv.Invalid("ELF and Engelmann FAW require explicit distinct dll_meter_id and target meter_id")
     for entry in secured:
         if (entry.get(CONF_DLL_METER_ID, entry[CONF_METER_ID]) != entry[CONF_METER_ID]
                 and entry[CONF_DRIVER] not in ("minomess", "mkradio4a")):

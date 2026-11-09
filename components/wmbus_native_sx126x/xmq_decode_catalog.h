@@ -41,6 +41,8 @@
 #include "abbb23_plain.h"
 #include "ei6500_plain.h"
 #include "apatoreitn40_plain.h"
+#include "elf_plain.h"
+#include "engelmann_faw_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -654,6 +656,38 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[6]={"temp_room_c",r.temp_room_c};
     output.values[7]={"temp_radiator_c",r.temp_radiator_c};
     output.value_count=8;return PureDecodeStatus::Ok;
+  }
+  // Source-backed dual-ID long-TPL profiles are ONLY authorized with
+  // separately configured DLL sender + verified embedded TPL meter ID.
+  // The original single-ID publication policy is never relaxed.
+  if(driver_name && std::strcmp(driver_name,"elf")==0) {
+    if(!output.values || output.value_capacity<5 || !expected_dll_id)
+      return PureDecodeStatus::DecodeFailure;
+    elf::Reading r{};
+    if(elf::decode(frame,length,configured_id,expected_dll_id,r)!=elf::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_energy_consumption_kwh",r.total_energy_consumption_kwh};
+    output.values[1]={"total_volume_m3",r.total_volume_m3};
+    output.values[2]={"total_energy_consumption_at_date_kwh",
+                       r.total_energy_consumption_at_date_kwh};
+    output.values[3]={"flow_temperature_c",r.flow_temperature_c};
+    output.values[4]={"return_temperature_c",r.return_temperature_c};
+    output.value_count=5;return PureDecodeStatus::Ok;
+  }
+  if(driver_name && std::strcmp(driver_name,"engelmann_faw")==0) {
+    if(!output.values || output.value_capacity<3 || !expected_dll_id)
+      return PureDecodeStatus::DecodeFailure;
+    engelmann_faw::Reading r{};
+    if(engelmann_faw::decode(frame,length,configured_id,expected_dll_id,r)!=
+        engelmann_faw::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"consumption_at_reporting_date_m3",
+                       r.consumption_at_reporting_date_m3};
+    output.values[1]={"consumption_1_months_ago_m3",
+                       r.consumption_1_months_ago_m3};
+    output.values[2]={"consumption_2_months_ago_m3",
+                       r.consumption_2_months_ago_m3};
+    output.value_count=3;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
