@@ -683,6 +683,32 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Un exemplu original ZRI/88/0D de 230 octeti Mode 0 confirma total_energy_consumption_kwh=0, total_volume_m3=0 si total_energy_consumption_last_month_kwh=0. Contorul are status DRY ERROR RETURN_SENSOR_INTERRUPTED, nu OK. Celelalte doua exemple au antete AES TPL Mode 5, desi sunt NOKEY in XMQ; nu sunt publicate fara decriptare. Marcatorii istorici invalidi sunt exclusi."
+    },
+    {
+      "driver": "microclima",
+      "group": "PORTABLE",
+      "mvt": [
+        "MAD/00/04"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Doua exemple originale MAD/00/04 CI 7A Mode 0 cu 74/165 octeti confirma energia totala (1805/2119 kWh) si volumul total (297.994/241.757 m3). Primul sustine si temperaturile tur/retur 21/21 C; al doilea transmite istoric separat, nepublicat. Structura, MVT, ID si transportul sunt verificate strict; nu inventam alarme si date istorice."
+    },
+    {
+      "driver": "abbb23",
+      "group": "PORTABLE",
+      "mvt": [
+        "ABB/20/02"
+      ],
+      "total_tests": 1,
+      "nokey_tests": 1,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Un exemplu ABB/20/02 CI 7A Mode 0 de 133 octeti confirma total_energy_consumption_kwh=5249.17 din BCD6 DIF0E/VIF8400. Restul tarifelor, fluxurilor, contoarelor, textelor si alarmelor nu sunt publicate fara dovezi suplimentare. Un singur fixture nu este dovada paritatii pentru toate ABB B23."
     }
   ]
 }

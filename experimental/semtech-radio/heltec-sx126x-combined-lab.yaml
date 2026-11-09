@@ -90,6 +90,10 @@ wmbus_native_sx126x:
       driver: lansensm
       key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
+    - meter_id: "93572431"  # public MAD Microclima Mode0 fixture; LAB ONLY
+      driver: auto
+    - meter_id: "33221100"  # public ABB B23 Mode0 fixture; LAB ONLY
+      driver: auto
     - meter_id: "67250945"  # upstream LSE QHeat V2 short Mode0, LAB
       driver: auto
     - meter_id: "55445555"  # upstream ZRI C5ISF error-state Mode0, LAB
@@ -154,6 +158,31 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "93572431"
+      field: total_energy_consumption_kwh
+      sensor:
+        name: "Lab Microclima Total Energy"
+        unit_of_measurement: "kWh"
+    - meter_id: "93572431"
+      field: total_volume_m3
+      sensor:
+        name: "Lab Microclima Total Volume"
+        unit_of_measurement: "m³"
+    - meter_id: "93572431"
+      field: flow_temperature_c
+      sensor:
+        name: "Lab Microclima Flow Temperature"
+        unit_of_measurement: "°C"
+    - meter_id: "93572431"
+      field: return_temperature_c
+      sensor:
+        name: "Lab Microclima Return Temperature"
+        unit_of_measurement: "°C"
+    - meter_id: "33221100"
+      field: total_energy_consumption_kwh
+      sensor:
+        name: "Lab ABB B23 Total Imported Energy"
+        unit_of_measurement: "kWh"
     - meter_id: "67250945"
       field: total_kwh
       sensor:

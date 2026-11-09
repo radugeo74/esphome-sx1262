@@ -22,7 +22,7 @@ assert '#include "apator162_ixml_fields.h"' in cpp
 assert 'apator162_reading.total_m3 - 7.512' in cpp
 assert "CONFIGURED_NATIVE = (\"minomess\", \"kamwater\", \"apator162\")" in names
 assert "PORTABLE = (" in names
-assert all(f'"{driver}"' in names for driver in ("ultraheat","sontex868","supercal","q400","elvsense","lansenrp","qsmoke","qcaloric","rfmamb","sensostar","evo868","supercom587","hcae2","bfw240radio","qwaterv2","hydrodigit","itron","qualcosonic","lse_08","waterstarm","lse_07_17","munia","qheat_55_us","maddalena","itronheat","ehzp","qheatv2","c5isf"))
+assert all(f'"{driver}"' in names for driver in ("ultraheat","sontex868","supercal","q400","elvsense","lansenrp","qsmoke","qcaloric","rfmamb","sensostar","evo868","supercom587","hcae2","bfw240radio","qwaterv2","hydrodigit","itron","qualcosonic","lse_08","waterstarm","lse_07_17","munia","qheat_55_us","maddalena","itronheat","ehzp","qheatv2","c5isf","microclima","abbb23"))
 assert "for header in (xmq / \"portable_cpp\").glob(\"*.h\")" in component.read_text(encoding="utf-8")
 assert not (root/"components/wmbus_native_sx126x/apator162_ixml_fields.h").exists(), (
     "Shared module should be copied at build time only, not committed as a second source")
@@ -82,7 +82,7 @@ assert "kamwater::ell_ctr::decrypt" not in catalog_branch
 assert "oms_ccm_mbedtls_probe" not in native_catalog
 assert "oms_tpl_cbc" not in native_catalog
 assert "CONFIGURED_NATIVE = (\"minomess\", \"kamwater\", \"apator162\")" in names
-assert all(f'"{driver}"' in names for driver in ("ultraheat","sontex868","supercal","q400","elvsense","lansenrp","qsmoke","qcaloric","rfmamb","sensostar","evo868","supercom587","hcae2","bfw240radio","qwaterv2","hydrodigit","itron","qualcosonic","lse_08","waterstarm","lse_07_17","munia","qheat_55_us","maddalena","itronheat","ehzp","qheatv2","c5isf"))
+assert all(f'"{driver}"' in names for driver in ("ultraheat","sontex868","supercal","q400","elvsense","lansenrp","qsmoke","qcaloric","rfmamb","sensostar","evo868","supercom587","hcae2","bfw240radio","qwaterv2","hydrodigit","itron","qualcosonic","lse_08","waterstarm","lse_07_17","munia","qheat_55_us","maddalena","itronheat","ehzp","qheatv2","c5isf","microclima","abbb23"))
 # Stage B explicitly binds all three encrypted decoders ONLY through an
 # opt-in secure_meters list and a CRC-verified SX1262 callback. Do not
 # rewrite the earlier, proven plaintext publication gate.

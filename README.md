@@ -1,3 +1,33 @@
+## Calupul 43–44: Maddalena Microclima + ABB B23 (2026-11-09)
+
+The `experimental/xmq-multidriver-auto` branch now integrates **44
+native driver families**. Both additions have source-anchored,
+configured-only cleartext decoding and negative transport tests:
+
+- **`microclima`**: two original MAD/00/04 short-TPL Mode-0 examples,
+  74 and 165 bytes. Both validate `total_energy_consumption_kwh`
+  (1805/2119) and `total_volume_m3` (297.994/241.757 m³);
+  the first additionally validates optional `flow_temperature_c`
+  and `return_temperature_c` (21°C each). Manufacturer-specific
+  parameter set, calendar and 16 prior billing months are **not**
+  decoded in this native subset. Unsupported source revisions,
+  wrong IDs, malformed BCD and non-Mode-0 telegrams fail closed.
+- **`abbb23`**: one original ABB/20/02 133-byte short-TPL
+  Mode-0 example proves `total_energy_consumption_kwh=5249.17`
+  from six-byte BCD DIF `0E`, VIF `84 00`. Strict full-profile
+  markers and bounded record parser are checked before publication.
+  Import/export tariffs, manufacturer alarm flags and other power
+  readings are **not** claimed without source evidence.
+- The official SX126x native adapter still requires verified DLL
+  CRC removal, exact configured meter ID, unambiguous MVT,
+  verified TPL Mode-0 security and source-compatible records.
+  `driver: auto` or explicit driver does not decrypt or guess.
+  NOKEY is upstream fixture metadata, not an RF encryption bypass.
+- `experimental/semtech-radio/heltec-sx126x-combined-lab.yaml`
+  remains **build-only** with public original fixture identifiers,
+  no production credentials or private meter IDs, **no OTA/flash**.
+  Real RF validation remains separate.
+
 ## Calupul 41–42: QHeat V2 + Zenner C5ISF (2026-11-09)
 
 The `experimental/xmq-multidriver-auto` native branch contains
