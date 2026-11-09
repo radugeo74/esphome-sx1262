@@ -33,6 +33,8 @@
 #include "munia_plain.h"
 #include "qheat_55_us_plain.h"
 #include "maddalena_plain.h"
+#include "itronheat_plain.h"
+#include "ehzp_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -517,6 +519,36 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[0]={"total_m3",r.total_m3};
     output.values[1]={"target_m3",r.target_m3};
     output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // Itron/Allmess ITW/00/04 Mode0 clear 65-byte profile.
+  if(driver_name && std::strcmp(driver_name,"itronheat")==0) {
+    if(!output.values || output.value_capacity<3)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    itronheat::Reading r{};
+    if(itronheat::decode(frame,length,r)!=itronheat::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_kwh",r.total_kwh};
+    output.values[1]={"total_m3",r.total_m3};
+    output.values[2]={"last_year_kwh",r.last_year_kwh};
+    output.value_count=3;return PureDecodeStatus::Ok;
+  }
+  // EMH eHZP/00/02 original 175-byte TPL Mode0 electricity profile.
+  if(driver_name && std::strcmp(driver_name,"ehzp")==0) {
+    if(!output.values || output.value_capacity<3)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    ehzp::Reading r{};
+    if(ehzp::decode(frame,length,r)!=ehzp::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_energy_consumption_kwh",r.total_energy_consumption_kwh};
+    output.values[1]={"total_energy_production_kwh",r.total_energy_production_kwh};
+    output.values[2]={"current_power_consumption_kw",r.current_power_consumption_kw};
+    output.value_count=3;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
