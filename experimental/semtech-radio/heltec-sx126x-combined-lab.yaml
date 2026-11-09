@@ -90,6 +90,10 @@ wmbus_native_sx126x:
       driver: lansensm
       key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
+    - meter_id: "01097274"  # public Ei6500 Mode-0 diagnostics; LAB only, NOT life safety
+      driver: auto
+    - meter_id: "00019913"  # public APA E-ITN40 clear Mode0 proprietary frame; LAB only
+      driver: auto
     - meter_id: "93572431"  # public MAD Microclima Mode0 fixture; LAB ONLY
       driver: auto
     - meter_id: "33221100"  # public ABB B23 Mode0 fixture; LAB ONLY
@@ -158,6 +162,36 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "01097274"
+      field: alarm_counter
+      sensor:
+        name: "Lab Ei6500 Historical Alarm Count (Not Safety)"
+        unit_of_measurement: ""
+    - meter_id: "01097274"
+      field: dust_level_counter
+      sensor:
+        name: "Lab Ei6500 Dust Diagnostic"
+        unit_of_measurement: ""
+    - meter_id: "00019913"
+      field: current_hca
+      sensor:
+        name: "Lab E-ITN40 Current HCA"
+        unit_of_measurement: ""
+    - meter_id: "00019913"
+      field: previous_hca
+      sensor:
+        name: "Lab E-ITN40 Previous HCA"
+        unit_of_measurement: ""
+    - meter_id: "00019913"
+      field: temp_room_c
+      sensor:
+        name: "Lab E-ITN40 Room Temperature"
+        unit_of_measurement: "°C"
+    - meter_id: "00019913"
+      field: temp_radiator_c
+      sensor:
+        name: "Lab E-ITN40 Radiator Temperature"
+        unit_of_measurement: "°C"
     - meter_id: "93572431"
       field: total_energy_consumption_kwh
       sensor:

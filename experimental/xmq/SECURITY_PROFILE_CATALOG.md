@@ -1,4 +1,4 @@
-# Catalogul de securitate wM-Bus / OMS — 44 drivere native
+# Catalogul de securitate wM-Bus / OMS — 46 drivere native
 
 **Revizie:** 2026-11-08. **Branch:** `experimental/xmq-multidriver-auto`. **Stadiu:** dovada software, nu certificare de echipament sau validare hardware.
 
@@ -54,6 +54,8 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 | [`c5isf`](drivers/c5isf.xmq) | `PORTABLE` | `ZRI/88/0D`, `ZRI/88/07`, `ZRI/88/04` | 3 (3 `NOKEY`) | Energie/volum și eroare reală, ZRI/88/0D Mode 0 | — |
 | [`microclima`](drivers/microclima.xmq) | `PORTABLE` | `MAD/00/04` | 2 (2 `NOKEY`) | Energie, volum, temperaturi opționale, Mode 0 | — |
 | [`abbb23`](drivers/abbb23.xmq) | `PORTABLE` | `ABB/20/02` | 1 (1 `NOKEY`) | Energie importată totală, Mode 0 | — |
+| [`ei6500`](drivers/ei6500.xmq) | `PORTABLE` | `EIE/0C/1A` | 6 (6 `NOKEY`) | Doar contoare diagnostic istorice (NU alarmă incendiu), Mode 0 | — |
+| [`apatoreitn40`](drivers/apatoreitn40.xmq) | `PORTABLE` | `APA/09/08`, `APA/0A/08`, `APA/0D/08`, `APA/0E/08`, `APT/09/08`, `APT/0A/08`, `APT/0D/08`, `APT/0E/08` | 3 (3 `NOKEY`) | Valori HCA + temperaturi, doar APA/09/08 și APA/0D/08 CI A0 în clar | — |
 
 **Legenda:** un profil clar este admis numai cu verificarile de integritate, identitate si securitate aferente; nu inseamna «orice dispozitiv din familie este necriptat». Pentru profilele AES, cheia este configurata explicit in `secure_meters`, iar un cadru respins nu revine la decoderul plaintext. Cele doua drivere `SECURE_ONLY` pot fi doar recunoscute diagnostic fara cheie.
 
@@ -104,12 +106,14 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`c5isf`:** Un exemplu original ZRI/88/0D de 230 octeti Mode 0 confirma total_energy_consumption_kwh=0, total_volume_m3=0 si total_energy_consumption_last_month_kwh=0. Contorul are status DRY ERROR RETURN_SENSOR_INTERRUPTED, nu OK. Celelalte doua exemple au antete AES TPL Mode 5, desi sunt NOKEY in XMQ; nu sunt publicate fara decriptare. Marcatorii istorici invalidi sunt exclusi.
 - **`microclima`:** Doua exemple originale MAD/00/04 CI 7A Mode 0 cu 74/165 octeti confirma energia totala (1805/2119 kWh) si volumul total (297.994/241.757 m3). Primul sustine si temperaturile tur/retur 21/21 C; al doilea transmite istoric separat, nepublicat. Structura, MVT, ID si transportul sunt verificate strict; nu inventam alarme si date istorice.
 - **`abbb23`:** Un exemplu ABB/20/02 CI 7A Mode 0 de 133 octeti confirma total_energy_consumption_kwh=5249.17 din BCD6 DIF0E/VIF8400. Restul tarifelor, fluxurilor, contoarelor, textelor si alarmelor nu sunt publicate fara dovezi suplimentare. Un singur fixture nu este dovada paritatii pentru toate ABB B23.
+- **`ei6500`:** Sase fixture originale Ei Electronics EIE/0C/1A (89 octeti CI 7A Mode 0) demonstreaza doar contoare istorice de alarme/teste/demontare si nivelul de praf: alarm_counter, removed_counter, test_button_counter, dust_level_counter. Nu interpreteaza siguranta actuala, fum/foc, nu publica status OK si nu trebuie utilizat pentru protectie la incendiu.
+- **`apatoreitn40`:** Trei telegrame originale APA/09/08 si APA/0D/08 (65 octeti, CI A0, 27 cuvinte little-endian) valideaza current_hca, previous_hca, previous_2y_hca, previous_3y_hca, current_month_hca, previous_month_hca si temperaturi camera/radiator. Versiunile APA/0A/08 si APA/0E/08 sunt criptate AES si nu sunt acceptate de parserul clar. APT detect.mvt nu inseamna profil publicat. Doar variantele si structura validate sunt admise.
   Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
 
-Am inspectat automat toate cele **192** de fixture XMQ din cele 44
-drivere: **181** ruleaza fara cheie in test, dar **49** dintre cele
+Am inspectat automat toate cele **201** de fixture XMQ din cele 46
+drivere: **190** ruleaza fara cheie in test, dar **49** dintre cele
 `NOKEY` pastreaza in antet un **TPL Mode 5 / AES-CBC**. Inca un
 fixture Apator162 are Mode 5 cu cheie explicita (deci **53** antete
 Mode 5). Nu le etichetam ca RF fara cheie: unele contin date deja
@@ -147,7 +151,7 @@ automat ca `fara cheie`.
 
 ## OMS Group: certificare versus implementare
 
-OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 44 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
+OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 46 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
 
 Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES-CBC Mode 5** si **D / AES-CCM Mode 10**. Implementarea ELL AES-CTR este un traseu separat, care nu trebuie reclasificat automat ca profil A/B/D. **Mode 7 (OMS B) si Mode 13** sunt detectate de filtrul de securitate, dar nu au aici un decodor general. Aceasta este o harta de compatibilitate, nu o lista de contoare care sigur nu necesita cheie.
 
@@ -158,4 +162,4 @@ Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES
 3. Decodare completa a valorilor reale fara cheie si potrivirea producatorului, versiunii si tipului.
 4. Daca exista model comercial exact, identificare OMS independenta cu certificat si generatie; fara a incarca date private in GitHub.
 
-**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 44 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.
+**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 46 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.

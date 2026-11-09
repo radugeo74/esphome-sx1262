@@ -1,3 +1,39 @@
+## Calupul 45–46: Ei6500 diagnostics + Apator E-ITN40 (2026-11-09)
+
+The `experimental/xmq-multidriver-auto` branch now contains
+**46 native XMQ driver families** with configured-only publication.
+
+- **`ei6500`**: six public EIE/0C/1A Mode-0 short-TPL 89-byte
+  fixtures confirm `alarm_counter` (historic count),
+  `removed_counter`, `test_button_counter` and
+  `dust_level_counter`. **This is diagnostic telemetry, NOT
+  smoke/fire detection**. An upstream `status: OK` can coexist
+  with an earlier alarm: therefore the native subset publishes
+  **no live smoke alarm state and no `status: OK`**. The actual
+  certified smoke alarm device must work independently; these
+  Home Assistant fields must not be used for fire protection.
+- **`apatoreitn40`**: three official Apator Metra E-ITN40
+  CI `A0` manufacturer-specific, 65-byte unencrypted fixtures
+  (`APA/09/08` and `APA/0D/08`) support
+  `current_hca`, `previous_hca`, `previous_2y_hca`,
+  `previous_3y_hca`, `current_month_hca`,
+  `previous_month_hca`, `temp_room_c` and
+  `temp_radiator_c`. The proprietary 27 little-endian
+  16-bit words are decoded at exact source-proven offsets,
+  not fed to the generic DIF/VIF parser. Historical monthly
+  archive and calendar text are not published.
+  `APA/0A/08` and `APA/0E/08` are **AES variants**
+  and this cleartext decoder rejects them. Upstream additional
+  `APT` detection signatures are not evidence of tested
+  support for that on-air frame layout.
+- Both require independently CRC-verified/CRC-stripped SX126x
+  input, matching configured DLL ID, strict model/version and
+  bounded source format. `driver: auto` and explicit selection
+  never create unconfigured entities or bypass encryption.
+- The Heltec lab YAML is **build-only** with public original
+  fixture IDs, no live meter IDs, no keys, **no OTA/flash**;
+  real RF validation remains separate.
+
 ## Calupul 43–44: Maddalena Microclima + ABB B23 (2026-11-09)
 
 The `experimental/xmq-multidriver-auto` branch now integrates **44

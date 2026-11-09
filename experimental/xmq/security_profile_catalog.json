@@ -709,6 +709,39 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Un exemplu ABB/20/02 CI 7A Mode 0 de 133 octeti confirma total_energy_consumption_kwh=5249.17 din BCD6 DIF0E/VIF8400. Restul tarifelor, fluxurilor, contoarelor, textelor si alarmelor nu sunt publicate fara dovezi suplimentare. Un singur fixture nu este dovada paritatii pentru toate ABB B23."
+    },
+    {
+      "driver": "ei6500",
+      "group": "PORTABLE",
+      "mvt": [
+        "EIE/0C/1A"
+      ],
+      "total_tests": 6,
+      "nokey_tests": 6,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Sase fixture originale Ei Electronics EIE/0C/1A (89 octeti CI 7A Mode 0) demonstreaza doar contoare istorice de alarme/teste/demontare si nivelul de praf: alarm_counter, removed_counter, test_button_counter, dust_level_counter. Nu interpreteaza siguranta actuala, fum/foc, nu publica status OK si nu trebuie utilizat pentru protectie la incendiu."
+    },
+    {
+      "driver": "apatoreitn40",
+      "group": "PORTABLE",
+      "mvt": [
+        "APA/09/08",
+        "APA/0A/08",
+        "APA/0D/08",
+        "APA/0E/08",
+        "APT/09/08",
+        "APT/0A/08",
+        "APT/0D/08",
+        "APT/0E/08"
+      ],
+      "total_tests": 3,
+      "nokey_tests": 3,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Trei telegrame originale APA/09/08 si APA/0D/08 (65 octeti, CI A0, 27 cuvinte little-endian) valideaza current_hca, previous_hca, previous_2y_hca, previous_3y_hca, current_month_hca, previous_month_hca si temperaturi camera/radiator. Versiunile APA/0A/08 si APA/0E/08 sunt criptate AES si nu sunt acceptate de parserul clar. APT detect.mvt nu inseamna profil publicat. Doar variantele si structura validate sunt admise."
     }
   ]
 }
