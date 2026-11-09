@@ -781,7 +781,7 @@
       "clear_route": "clear_only",
       "keyed_routes": [],
       "oms_certified_sku": null,
-      "evidence_note": "Trei exemple originale Apator E-ITN APA/04/08 (CI A0/26 octeti) si APT/04/08 (CI B6/38 si 42 octeti, prefix A0 strict incadrat). Decodare HCA curent/an anterior si temperaturile medii camera 21.703125/19.890625, 25.78125/22.390625, respectiv 21.703125/19.890625 C. Status SEAL_BROKEN sau OK numai dupa verificarea stricta a datei ESB. CI B6 nu este acceptat generic si nu implica TPL Mode0 sau AES; sunt suportate numai aceste doua variante originale."
+      "evidence_note": "Trei exemple originale Apator E-ITN APA/04/08 (CI A0/26 octeti) si APT/04/08 (CI B6/38 si 42 octeti, prefix A0 strict incadrat). Decodare HCA curent/an anterior si temperaturile medii camera 21.703125/19.890625, 25.78125/22.390625, respectiv 21.703125/19.890625 C. Status SEAL_BROKEN sau OK numai dupa verificarea stricta a datei ESB. CI B6 nu este acceptat generic si nu implica TPL Mode0 sau AES; sunt suportate numai aceste doua variante originale. M-field original are bit15 activ (0x8601 APA, 0x8614 APT), spre deosebire de detect.mvt (0x0601, 0x0614); AUTO permite doar aceste doua profile documentate."
     },
     {
       "driver": "gransystems",

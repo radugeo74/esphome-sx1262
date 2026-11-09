@@ -135,6 +135,26 @@ inline const char *select_configured_driver(
   }
 
 
+  // Apator E-ITN original A0/B6 source frames set the proprietary
+  // manufacturer high bit (0x8601 APA and 0x8614 APT), whereas the
+  // upstream detect.mvt uses normalized APA/APT codes 0x0601/0x0614.
+  // Admit ONLY the two source-backed model/CI/size combinations
+  // for configured AUTO. No global bit15 masking or security bypass.
+  if(header.version==0x04 && header.device_type==0x08 &&
+     ((header.manufacturer==0x8601 && header.ci==0xA0 &&
+       length==26) ||
+      (header.manufacturer==0x8614 && header.ci==0xB6 &&
+       (length==38 || length==42))) &&
+     std::strcmp(meter_id,dll_id)==0) {
+    const auto alias=wmbus_pure::auto_driver::resolve(
+      "auto",signatures,count,
+      static_cast<uint16_t>(header.manufacturer&0x7FFFu),
+      header.version,header.device_type);
+    if(alias.status==wmbus_pure::auto_driver::Status::Ready &&
+       alias.driver && std::strcmp(alias.driver,"apatoreitn")==0)
+      return alias.driver;
+    return nullptr;
+  }
   // Original QHeat V2 source CI7A/47-byte sample carries
   // LSE/23/04 with manufacturer bit15 set (0xB265).
   // This is an exact configured-only alias, not a generic bit mask.

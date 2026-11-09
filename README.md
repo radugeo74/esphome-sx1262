@@ -14,6 +14,9 @@ source-anchored and require configured DLL meter identity and strict MVT:
   after the original date/seal structure validates. Manufacturer
   `B6` uses a count/opaque-prefix followed by a nested `A0`
   record, admitted solely for the two observed **0A/0E** forms.
+  The original frames use the documented M-field bit15-set aliases
+  **0x8601** (APA) / **0x8614** (APT); configured AUTO maps only
+  these exact profiles to upstream 0x0601/0x0614 signatures.
   This does NOT extend the general TPL publication/security gate
   to arbitrary CI B6 or claim encryption support. Unknown variants
   and altered IDs/records are rejected.
