@@ -1,3 +1,13 @@
+## Completare dependențe portabile Heltec (2026-11-09)
+
+- The failed experimental Heltec build after the six-header allowlist exposed
+  `apator162_ixml_fields.h` as a seventh real native runtime dependency.
+  It is now explicitly bundled, while offline `xmq_decode_catalog.h`
+  and `xmq_field_parity.h` remain excluded.
+- CI verifies native local C++ include references against the allowlist, so
+  future missing portable dependencies fail the host guard immediately.
+  No legacy runtime component or C++ driver was restored.
+
 ## Corecție build Heltec după curățenie (2026-11-09)
 
 - Root cause #808: the native ESPHome `__init__.py` used a wildcard
@@ -5,7 +15,7 @@
   `xmq_decode_catalog.h` with the offline parity catalog moved during cleanup.
   Its `../legacy_reference/` includes then failed in the copied ESPHome
   component directory during the Heltec ESP-IDF build.
-- Fixed with an explicit allowlist of **six runtime portable headers**.
+- Fixed with an explicit allowlist of **seven runtime portable headers**.
   Existing native-owned headers cannot be overwritten; a conflicting
   duplicate is rejected. `frame_bridge.h` is already owned by native.
 - Added an offline CI invariant verifying the precise allowlist and

@@ -61,6 +61,7 @@ declarations = [
 assert len(declarations) == 1, "Expected one explicit runtime header allowlist"
 copied = tuple(ast.literal_eval(declarations[0]))
 assert copied == (
+    "apator162_ixml_fields.h",
     "calculate_subset.h",
     "calendar_subset.h",
     "driver_runtime.h",
@@ -80,5 +81,22 @@ for name in copied:
     )
 assert "xmq_decode_catalog.h" not in copied
 assert "xmq_field_parity.h" not in copied
+
+# The native firmware must bundle every portable header directly included
+# by its C++ translation units (excluding native-owned duplicates).
+portable = ROOT / "experimental/xmq/portable_cpp"
+native_dir = ROOT / "components/wmbus_native_sx126x"
+portable_names = {p.name for p in portable.glob("*.h")}
+required = set()
+for cpp in native_dir.iterdir():
+    if cpp.suffix not in (".cpp", ".h"):
+        continue
+    source_text = cpp.read_text(encoding="utf-8")
+    for name in re.findall(r'(?m)^\s*#include\s+"([^"/]+\.h)"', source_text):
+        if name in portable_names and not (native_dir / name).is_file():
+            required.add(name)
+assert required <= set(copied), (
+    f"Native runtime missing portable dependencies: {sorted(required - set(copied))}"
+)
 
 print("native-only source and fixture hygiene: PASS")

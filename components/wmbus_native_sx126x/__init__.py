@@ -34,11 +34,12 @@ CONF_ON_VERIFIED = "on_verified"
 CONF_T1_RAW_DIAGNOSTICS = "t1_raw_diagnostics"
 CONF_DRIVER = "driver"
 
-# Only the six shared, *runtime* XMQ helpers are staged into the native
+# Only the seven shared, *runtime* XMQ helpers are staged into the native
 # component. In particular, portable_cpp/xmq_decode_catalog.h is an offline
 # legacy-reference test catalog and MUST NEVER overwrite the native decoder.
 # frame_bridge.h already belongs to the native component and is not copied.
 PORTABLE_RUNTIME_HEADERS = (
+    "apator162_ixml_fields.h",
     "calculate_subset.h",
     "calendar_subset.h",
     "driver_runtime.h",
