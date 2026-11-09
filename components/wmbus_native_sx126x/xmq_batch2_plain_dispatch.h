@@ -47,6 +47,8 @@ inline bool is_explicit_driver(const char *name) {
       std::strcmp(name,"c5isf")==0 ||
       std::strcmp(name,"microclima")==0 ||
       std::strcmp(name,"abbb23")==0 ||
+      std::strcmp(name,"ei6500")==0 ||
+      std::strcmp(name,"apatoreitn40")==0 ||
       std::strcmp(name,"ultraheat")==0 ||
       std::strcmp(name,"sontex868")==0 ||
       std::strcmp(name,"supercal")==0 ||
@@ -139,6 +141,8 @@ inline const char *select_configured_driver(
       std::strcmp(resolved.driver,"c5isf")==0 ||
       std::strcmp(resolved.driver,"microclima")==0 ||
       std::strcmp(resolved.driver,"abbb23")==0 ||
+      std::strcmp(resolved.driver,"ei6500")==0 ||
+      std::strcmp(resolved.driver,"apatoreitn40")==0 ||
       std::strcmp(resolved.driver,"ultraheat")==0 ||
       std::strcmp(resolved.driver,"sontex868")==0 ||
       std::strcmp(resolved.driver,"supercal")==0 ||

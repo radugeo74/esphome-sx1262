@@ -179,6 +179,13 @@ jobs:
             experimental/semtech-radio/test_microclima_abbb23_native.cpp \
             -o /tmp/test-microclima-abbb23
           /tmp/test-microclima-abbb23
+      - name: Test Ei6500 diagnostic-only and Apator E-ITN40 original clear fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_ei6500_apatoreitn40_native.cpp \
+            -o /tmp/test-ei6500-apatoreitn40
+          /tmp/test-ei6500-apatoreitn40
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 44 drivers

@@ -39,6 +39,8 @@
 #include "c5isf_plain.h"
 #include "microclima_plain.h"
 #include "abbb23_plain.h"
+#include "ei6500_plain.h"
+#include "apatoreitn40_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -615,6 +617,43 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"total_energy_consumption_kwh",r.total_energy_consumption_kwh};
     output.value_count=1;return PureDecodeStatus::Ok;
+  }
+  // Ei Electronics EIE/0C/1A: diagnostic counters ONLY.
+  // Never fabricate a "no smoke" status, safety reading or live alarm.
+  if(driver_name && std::strcmp(driver_name,"ei6500")==0) {
+    if(!output.values || output.value_capacity<4)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    ei6500::Reading r{};
+    if(ei6500::decode(frame,length,r)!=ei6500::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"alarm_counter",r.alarm_counter};
+    output.values[1]={"removed_counter",r.removed_counter};
+    output.values[2]={"test_button_counter",r.test_button_counter};
+    output.values[3]={"dust_level_counter",r.dust_level_counter};
+    output.value_count=4;return PureDecodeStatus::Ok;
+  }
+  // Apator E-ITN40 native proprietary CI A0 (unencrypted revisions 09/0D).
+  if(driver_name && std::strcmp(driver_name,"apatoreitn40")==0) {
+    if(!output.values || output.value_capacity<8)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    apatoreitn40::Reading r{};
+    if(apatoreitn40::decode(frame,length,r)!=apatoreitn40::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"current_hca",r.current_hca};
+    output.values[1]={"previous_hca",r.previous_hca};
+    output.values[2]={"previous_2y_hca",r.previous_2y_hca};
+    output.values[3]={"previous_3y_hca",r.previous_3y_hca};
+    output.values[4]={"current_month_hca",r.current_month_hca};
+    output.values[5]={"previous_month_hca",r.previous_month_hca};
+    output.values[6]={"temp_room_c",r.temp_room_c};
+    output.values[7]={"temp_radiator_c",r.temp_radiator_c};
+    output.value_count=8;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
