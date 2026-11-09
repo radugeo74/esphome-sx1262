@@ -39,6 +39,8 @@ inline bool is_explicit_driver(const char *name) {
       std::strcmp(name,"waterstarm")==0 ||
       std::strcmp(name,"lse_07_17")==0 ||
       std::strcmp(name,"munia")==0 ||
+      std::strcmp(name,"qheat_55_us")==0 ||
+      std::strcmp(name,"maddalena")==0 ||
       std::strcmp(name,"ultraheat")==0 ||
       std::strcmp(name,"sontex868")==0 ||
       std::strcmp(name,"supercal")==0 ||
@@ -91,6 +93,8 @@ inline const char *select_configured_driver(
       std::strcmp(resolved.driver,"waterstarm")==0 ||
       std::strcmp(resolved.driver,"lse_07_17")==0 ||
       std::strcmp(resolved.driver,"munia")==0 ||
+      std::strcmp(resolved.driver,"qheat_55_us")==0 ||
+      std::strcmp(resolved.driver,"maddalena")==0 ||
       std::strcmp(resolved.driver,"ultraheat")==0 ||
       std::strcmp(resolved.driver,"sontex868")==0 ||
       std::strcmp(resolved.driver,"supercal")==0 ||

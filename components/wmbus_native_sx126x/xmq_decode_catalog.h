@@ -31,6 +31,8 @@
 #include "waterstarm_plain.h"
 #include "lse_07_17_plain.h"
 #include "munia_plain.h"
+#include "qheat_55_us_plain.h"
+#include "maddalena_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -484,6 +486,36 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"current_temperature_c",r.current_temperature_c};
     output.values[1]={"current_relative_humidity_rh",r.current_relative_humidity_rh};
+    output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // QHeat 5.5 US: bounded original Mode-0 energy and billing readings.
+  if(driver_name && std::strcmp(driver_name,"qheat_55_us")==0) {
+    if(!output.values || output.value_capacity<3)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    qheat_55_us::Reading r{};
+    if(qheat_55_us::decode(frame,length,r)!=qheat_55_us::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_energy_consumption_kwh",r.total_energy_consumption_kwh};
+    output.values[1]={"key_datetime_kwh",r.key_datetime_kwh};
+    output.value_count=2;
+    if(r.has_total_m3)output.values[output.value_count++]={"total_m3",r.total_m3};
+    return PureDecodeStatus::Ok;
+  }
+  // Maddalena: only source-verified MAD/01/07 Mode-0 water profile.
+  if(driver_name && std::strcmp(driver_name,"maddalena")==0) {
+    if(!output.values || output.value_capacity<2)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    maddalena::Reading r{};
+    if(maddalena::decode(frame,length,r)!=maddalena::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_m3",r.total_m3};
+    output.values[1]={"target_m3",r.target_m3};
     output.value_count=2;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.

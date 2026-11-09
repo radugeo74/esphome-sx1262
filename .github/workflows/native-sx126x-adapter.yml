@@ -151,6 +151,13 @@ jobs:
             experimental/semtech-radio/test_lse0717_munia_native.cpp \
             -o /tmp/test-lse0717-munia
           /tmp/test-lse0717-munia
+      - name: Test QHeat 5.5 US and Maddalena original clear Mode-0 fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_qheat55_maddalena_native.cpp \
+            -o /tmp/test-qheat55-maddalena
+          /tmp/test-qheat55-maddalena
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 36 drivers
