@@ -29,28 +29,31 @@ inline Status decode(const uint8_t *frame,size_t n,Reading &out) {
     frame[44]!=0x44 || frame[45]!=0x13 ||
     frame[50]!=0x42 || frame[51]!=0x6C)
    return Status::BadRecords;
- standard::Record rows[32]{};size_t count=0;
- if(standard::records(frame+15,n-15,rows,32,count)!=standard::Status::Ok)
+ // The manufacturer/fabrication field 0E78 carries a terminal FF
+ // identifier sentinel. Its bytes are NOT a valid numeric BCD value,
+ // so do not force the generic numeric-record parser through them.
+ // Instead admit only the source-verified fixed layout, then decode
+ // the two individual standard 04/44 13 volume records independently.
+ if(frame[29]!=0x04 || frame[30]!=0xFD || frame[31]!=0x17 ||
+    frame[36]!=0x0E || frame[37]!=0x78 || frame[43]!=0xFF ||
+    frame[54]!=0x84 || frame[55]!=0x01 || frame[56]!=0x13 ||
+    frame[61]!=0x82 || frame[62]!=0x01 || frame[63]!=0x6C ||
+    frame[72]!=0xC4 || frame[73]!=0x01 || frame[74]!=0x6D)
    return Status::BadRecords;
- Reading next{};bool total=false,target=false;
- for(size_t i=0;i<count;++i) {
-   const auto&r=rows[i];
-   if(!r.numeric || r.function || r.tariff || r.subunit ||
-      r.vif_extension_count || r.modifier_count ||
-      r.vif!=0x13 || r.storage>1)continue;
-   double val=0;
-   if(!standard::to_canonical(0x13,r.value,val) ||
-      !std::isfinite(val) || val<0 || val>100000000)
-      return Status::BadRecords;
-   if(r.storage==0) {
-     if(total)return Status::Duplicate;
-     total=true;next.total_m3=val;
-   } else {
-     if(target)return Status::Duplicate;
-     target=true;next.target_m3=val;
-   }
- }
- if(!total || !target)return Status::Missing;
+ const auto read_volume=[&](size_t offset,uint32_t storage,double &value)->bool {
+   standard::Record record[1]{};size_t count=0;
+   if(standard::records(frame+offset,6,record,1,count)!=standard::Status::Ok ||
+      count!=1 || !record[0].numeric || record[0].vif!=0x13 ||
+      record[0].storage!=storage || record[0].function ||
+      record[0].tariff || record[0].subunit ||
+      record[0].vif_extension_count || record[0].modifier_count)
+      return false;
+   return standard::to_canonical(0x13,record[0].value,value) &&
+          std::isfinite(value) && value>=0 && value<=100000000;
+ };
+ Reading next{};
+ if(!read_volume(17,0,next.total_m3) ||
+    !read_volume(44,1,next.target_m3))return Status::BadRecords;
  if(next.target_m3>next.total_m3)return Status::BadRecords;
  out=next;return Status::Ok;
 }
