@@ -3,7 +3,7 @@
 // This regression proves decryption + IXML volume parity only.
 #include "host_only/oms_tpl_cbc_mode5_openssl.h"
 #include "host_only/apator162_ixml_fields.h"
-#include "components/wmbus_radio/pure_complete_frame.h"
+#include "experimental/xmq/legacy_reference/pure_complete_frame.h"
 #include <cassert>
 #include <cmath>
 #include <cstdint>

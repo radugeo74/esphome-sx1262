@@ -1,4 +1,4 @@
-#include "../../../components/wmbus_radio/pure_aes_cbc.h"
+#include "../legacy_reference/pure_aes_cbc.h"
 #include <openssl/aes.h>
 #include <cassert>
 #include <cstring>

@@ -1,4 +1,4 @@
-#include "../../../components/wmbus_radio/pure_mode5_iv.h"
+#include "../legacy_reference/pure_mode5_iv.h"
 #include <cassert>
 #include <cstring>
 using namespace wmbus_pure;

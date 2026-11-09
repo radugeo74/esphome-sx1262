@@ -1,4 +1,4 @@
-#include "../../../components/wmbus_radio/pure_frame_layout.h"
+#include "../legacy_reference/pure_frame_layout.h"
 #include <cassert>
 using namespace wmbus_pure;
 int main() {

@@ -7,7 +7,7 @@
 #include "host_only/kamwater_authenticated_tpl_status.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include "host_only/kamwater_secure_ingress.h"
-#include "components/wmbus_radio/pure_complete_frame.h"
+#include "experimental/xmq/legacy_reference/pure_complete_frame.h"
 #include <cassert>
 #include <cmath>
 #include <cstdint>

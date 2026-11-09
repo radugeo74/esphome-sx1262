@@ -1,4 +1,4 @@
-#include "../../../components/wmbus_radio/pure_transport.h"
+#include "../legacy_reference/pure_transport.h"
 #include <cassert>
 using namespace wmbus_pure;
 int main() {

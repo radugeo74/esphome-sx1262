@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
-#include "../../../components/wmbus_meter/xmq_decode_catalog.h"
+#include "../portable_cpp/xmq_decode_catalog.h"
 
 static bool near_value(const xmq_portable::DecodedPayload &d, const char *field, double expected) {
   for (size_t i=0;i<d.value_count;++i)

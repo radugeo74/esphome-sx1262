@@ -5,8 +5,8 @@
 #include <cstring>
 #include "frame_bridge.h"
 #include "xmq_generated.h"
-#include "../wmbus_radio/pure_frame_header.h"
-#include "../wmbus_radio/pure_meter_match.h"
+#include "../legacy_reference/pure_frame_header.h"
+#include "../legacy_reference/pure_meter_match.h"
 
 namespace xmq_portable {
 enum class PayloadPolicy : uint8_t { Application, PreferManufacturer0f };

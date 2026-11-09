@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
-#include "../../../components/wmbus_meter/xmq_field_parity.h"
+#include "../portable_cpp/xmq_field_parity.h"
 int main() {
   using namespace xmq_portable;
   size_t count=0;

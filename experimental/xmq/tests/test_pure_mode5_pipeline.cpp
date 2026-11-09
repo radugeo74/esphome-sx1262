@@ -1,6 +1,6 @@
-#include "../../../components/wmbus_radio/pure_mode5_decrypt.h"
+#include "../legacy_reference/pure_mode5_decrypt.h"
 #include <openssl/aes.h>
-#include "../../../components/wmbus_meter/xmq_decode_catalog.h"
+#include "../portable_cpp/xmq_decode_catalog.h"
 #include <cmath>
 #include <cassert>
 #include <cstring>

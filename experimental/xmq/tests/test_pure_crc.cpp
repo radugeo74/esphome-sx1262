@@ -1,4 +1,4 @@
-#include "../../../components/wmbus_radio/pure_dll_crc.h"
+#include "../legacy_reference/pure_dll_crc.h"
 #include <cassert>
 #include <vector>
 using namespace wmbus_pure;

@@ -1,7 +1,7 @@
 // Validate the native radio boundary against the existing pure DLL verifier.
 // This is a host-side integration test; no publishing path is enabled.
 #include "../../components/wmbus_native_sx126x/native_frame_boundary.h"
-#include "../../components/wmbus_radio/pure_complete_frame.h"
+#include "../xmq/legacy_reference/pure_complete_frame.h"
 #include <cassert>
 #include <cstdint>
 #include <vector>

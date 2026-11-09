@@ -1,5 +1,5 @@
-#include "../../../components/wmbus_radio/pure_frame_header.h"
-#include "../../../components/wmbus_radio/pure_meter_match.h"
+#include "../legacy_reference/pure_frame_header.h"
+#include "../legacy_reference/pure_meter_match.h"
 #include <cassert>
 #include <cstdint>
 using namespace wmbus_pure;

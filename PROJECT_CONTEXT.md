@@ -1,3 +1,23 @@
+## Audit și curățenie native-only (2026-11-09)
+
+- Removed **108 obsolete files** from this branch: entire old
+  `wmbus_common`, `wmbus_meter`, `wmbus_radio`, `socket_transmitter`
+  components, stale legacy ESPHome and shadow fixtures, unneeded libXMQ C++
+  feasibility probe, linker test and obsolete XMQ-only workflow.
+- Preserved **15 portable `pure_*.h` reference headers** under
+  `experimental/xmq/legacy_reference/` solely for offline host regression.
+  Moved the old XMQ comparison catalog/parity headers to
+  `experimental/xmq/portable_cpp/`; updated source tests and native CI.
+- Native firmware is built only from `sx126x`,
+  `wmbus_native_sx126x`, and 52 XMQ driver sources and supporting code.
+  Configured meter admission, AES isolation and `driver: auto` behavior
+  are unchanged. No real meter IDs, keys or deployed devices were touched.
+- **Breaking branch cleanup:** obsolete `wmbus_radio`/`wmbus_meter`
+  YAML configurations are intentionally not supported here. Use Git
+  history or an older branch for the legacy stack. New CI guards reject
+  legacy source tree regression and ensure portable parity fixtures remain
+  compilable. CI is not a real-RF substitute.
+
 ## Curățenie: retragerea driverelor C++ vechi (2026-11-09)
 
 - Deleted all **91** `components/wmbus_common/driver_*.cc` translation units

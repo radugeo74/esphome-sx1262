@@ -2,9 +2,9 @@
 #include <cstring>
 #include <cstdio>
 #include <cmath>
-#include "../../../components/wmbus_radio/pure_frame_header.h"
-#include "../../../components/wmbus_radio/pure_meter_match.h"
-#include "../../../components/wmbus_meter/xmq_decode_catalog.h"
+#include "../legacy_reference/pure_frame_header.h"
+#include "../legacy_reference/pure_meter_match.h"
+#include "../portable_cpp/xmq_decode_catalog.h"
 int main() {
   using xmq_portable::find_decode_descriptor;
   const auto *heat = find_decode_descriptor("fhkvdataiii", 0xA0);

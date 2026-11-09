@@ -1,7 +1,7 @@
 #include "host_only/kamwater_ell_ctr_openssl.h"
 #include "host_only/kamwater_verified_dll_ingress.h"
 #include "host_only/kamwater_secure_ingress.h"
-#include "components/wmbus_radio/pure_complete_frame.h"
+#include "experimental/xmq/legacy_reference/pure_complete_frame.h"
 #include "components/wmbus_native_sx126x/kamwater_tpl79_probe.h"
 #include "components/wmbus_native_sx126x/kamwater_clear_records.h"
 #include <cmath>

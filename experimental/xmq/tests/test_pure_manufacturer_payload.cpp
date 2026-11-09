@@ -1,6 +1,6 @@
 #include <cassert>
 #include <cstdint>
-#include "../../../components/wmbus_radio/pure_frame_header.h"
+#include "../legacy_reference/pure_frame_header.h"
 
 // CRC-stripped DLL examples: CI A0 Techem heat and CI A2 Techem water.
 // Verify that the independent reader preserves the opaque application span.

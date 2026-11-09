@@ -1,4 +1,4 @@
-#include "../../../components/wmbus_radio/pure_mode5_decrypt.h"
+#include "../legacy_reference/pure_mode5_decrypt.h"
 #include <openssl/aes.h>
 #include <cassert>
 #include <cstring>

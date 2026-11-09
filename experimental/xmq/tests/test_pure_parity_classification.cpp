@@ -1,5 +1,5 @@
 #include <cassert>
-#include "../../../components/wmbus_radio/pure_parity_classification.h"
+#include "../legacy_reference/pure_parity_classification.h"
 using wmbus_pure::CompleteStatus;
 using wmbus_pure::ParityMismatch;
 using wmbus_pure::classify_parity;

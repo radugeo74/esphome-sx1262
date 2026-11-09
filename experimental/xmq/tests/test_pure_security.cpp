@@ -1,4 +1,4 @@
-#include "../../../components/wmbus_radio/pure_security.h"
+#include "../legacy_reference/pure_security.h"
 #include <cassert>
 using namespace wmbus_pure;
 int main() {

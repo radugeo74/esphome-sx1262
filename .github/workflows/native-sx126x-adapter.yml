@@ -7,7 +7,8 @@ on:
       - experimental/semtech-sx126x-t1-c1-combined
       - experimental/xmq-multidriver-auto
     paths:
-      - 'components/wmbus_common/driver_*.cc'
+      - 'experimental/xmq/legacy_reference/**'
+      - 'experimental/xmq/portable_cpp/**'
       - 'components/wmbus_native_sx126x/**'
       - 'experimental/xmq/drivers/**'
       - 'experimental/xmq/security_profile_catalog.json'
@@ -29,6 +30,8 @@ jobs:
       - uses: actions/checkout@v5
       - name: Verify legacy C++ drivers were retired from native branch
         run: python3 experimental/semtech-radio/ci/test_legacy_driver_retirement.py
+      - name: Reject obsolete legacy components and fixtures
+        run: python3 experimental/semtech-radio/ci/test_native_tree_hygiene.py
       - name: Repository-wide privacy audit (all branch HEADs)
         run: python3 experimental/semtech-radio/ci/privacy_audit.py
       - name: Require Heltec lab YAML to compile same checked-out SX126x and RSSI code
@@ -62,7 +65,7 @@ jobs:
           /tmp/test-native-c1-integrity
       - name: Build and test C1 block CRC failure locator
         run: |
-          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_radio \
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Iexperimental/xmq/legacy_reference \
             experimental/semtech-radio/test_c1_block_diagnostics.cpp \
             -o /tmp/test-c1-block-diagnostics
           /tmp/test-c1-block-diagnostics
@@ -240,7 +243,7 @@ jobs:
       - name: Stage B compare native C++ clear application outputs with 7 upstream XMQ fixtures
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
-            -Icomponents/wmbus_native_sx126x -Icomponents/wmbus_radio \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/legacy_reference \
             -Iexperimental/xmq/portable_cpp \
             experimental/semtech-radio/test_batch2_clear_fixture_cli.cpp \
             -o /tmp/test-batch2-clear-fixture-cli
@@ -284,7 +287,7 @@ jobs:
       - name: Test original Apator162 AES-CBC mode 5 encrypted upstream fixture
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
-            -Icomponents/wmbus_native_sx126x -Icomponents/wmbus_radio \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/legacy_reference \
             -Iexperimental/xmq/portable_cpp \
             experimental/semtech-radio/test_apator162_upstream_cbc_mode5.cpp \
             -o /tmp/test-apator162-upstream-cbc -lcrypto
@@ -557,11 +560,25 @@ jobs:
           python3 experimental/xmq/tools/generate_ixml_cpp.py \
             experimental/xmq/drivers/mkradio4.xmq \
             experimental/xmq/drivers/fhkvdataiii.xmq \
-            --out components/wmbus_meter/xmq_generated.h
+            --out experimental/xmq/portable_cpp/xmq_generated.h
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
             experimental/xmq/tests/test_official_driver_fixtures.cpp \
             -o /tmp/test-official-xmq-fixtures
           /tmp/test-official-xmq-fixtures
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/xmq/tests/test_xmq_decode_catalog.cpp \
+            -o /tmp/test-xmq-reference-decode-catalog
+          /tmp/test-xmq-reference-decode-catalog
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/xmq/tests/test_xmq_field_parity.cpp \
+            -o /tmp/test-xmq-reference-field-parity
+          /tmp/test-xmq-reference-field-parity
+          for name in test_pure_crc test_pure_header test_pure_security test_pure_complete_frame test_pure_mode5_prepare; do
+            g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+              "experimental/xmq/tests/${name}.cpp" \
+              -o "/tmp/${name}-legacy-reference"
+            "/tmp/${name}-legacy-reference"
+          done
 
       - name: Test typed text fields on official iPERL and Hydrus cleartext fixtures
         run: |

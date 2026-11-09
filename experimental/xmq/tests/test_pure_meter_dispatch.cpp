@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstdio>
 #include <vector>
-#include "../../../components/wmbus_radio/pure_meter_dispatch.h"
+#include "../legacy_reference/pure_meter_dispatch.h"
 
 static unsigned count_routes(const wmbus_pure::Header &h, const std::vector<const char *> &ids) {
   unsigned count = 0;

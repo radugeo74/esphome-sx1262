@@ -1,7 +1,7 @@
-#include "../../../components/wmbus_radio/pure_aes_mbedtls.h"
-#include "../../../components/wmbus_radio/pure_aes_cbc.h"
-#include "../../../components/wmbus_radio/pure_mode5_decrypt.h"
-#include "../../../components/wmbus_meter/xmq_decode_catalog.h"
+#include "../legacy_reference/pure_aes_mbedtls.h"
+#include "../legacy_reference/pure_aes_cbc.h"
+#include "../legacy_reference/pure_mode5_decrypt.h"
+#include "../portable_cpp/xmq_decode_catalog.h"
 #include <cmath>
 #include <cassert>
 #include <cstring>

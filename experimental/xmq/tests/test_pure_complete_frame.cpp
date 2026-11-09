@@ -1,4 +1,4 @@
-#include "../../../components/wmbus_radio/pure_complete_frame.h"
+#include "../legacy_reference/pure_complete_frame.h"
 #include <cassert>
 #include <vector>
 using namespace wmbus_pure;
