@@ -43,6 +43,8 @@
 #include "apatoreitn40_plain.h"
 #include "elf_plain.h"
 #include "engelmann_faw_plain.h"
+#include "apatoreitn_plain.h"
+#include "gransystems_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -687,6 +689,35 @@ inline PureDecodeStatus decode_configured_plain_frame(
                        r.consumption_1_months_ago_m3};
     output.values[2]={"consumption_2_months_ago_m3",
                        r.consumption_2_months_ago_m3};
+    output.value_count=3;return PureDecodeStatus::Ok;
+  }
+  // Apator E-ITN (not E-ITN40): source-bounded A0 and nested B6,
+  // with real proprietary HCA and Q8.8 average temperatures.
+  if(driver_name && std::strcmp(driver_name,"apatoreitn")==0) {
+    if(!output.values || output.value_capacity<4)
+      return PureDecodeStatus::DecodeFailure;
+    apatoreitn::Reading r{};
+    if(apatoreitn::decode(frame,length,r)!=apatoreitn::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"current_hca",r.current_hca};
+    output.values[1]={"previous_hca",r.previous_hca};
+    output.values[2]={"temp_room_avg_c",r.temp_room_avg_c};
+    output.values[3]={"temp_room_prev_avg_c",r.temp_room_prev_avg_c};
+    output.value_count=4;return PureDecodeStatus::Ok;
+  }
+  // Gran Systems CI78 is an exact, source-verified NO-TPL application
+  // profile. It is NEVER a permission to accept arbitrary CI78 packets.
+  if(driver_name && std::strcmp(driver_name,"gransystems")==0) {
+    if(!output.values || output.value_capacity<3)
+      return PureDecodeStatus::DecodeFailure;
+    gransystems::Reading r{};
+    if(gransystems::decode(frame,length,r)!=gransystems::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_energy_consumption_kwh",r.total_energy_consumption_kwh};
+    output.values[1]={"total_energy_consumption_tariff_1_kwh",
+                      r.total_energy_consumption_tariff_1_kwh};
+    output.values[2]={"total_energy_consumption_tariff_2_kwh",
+                      r.total_energy_consumption_tariff_2_kwh};
     output.value_count=3;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.

@@ -22,6 +22,7 @@
 #include "maddalena_plain.h"
 #include "qheatv2_plain.h"
 #include "c5isf_plain.h"
+#include "apatoreitn_plain.h"
 #include "evo868_plain.h"
 #include "supercom587_plain.h"
 #include "hcae2_plain.h"
@@ -46,6 +47,16 @@ inline bool append(Result &out, const char *name, const char *value) {
 inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
   Result out{};
   if (!frame || !driver || size < 15) return out;
+  if(std::strcmp(driver,"apatoreitn")==0) {
+    // Proprietary A0/B6 has no OMS TPL config word. The model-specific
+    // decoder independently enforces exact MVT, original payload profile
+    // and validated seal-date semantics. Do not claim blanket plaintext.
+    apatoreitn::Reading r{};
+    if(apatoreitn::decode(frame,size,r)!=apatoreitn::Status::Ok)
+      return out;
+    append(out,"status",r.seal_broken?"SEAL_BROKEN":"OK");
+    return out;
+  }
   const auto security = wmbus_pure::tpl_security::inspect(frame, size);
   if (security.state != wmbus_pure::tpl_security::State::NotEncrypted)
     return out;

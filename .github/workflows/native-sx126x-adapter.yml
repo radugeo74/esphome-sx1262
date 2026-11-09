@@ -193,6 +193,13 @@ jobs:
             experimental/semtech-radio/test_elf_engelmann_faw_native.cpp \
             -o /tmp/test-elf-engelmann-faw
           /tmp/test-elf-engelmann-faw
+      - name: Test source-verified Apator E-ITN A0 B6 and Gran Systems CI78 native profiles
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_apatoreitn_gransystems_native.cpp \
+            -o /tmp/test-apatoreitn-gransystems
+          /tmp/test-apatoreitn-gransystems
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 48 drivers
