@@ -1,3 +1,41 @@
+## Calupul 49–50: Apator E-ITN + Gran Systems (2026-11-09)
+
+The `experimental/xmq-multidriver-auto` branch now contains **50
+integrated native XMQ driver families**. Both additions are
+source-anchored and require configured DLL meter identity and strict MVT:
+
+- **`apatoreitn`** (distinct from `apatoreitn40`): three original
+  radio samples, APA/04/08 `CI=A0` and APT/04/08 `CI=B6`.
+  Source-bounded application sizes **26/38/42 bytes** validate
+  `current_hca` and `previous_hca` plus two Q8.8 degree-C
+  mean ambient temperature readings,
+  `temp_room_avg_c` and `temp_room_prev_avg_c`.
+  Optional text `status` may be **SEAL_BROKEN** or **OK** only
+  after the original date/seal structure validates. Manufacturer
+  `B6` uses a count/opaque-prefix followed by a nested `A0`
+  record, admitted solely for the two observed **0A/0E** forms.
+  This does NOT extend the general TPL publication/security gate
+  to arbitrary CI B6 or claim encryption support. Unknown variants
+  and altered IDs/records are rejected.
+- **`gransystems`** GSS/01/02: two genuine **CI78** frames without
+  a TPL header, **121/159 bytes**. Only unambiguous source-proven
+  `total_energy_consumption_kwh` (**0.916 / 0**),
+  `total_energy_consumption_tariff_1_kwh` (**0.873 / 0**)
+  and `total_energy_consumption_tariff_2_kwh` (**0.043 / 0**)
+  are published. `CI78` is permitted ONLY inside this model
+  parser, NOT generically by the OMS publication gate.
+  The three-phase sample reports **RTC_ERROR**; no invented
+  `status: OK` or guessed vendor alarms are published.
+- Both require independently validated and CRC-stripped SX126x
+  radio frames, configured matching meter ID and strict model,
+  CI, length and field offsets. Explicit YAML and `driver: auto`
+  remain configured-only. No secret keys, no generic proprietary
+  decode fallback, no publication from metadata alone.
+- Build-only Heltec YAML carries public fixture IDs and mapped
+  sample sensors. No changes to deployed Heltec firmware, user
+  device keys, live meter configuration, or OTA/flash.
+  RF validation remains a separate step from software CI.
+
 ## Calupul 47–48: Apator ELF + Engelmann FAW (2026-11-09)
 
 The branch `experimental/xmq-multidriver-auto` now integrates

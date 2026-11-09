@@ -90,6 +90,10 @@ wmbus_native_sx126x:
       driver: lansensm
       key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
+    - meter_id: "37373731"  # public Apator E-ITN CI A0 Mode0-like proprietary, LAB only
+      driver: auto
+    - meter_id: "18046178"  # public Gran Systems CI 78 no TPL, LAB only
+      driver: auto
     - meter_id: "01885619"  # upstream ELF inner long-TPL meter, LAB only
       dll_meter_id: "00050901" # upstream ELF radio sender, explicitly bound
       driver: auto
@@ -168,6 +172,41 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "37373731"
+      field: current_hca
+      sensor:
+        name: "Lab Apator E-ITN Current HCA"
+        unit_of_measurement: ""
+    - meter_id: "37373731"
+      field: previous_hca
+      sensor:
+        name: "Lab Apator E-ITN Previous HCA"
+        unit_of_measurement: ""
+    - meter_id: "37373731"
+      field: temp_room_avg_c
+      sensor:
+        name: "Lab Apator E-ITN Mean Room Temperature"
+        unit_of_measurement: "°C"
+    - meter_id: "37373731"
+      field: temp_room_prev_avg_c
+      sensor:
+        name: "Lab Apator E-ITN Previous Mean Temperature"
+        unit_of_measurement: "°C"
+    - meter_id: "18046178"
+      field: total_energy_consumption_kwh
+      sensor:
+        name: "Lab Gran Systems Total Energy"
+        unit_of_measurement: "kWh"
+    - meter_id: "18046178"
+      field: total_energy_consumption_tariff_1_kwh
+      sensor:
+        name: "Lab Gran Systems Tariff 1 Energy"
+        unit_of_measurement: "kWh"
+    - meter_id: "18046178"
+      field: total_energy_consumption_tariff_2_kwh
+      sensor:
+        name: "Lab Gran Systems Tariff 2 Energy"
+        unit_of_measurement: "kWh"
     - meter_id: "01885619"
       field: total_energy_consumption_kwh
       sensor:

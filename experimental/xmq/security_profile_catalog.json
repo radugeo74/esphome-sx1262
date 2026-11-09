@@ -768,6 +768,33 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Un singur exemplu original EFE/00/07, 144 octeti, CI72 Mode0, DLL 43000255 si TPL 20254060 diferite: consumption_at_reporting_date_m3=59.682, consumption_1_months_ago_m3=78.908 si consumption_2_months_ago_m3=77.230. Nu este disponibil total_m3 in aceasta telegrama; istoricul complet este validat structural, dar nepublicat. Un alt exemplu CI73 AES este exclus; strict doua ID-uri configurate."
+    },
+    {
+      "driver": "apatoreitn",
+      "group": "PORTABLE",
+      "mvt": [
+        "APA/04/08",
+        "APT/04/08"
+      ],
+      "total_tests": 3,
+      "nokey_tests": 3,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Trei exemple originale Apator E-ITN APA/04/08 (CI A0/26 octeti) si APT/04/08 (CI B6/38 si 42 octeti, prefix A0 strict incadrat). Decodare HCA curent/an anterior si temperaturile medii camera 21.703125/19.890625, 25.78125/22.390625, respectiv 21.703125/19.890625 C. Status SEAL_BROKEN sau OK numai dupa verificarea stricta a datei ESB. CI B6 nu este acceptat generic si nu implica TPL Mode0 sau AES; sunt suportate numai aceste doua variante originale."
+    },
+    {
+      "driver": "gransystems",
+      "group": "PORTABLE",
+      "mvt": [
+        "GSS/01/02"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Doua exemple reale GSS/01/02 CI 78 (121/159 octeti, fara antet TPL) confirma energie totala 0.916/0 kWh si tarife 1=0.873/0, 2=0.043/0 kWh. Parserul dedicat admite numai cele doua structuri originale, cu ID DLL, MVT si DIF/VIF validate. Nu exista exceptie generala CI78 in gate-ul OMS; nu se publica status OK, deoarece exemplul trifazat raporteaza RTC_ERROR."
     }
   ]
 }
