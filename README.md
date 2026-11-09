@@ -1,3 +1,41 @@
+## Calupul 41–42: QHeat V2 + Zenner C5ISF (2026-11-09)
+
+The `experimental/xmq-multidriver-auto` native branch contains
+**42 integrated XMQ driver families**. These new profiles have
+source-anchored, configured-only Mode-0 publication:
+
+- **`qheatv2`**: only the original **LSE/23/04**, short-TPL
+  47-byte upstream clear fixture is admitted. Its standard BCD
+  `total_kwh=12560.3` and `target_year_kwh=11132` are
+  published. The original DLL M-field is **0xB265** (LSE bit15
+  set), whereas the upstream `detect.mvt` uses LSE/23/04
+  (0x3265): AUTO has a single source-bounded alias, never a
+  global manufacturer masking rule. Other upstream CI72/CI78
+  and AES/WalkBy examples are not accepted by this decoder.
+  The one supported zero-status source may publish optional
+  `status: OK`; no unsupported error-bit interpretation.
+- **`c5isf`**: the original **ZRI/88/0D** 230-byte Mode-0
+  source fixture publishes `total_energy_consumption_kwh=0`,
+  `total_volume_m3=0` and
+  `total_energy_consumption_last_month_kwh=0`. This exact
+  sample is an **error-state meter**, not healthy:
+  `status: DRY ERROR RETURN_SENSOR_INTERRUPTED`, verified
+  only for the original TPL/status flag combination. Historic
+  `-2147483648` energy sentinels and `0xFFFF` date placeholders
+  are excluded. Both other `NOKEY` examples have
+  **TPL AES Mode-5 security headers**, and are rejected as
+  unverified plaintext despite source-supplied readable payloads.
+- The official SX126x native adapter must provide independently
+  CRC-verified and CRC-stripped RF, matching configured DLL ID,
+  strict MVT/alias, genuine Mode-0 TPL and exact validated
+  application records. `driver: auto` and explicit YAML
+  selection still fail closed on unsupported variants.
+- Updated README, PROJECT_CONTEXT, provenance catalog and CI;
+  lab Heltec YAML is **build-only** with public upstream fixture
+  IDs. No changes to real Techem meters, credentials, radio
+  hardware, OTA or deployed firmware. Hardware RF validation is
+  separate from software CI.
+
 ## Calupul 39–40: Itron Heat + EMH eHZP (2026-11-09)
 
 Native branch `experimental/xmq-multidriver-auto` now contains **40

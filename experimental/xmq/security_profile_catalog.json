@@ -633,6 +633,56 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Un fixture EMH/00/02 original CI 7A Mode 0 (175 octeti) confirma total_energy_consumption_kwh=95.7722, total_energy_production_kwh=0.0021 si current_power_consumption_kw=0.09. Celalalt fixture NOKEY este ELL CI 8C cu aplicatie furnizata deja in clar, exclus din aceasta ruta. Variantele cu istoric/tarife nu sunt publicate."
+    },
+    {
+      "driver": "qheatv2",
+      "group": "PORTABLE",
+      "mvt": [
+        "QDS/23/04",
+        "QDS/23/37",
+        "QDS/3C/04",
+        "QDS/3C/37",
+        "QDS/3E/04",
+        "QDS/3E/37",
+        "QDS/46/04",
+        "QDS/46/37",
+        "QDS/47/04",
+        "QDS/47/37",
+        "QDS/48/04",
+        "QDS/48/37",
+        "QDS/3F/37",
+        "LSE/23/04",
+        "LSE/23/37",
+        "LSE/3E/04",
+        "LSE/3E/37",
+        "LSE/46/04",
+        "LSE/46/37",
+        "LSE/47/04",
+        "LSE/47/37",
+        "LSE/48/04",
+        "LSE/48/37"
+      ],
+      "total_tests": 10,
+      "nokey_tests": 8,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Din cele zece exemple originale QHeat V2, doar ultimul LSE/23/04 transmite CI 7A Mode 0 cu 47 octeti: total_kwh=12560.3 si target_year_kwh=11132. M-field este 0xB265 (LSE cu bit15 activ) si AUTO accepta strict acea varianta; CI 72, CI 78, WalkBy si exemple cu cheie raman excluse. Status OK este publicat numai pentru acest profil cu TPL status 0."
+    },
+    {
+      "driver": "c5isf",
+      "group": "PORTABLE",
+      "mvt": [
+        "ZRI/88/0D",
+        "ZRI/88/07",
+        "ZRI/88/04"
+      ],
+      "total_tests": 3,
+      "nokey_tests": 3,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Un exemplu original ZRI/88/0D de 230 octeti Mode 0 confirma total_energy_consumption_kwh=0, total_volume_m3=0 si total_energy_consumption_last_month_kwh=0. Contorul are status DRY ERROR RETURN_SENSOR_INTERRUPTED, nu OK. Celelalte doua exemple au antete AES TPL Mode 5, desi sunt NOKEY in XMQ; nu sunt publicate fara decriptare. Marcatorii istorici invalidi sunt exclusi."
     }
   ]
 }

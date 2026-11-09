@@ -1,4 +1,4 @@
-# Catalogul de securitate wM-Bus / OMS — 40 drivere native
+# Catalogul de securitate wM-Bus / OMS — 42 drivere native
 
 **Revizie:** 2026-11-08. **Branch:** `experimental/xmq-multidriver-auto`. **Stadiu:** dovada software, nu certificare de echipament sau validare hardware.
 
@@ -50,6 +50,8 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 | [`maddalena`](drivers/maddalena.xmq) | `PORTABLE` | `MAD/01/07`, `MAD/01/06` | 1 (1 `NOKEY`) | Volum total și billing, doar MAD/01/07 Mode 0 | — |
 | [`itronheat`](drivers/itronheat.xmq) | `PORTABLE` | `ITW/00/04` | 2 (2 `NOKEY`) | Energie, volum și energie an anterior, doar Mode 0 | — |
 | [`ehzp`](drivers/ehzp.xmq) | `PORTABLE` | `EMH/02/02`, `EMH/00/02` | 2 (2 `NOKEY`) | Energie consumată, produsă și putere, doar EMH/00/02 Mode 0 | — |
+| [`qheatv2`](drivers/qheatv2.xmq) | `PORTABLE` | `QDS/23/04`, `QDS/23/37`, `QDS/3C/04`, `QDS/3C/37`, `QDS/3E/04`, `QDS/3E/37`, `QDS/46/04`, `QDS/46/37`, `QDS/47/04`, `QDS/47/37`, `QDS/48/04`, `QDS/48/37`, `QDS/3F/37`, `LSE/23/04`, `LSE/23/37`, `LSE/3E/04`, `LSE/3E/37`, `LSE/46/04`, `LSE/46/37`, `LSE/47/04`, `LSE/47/37`, `LSE/48/04`, `LSE/48/37` | 10 (8 `NOKEY`) | Energie totală/an referință, numai LSE/23/04 Mode 0 | — |
+| [`c5isf`](drivers/c5isf.xmq) | `PORTABLE` | `ZRI/88/0D`, `ZRI/88/07`, `ZRI/88/04` | 3 (3 `NOKEY`) | Energie/volum și eroare reală, ZRI/88/0D Mode 0 | — |
 
 **Legenda:** un profil clar este admis numai cu verificarile de integritate, identitate si securitate aferente; nu inseamna «orice dispozitiv din familie este necriptat». Pentru profilele AES, cheia este configurata explicit in `secure_meters`, iar un cadru respins nu revine la decoderul plaintext. Cele doua drivere `SECURE_ONLY` pot fi doar recunoscute diagnostic fara cheie.
 
@@ -96,14 +98,16 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`maddalena`:** Un singur exemplu original MAD/01/07 CI 7A Mode 0 (79 octeti) confirma total_m3=0.167 si target_m3=0. Fabrication 0E78 contine sentinel FF si nu poate fi decodat ca BCD numeric; verificam structura dar decodam separat doar cele doua volume. MAD/01/06 exista doar in detect.mvt, fara dovada de profil acceptat.
 - **`itronheat`:** Un fixture Itron/Allmess ITW/00/04 original CI 7A Mode 0 (65 octeti) confirma total_kwh=19529, total_m3=8401.224 si last_year_kwh=13978. Alt fixture NOKEY are antet AES Mode 5 si aplicatie deja decriptata, exclus RF. Statutul OK din XMQ nu este extrapolat la alte variante. Exemplul original clar are M-field 0xA697 (ITW cu bit15 activ), fata de codul 0x2697 din detect.mvt; AUTO permite numai aceasta varianta documentata, cu profil si ID validate.
 - **`ehzp`:** Un fixture EMH/00/02 original CI 7A Mode 0 (175 octeti) confirma total_energy_consumption_kwh=95.7722, total_energy_production_kwh=0.0021 si current_power_consumption_kw=0.09. Celalalt fixture NOKEY este ELL CI 8C cu aplicatie furnizata deja in clar, exclus din aceasta ruta. Variantele cu istoric/tarife nu sunt publicate.
+- **`qheatv2`:** Din cele zece exemple originale QHeat V2, doar ultimul LSE/23/04 transmite CI 7A Mode 0 cu 47 octeti: total_kwh=12560.3 si target_year_kwh=11132. M-field este 0xB265 (LSE cu bit15 activ) si AUTO accepta strict acea varianta; CI 72, CI 78, WalkBy si exemple cu cheie raman excluse. Status OK este publicat numai pentru acest profil cu TPL status 0.
+- **`c5isf`:** Un exemplu original ZRI/88/0D de 230 octeti Mode 0 confirma total_energy_consumption_kwh=0, total_volume_m3=0 si total_energy_consumption_last_month_kwh=0. Contorul are status DRY ERROR RETURN_SENSOR_INTERRUPTED, nu OK. Celelalte doua exemple au antete AES TPL Mode 5, desi sunt NOKEY in XMQ; nu sunt publicate fara decriptare. Marcatorii istorici invalidi sunt exclusi.
   Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
 
-Am inspectat automat toate cele **176** de fixture XMQ din cele 40
-drivere: **167** ruleaza fara cheie in test, dar **47** dintre cele
+Am inspectat automat toate cele **189** de fixture XMQ din cele 42
+drivere: **178** ruleaza fara cheie in test, dar **49** dintre cele
 `NOKEY` pastreaza in antet un **TPL Mode 5 / AES-CBC**. Inca un
-fixture Apator162 are Mode 5 cu cheie explicita (deci **51** antete
+fixture Apator162 are Mode 5 cu cheie explicita (deci **53** antete
 Mode 5). Nu le etichetam ca RF fara cheie: unele contin date deja
 decriptate dupa `_`, altele sunt cadre criptate din teste.
 
@@ -139,7 +143,7 @@ automat ca `fara cheie`.
 
 ## OMS Group: certificare versus implementare
 
-OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 40 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
+OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 42 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
 
 Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES-CBC Mode 5** si **D / AES-CCM Mode 10**. Implementarea ELL AES-CTR este un traseu separat, care nu trebuie reclasificat automat ca profil A/B/D. **Mode 7 (OMS B) si Mode 13** sunt detectate de filtrul de securitate, dar nu au aici un decodor general. Aceasta este o harta de compatibilitate, nu o lista de contoare care sigur nu necesita cheie.
 
@@ -150,4 +154,4 @@ Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES
 3. Decodare completa a valorilor reale fara cheie si potrivirea producatorului, versiunii si tipului.
 4. Daca exista model comercial exact, identificare OMS independenta cu certificat si generatie; fara a incarca date private in GitHub.
 
-**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 40 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.
+**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 42 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.
