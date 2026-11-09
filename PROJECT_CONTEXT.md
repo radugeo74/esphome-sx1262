@@ -7,7 +7,10 @@ radio publication.
 - **`itronheat`** (ITW/00/04): one genuine clear short-TPL
   Mode-0 65-byte upstream fixture validates
   `total_kwh=19529`, `total_m3=8401.224`, and
-  `last_year_kwh=13978`. A second public `NOKEY` fixture is
+  `last_year_kwh=13978`. Its M-field uses the observed
+  `0xA697` (ITW with bit15 set), and configured AUTO permits
+  only this exact documented variant rather than globally
+  changing manufacturer matching. A second public `NOKEY` fixture is
   **AES Mode-5 on air** and already carries supplied-clear
   application bytes; the RF decoder refuses it. Only verified
   04/06, 04/13, 44/06 standard DIF/VIF readings are exposed.

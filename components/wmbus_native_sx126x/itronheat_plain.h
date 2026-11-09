@@ -3,6 +3,8 @@
 // source fixture. Source: wmbusmeters/drivers/src/itronheat.xmq
 // GPL-3.0-or-later. NOKEY supplied-clear Mode5 is never RF plaintext.
 // Bounded 65-byte layout; opaque manufacturer records are not decoded.
+// One public source frame uses ITW maker bit15 set (0xA697),
+// so accept only 0x2697 and that exact evidence-backed variant.
 #include <cstddef>
 #include <cstdint>
 #include <cmath>
@@ -35,7 +37,8 @@ inline Status decode(const uint8_t *f,size_t n,Reading &out) {
  out={};wmbus_pure::Header h{};
  if(wmbus_pure::parse_header(f,n,h)!=wmbus_pure::HeaderStatus::Ok)
    return Status::Invalid;
- if(h.control!=0x44 || h.manufacturer!=0x2697 ||
+ if(h.control!=0x44 ||
+    (h.manufacturer!=0x2697 && h.manufacturer!=0xA697) ||
     h.version!=0x00 || h.device_type!=0x04 || h.ci!=0x7A)
    return Status::WrongModel;
  if(wmbus_pure::publication::inspect(f,n,h.meter_id)!=

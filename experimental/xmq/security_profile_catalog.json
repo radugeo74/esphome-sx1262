@@ -618,7 +618,7 @@
       "clear_route": "clear_only",
       "keyed_routes": [],
       "oms_certified_sku": null,
-      "evidence_note": "Un fixture Itron/Allmess ITW/00/04 original CI 7A Mode 0 (65 octeti) confirma total_kwh=19529, total_m3=8401.224 si last_year_kwh=13978. Alt fixture NOKEY are antet AES Mode 5 si aplicatie deja decriptata, exclus RF. Statutul OK din XMQ nu este extrapolat la alte variante."
+      "evidence_note": "Un fixture Itron/Allmess ITW/00/04 original CI 7A Mode 0 (65 octeti) confirma total_kwh=19529, total_m3=8401.224 si last_year_kwh=13978. Alt fixture NOKEY are antet AES Mode 5 si aplicatie deja decriptata, exclus RF. Statutul OK din XMQ nu este extrapolat la alte variante. Exemplul original clar are M-field 0xA697 (ITW cu bit15 activ), fata de codul 0x2697 din detect.mvt; AUTO permite numai aceasta varianta documentata, cu profil si ID validate."
     },
     {
       "driver": "ehzp",

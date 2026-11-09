@@ -66,6 +66,24 @@ inline const char *select_configured_driver(
     return nullptr;
   if(std::strcmp(requested,"auto")!=0)
     return is_explicit_driver(requested) ? requested : nullptr;
+  // Public "Heat_lower_case" Itronheat frame explicitly uses ITW code
+  // 0xA697 (bit15 set), while original detect.mvt says ITW/00/04
+  // (0x2697). Admit this ONE evidence-backed alias for configured
+  // AUTO, without globally masking manufacturer codes or guessing.
+  // The decoder still requires exact 65-byte layout, CRC verified RF,
+  // matching configured DLL identity and verified Mode0 TPL.
+  if(header.manufacturer==0xA697 && header.version==0x00 &&
+     header.device_type==0x04 && header.ci==0x7A &&
+     length==65 && std::strcmp(meter_id,dll_id)==0) {
+    const auto alias=wmbus_pure::auto_driver::resolve(
+       requested,signatures,count,0x2697,header.version,
+       header.device_type);
+    if(alias.status==wmbus_pure::auto_driver::Status::Ready &&
+       alias.driver && std::strcmp(alias.driver,"itronheat")==0)
+      return alias.driver;
+    return nullptr;
+  }
+
 
   // Preserve existing compiled Lansen AUTO and Techem AUTO dispatch.
   // This helper consumes only these four native experimental drivers.
