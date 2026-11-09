@@ -20,6 +20,8 @@
 #include "waterstarm_plain.h"
 #include "munia_plain.h"
 #include "maddalena_plain.h"
+#include "qheatv2_plain.h"
+#include "c5isf_plain.h"
 #include "evo868_plain.h"
 #include "supercom587_plain.h"
 #include "hcae2_plain.h"
@@ -78,6 +80,21 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     if(lse_08::decode(frame,size,r)!=lse_08::Status::Ok)return out;
     // Source XMQ says TPL_STS_128; never mislabel as "OK".
     if(r.tpl_status==0x80)append(out,"status","TPL_STS_128");
+    return out;
+  }
+  if(std::strcmp(driver,"qheatv2")==0) {
+    qheatv2::Reading r{};
+    if(qheatv2::decode(frame,size,r)!=qheatv2::Status::Ok)return out;
+    append(out,"status","OK"); // source-proven zero TPL status only
+    return out;
+  }
+  if(std::strcmp(driver,"c5isf")==0) {
+    c5isf::Reading r{};
+    if(c5isf::decode(frame,size,r)!=c5isf::Status::Ok)return out;
+    // Exact upstream error-state sample. Never report a successful
+    // numeric decode as "OK" or infer unverified alarm combinations.
+    if(r.tpl_status==0x02 && r.error_flags==0x0024)
+      append(out,"status","DRY ERROR RETURN_SENSOR_INTERRUPTED");
     return out;
   }
   if(std::strcmp(driver,"maddalena")==0) {

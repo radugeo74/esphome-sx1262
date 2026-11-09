@@ -35,6 +35,8 @@
 #include "maddalena_plain.h"
 #include "itronheat_plain.h"
 #include "ehzp_plain.h"
+#include "qheatv2_plain.h"
+#include "c5isf_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -548,6 +550,36 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[0]={"total_energy_consumption_kwh",r.total_energy_consumption_kwh};
     output.values[1]={"total_energy_production_kwh",r.total_energy_production_kwh};
     output.values[2]={"current_power_consumption_kw",r.current_power_consumption_kw};
+    output.value_count=3;return PureDecodeStatus::Ok;
+  }
+  // QHeat V2: one original LSE/23/04 short Mode0 47-byte profile.
+  if(driver_name && std::strcmp(driver_name,"qheatv2")==0) {
+    if(!output.values || output.value_capacity<2)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    qheatv2::Reading r{};
+    if(qheatv2::decode(frame,length,r)!=qheatv2::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_kwh",r.total_kwh};
+    output.values[1]={"target_year_kwh",r.target_year_kwh};
+    output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // C5ISF: one source-validated ZRI/88/0D error-state Mode0 frame.
+  if(driver_name && std::strcmp(driver_name,"c5isf")==0) {
+    if(!output.values || output.value_capacity<3)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    c5isf::Reading r{};
+    if(c5isf::decode(frame,length,r)!=c5isf::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_energy_consumption_kwh",r.total_energy_consumption_kwh};
+    output.values[1]={"total_volume_m3",r.total_volume_m3};
+    output.values[2]={"total_energy_consumption_last_month_kwh",
+                      r.total_energy_consumption_last_month_kwh};
     output.value_count=3;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.

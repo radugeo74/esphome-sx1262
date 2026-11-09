@@ -43,6 +43,8 @@ inline bool is_explicit_driver(const char *name) {
       std::strcmp(name,"maddalena")==0 ||
       std::strcmp(name,"itronheat")==0 ||
       std::strcmp(name,"ehzp")==0 ||
+      std::strcmp(name,"qheatv2")==0 ||
+      std::strcmp(name,"c5isf")==0 ||
       std::strcmp(name,"ultraheat")==0 ||
       std::strcmp(name,"sontex868")==0 ||
       std::strcmp(name,"supercal")==0 ||
@@ -85,6 +87,20 @@ inline const char *select_configured_driver(
   }
 
 
+  // Original QHeat V2 source CI7A/47-byte sample carries
+  // LSE/23/04 with manufacturer bit15 set (0xB265).
+  // This is an exact configured-only alias, not a generic bit mask.
+  if(header.manufacturer==0xB265 && header.version==0x23 &&
+     header.device_type==0x04 && header.ci==0x7A &&
+     length==47 && std::strcmp(meter_id,dll_id)==0) {
+    const auto alias=wmbus_pure::auto_driver::resolve(
+       requested,signatures,count,0x3265,header.version,
+       header.device_type);
+    if(alias.status==wmbus_pure::auto_driver::Status::Ready &&
+       alias.driver && std::strcmp(alias.driver,"qheatv2")==0)
+      return alias.driver;
+    return nullptr;
+  }
   // Preserve existing compiled Lansen AUTO and Techem AUTO dispatch.
   // This helper consumes only these four native experimental drivers.
   const auto resolved=wmbus_pure::auto_driver::resolve(
@@ -117,6 +133,8 @@ inline const char *select_configured_driver(
       std::strcmp(resolved.driver,"maddalena")==0 ||
       std::strcmp(resolved.driver,"itronheat")==0 ||
       std::strcmp(resolved.driver,"ehzp")==0 ||
+      std::strcmp(resolved.driver,"qheatv2")==0 ||
+      std::strcmp(resolved.driver,"c5isf")==0 ||
       std::strcmp(resolved.driver,"ultraheat")==0 ||
       std::strcmp(resolved.driver,"sontex868")==0 ||
       std::strcmp(resolved.driver,"supercal")==0 ||

@@ -379,7 +379,9 @@ bool NativeReceiverProbe::publish_plain_batch2_(
        std::strcmp(selected_driver,"munia")==0 ||
        std::strcmp(selected_driver,"maddalena")==0 ||
        std::strcmp(selected_driver,"itronheat")==0 ||
-       std::strcmp(selected_driver,"ehzp")==0)
+       std::strcmp(selected_driver,"ehzp")==0 ||
+       std::strcmp(selected_driver,"qheatv2")==0 ||
+       std::strcmp(selected_driver,"c5isf")==0)
       publish_xmq_text_(frame,entry.id,selected_driver,result);
     for(const auto &binding : xmq_sensors_) {
       if(binding.meter_id!=entry.id || binding.output==nullptr) continue;
