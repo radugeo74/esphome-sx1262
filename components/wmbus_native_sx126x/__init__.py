@@ -34,6 +34,19 @@ CONF_ON_VERIFIED = "on_verified"
 CONF_T1_RAW_DIAGNOSTICS = "t1_raw_diagnostics"
 CONF_DRIVER = "driver"
 
+# Only the six shared, *runtime* XMQ helpers are staged into the native
+# component. In particular, portable_cpp/xmq_decode_catalog.h is an offline
+# legacy-reference test catalog and MUST NEVER overwrite the native decoder.
+# frame_bridge.h already belongs to the native component and is not copied.
+PORTABLE_RUNTIME_HEADERS = (
+    "calculate_subset.h",
+    "calendar_subset.h",
+    "driver_runtime.h",
+    "ixml_subset.h",
+    "numeric_bridge.h",
+    "record_decoder.h",
+)
+
 def validate_meter_id(value):
     if len(value) != 8 or not value.isascii() or not value.isdecimal():
         raise cv.Invalid("Meter ID must contain exactly 8 ASCII digits")
@@ -181,11 +194,24 @@ async def to_code(config):
             catalog_fragment(), encoding="utf-8")
         (component_dir / "xmq_native_compiled.h").write_text(
             compiled_fragment(), encoding="utf-8")
-        # ESPHome copies components into build/src; absolute source include paths
-        # do not reliably survive the isolated ESP-IDF compilation stage.
-        # Bundle all portable headers alongside the native component instead.
-        for header in (xmq / "portable_cpp").glob("*.h"):
-            shutil.copyfile(header, component_dir / header.name)
+        # ESPHome copies components into build/src; absolute paths do not
+        # reliably survive the isolated ESP-IDF compilation stage.
+        # Only copy explicitly approved runtime helpers. Never glob all .h:
+        # legacy-reference tests contain a different xmq_decode_catalog.h
+        # with relative includes that cannot compile in the native firmware.
+        for name in PORTABLE_RUNTIME_HEADERS:
+            source = xmq / "portable_cpp" / name
+            target = component_dir / name
+            if not source.is_file():
+                raise cv.Invalid(f"Missing native XMQ runtime helper: {name}")
+            if target.exists():
+                # Repeated ESPHome builds are safe, but a conflicting native
+                # header must never be silently overwritten by test code.
+                if target.read_bytes() != source.read_bytes():
+                    raise cv.Invalid(
+                        f"Conflicting native XMQ runtime header: {name}")
+            else:
+                shutil.copyfile(source, target)
         cg.add_build_flag(f"-I{component_dir}")
         cg.add_define("WMBUS_NATIVE_XMQ_ENABLED")
         if config[CONF_SECURE_METERS]:

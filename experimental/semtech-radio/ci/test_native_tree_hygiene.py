@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reject obsolete legacy imports/build fixtures on the native-only branch."""
 from pathlib import Path
+import ast
 import re
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -43,5 +44,41 @@ for dirname in ("components", "experimental", ".github"):
         ):
             bad.append(str(path.relative_to(ROOT)))
 assert not bad, f"Obsolete legacy source path reference(s): {bad}"
+
+
+# Guard against silently copying an offline parity catalog into firmware.
+# Inspect the literal allowlist without importing ESPHome in this host test.
+native_init = ROOT / "components/wmbus_native_sx126x/__init__.py"
+source = native_init.read_text(encoding="utf-8")
+module = ast.parse(source)
+declarations = [
+    node.value for node in module.body
+    if isinstance(node, ast.Assign)
+    and any(isinstance(target, ast.Name)
+            and target.id == "PORTABLE_RUNTIME_HEADERS"
+            for target in node.targets)
+]
+assert len(declarations) == 1, "Expected one explicit runtime header allowlist"
+copied = tuple(ast.literal_eval(declarations[0]))
+assert copied == (
+    "calculate_subset.h",
+    "calendar_subset.h",
+    "driver_runtime.h",
+    "ixml_subset.h",
+    "numeric_bridge.h",
+    "record_decoder.h",
+), "Portable-to-native header allowlist changed"
+assert not set(copied) & {
+    p.name for p in (ROOT / "components/wmbus_native_sx126x").glob("*.h")
+}, "A copied portable header shadows an owned native header"
+assert '.glob("*.h")' not in source, (
+    "Unbounded portable header copying could overwrite native decoder sources"
+)
+for name in copied:
+    assert (ROOT / "experimental/xmq/portable_cpp" / name).is_file(), (
+        f"Missing runtime helper {name}"
+    )
+assert "xmq_decode_catalog.h" not in copied
+assert "xmq_field_parity.h" not in copied
 
 print("native-only source and fixture hygiene: PASS")

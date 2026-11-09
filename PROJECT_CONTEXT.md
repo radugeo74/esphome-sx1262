@@ -1,3 +1,20 @@
+## Corecție build Heltec după curățenie (2026-11-09)
+
+- Root cause #808: the native ESPHome `__init__.py` used a wildcard
+  `portable_cpp/*.h` copy, which overwrote the actual native
+  `xmq_decode_catalog.h` with the offline parity catalog moved during cleanup.
+  Its `../legacy_reference/` includes then failed in the copied ESPHome
+  component directory during the Heltec ESP-IDF build.
+- Fixed with an explicit allowlist of **six runtime portable headers**.
+  Existing native-owned headers cannot be overwritten; a conflicting
+  duplicate is rejected. `frame_bridge.h` is already owned by native.
+- Added an offline CI invariant verifying the precise allowlist and
+  preventing wildcard copying. No legacy wM-Bus components or drivers
+  have been reinstated, and the 52 native XMQ drivers are unchanged.
+- Earlier workflow #808 passed native host tests and ESP-IDF link, but failed
+  the Heltec compile. The new workflow must complete before the cleanup
+  can be called fully green.
+
 ## Audit și curățenie native-only (2026-11-09)
 
 - Removed **108 obsolete files** from this branch: entire old
