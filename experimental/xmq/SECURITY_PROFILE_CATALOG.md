@@ -44,7 +44,7 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 | [`qualcosonic`](drivers/qualcosonic.xmq) | `PORTABLE` | `AXI/0B/0D`, `AXI/0C/0D` | 3 (3 `NOKEY`) | Volum/temperaturi/putere, Mode 0 | — |
 | [`lse_08`](drivers/lse_08.xmq) | `PORTABLE` | `LSE/01/08` | 1 (1 `NOKEY`) | HCA la data de referință, Mode 0 | — |
 | [`waterstarm`](drivers/waterstarm.xmq) | `PORTABLE` | `DWZ/00/06`, `DWZ/02/06`, `DWZ/02/07`, `EFE/03/07`, `EFE/70/07`, `DWZ/00/07` | 8 (5 `NOKEY`) | Volum total și la data de referință, Mode 0 | — |
-| [`lse_07_17`](drivers/lse_07_17.xmq) | `PORTABLE` | `LSE/18/06`, `LSE/18/07`, `LSE/16/07`, `LSE/17/07` | 4 (4 `NOKEY`) | Volum / volum billing, Mode 0; vD8 numai explicit | — |
+| [`lse_07_17`](drivers/lse_07_17.xmq) | `PORTABLE` | `LSE/18/06`, `LSE/18/07`, `LSE/16/07`, `LSE/17/07`, `LSE/D8/07` | 4 (4 `NOKEY`) | Volum / volum billing, Mode 0; vD8 numai explicit | — |
 | [`munia`](drivers/munia.xmq) | `PORTABLE` | `WEP/02/1B`, `WEP/04/1B` | 2 (2 `NOKEY`) | Temperatură / umiditate, Mode 0 | — |
 
 **Legenda:** un profil clar este admis numai cu verificarile de integritate, identitate si securitate aferente; nu inseamna «orice dispozitiv din familie este necriptat». Pentru profilele AES, cheia este configurata explicit in `secure_meters`, iar un cadru respins nu revine la decoderul plaintext. Cele doua drivere `SECURE_ONLY` pot fi doar recunoscute diagnostic fara cheie.
@@ -86,7 +86,7 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`qualcosonic`:** Trei exemple originale Qualcosonic Mode 0: total_m3, flow_temperature_c, return_temperature_c si power_kw. Energiile de incalzire/racire si set-date au modificatori VIF nesuportati in acest subset.
 - **`lse_08`:** Un exemplu public TPL Mode 0 LSE/01/08: consumption_at_set_date_hca=321 si status TPL_STS_128 (nu OK). Fara dovezi pentru consumul curent sau alte modele; variantele necunoscute nu se publica.
 - **`waterstarm`:** Doar doua exemple radio DWZ/00/06 si DWZ/00/07 cu TPL Mode 0 si 151 octeti: total_m3 si consumption_at_set_date_m3. Patru exemple TPL Mode 5, dintre care doua NOKEY deja decriptate, si doua ELL sunt excluse; istoricul lunar nu este publicat.
-- **`lse_07_17`:** Patru fixture TPL Mode 0 publice LSE: doua profile storage-8 (consumption_at_set_date_8_m3), doua total/due (total_m3 si due_m3). Un exemplu transmite versiunea DLL D8, care nu exista in detect.mvt upstream: decodare doar cu driver explicit, nu AUTO; fara identificare inventata. Nu sunt publicate date/alarme neverificate.
+- **`lse_07_17`:** Patru fixture TPL Mode 0 publice LSE: doua profile storage-8 (consumption_at_set_date_8_m3), doua total/due (total_m3 si due_m3). Versiunea DLL D8/07 este inclusa explicit in detect.mvt upstream si poate fi recunoscuta prin AUTO configurat; nu se publica date/alarme neverificate.
 - **`munia`:** Doua fixture TPL Mode 0 publice WEP/02-04/1B cu 47 octeti, temperatura si umiditate din BCD standard: current_temperature_c si current_relative_humidity_rh; status OK doar pentru doua antete/fanioni zero verificati. Fara variante decriptate sau presupuneri despre alte modele.
   Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 

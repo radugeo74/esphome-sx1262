@@ -44,9 +44,10 @@ int main() {
         std::strcmp(automatic(l0,"13963399"),"lse_07_17")==0);
  assert(automatic(m0,"00013482") &&
         std::strcmp(automatic(m0,"00013482"),"munia")==0);
- // The upstream last LSE example carries 0xD8, absent in detect.mvt:
- // explicit parser proves values; AUTO does NOT guess that revision.
- assert(automatic(l3,"09993623")==nullptr);
+ // Original upstream detect.mvt explicitly declares LSE/D8/07:
+ // verified AUTO recognition must match exact metadata, never guess.
+ assert(automatic(l3,"09993623") &&
+        std::strcmp(automatic(l3,"09993623"),"lse_07_17")==0);
  assert(decode(l0,"13963399","lse_07_17")==PureDecodeStatus::Ok);
  assert(out.value_count==1);
  assert(has(out,"consumption_at_set_date_8_m3",7));

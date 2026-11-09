@@ -1,8 +1,8 @@
 #pragma once
-// LSE water LSE/18/06 and documented 0xD8/07 fixture clear short-TPL.
+// LSE water LSE/18/06 and LSE/D8/07 clear short-TPL profiles.
 // Source: wmbusmeters/drivers/src/lse_07_17.xmq GPL-3.0-or-later.
-// The 0xD8 version is found in an official fixture but not in its
-// detect.mvt table: explicit selection may decode; AUTO will not infer it.
+// Both observed versions are present in the upstream detect.mvt table;
+// configured AUTO may resolve them only by exact MVT + bound DLL ID.
 // Only four bounded source profiles, no generic LSE variants or key bypass.
 #include <cstddef>
 #include <cstdint>
