@@ -29,6 +29,8 @@
 #include "qualcosonic_plain.h"
 #include "lse_08_plain.h"
 #include "waterstarm_plain.h"
+#include "lse_07_17_plain.h"
+#include "munia_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -452,6 +454,36 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"total_m3",r.total_m3};
     output.values[1]={"consumption_at_set_date_m3",r.consumption_at_set_date_m3};
+    output.value_count=2;return PureDecodeStatus::Ok;
+  }
+  // LSE 07/17: original clear short-TPL water, variable recorded fields.
+  if(driver_name && std::strcmp(driver_name,"lse_07_17")==0) {
+    if(!output.values || output.value_capacity<3)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    lse_07_17::Reading r{};
+    if(lse_07_17::decode(frame,length,r)!=lse_07_17::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    if(r.has_total)output.values[output.value_count++]={"total_m3",r.total_m3};
+    if(r.has_due)output.values[output.value_count++]={"due_m3",r.due_m3};
+    if(r.has_set8)output.values[output.value_count++]=
+       {"consumption_at_set_date_8_m3",r.consumption_at_set_date_8_m3};
+    return PureDecodeStatus::Ok;
+  }
+  // WEP Munia: two public clear-temperature/humidity BCD profiles.
+  if(driver_name && std::strcmp(driver_name,"munia")==0) {
+    if(!output.values || output.value_capacity<2)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    munia::Reading r{};
+    if(munia::decode(frame,length,r)!=munia::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"current_temperature_c",r.current_temperature_c};
+    output.values[1]={"current_relative_humidity_rh",r.current_relative_humidity_rh};
     output.value_count=2;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.

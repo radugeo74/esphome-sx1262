@@ -18,6 +18,7 @@
 #include "qualcosonic_plain.h"
 #include "lse_08_plain.h"
 #include "waterstarm_plain.h"
+#include "munia_plain.h"
 #include "evo868_plain.h"
 #include "supercom587_plain.h"
 #include "hcae2_plain.h"
@@ -76,6 +77,12 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     if(lse_08::decode(frame,size,r)!=lse_08::Status::Ok)return out;
     // Source XMQ says TPL_STS_128; never mislabel as "OK".
     if(r.tpl_status==0x80)append(out,"status","TPL_STS_128");
+    return out;
+  }
+  if(std::strcmp(driver,"munia")==0) {
+    munia::Reading r{};
+    if(munia::decode(frame,size,r)!=munia::Status::Ok)return out;
+    append(out,"status","OK"); // two original zero-status clear frames
     return out;
   }
   if(std::strcmp(driver,"waterstarm")==0) {
