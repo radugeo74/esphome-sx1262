@@ -37,6 +37,8 @@
 #include "ehzp_plain.h"
 #include "qheatv2_plain.h"
 #include "c5isf_plain.h"
+#include "microclima_plain.h"
+#include "abbb23_plain.h"
 #include "ultraheat_plain.h"
 #include "sontex868_plain.h"
 #include "supercal_plain.h"
@@ -581,6 +583,38 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[2]={"total_energy_consumption_last_month_kwh",
                       r.total_energy_consumption_last_month_kwh};
     output.value_count=3;return PureDecodeStatus::Ok;
+  }
+  // MAD/00/04 Microclima source-verified clear profiles.
+  if(driver_name && std::strcmp(driver_name,"microclima")==0) {
+    if(!output.values || output.value_capacity<4)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    microclima::Reading r{};
+    if(microclima::decode(frame,length,r)!=microclima::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[output.value_count++]={"total_energy_consumption_kwh",
+                                         r.total_energy_consumption_kwh};
+    output.values[output.value_count++]={"total_volume_m3",r.total_volume_m3};
+    if(r.has_flow_temperature)
+      output.values[output.value_count++]={"flow_temperature_c",r.flow_temperature_c};
+    if(r.has_return_temperature)
+      output.values[output.value_count++]={"return_temperature_c",r.return_temperature_c};
+    return PureDecodeStatus::Ok;
+  }
+  // ABB/20/02 ABB B23 strict 133-byte source clear-only energy profile.
+  if(driver_name && std::strcmp(driver_name,"abbb23")==0) {
+    if(!output.values || output.value_capacity<1)
+      return PureDecodeStatus::DecodeFailure;
+    if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
+       wmbus_pure::publication::Decision::Allowed)
+      return PureDecodeStatus::UnsupportedTransport;
+    abbb23::Reading r{};
+    if(abbb23::decode(frame,length,r)!=abbb23::Status::Ok)
+      return PureDecodeStatus::DecodeFailure;
+    output.values[0]={"total_energy_consumption_kwh",r.total_energy_consumption_kwh};
+    output.value_count=1;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {

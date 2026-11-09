@@ -172,6 +172,13 @@ jobs:
             experimental/semtech-radio/test_qheatv2_c5isf_native.cpp \
             -o /tmp/test-qheatv2-c5isf
           /tmp/test-qheatv2-c5isf
+      - name: Test Microclima and ABB B23 native Mode0 with original XMQ fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_microclima_abbb23_native.cpp \
+            -o /tmp/test-microclima-abbb23
+          /tmp/test-microclima-abbb23
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 42 drivers
