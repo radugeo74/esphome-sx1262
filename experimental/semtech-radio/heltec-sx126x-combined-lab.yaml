@@ -90,6 +90,10 @@ wmbus_native_sx126x:
       driver: lansensm
       key: "000102030405060708090A0B0C0D0E0F"
   meter_drivers:
+    - meter_id: "13963399"  # upstream LSE/18/06 Mode0 public fixture, lab only
+      driver: auto
+    - meter_id: "00013482"  # upstream WEP Munia/02/1B Mode0 public fixture, lab only
+      driver: auto
     - meter_id: "04998541"  # public LSE HCA Mode-0 fixture, build-only
       driver: auto
     - meter_id: "20050666"  # public DWZ Waterstarm clear fixture, build-only
@@ -138,6 +142,31 @@ wmbus_native_sx126x:
     - meter_id: "66666666"
       driver: auto  # public Elvaco CMA12w fixture
   xmq_sensors:
+    - meter_id: "13963399"
+      field: total_m3
+      sensor:
+        name: "Lab LSE Water Total"
+        unit_of_measurement: "m³"
+    - meter_id: "13963399"
+      field: due_m3
+      sensor:
+        name: "Lab LSE Water Due"
+        unit_of_measurement: "m³"
+    - meter_id: "13963399"
+      field: consumption_at_set_date_8_m3
+      sensor:
+        name: "Lab LSE Water Billing 8"
+        unit_of_measurement: "m³"
+    - meter_id: "00013482"
+      field: current_temperature_c
+      sensor:
+        name: "Lab Munia Room Temperature"
+        unit_of_measurement: "°C"
+    - meter_id: "00013482"
+      field: current_relative_humidity_rh
+      sensor:
+        name: "Lab Munia Relative Humidity"
+        unit_of_measurement: "%"
     - meter_id: "04998541"
       field: consumption_at_set_date_hca
       sensor:

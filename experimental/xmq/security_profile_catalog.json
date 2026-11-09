@@ -547,6 +547,36 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Doar doua exemple radio DWZ/00/06 si DWZ/00/07 cu TPL Mode 0 si 151 octeti: total_m3 si consumption_at_set_date_m3. Patru exemple TPL Mode 5, dintre care doua NOKEY deja decriptate, si doua ELL sunt excluse; istoricul lunar nu este publicat."
+    },
+    {
+      "driver": "lse_07_17",
+      "group": "PORTABLE",
+      "mvt": [
+        "LSE/18/06",
+        "LSE/18/07",
+        "LSE/16/07",
+        "LSE/17/07"
+      ],
+      "total_tests": 4,
+      "nokey_tests": 4,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Patru fixture TPL Mode 0 publice LSE: doua profile storage-8 (consumption_at_set_date_8_m3), doua total/due (total_m3 si due_m3). Un exemplu transmite versiunea DLL D8, care nu exista in detect.mvt upstream: decodare doar cu driver explicit, nu AUTO; fara identificare inventata. Nu sunt publicate date/alarme neverificate."
+    },
+    {
+      "driver": "munia",
+      "group": "PORTABLE",
+      "mvt": [
+        "WEP/02/1B",
+        "WEP/04/1B"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Doua fixture TPL Mode 0 publice WEP/02-04/1B cu 47 octeti, temperatura si umiditate din BCD standard: current_temperature_c si current_relative_humidity_rh; status OK doar pentru doua antete/fanioni zero verificati. Fara variante decriptate sau presupuneri despre alte modele."
     }
   ]
 }

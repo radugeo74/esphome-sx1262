@@ -1,3 +1,33 @@
+## Calupul 35–36: LSE 07/17 + WEP Munia (2026-11-09)
+
+The native branch `experimental/xmq-multidriver-auto` now tracks **36
+integrated XMQ driver families**.
+
+- **`lse_07_17`** (LSE water): four public Mode-0 short-TPL
+  upstream fixtures support optional `consumption_at_set_date_8_m3`
+  (two archival frames with 7.000 m³), or `total_m3` and `due_m3`
+  (two billing frames: 7.156/0 and 323.323/277.651 m³). Each
+  publication requires that record to actually appear. The fourth
+  source sample exposes DLL `version=0xD8`, **not** an upstream
+  `detect.mvt` signature: its values are tested with **explicit
+  `driver: lse_07_17` only**; AUTO deliberately declines it. We do
+  not guess its manufacturer-specific version encoding or publish
+  unproven alarm/datetime fields.
+- **`munia`** (WEP/02-04/1B room sensor): two original 47-byte
+  Mode-0 short-TPL frames test `current_temperature_c` =
+  20.1/21.7°C and `current_relative_humidity_rh` = 65.7/61.0%.
+  Exactly verified zero-status `status: OK` is available as a text
+  field. Unknown flags, invalid BCD, wrong model, unsupported
+  transport, damaged padding or encrypted frames fail closed.
+- Both are isolated native `PORTABLE` drivers using the official
+  SX126x receiver's CRC verification and CRC removal; no legacy
+  radio driver, no speculative plaintext claims from upstream
+  `NOKEY` test metadata. AUTO requires a configured meter ID and
+  an unambiguous upstream MVT signature, not a loose model match.
+- The example Heltec configuration is **build-only**, with public
+  upstream XMQ fixture IDs; no personal keys, no OTA/flash and no
+  production Techem change. Live RF validation remains a separate step.
+
 ## Calupul 33–34: LSE 08 + Waterstarm (2026-11-08)
 
 The native XMQ catalog on `experimental/xmq-multidriver-auto` now
