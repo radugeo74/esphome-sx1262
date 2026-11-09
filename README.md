@@ -1,3 +1,20 @@
+## Curățenie: retragerea driverelor C++ vechi (2026-11-09)
+
+- Deleted all **91** `components/wmbus_common/driver_*.cc` translation units
+  from `experimental/xmq-multidriver-auto`. Files remain recoverable in Git
+  history; the common legacy `meters.cc`, `dvparser.cc`, `aes.cc` and other
+  shared sources are deliberately unchanged.
+- Native `wmbus_native_sx126x` uses the independent XMQ metadata, native C++
+  parsers and configured meter binding. Its **52 native driver families**,
+  sensor mappings and `driver: auto` behavior are unchanged.
+- **Compatibility break (intentional):** old `wmbus_meter` /
+  `wmbus_radio` configurations that use legacy C++ drivers are not supported
+  on this branch anymore. Use an earlier Git revision for the old pipeline.
+  This cleanup does not itself change any flashed Heltec/HA device.
+- A native-only CI guard rejects reintroduction of `driver_*.cc` and legacy
+  components in the native Heltec build fixtures. CI success is a software
+  check, not new real-radio verification.
+
 ## Calupul 51–52: Techem Compact5 + Vario451 (2026-11-09)
 
 The `experimental/xmq-multidriver-auto` branch contains **52 source-anchored

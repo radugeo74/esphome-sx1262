@@ -7,6 +7,7 @@ on:
       - experimental/semtech-sx126x-t1-c1-combined
       - experimental/xmq-multidriver-auto
     paths:
+      - 'components/wmbus_common/driver_*.cc'
       - 'components/wmbus_native_sx126x/**'
       - 'experimental/xmq/drivers/**'
       - 'experimental/xmq/security_profile_catalog.json'
@@ -26,6 +27,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+      - name: Verify legacy C++ drivers were retired from native branch
+        run: python3 experimental/semtech-radio/ci/test_legacy_driver_retirement.py
       - name: Repository-wide privacy audit (all branch HEADs)
         run: python3 experimental/semtech-radio/ci/privacy_audit.py
       - name: Require Heltec lab YAML to compile same checked-out SX126x and RSSI code
