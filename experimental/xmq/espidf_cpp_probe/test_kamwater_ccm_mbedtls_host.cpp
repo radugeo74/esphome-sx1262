@@ -6,7 +6,7 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
-#include "../../../components/wmbus_radio/pure_complete_frame.h"
+#include "../legacy_reference/pure_complete_frame.h"
 #include <cmath>
 #include "../../semtech-radio/host_only/kamwater_authenticated_tpl_status.h"
 #include "../../../components/wmbus_native_sx126x/kamwater_clear_records.h"

@@ -5,7 +5,7 @@
 // The configured identity is a filter, not cryptographic authentication.
 #include <cstddef>
 #include <cstdint>
-#include "../../../components/wmbus_radio/pure_complete_frame.h"
+#include "../../xmq/legacy_reference/pure_complete_frame.h"
 #include "../../../components/wmbus_native_sx126x/kamwater_clear_pipeline.h"
 namespace xmq_portable { namespace kamwater { namespace ingress {
 struct ExpectedMeter {

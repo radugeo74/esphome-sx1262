@@ -5,7 +5,7 @@
 // No Home Assistant publication, key persistence, or replay acceptance.
 #include <cstddef>
 #include <cstdint>
-#include "../../../../components/wmbus_radio/pure_complete_frame.h"
+#include "../../legacy_reference/pure_complete_frame.h"
 #include "oms_ccm_mbedtls_probe.h"
 
 namespace xmq_portable { namespace oms_ccm_idf_probe { namespace ingress {
