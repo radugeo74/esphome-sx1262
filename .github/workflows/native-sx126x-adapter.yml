@@ -160,7 +160,7 @@ jobs:
           /tmp/test-qheat55-maddalena
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
-      - name: Audit OMS security evidence catalog for all 36 drivers
+      - name: Audit OMS security evidence catalog for all 38 drivers
         run: python3 experimental/xmq/tests/test_security_profile_catalog.py
       - name: Check NOKEY provenance and 44 encrypted-header counterexamples from all XMQ fixtures
         run: python3 experimental/xmq/tests/test_nokey_fixture_provenance.py

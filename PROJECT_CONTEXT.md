@@ -1,3 +1,35 @@
+## Calupul 37–38: QHeat 5.5 US + Maddalena (2026-11-09)
+
+Native configured-only `PORTABLE` support now covers **38 XMQ
+driver families** on `experimental/xmq-multidriver-auto`.
+
+- **`qheat_55_us`** (LUG/07-0A/04): 4 official upstream TPL Mode-0
+  fixtures establish `total_energy_consumption_kwh` and
+  `key_datetime_kwh` (billing energy), e.g. 9205/5182,
+  60800/60691, 13706/10268 and 0/0 kWh. Source-backed `total_m3`
+  is published **only when a standard volume record exists**.
+  The 13706 kWh source fixture explicitly reports **F0_FLOW_ERROR**:
+  this native numeric-only subset does not guess an "OK" status,
+  interpret unverified manufacturer alarm flags or assert parity for
+  all monthly readings.
+- **`maddalena`** (MAD/01/07): one original 79-byte Mode-0 frame
+  establishes `total_m3=0.167` and `target_m3=0`.
+  Its fabrication number record `0E78` ends in `FF` sentinel,
+  which is NOT valid numeric BCD. The strict per-profile decoder
+  checks the full fixed layout, then validates the **two individual**
+  standard DIF/VIF volume records, instead of weakening the common
+  parser or claiming model-number extraction.
+  Although upstream `detect.mvt` lists MAD/01/06, that water
+  variant is NOT admitted to numeric publication without evidence.
+- Configured `driver: auto` (or explicit driver) selects only by
+  known MVT and DLL ID; the full source-backed decode, verified DLL
+  CRC removal and TPL Mode-0 security gate remain mandatory.
+  `NOKEY` in XMQ is NOT an on-air decryption guarantee.
+- The Heltec `experimental/semtech-radio/heltec-sx126x-combined-lab.yaml`
+  is **build-only** with public test IDs. No live meter IDs, no keys,
+  no OTA/flash, and no change to the existing production Techem firmware.
+  Radio reception validation remains separate.
+
 ## Calupul 35–36: LSE 07/17 + WEP Munia (2026-11-09)
 
 The native branch `experimental/xmq-multidriver-auto` now tracks **36

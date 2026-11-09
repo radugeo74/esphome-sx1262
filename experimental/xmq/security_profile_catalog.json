@@ -578,6 +578,34 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Doua fixture TPL Mode 0 publice WEP/02-04/1B cu 47 octeti, temperatura si umiditate din BCD standard: current_temperature_c si current_relative_humidity_rh; status OK doar pentru doua antete/fanioni zero verificati. Fara variante decriptate sau presupuneri despre alte modele."
+    },
+    {
+      "driver": "qheat_55_us",
+      "group": "PORTABLE",
+      "mvt": [
+        "LUG/07/04",
+        "LUG/0A/04"
+      ],
+      "total_tests": 4,
+      "nokey_tests": 4,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Patru exemple originale LUG/07-0A/04 CI 7A Mode 0 confirma total_energy_consumption_kwh si key_datetime_kwh; total_m3 este optional doar cand exista in telegrama. Un exemplu contine alarma F0 reala: nu publicam stare OK si nu interpretam semnalele de eroare ori datele istorice nevalidate."
+    },
+    {
+      "driver": "maddalena",
+      "group": "PORTABLE",
+      "mvt": [
+        "MAD/01/07",
+        "MAD/01/06"
+      ],
+      "total_tests": 1,
+      "nokey_tests": 1,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Un singur exemplu original MAD/01/07 CI 7A Mode 0 (79 octeti) confirma total_m3=0.167 si target_m3=0. Fabrication 0E78 contine sentinel FF si nu poate fi decodat ca BCD numeric; verificam structura dar decodam separat doar cele doua volume. MAD/01/06 exista doar in detect.mvt, fara dovada de profil acceptat."
     }
   ]
 }

@@ -1,6 +1,7 @@
 // Original public XMQ QHeat 5.5 US and Maddalena CI7A Mode-0 regression.
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/xmq_auto_registry.h"
+#include "components/wmbus_native_sx126x/xmq_plain_text_fields.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -61,6 +62,10 @@ int main(){
  assert(has(out,"target_m3",0));
  // BCD corruption, wrong manufacturer/MVT, encrypted header, frame truncation
  // and mismatched configured DLL IDs all fail before publication.
+ const auto qstatus=text_fields::decode(q2.data(),q2.size(),"qheat_55_us");
+ assert(qstatus.count==0); // F0 error fixture must NEVER be misreported OK
+ const auto mstatus=text_fields::decode(m0.data(),m0.size(),"maddalena");
+ assert(mstatus.count==1 && std::strcmp(mstatus.fields[0].text,"OK")==0);
  assert(decode(q0,"70835485","qheat_55_us")!=PureDecodeStatus::Ok);
  assert(decode(m0,"24018698","maddalena")!=PureDecodeStatus::Ok);
  auto bad=q0;bad[13]=0;bad[14]=0x25;
