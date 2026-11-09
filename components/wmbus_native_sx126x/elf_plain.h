@@ -36,7 +36,7 @@ inline Status decode(const uint8_t *f,size_t n,
  if(gate!=bound_long_tpl::Status::Ok)
    return gate==bound_long_tpl::Status::NotClear
         ? Status::NotClear : Status::Invalid;
- if(n!=82 || f[20]!=0xDA || f[21]!=0 || f[22]!=0x20 ||
+ if(n!=82 || f[19]!=0xDA || f[20]!=0 || f[21]!=0 || f[22]!=0x20 ||
     f[23]!=0x02 || f[24]!=0x6C ||
     f[27]!=0x0E || f[28]!=0x01 ||
     f[35]!=0x0C || f[36]!=0x13 ||
