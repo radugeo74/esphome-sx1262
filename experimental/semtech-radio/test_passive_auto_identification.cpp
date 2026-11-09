@@ -32,14 +32,14 @@ static diag::Result recognize(const std::vector<uint8_t> &bytes,
 }
 
 int main() {
-  // Exactly 46 configured native driver families. Match their actual
+  // Exactly 48 configured native driver families. Match their actual
   // upstream detect.mvt entries, not handpicked invented signatures.
   const char *const drivers[]={
     "fhkvdataiii","mkradio4","iperl","hydrus",
     "lansenpu","lansendw","cma12w","ultraheat","sontex868",
     "supercal","q400","minomess","kamwater","apator162",
     "mkradio4a","topaseskr","lansenth","lansensm",
-    "elvsense","lansenrp","qsmoke","qcaloric","rfmamb","sensostar","evo868","supercom587","hcae2","bfw240radio","qwaterv2","hydrodigit","itron","qualcosonic","lse_08","waterstarm","lse_07_17","munia","qheat_55_us","maddalena","itronheat","ehzp","qheatv2","c5isf","microclima","abbb23","ei6500","apatoreitn40"
+    "elvsense","lansenrp","qsmoke","qcaloric","rfmamb","sensostar","evo868","supercom587","hcae2","bfw240radio","qwaterv2","hydrodigit","itron","qualcosonic","lse_08","waterstarm","lse_07_17","munia","qheat_55_us","maddalena","itronheat","ehzp","qheatv2","c5isf","microclima","abbb23","ei6500","apatoreitn40","elf","engelmann_faw"
   };
   size_t recognized=0;
   for(const char *name : drivers) {
@@ -92,7 +92,7 @@ int main() {
   assert(candidate.source==diag::Source::Tpl);
   assert(candidate.meter_id==1770002 && candidate.different_dll_id);
 
-  assert(recognized==46);
+  assert(recognized==48);
   assert(recognize(frame(0x5068,0x95,0x37,0x7A)).state==diag::State::Unknown);
   cold[17]=0xF0; // unrecognized TPL version, no converter-only promotion
   assert(recognize(cold).state==diag::State::Unknown);
@@ -117,7 +117,7 @@ int main() {
   assert(recognize(invalid).state==diag::State::Invalid);
   assert(passive::inspect(nullptr,0,generated::signatures,
                           generated::signature_count).state==diag::State::Invalid);
-  std::puts("PASS passive native AUTO: all 46 XMQ driver families, MK warm/cold "
+  std::puts("PASS passive native AUTO: all 48 XMQ driver families, MK warm/cold "
             "nested identity and strict converter/ambiguity negatives; "
             "no AES or HA publication.");
 }

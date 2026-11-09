@@ -1,3 +1,44 @@
+## Calupul 47–48: Apator ELF + Engelmann FAW (2026-11-09)
+
+The branch `experimental/xmq-multidriver-auto` now integrates
+**48 native XMQ driver families**, including the first two
+conservatively authenticated **dual-address, clear CI72 long-TPL**
+profiles. Unlike the existing publication gate, this special
+route requires TWO separately configured identities and independently
+checks both on every CRC-verified/stripped RF packet:
+
+- **`elf`** (APA/40/04): one original 82-byte clear Mode0 example
+  has **DLL sender 00050901** (M-field 0x8601, V0x18, T0x37)
+  and **TPL meter 01885619** (APA/40/04). Only validated
+  `total_energy_consumption_kwh=3112.49977`,
+  `total_volume_m3=201.364`,
+  `total_energy_consumption_at_date_kwh=3047.8`,
+  `flow_temperature_c=69` and `return_temperature_c=58`
+  are published. The source reports `ERROR_FLAGS_2000000`;
+  no `status: OK` or unverified alarm interpretation is published.
+- **`engelmann_faw`** (EFE/00/07): one original 144-byte
+  clear Mode0 fixture uses **DLL sender 43000255** (EFE/01/07)
+  and **TPL meter 20254060** (EFE/00/07). It validates
+  `consumption_at_reporting_date_m3=59.682`,
+  `consumption_1_months_ago_m3=78.908`, and
+  `consumption_2_months_ago_m3=77.23`.
+  The source contains **no current `total_m3`**;
+  all 15 monthly history slots are checked structurally, but
+  only two published. The other upstream fixture is encrypted
+  CI73 with a key and remains **unsupported**; no key bypass.
+- YAML `meter_drivers` now supports an explicit
+  `dll_meter_id` for these two named drivers and configured
+  `auto`, with `meter_id` referring to the target TPL ID
+  and all sensors binding the **TPL meter ID**. The existing
+  single-address plaintext admission remains unchanged, as does
+  its rejection of a converter/TPL mismatch. New driver-specific
+  two-ID gate checks the original sender M/V/T, TPL M/V/T,
+  both IDs, clear security Mode0 and strict original packet layout.
+  AES, ELL, unknown models and wrong IDs fail closed.
+- Heltec YAML remains **build-only**, with ONLY public upstream
+  fixture IDs and no live user meter IDs, secrets, OTA or flash.
+  Hardware RF verification remains separate from CI.
+
 ## Calupul 45–46: Ei6500 diagnostics + Apator E-ITN40 (2026-11-09)
 
 The `experimental/xmq-multidriver-auto` branch now contains
