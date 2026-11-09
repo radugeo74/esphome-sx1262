@@ -606,6 +606,33 @@
       "keyed_routes": [],
       "oms_certified_sku": null,
       "evidence_note": "Un singur exemplu original MAD/01/07 CI 7A Mode 0 (79 octeti) confirma total_m3=0.167 si target_m3=0. Fabrication 0E78 contine sentinel FF si nu poate fi decodat ca BCD numeric; verificam structura dar decodam separat doar cele doua volume. MAD/01/06 exista doar in detect.mvt, fara dovada de profil acceptat."
+    },
+    {
+      "driver": "itronheat",
+      "group": "PORTABLE",
+      "mvt": [
+        "ITW/00/04"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Un fixture Itron/Allmess ITW/00/04 original CI 7A Mode 0 (65 octeti) confirma total_kwh=19529, total_m3=8401.224 si last_year_kwh=13978. Alt fixture NOKEY are antet AES Mode 5 si aplicatie deja decriptata, exclus RF. Statutul OK din XMQ nu este extrapolat la alte variante."
+    },
+    {
+      "driver": "ehzp",
+      "group": "PORTABLE",
+      "mvt": [
+        "EMH/02/02",
+        "EMH/00/02"
+      ],
+      "total_tests": 2,
+      "nokey_tests": 2,
+      "clear_route": "clear_only",
+      "keyed_routes": [],
+      "oms_certified_sku": null,
+      "evidence_note": "Un fixture EMH/00/02 original CI 7A Mode 0 (175 octeti) confirma total_energy_consumption_kwh=95.7722, total_energy_production_kwh=0.0021 si current_power_consumption_kw=0.09. Celalalt fixture NOKEY este ELL CI 8C cu aplicatie furnizata deja in clar, exclus din aceasta ruta. Variantele cu istoric/tarife nu sunt publicate."
     }
   ]
 }

@@ -1,3 +1,41 @@
+## Calupul 39–40: Itron Heat + EMH eHZP (2026-11-09)
+
+Native branch `experimental/xmq-multidriver-auto` now contains **40
+integrated XMQ driver families** using configured-only, fail-closed
+radio publication.
+
+- **`itronheat`** (ITW/00/04): one genuine clear short-TPL
+  Mode-0 65-byte upstream fixture validates
+  `total_kwh=19529`, `total_m3=8401.224`, and
+  `last_year_kwh=13978`. A second public `NOKEY` fixture is
+  **AES Mode-5 on air** and already carries supplied-clear
+  application bytes; the RF decoder refuses it. Only verified
+  04/06, 04/13, 44/06 standard DIF/VIF readings are exposed.
+  Opaque manufacturer bytes and unknown status combinations
+  remain unparsed.
+- **`ehzp`** (EMH/00/02): one original genuine clear
+  CI `7A` Mode-0 175-byte upstream sample validates
+  `total_energy_consumption_kwh=95.7722`,
+  `total_energy_production_kwh=0.0021`, and
+  `current_power_consumption_kw=0.09`. The native subset reads
+  the three independently framed standard numeric DIF/VIF
+  records and strictly checks fixed profile markers;
+  it does not guess proprietary historical/tariff records.
+  Another `NOKEY` upstream fixture uses **ELL CI `8C`**
+  with an already-clear supplied application and is NOT
+  accepted as Mode-0 RF. The EMH/02/02 signature is
+  recognizable but not admitted to this source-tested profile.
+- Both profiles are `PORTABLE`, support configured
+  `driver: auto` and explicit YAML drivers, and revalidate
+  the configured DLL ID, MVT, CRC-stripped verified input,
+  TPL Mode-0 status and bounded application records before
+  any sensor value is published. Passive recognition is
+  never treated as permission to decrypt.
+- Heltec sample YAML remains **build-only** and uses public
+  upstream fixture meter IDs, not live private IDs or keys.
+  No OTA/flash or changes to live Techem meters.
+  RF validation on hardware remains a separate step.
+
 ## Calupul 37–38: QHeat 5.5 US + Maddalena (2026-11-09)
 
 Native configured-only `PORTABLE` support now covers **38 XMQ

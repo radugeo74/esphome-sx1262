@@ -1,4 +1,4 @@
-# Catalogul de securitate wM-Bus / OMS — 38 drivere native
+# Catalogul de securitate wM-Bus / OMS — 40 drivere native
 
 **Revizie:** 2026-11-08. **Branch:** `experimental/xmq-multidriver-auto`. **Stadiu:** dovada software, nu certificare de echipament sau validare hardware.
 
@@ -48,6 +48,8 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 | [`munia`](drivers/munia.xmq) | `PORTABLE` | `WEP/02/1B`, `WEP/04/1B` | 2 (2 `NOKEY`) | Temperatură / umiditate, Mode 0 | — |
 | [`qheat_55_us`](drivers/qheat_55_us.xmq) | `PORTABLE` | `LUG/07/04`, `LUG/0A/04` | 4 (4 `NOKEY`) | Energie și consum la billing (kWh), Mode 0; volum opțional | — |
 | [`maddalena`](drivers/maddalena.xmq) | `PORTABLE` | `MAD/01/07`, `MAD/01/06` | 1 (1 `NOKEY`) | Volum total și billing, doar MAD/01/07 Mode 0 | — |
+| [`itronheat`](drivers/itronheat.xmq) | `PORTABLE` | `ITW/00/04` | 2 (2 `NOKEY`) | Energie, volum și energie an anterior, doar Mode 0 | — |
+| [`ehzp`](drivers/ehzp.xmq) | `PORTABLE` | `EMH/02/02`, `EMH/00/02` | 2 (2 `NOKEY`) | Energie consumată, produsă și putere, doar EMH/00/02 Mode 0 | — |
 
 **Legenda:** un profil clar este admis numai cu verificarile de integritate, identitate si securitate aferente; nu inseamna «orice dispozitiv din familie este necriptat». Pentru profilele AES, cheia este configurata explicit in `secure_meters`, iar un cadru respins nu revine la decoderul plaintext. Cele doua drivere `SECURE_ONLY` pot fi doar recunoscute diagnostic fara cheie.
 
@@ -92,14 +94,16 @@ Surse: [WMBusmeters — drivere XMQ](https://github.com/wmbusmeters/wmbusmeters/
 - **`munia`:** Doua fixture TPL Mode 0 publice WEP/02-04/1B cu 47 octeti, temperatura si umiditate din BCD standard: current_temperature_c si current_relative_humidity_rh; status OK doar pentru doua antete/fanioni zero verificati. Fara variante decriptate sau presupuneri despre alte modele.
 - **`qheat_55_us`:** Patru exemple originale LUG/07-0A/04 CI 7A Mode 0 confirma total_energy_consumption_kwh si key_datetime_kwh; total_m3 este optional doar cand exista in telegrama. Un exemplu contine alarma F0 reala: nu publicam stare OK si nu interpretam semnalele de eroare ori datele istorice nevalidate.
 - **`maddalena`:** Un singur exemplu original MAD/01/07 CI 7A Mode 0 (79 octeti) confirma total_m3=0.167 si target_m3=0. Fabrication 0E78 contine sentinel FF si nu poate fi decodat ca BCD numeric; verificam structura dar decodam separat doar cele doua volume. MAD/01/06 exista doar in detect.mvt, fara dovada de profil acceptat.
+- **`itronheat`:** Un fixture Itron/Allmess ITW/00/04 original CI 7A Mode 0 (65 octeti) confirma total_kwh=19529, total_m3=8401.224 si last_year_kwh=13978. Alt fixture NOKEY are antet AES Mode 5 si aplicatie deja decriptata, exclus RF. Statutul OK din XMQ nu este extrapolat la alte variante.
+- **`ehzp`:** Un fixture EMH/00/02 original CI 7A Mode 0 (175 octeti) confirma total_energy_consumption_kwh=95.7722, total_energy_production_kwh=0.0021 si current_power_consumption_kw=0.09. Celalalt fixture NOKEY este ELL CI 8C cu aplicatie furnizata deja in clar, exclus din aceasta ruta. Variantele cu istoric/tarife nu sunt publicate.
   Doua aplicatii XMQ postdecriptate Mode 5; smoke_detected este telemetrie, NU detector de incendiu certificat in Home Assistant.
 
 ## Audit 6: dovezile `NOKEY` nu sunt capturi RF clare (2026-11-08)
 
-Am inspectat automat toate cele **172** de fixture XMQ din cele 38
-drivere: **163** ruleaza fara cheie in test, dar **46** dintre cele
+Am inspectat automat toate cele **176** de fixture XMQ din cele 40
+drivere: **167** ruleaza fara cheie in test, dar **47** dintre cele
 `NOKEY` pastreaza in antet un **TPL Mode 5 / AES-CBC**. Inca un
-fixture Apator162 are Mode 5 cu cheie explicita (deci **50** antete
+fixture Apator162 are Mode 5 cu cheie explicita (deci **51** antete
 Mode 5). Nu le etichetam ca RF fara cheie: unele contin date deja
 decriptate dupa `_`, altele sunt cadre criptate din teste.
 
@@ -135,7 +139,7 @@ automat ca `fara cheie`.
 
 ## OMS Group: certificare versus implementare
 
-OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 38 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
+OMS Group publica certificarea pe **produs comercial, versiune/generatie si profil**. MVT (`producator/versiune/tip`) nu identifica sigur acel SKU; de aceea **niciunul dintre cele 40 drivere nu are asociat un certificat OMS confirmat** (`oms_certified_sku: null`). Nu am dedus certificari din numele unui driver.
 
 Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES-CBC Mode 5** si **D / AES-CCM Mode 10**. Implementarea ELL AES-CTR este un traseu separat, care nu trebuie reclasificat automat ca profil A/B/D. **Mode 7 (OMS B) si Mode 13** sunt detectate de filtrul de securitate, dar nu au aici un decodor general. Aceasta este o harta de compatibilitate, nu o lista de contoare care sigur nu necesita cheie.
 
@@ -146,4 +150,4 @@ Profilurile OMS pe care le-am implementat pentru cazuri specifice sunt **A / AES
 3. Decodare completa a valorilor reale fara cheie si potrivirea producatorului, versiunii si tipului.
 4. Daca exista model comercial exact, identificare OMS independenta cu certificat si generatie; fara a incarca date private in GitHub.
 
-**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 38 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.
+**Sursa de adevar:** [`security_profile_catalog.json`](security_profile_catalog.json). CI executa [`test_security_profile_catalog.py`](tests/test_security_profile_catalog.py), care verifica exact cele 40 intrari, manifestul nativ, semnaturile/fixture XMQ si lista capabilitatilor AES. Nu am schimbat runtime-ul, cheile, decodoarele sau firmware-ul.
