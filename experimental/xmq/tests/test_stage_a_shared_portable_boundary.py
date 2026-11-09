@@ -23,7 +23,12 @@ assert 'apator162_reading.total_m3 - 7.512' in cpp
 assert "CONFIGURED_NATIVE = (\"minomess\", \"kamwater\", \"apator162\")" in names
 assert "PORTABLE = (" in names
 assert all(f'"{driver}"' in names for driver in ("ultraheat","sontex868","supercal","q400","elvsense","lansenrp","qsmoke","qcaloric","rfmamb","sensostar","evo868","supercom587","hcae2","bfw240radio","qwaterv2","hydrodigit","itron","qualcosonic","lse_08","waterstarm","lse_07_17","munia","qheat_55_us","maddalena","itronheat","ehzp","qheatv2","c5isf","microclima","abbb23","ei6500","apatoreitn40","elf","engelmann_faw","apatoreitn","gransystems"))
-assert "for header in (xmq / \"portable_cpp\").glob(\"*.h\")" in component.read_text(encoding="utf-8")
+# Explicit header allowlist is now required: a wildcard copy silently
+# replaced xmq_decode_catalog.h with the offline legacy comparison catalog.
+native_component_source = component.read_text(encoding="utf-8")
+assert "for name in PORTABLE_RUNTIME_HEADERS:" in native_component_source
+assert "if target.read_bytes() != source.read_bytes():" in native_component_source
+assert 'for header in (xmq / "portable_cpp").glob("*.h")' not in native_component_source
 assert not (root/"components/wmbus_native_sx126x/apator162_ixml_fields.h").exists(), (
     "Shared module should be copied at build time only, not committed as a second source")
 # Kamwater status/numeric algorithms now have exactly one native header each.
