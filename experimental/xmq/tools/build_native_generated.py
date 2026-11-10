@@ -7,6 +7,7 @@ metadata-only until the manifest declares a verified decoder.
 from pathlib import Path
 from native_driver_specs import validate, catalog_fragment, compiled_fragment
 from generate_ixml_cpp import generate
+from generate_clear_profiles import generate as generate_clear_profiles
 
 def build(root: Path):
     xmq = root / "experimental" / "xmq"
@@ -15,6 +16,7 @@ def build(root: Path):
     generated = generate(sources)
     outputs = {
         "xmq_generated.h": generated,
+        "xmq_generated_clear_profiles.h": generate_clear_profiles(xmq / "drivers"),
         "xmq_native_descriptors.h": catalog_fragment(),
         "xmq_native_compiled.h": compiled_fragment(),
     }

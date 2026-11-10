@@ -9,6 +9,7 @@ from native_driver_specs import SUPPORTED, CONFIGURED_NATIVE, CONFIGURABLE, GENE
 from build_native_generated import build
 from tempfile import TemporaryDirectory
 from generate_ixml_cpp import generate
+from generate_clear_profiles import generate as generate_clear_profiles, SPECS
 
 def main():
     assert SUPPORTED == tuple(d.name for d in GENERATED) + PORTABLE
@@ -26,6 +27,9 @@ def main():
     for driver in GENERATED:
         assert f'generated_ixml::{driver.name}::rules' in catalog
         assert f'namespace {driver.name} ' in generated["xmq_generated.h"]
+    assert tuple(SPECS) == ("munia","cma12w","lansendw","lansenpu")
+    assert generated["xmq_generated_clear_profiles.h"] == generate_clear_profiles(
+        ROOT / "experimental/xmq/drivers")
     assert "lansenpu" in SUPPORTED
     assert 'std::strcmp(name, "lansenpu")' in compiled
     for experimental in CONFIGURED_NATIVE:

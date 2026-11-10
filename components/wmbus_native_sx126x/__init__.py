@@ -177,6 +177,7 @@ async def to_code(config):
     try:
         from native_driver_specs import validate, catalog_fragment, compiled_fragment
         from generate_ixml_cpp import generate
+        from generate_clear_profiles import generate as generate_clear_profiles
         generated = generate(validate(xmq))
         from generate_driver_registry import generate as generate_registry
         # Auto detection indexes EVERY locally available XMQ signature.
@@ -191,6 +192,8 @@ async def to_code(config):
         (component_dir / "xmq_auto_registry.h").write_text(
             registry_header, encoding="utf-8")
         (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
+        (component_dir / "xmq_generated_clear_profiles.h").write_text(
+            generate_clear_profiles(xmq / "drivers"), encoding="utf-8")
         (component_dir / "xmq_native_descriptors.h").write_text(
             catalog_fragment(), encoding="utf-8")
         (component_dir / "xmq_native_compiled.h").write_text(

@@ -15,6 +15,10 @@ November 2026). This branch no longer packages the legacy
 - `experimental/xmq/tools/native_driver_specs.py`: explicit native
   decoder manifest. `generate_ixml_cpp.py` and
   `build_native_generated.py` produce the compile-time descriptors.
+- `experimental/xmq/tools/generate_clear_profiles.py`: fixture-checked
+  compile-time model and DIF/VIF record-key tables for munia, cma12w,
+  lansendw and lansenpu. Their native security, numeric and status
+  validation is retained; this is a bounded compiler, not full XMQ.
 - `experimental/xmq/portable_cpp/`: portable XMQ records/math/date
   implementation and **offline** comparison catalog/parity helpers.
 - `experimental/xmq/legacy_reference/`: 15 isolated, header-only
