@@ -63,17 +63,31 @@ int main() {
  assert(has(out,"total_m3",323.323));
  assert(has(out,"due_m3",277.651));
  assert(decode(m0,"00013482","munia")==PureDecodeStatus::Ok);
- assert(out.value_count==2);
+ assert(out.value_count==12);
  assert(has(out,"current_temperature_c",20.1));
  assert(has(out,"current_relative_humidity_rh",65.7));
+ for(const char *field:{"tpl_status_raw","tpl_status_unknown_raw",
+         "error_flags_raw","error_flags_unknown_raw",
+         "status_alarm","status_busy","status_error",
+         "status_permanent_error","status_power_low","status_temporary_error"})
+   assert(has(out,field,0));
  const auto stat0=text_fields::decode(m0.data(),m0.size(),"munia");
- assert(stat0.count==1 && std::strcmp(stat0.fields[0].text,"OK")==0);
+ assert(stat0.count==1 && std::strcmp(stat0.fields[0].name,"status")==0 &&
+        std::strcmp(stat0.fields[0].text,"OK")==0);
+ assert(automatic(m1,"00220111") &&
+        std::strcmp(automatic(m1,"00220111"),"munia")==0);
  assert(decode(m1,"00220111","munia")==PureDecodeStatus::Ok);
- assert(out.value_count==2);
+ assert(out.value_count==12);
  assert(has(out,"current_temperature_c",21.7));
  assert(has(out,"current_relative_humidity_rh",61));
+ for(const char *field:{"tpl_status_raw","tpl_status_unknown_raw",
+         "error_flags_raw","error_flags_unknown_raw",
+         "status_alarm","status_busy","status_error",
+         "status_permanent_error","status_power_low","status_temporary_error"})
+   assert(has(out,field,0));
  const auto stat1=text_fields::decode(m1.data(),m1.size(),"munia");
- assert(stat1.count==1 && std::strcmp(stat1.fields[0].text,"OK")==0);
+ assert(stat1.count==1 && std::strcmp(stat1.fields[0].name,"status")==0 &&
+        std::strcmp(stat1.fields[0].text,"OK")==0);
  assert(decode(l0,"13963398","lse_07_17")!=PureDecodeStatus::Ok);
  assert(decode(m0,"00013483","munia")!=PureDecodeStatus::Ok);
  auto bad=l2;bad[14]=0x25;
@@ -92,8 +106,26 @@ int main() {
  assert(decode(bad,"00013482","munia")!=PureDecodeStatus::Ok);
  bad=m0;bad[25]=0xFA; // invalid BCD nibble
  assert(decode(bad,"00013482","munia")!=PureDecodeStatus::Ok);
- bad=m0;bad[30]=0x01; // nonzero status flags, never label OK
+ bad=m0;bad[30]=0x01; // nonzero error flags, never label OK
  assert(decode(bad,"00013482","munia")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ assert(text_fields::decode(bad.data(),bad.size(),"munia").count==0);
+ bad=m1;bad[31]=0x80; // upper error-flags byte also requires zero
+ assert(decode(bad,"00220111","munia")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ bad=m0;bad[12]=0x04; // TPL power-low status is unverified
+ assert(decode(bad,"00013482","munia")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ assert(text_fields::decode(bad.data(),bad.size(),"munia").count==0);
+ bad=m1;bad[12]=0x80; // do not mask unknown TPL status bits
+ assert(decode(bad,"00220111","munia")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ CalcValue limited_values[11]{};
+ DecodedPayload limited{limited_values,11,0,dates,2,0};
+ assert(batch2_plain::decode_configured(m0.data(),m0.size(),
+     "00013482","00013482","munia",caps,12,limited)==
+     PureDecodeStatus::DecodeFailure);
+ assert(limited.value_count==0);
  bad=m0;bad[46]=0x01; // non-padding tail
  assert(decode(bad,"00013482","munia")!=PureDecodeStatus::Ok);
  bad=m0;bad[0]++;

@@ -537,9 +537,11 @@ inline PureDecodeStatus decode_configured_plain_frame(
        {"consumption_at_set_date_8_m3",r.consumption_at_set_date_8_m3};
     return PureDecodeStatus::Ok;
   }
-  // WEP Munia: two public clear-temperature/humidity BCD profiles.
+  // WEP Munia: two verified clear temperature/humidity BCD profiles.
+  // Both TPL status and the manufacturer error-flags record must be
+  // zero before zero-valued Analyzer diagnostics may be published.
   if(driver_name && std::strcmp(driver_name,"munia")==0) {
-    if(!output.values || output.value_capacity<2)
+    if(!output.values || output.value_capacity<12)
       return PureDecodeStatus::DecodeFailure;
     if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
        wmbus_pure::publication::Decision::Allowed)
@@ -549,7 +551,17 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"current_temperature_c",r.current_temperature_c};
     output.values[1]={"current_relative_humidity_rh",r.current_relative_humidity_rh};
-    output.value_count=2;return PureDecodeStatus::Ok;
+    output.values[2]={"tpl_status_raw",static_cast<double>(r.tpl_status)};
+    output.values[3]={"tpl_status_unknown_raw",0.0};
+    output.values[4]={"error_flags_raw",static_cast<double>(r.error_flags)};
+    output.values[5]={"error_flags_unknown_raw",0.0};
+    output.values[6]={"status_alarm",0.0};
+    output.values[7]={"status_busy",0.0};
+    output.values[8]={"status_error",0.0};
+    output.values[9]={"status_permanent_error",0.0};
+    output.values[10]={"status_power_low",0.0};
+    output.values[11]={"status_temporary_error",0.0};
+    output.value_count=12;return PureDecodeStatus::Ok;
   }
   // QHeat 5.5 US: bounded original Mode-0 energy and billing readings.
   if(driver_name && std::strcmp(driver_name,"qheat_55_us")==0) {

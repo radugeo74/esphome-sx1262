@@ -1,3 +1,75 @@
+## WEP Munia — temperatură, umiditate și diagnostice complete (2026-11-10)
+
+Cele două exemple originale din `munia.xmq` sunt `WEP/02/1B`
+(ID `00013482`) și `WEP/04/1B` (ID `00220111`).
+Au fiecare 47 de octeți (inclusiv octetul inițial de lungime
+`0x2E`), CI=7A și TPL mode 0, fără criptare.
+
+| Câmp | 00013482 | 00220111 |
+| --- | ---: | ---: |
+| `current_temperature_c` | 20.1 | 21.7 |
+| `current_relative_humidity_rh` | 65.7 | 61.0 |
+| `status` (text) | OK | OK |
+| `tpl_status_raw`, `error_flags_raw` | 0 | 0 |
+| `tpl_status_unknown_raw`, `error_flags_unknown_raw` | 0 | 0 |
+| Toți cei șase indicatori `status_*` standard | 0 | 0 |
+
+În `xmq_sensors` sunt disponibili opțional `tpl_status_raw`,
+`tpl_status_unknown_raw`, `error_flags_raw`,
+`error_flags_unknown_raw`, `status_alarm`, `status_busy`,
+`status_error`, `status_permanent_error`,
+`status_power_low` și `status_temporary_error`, pe lângă
+temperatură și umiditate. În `xmq_text_sensors` rămâne `status`.
+
+Se publică `OK` și indicatoarele zero **numai** dacă ambele
+câmpuri de status (TPL și înregistrarea `02FD971D`) sunt
+zero, după verificarea DLL CRC, a ID-ului configurat, a modelului,
+a securității și a profilului BCD. Telegramelor cu erori,
+criptate sau necunoscute li se refuză publicarea; nu se ghicește
+semnificația biților suplimentari.
+
+Exemplu cu ID din fixture (înlocuiți-l pentru un dispozitiv real):
+
+```yaml
+  meter_drivers:
+    - meter_id: "00013482"
+      driver: auto  # sau munia
+  xmq_sensors:
+    - meter_id: "00013482"
+      field: current_temperature_c
+      sensor:
+        name: "Munia temperatură"
+        unit_of_measurement: "°C"
+        accuracy_decimals: 1
+    - meter_id: "00013482"
+      field: current_relative_humidity_rh
+      sensor:
+        name: "Munia umiditate"
+        unit_of_measurement: "%"
+        accuracy_decimals: 1
+    - meter_id: "00013482"
+      field: error_flags_raw
+      sensor:
+        name: "Munia erori brute"
+    - meter_id: "00013482"
+      field: tpl_status_raw
+      sensor:
+        name: "Munia TPL brut"
+  xmq_text_sensors:
+    - meter_id: "00013482"
+      field: status
+      sensor:
+        name: "Munia stare"
+```
+
+Generatorul verifică ambele MVT/ID-uri, toate cele trei chei DIF/VIF,
+valorile BCD, valoarea de eroare, lungimea, padding-ul și întregul
+JSON de referință din sursa XMQ. Testele native includ câmpurile
+numerice și text, selectarea `auto`, configurații invalide,
+capacitate insuficientă și stări cu erori nenule. Nu au fost
+modificate partea radio, alte drivere sau firmware-ul instalat.
+Acestea sunt teste software; nu probe RF live.
+
 ## Elvaco CMA12w — paritate completă pentru două exemple XMQ (2026-11-10)
 
 Cele două telegrame publice originale `ELV/20/1B` și `ELV/1F/1B`

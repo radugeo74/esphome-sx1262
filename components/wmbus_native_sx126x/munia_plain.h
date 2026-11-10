@@ -10,7 +10,11 @@
 #include "xmq_generated_clear_profiles.h"
 namespace xmq_portable { namespace munia {
 enum class Status : uint8_t {Ok,Invalid,WrongModel,NotClear,BadRecords,Missing,Duplicate};
-struct Reading {double current_temperature_c{0},current_relative_humidity_rh{0};};
+struct Reading {
+ double current_temperature_c{0},current_relative_humidity_rh{0};
+ uint8_t tpl_status{0};
+ uint16_t error_flags{0};
+};
 inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
  out={};wmbus_pure::Header h{};
  if(wmbus_pure::parse_header(frame,length,h)!=wmbus_pure::HeaderStatus::Ok)
@@ -38,6 +42,9 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
  if(standard::records(frame+17,15,rec,4,count)!=standard::Status::Ok)
    return Status::BadRecords;
  Reading next{};bool temp=false,humidity=false;
+ next.tpl_status=frame[12];
+ next.error_flags=static_cast<uint16_t>(frame[30]) |
+     (static_cast<uint16_t>(frame[31]) << 8);
  for(size_t i=0;i<count;++i) {
     const auto &r=rec[i];
     if(!r.numeric || r.storage || r.function || r.tariff ||

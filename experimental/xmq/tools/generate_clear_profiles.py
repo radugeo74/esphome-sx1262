@@ -100,6 +100,18 @@ def check(path, rules):
             if len(names)!=1 or names[0] in field_map:
                 raise ValueError(f"{name}: ambiguous field")
             field_map[names[0]]=f["entries"]
+    if name=="munia":
+        status=field_map.get("status",[])
+        lookups=blocks(status,"lookup")
+        if (values(status,"quantity")!=["Flags"] or
+                values(status,"attributes")!=["STATUS,INCLUDE_TPL_STATUS"] or
+                len(lookups)!=1 or
+                values(lookups[0]["entries"],"name")!=["ERROR_FLAGS"] or
+                values(lookups[0]["entries"],"map_type")!=["BitToString"] or
+                values(lookups[0]["entries"],"mask_bits")!=["0xffff"] or
+                values(lookups[0]["entries"],"default_message")!=["OK"] or
+                blocks(lookups[0]["entries"],"map")):
+            raise ValueError("munia: source status/error flags meaning changed")
     if name=="cma12w":
         # Verify original status and digital-input battery are raw flags.
         # No percentage or alarm meanings are inferred from the battery mask.
@@ -183,6 +195,7 @@ def check(path, rules):
     seen_lansen_status=set()
     seen_lansendw_status=set()
     seen_cma12w_ids=set()
+    seen_munia_ids=set()
     for sample in samples:
         s=sample["entries"]
         telegram=values(s,"telegram")
@@ -206,6 +219,51 @@ def check(path, rules):
                 if len(matches)!=1:
                     raise ValueError(f"{name}: missing/duplicate original {field} record")
                 positions[field]=matches[0]
+        if name=="munia":
+            expected=json.loads(values(s,"json")[0])
+            actual_id="".join(f"{byte:02X}" for byte in reversed(frame[4:8]))
+            known={
+                "00013482": (0x02, 201, 657),
+                "00220111": (0x04, 217, 610),
+            }
+            if actual_id not in known:
+                raise ValueError("munia: unknown original fixture ID")
+            version,temperature_tenths,humidity_tenths=known[actual_id]
+            if (len(frame)!=47 or frame[1]!=0x44 or
+                    mvt!=(manufacturer_code("WEP"),version,0x1B) or
+                    frame[12:17]!=bytes.fromhex("0000002F2F") or
+                    frame[17:19]!=bytes.fromhex("0A66") or
+                    frame[21:24]!=bytes.fromhex("0AFB1A") or
+                    frame[26:30]!=bytes.fromhex("02FD971D") or
+                    frame[30:32]!=bytes(2) or
+                    any(x!=0x2F for x in frame[32:])):
+                raise ValueError("munia: original radio/status profile changed")
+            def bcd4(start):
+                data=frame[start:start+2]
+                if len(data)!=2 or any((x&15)>9 or (x>>4)>9 for x in data):
+                    raise ValueError("munia: invalid BCD")
+                return sum(((x>>4)*10+(x&15))*100**i
+                           for i,x in enumerate(data))
+            current=bcd4(19)
+            humidity=bcd4(24)
+            keys={"_","media","driver","name","id","status",
+                  "current_temperature_c","current_relative_humidity_rh",
+                  "timestamp"}
+            args=values(s,"args")
+            if (current!=temperature_tenths or humidity!=humidity_tenths or
+                    set(expected)!=keys or expected["_"]!="telegram" or
+                    expected["media"]!="room sensor" or
+                    expected["driver"]!="munia" or
+                    expected["name"]!="TempoHygro" or
+                    expected["id"]!=actual_id or
+                    expected["status"]!="OK" or
+                    expected["current_temperature_c"]!=current/10 or
+                    expected["current_relative_humidity_rh"]!=humidity/10 or
+                    expected["timestamp"]!="1111-11-11T11:11:11Z" or
+                    len(args)!=1 or
+                    args[0].split()!=["TempoHygro","munia",actual_id,"NOKEY"]):
+                raise ValueError("munia: source JSON, BCD or fixture changed")
+            seen_munia_ids.add(actual_id)
         if name=="cma12w":
             expected=json.loads(values(s,"json")[0])
             actual_id="".join(f"{byte:02X}" for byte in reversed(frame[4:8]))
@@ -423,6 +481,8 @@ def check(path, rules):
                         frame[15:17]!=bytes.fromhex("2F2F")):
                     raise ValueError("maddalena: unreviewed radio layout")
             offsets=positions
+    if name=="munia" and seen_munia_ids!={"00013482","00220111"}:
+        raise ValueError("munia: missing source fixture or model")
     if name=="cma12w" and seen_cma12w_ids!={"66666666","68003902"}:
         raise ValueError("cma12w: missing one original source fixture")
     if name=="lansenpu" and seen_lansen_status!={0x00,0x04,0x4C}:
