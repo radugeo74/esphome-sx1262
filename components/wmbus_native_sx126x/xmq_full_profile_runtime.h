@@ -102,7 +102,7 @@ inline Status decode(const uint8_t *f,size_t n,
                      const xmq_compiled_profiles::Profile &profile,
                      Result &out) {
   out={};
-  if(!f || n<17 || n!=profile.verified_length ||
+  if(!f || n<17 ||
      !profile.rules || profile.rule_count==0 ||
      profile.rule_count>8 || !profile.models || !profile.states)
     return Status::Invalid;
@@ -114,6 +114,10 @@ inline Status decode(const uint8_t *f,size_t n,
   if(wmbus_pure::tpl_security::inspect(f,n).state!=
      wmbus_pure::tpl_security::State::NotEncrypted)
     return Status::EncryptedOrUnknown;
+  // Security classification must precede source-fixture size admission:
+  // an already-decrypted upstream iPERL fixture has N=1 and a different
+  // length. It remains EncryptedOrUnknown, never a plaintext RF reading.
+  if(n!=profile.verified_length) return Status::Invalid;
   const uint16_t cfg=u16(f+13);
   bool matched_model=false;
   for(size_t i=0;i<profile.model_count;++i) {
