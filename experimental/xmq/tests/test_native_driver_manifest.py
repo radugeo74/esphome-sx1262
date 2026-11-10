@@ -75,6 +75,41 @@ def main():
     assert 'append(out,"software_version",reading.software_version);' in text_router
     native_yaml = (ROOT / "components/wmbus_native_sx126x/__init__.py").read_text()
     assert '"software_version"' in native_yaml  # binding exposed as ESPHome text_sensor
+    # Source-driven full-field regression: all original Supercom587 JSON
+    # values are validated by the generator, not just the BCD total.
+    official_supercom = (ROOT / "experimental/xmq/drivers/supercom587.xmq").read_text()
+    mutations = (
+        ('"total_m3":5.548', '"total_m3":5.549'),
+        ('"software_version":"010002"', '"software_version":"010003"'),
+        ('"status":"OK"', '"status":"LOW_BATTERY"'),
+        ('"media":"warm water"', '"media":"water"'),
+        ('"timestamp":"1111-11-11T11:11:11Z"',
+         '"timestamp":"2026-11-10T00:00:00Z"'),
+        ('"id":"12345678"', '"id":"12345679"'),
+        ('"name":"MyWarmWater"', '"name":"DifferentName"'),
+        ('"driver":"supercom587"', '"driver":"other"'),
+        ('"software_version":"010002"', '"software_version":"010002","unknown_field":"x"'),
+        ('use = software_version', 'use = different_software_version'),
+        ('mvt = SON,3c,06', 'mvt = SON,3d,06'),
+        ('0BFD0F020001', '0BFD0F0A0001'),
+        ('02FD170000', '02FD170100'),
+    )
+    with TemporaryDirectory() as tmp:
+        drivers = Path(tmp)
+        for name in SPECS:
+            (drivers / f"{name}.xmq").write_text(
+                (ROOT / "experimental/xmq/drivers" / f"{name}.xmq").read_text())
+        modified = drivers / "supercom587.xmq"
+        for original, changed in mutations:
+            assert original in official_supercom, original
+            modified.write_text(official_supercom.replace(original, changed, 1))
+            try:
+                generate_clear_profiles(drivers)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(
+                    "Supercom587 generator accepted changed source: " + original)
     for driver in SPECS:
         header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
         assert '#include "xmq_generated_clear_profiles.h"' in header

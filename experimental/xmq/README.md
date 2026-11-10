@@ -1,3 +1,56 @@
+## Supercom587: generare și paritate pentru toate câmpurile XMQ (2026-11-10)
+
+- Driverul `supercom587` utilizează acum modele și reguli DIF/VIF
+  generate din `supercom587.xmq` în
+  `xmq_generated_clear_profiles.h`, inclusiv offseturile determinate
+  din **ambele exemple originale**. În firmware se validează modelul
+  SON/3C/06 (apă caldă) și SON/3C/07 (apă rece), CI=7A, profilul
+  necriptat, ID-ul configurat și forma de 163 octeți.
+- Datele din JSON-ul oficial sunt reproduse integral pentru măsurare
+  și diagnostic:
+  `total_m3` = 5.548 / 4.989,
+  `software_version` = `010002` pentru ambele,
+  `status` = `OK` pentru ambele.
+  `software_version` păstrează zerourile inițiale din cele 3 octeți
+  BCD și este publicabil prin `xmq_text_sensors`; `status` este
+  emis doar pentru indicatori de eroare 0. Indicatori necunoscuți,
+  BCD invalid, înregistrări lipsă sau antet criptat sunt respinși.
+- `name` este eticheta configurată în ESPHome, `id` este citit
+  din antet și corelat cu configurația, iar `media` corespunde
+  codului de aparat 06/07. `timestamp=1111-11-11...` din
+  fixture este **un placeholder al testului**, nu timpul emis
+  de contor: în Home Assistant se folosește timpul real al citirii.
+- Exemplu pentru un contor real, după înlocuirea ID-ului fictiv
+  `12345678` cu identificatorul lui și configurarea
+  secțiunilor existente `wmbus_native_sx126x`:
+
+```yaml
+  meter_drivers:
+    - meter_id: "12345678"  # exemplu public XMQ, nu un ID de productie
+      driver: supercom587   # sau auto, cu verificare MVT/ID
+  xmq_sensors:
+    - meter_id: "12345678"
+      field: total_m3
+      sensor:
+        name: "Supercom 587 consum total"
+        unit_of_measurement: "m³"
+        accuracy_decimals: 3
+  xmq_text_sensors:
+    - meter_id: "12345678"
+      field: software_version
+      sensor:
+        name: "Supercom 587 versiune software"
+    - meter_id: "12345678"
+      field: status
+      sensor:
+        name: "Supercom 587 stare"
+```
+
+- Testele verifică toate cele două exemple și toate câmpurile JSON
+  măsurabile, plus exemple negative de corupere sau modificare XMQ.
+  Decodoarele celorlate drivere și firmware-ul instalat nu sunt modificate.
+  O compilare CI verde nu este echivalentă cu o probă RF reală.
+
 ## Vario451: XMQ hex-IXML compilat în firmware (2026-11-10)
 
 - `generate_vario451_ixml.py` parcurge gramatica IXML originală
