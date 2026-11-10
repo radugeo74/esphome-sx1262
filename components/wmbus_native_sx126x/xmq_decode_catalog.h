@@ -445,9 +445,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[3]={"power_kw",r.power_kw};
     output.value_count=4;return PureDecodeStatus::Ok;
   }
-  // LSE/01/08: all XMQ fields, including elapsed readout hours.
+  // LSE/01/08: all XMQ fields and raw timing/status diagnostics.
   if(driver_name && std::strcmp(driver_name,"lse_08")==0) {
-    if(!output.values || output.value_capacity<2)
+    if(!output.values || output.value_capacity<4)
       return PureDecodeStatus::DecodeFailure;
     if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
        wmbus_pure::publication::Decision::Allowed)
@@ -457,7 +457,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"consumption_at_set_date_hca",r.consumption_at_set_date_hca};
     output.values[1]={"duration_since_readout_h",r.duration_since_readout_h};
-    output.value_count=2;return PureDecodeStatus::Ok;
+    output.values[2]={"duration_since_readout_s",r.duration_since_readout_s};
+    output.values[3]={"tpl_status_raw",r.tpl_status};
+    output.value_count=4;return PureDecodeStatus::Ok;
   }
   // DWZ Waterstarm: two clear fixed 151-byte upstream public profiles.
   if(driver_name && std::strcmp(driver_name,"waterstarm")==0) {

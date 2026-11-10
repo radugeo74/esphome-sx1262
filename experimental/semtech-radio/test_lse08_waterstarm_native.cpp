@@ -49,7 +49,9 @@ int main() {
  assert(decode(l0,"04998541","lse_08")==PureDecodeStatus::Ok);
  assert(has(out,"consumption_at_set_date_hca",321));
  assert(has(out,"duration_since_readout_h",2.489166666666667));
- assert(out.value_count==2);
+ assert(has(out,"duration_since_readout_s",8961));
+ assert(has(out,"tpl_status_raw",128));
+ assert(out.value_count==4);
  const auto text_status=text_fields::decode(l0.data(),l0.size(),"lse_08");
  assert(text_status.count==4);
  const auto text_eq=[&](const char*name,const char*expected){

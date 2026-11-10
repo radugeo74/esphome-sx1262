@@ -13,6 +13,7 @@ namespace xmq_portable { namespace lse_08 {
 enum class Status:uint8_t {Ok,Invalid,WrongModel,NotClear,BadRecords,Missing};
 struct Reading {
  double consumption_at_set_date_hca{0},duration_since_readout_h{0};
+ uint16_t duration_since_readout_s{0};
  uint8_t tpl_status{0};
  standard::Calendar set_date{},device_datetime{};
  char model_version[3]{};
@@ -57,7 +58,8 @@ inline Status decode(const uint8_t *frame,size_t n,Reading &out) {
  next.consumption_at_set_date_hca=rows[1].value;
  // Original source applies the "FutureValue" combinable to elapsed
  // readout seconds, converting the 0x2301 field to 2.489167 hours.
- next.duration_since_readout_h=rows[3].value/3600.0;
+ next.duration_since_readout_s=static_cast<uint16_t>(rows[3].raw);
+ next.duration_since_readout_h=next.duration_since_readout_s/3600.0;
  if(std::snprintf(next.model_version,sizeof(next.model_version),"%02X",
        static_cast<unsigned>(rows[4].raw))!=2)
     return Status::BadRecords;
