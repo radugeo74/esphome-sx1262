@@ -1,3 +1,26 @@
+## Contract obligatoriu: XMQ upstream -> generator nativ (2026-11-10)
+
+**IMPORTANT:** Toate cele 52 de familii folosesc implementari native
+ESPHome, dar **NUMAI 2** (`mkradio4`, `fhkvdataiii`) sunt generate
+functional din IXML/XMQ. Cele 43 de decodoare portabile au inca logica
+C++ manuala, chiar daca unele consuma tabele XMQ generate. Nu declara
+migrarea terminata pana cand selectorii, valorile, formulele si
+statusurile sunt compilate efectiv din sursa XMQ si verificate CI.
+
+Auditul comparativ upstream la revizia
+`f6ab1c28dab6f953198a4bfcbcfc353378951847`
+a gasit 51 din 52 surse XMQ identice; `fhkvdataiii` este in urma,
+cu doua fixture-uri suplimentare si un profil OMS 0x08 diferit.
+Nu actualiza sau instala orbeste: trebuie protejate numele de camp
+`current_hca`/`previous_hca` fata de `current_consumption_hca`
+si `consumption_at_set_date_hca`.
+
+Vezi [planul de migrare si auditul surselor](experimental/xmq/UPSTREAM_SOURCE_MIGRATION.md).
+Auditul are acum un instrument de comparare/staging fara modificarea
+sursei active: `experimental/xmq/tools/audit_upstream_drivers.py`.
+Un update al XMQ implica regenerare, teste, compilare si firmware nou,
+**nu** update dinamic la runtime. Nicio schimbare in recepția SX126x.
+
 ## Landis+Gyr Ultraheat — clear RF, TPL status și data cu secunde (2026-11-10)
 
 Cele trei exemple oficiale `ultraheat.xmq` sunt diferite: `MyUltra` /

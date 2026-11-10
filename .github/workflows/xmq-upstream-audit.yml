@@ -1,0 +1,60 @@
+name: Audit upstream wmbusmeters XMQ (no firmware changes)
+
+on:
+  workflow_dispatch:
+  # GitHub executes scheduled workflows only when this workflow is present
+  # on the repository DEFAULT branch. This experimental-branch copy is
+  # available for review/dispatch, not a claim of active scheduled alerts.
+  schedule:
+    - cron: '17 04 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  source-drift:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout pinned native experimental branch
+        uses: actions/checkout@v5
+        with:
+          ref: experimental/xmq-multidriver-auto
+      - name: Check out current upstream XMQ sources read-only
+        run: |
+          git clone -q --depth 1 --filter=blob:none --sparse \
+            https://github.com/wmbusmeters/wmbusmeters.git /tmp/wmbusmeters
+          git -C /tmp/wmbusmeters sparse-checkout set drivers/src
+          git -C /tmp/wmbusmeters rev-parse HEAD > /tmp/wmbusmeters-upstream-revision
+      - name: Report all 52 native XMQ source differences
+        run: |
+          python3 experimental/xmq/tools/audit_upstream_drivers.py \
+            --upstream-dir /tmp/wmbusmeters/drivers/src \
+            --upstream-revision "$(cat /tmp/wmbusmeters-upstream-revision)" \
+            --json /tmp/xmq-upstream-report.json \
+            --markdown "$GITHUB_STEP_SUMMARY" \
+            --stage-dir /tmp/xmq-upstream-stage
+      - name: Flag source drift for manual compiler and security review
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("/tmp/xmq-upstream-report.json").read_text())
+          for item in report["drivers"]:
+              if item["status"]!="IDENTICAL":
+                  print(f"::warning title=XMQ source update::{item['driver']} {item['status']} "
+                        f"({item['native_implementation']}); review required")
+          if report["changed"]:
+              raise SystemExit("Source changes require manual XMQ compiler parity review; "
+                               "firmware was NOT updated")
+          print("All native XMQ source snapshots match official upstream")
+          PY
+      - name: Upload source drift report for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-xmq-upstream-source-audit
+          path: |
+            /tmp/xmq-upstream-report.json
+            /tmp/wmbusmeters-upstream-revision
+            /tmp/xmq-upstream-stage/*.xmq
+          if-no-files-found: warn

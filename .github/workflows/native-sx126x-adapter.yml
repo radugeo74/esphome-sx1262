@@ -215,6 +215,8 @@ jobs:
           /tmp/test-compact5-vario451
       - name: Verify all three original Ultraheat XMQ JSON and transport provenance
         run: python3 experimental/xmq/tests/test_ultraheat_source_parity.py
+      - name: Audit native XMQ upstream comparison tool and 52-driver coverage
+        run: python3 experimental/xmq/tests/test_upstream_xmq_audit.py
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 52 drivers
