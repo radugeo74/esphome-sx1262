@@ -34,6 +34,51 @@ def main():
         ROOT / "experimental/xmq/drivers")
     pair = generated["xmq_generated_supercal_lse08.h"]
     assert pair == generate_supercal_lse08(ROOT / "experimental/xmq/drivers")
+    # Deliberately alter individual upstream fields/frames; the profile
+    # compiler must reject changes instead of silently dropping a field.
+    mutations = {
+        "supercal": (
+            ("mvt = SON,1b,04", "mvt = SON,1b,05"),
+            ('"target_kwh": 0', '"target_kwh": 1'),
+            ('"meter_datetime": "2023-03-04 18:54"',
+             '"meter_datetime": "2023-03-04 18:55"'),
+            ("820A6CE1F1", "820A6CE1F2"),
+            ('"total_kwh": 296', '"total_kwh": 297'),
+            ("storage_nr       = 20", "storage_nr       = 21"),
+        ),
+        "lse_08": (
+            ("mvt = LSE,01,08", "mvt = LSE,01,09"),
+            ('"duration_since_readout_h":2.489167',
+             '"duration_since_readout_h":2.5'),
+            ('"model_version":"01"', '"model_version":"02"'),
+            ('"status":"TPL_STS_128"', '"status":"OK"'),
+            ("02fdac7e0123", "02fdac7e0124"),
+            ("add_combinable   = FutureValue",
+             "add_combinable   = PastValue"),
+        ),
+    }
+    with TemporaryDirectory() as tmp:
+        driver_dir = Path(tmp)
+        for name in mutations:
+            source_xmq = (ROOT / "experimental/xmq/drivers" /
+                          f"{name}.xmq").read_text()
+            (driver_dir / f"{name}.xmq").write_text(source_xmq)
+        for name, trials in mutations.items():
+            original = (ROOT / "experimental/xmq/drivers" /
+                        f"{name}.xmq").read_text()
+            for before, after in trials:
+                assert before in original, f"missing original {name}: {before}"
+                (driver_dir / f"{name}.xmq").write_text(
+                    original.replace(before, after, 1))
+                try:
+                    generate_supercal_lse08(driver_dir)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(
+                        f"{name}: altered source was accepted: {before}")
+            (driver_dir / f"{name}.xmq").write_text(original)
+
     assert "namespace supercal {" in pair
     assert "namespace lse_08 {" in pair
     assert "verified_length=69;" in pair
