@@ -1,3 +1,46 @@
+## Vario451: diagnostic complet al payloadului CI=A2 (2026-11-10)
+
+Pe lângă paritatea 3/3 pentru rezultatele XMQ `previous_kwh`,
+`current_kwh`, `total_kwh`, decodorul expune **opțional** și
+cele două contoare brute (marcate `HIDE` în XMQ-ul original):
+`prev_raw_counter=13112` și `curr_raw_counter=9826`
+(în unitățile originale mGJ). Conversia rămâne XMQ
+`previous=prev/3.6`, `current=curr/3.6`,
+`total=(prev+curr)/3.6`.
+
+Se poate configura și textul `mfct_payload_hex`: întreaga zonă
+manufacturer-specific CI=A2 de **45 octeți**, păstrată ca 90 de
+caractere HEX, fără interpretarea cozii proprietare Techem.
+Câmpul este diagnostic brut, **nu** un senzor de energie;
+niciun `status` sau alt câmp necunoscut nu este inventat.
+
+```yaml
+  xmq_sensors:
+    - meter_id: "58234965"  # ID public fictiv din fixture
+      field: prev_raw_counter
+      sensor:
+        name: "Vario451 contor brut anterior"
+    - meter_id: "58234965"
+      field: curr_raw_counter
+      sensor:
+        name: "Vario451 contor brut curent"
+  xmq_text_sensors:
+    - meter_id: "58234965"
+      field: mfct_payload_hex
+      sensor:
+        name: "Vario451 payload CI-A2 HEX"
+```
+
+Aceste entități sunt create doar dacă sunt cerute în YAML. Nu
+se schimbă `driver: auto` sau driverul explicit. Este admis
+exclusiv formatul original TCH/27/C3, CI=A2, 56 octeți, cu
+identificator configurat, validarea structurii și controlul
+de publicare deja existent. Nu se introduce o cale generică
+pentru CI=A2 sau pentru modelul neverificat TCH/27/04.
+Testul pe telegrama publică verifică valorile brute, cele trei
+energii, egalitatea exactă a payloadului HEX și respingerile
+negative. Nu s-a făcut flash și nu s-a validat RF live.
+
 ## Supercal 739 + LSE/01/08: toate câmpurile XMQ și diagnostice (2026-11-10)
 
 **Branch:** `experimental/xmq-multidriver-auto`; generatorul
