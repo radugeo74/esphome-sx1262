@@ -199,6 +199,40 @@ def main():
         assert f"xmq_generated_clear::{driver}::models" in header
         assert f"xmq_generated_clear::{driver}::rules" in header
     assert "lansenpu" in SUPPORTED
+    # The manufacturer-specific 0x40 bit is SABOTAGE_ENCLOSURE. Do not
+    # silently lose any original JSON field, status meaning, or pulse value.
+    pulse_router = (ROOT / "components/wmbus_native_sx126x/xmq_decode_catalog.h").read_text()
+    for field in ("tpl_status_raw", "status_power_low",
+                  "status_permanent_error", "status_sabotage_enclosure"):
+        assert f'{{"{field}",' in pulse_router
+    upstream_pulse = (ROOT / "experimental/xmq/drivers/lansenpu.xmq").read_text()
+    sabotage_mutations = (
+        ("value = 0x40", "value = 0x20"),
+        ("mask_bits       = 0xe0", "mask_bits       = 0xc0"),
+        ("attributes = STATUS,INCLUDE_TPL_STATUS", "attributes = STATUS"),
+        ('"b_counter":870', '"b_counter":871'),
+        ('"status":"PERMANENT_ERROR POWER_LOW SABOTAGE_ENCLOSURE"',
+         '"status":"POWER_LOW"'),
+        ("mvt = LAS,0b,02", "mvt = LAS,0b,03"),
+        ("8E40FD3A700800000000", "8E40FD3A700900000000"),
+    )
+    with TemporaryDirectory() as tmp:
+        sample_dir=Path(tmp)
+        for name in SPECS:
+            (sample_dir / f"{name}.xmq").write_text(
+                (ROOT / "experimental/xmq/drivers" / f"{name}.xmq").read_text())
+        source_lansen=sample_dir / "lansenpu.xmq"
+        for before,after in sabotage_mutations:
+            assert before in upstream_pulse, before
+            source_lansen.write_text(upstream_pulse.replace(before,after,1))
+            try:
+                generate_clear_profiles(sample_dir)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(
+                    "Lansen Pulse accepted modified source: "+before)
+
     assert 'std::strcmp(name, "lansenpu")' in compiled
     for experimental in CONFIGURED_NATIVE:
         assert experimental in CONFIGURABLE
