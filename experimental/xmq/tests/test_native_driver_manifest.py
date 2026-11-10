@@ -247,7 +247,14 @@ def main():
         header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
         assert '#include "xmq_generated_clear_profiles.h"' in header
         assert f"xmq_generated_clear::{driver}::models" in header
-        assert f"xmq_generated_clear::{driver}::rules" in header
+        if driver=="lansenpu":
+            # Its record keys, names and statuses now compile directly
+            # from XMQ via the dedicated source-backed pulse compiler.
+            assert "xmq_generated_pulse::lansenpu::find_field" in header
+            assert "xmq_generated_pulse::lansenpu::statuses" in generated[
+                "xmq_generated_pulse_fields.h"]
+        else:
+            assert f"xmq_generated_clear::{driver}::rules" in header
     # Lansen DW: protect every upstream C! field and the Lansen
     # OPEN/CLOSED + unknown TPL/error-bit interpretation.
     dw_router = (ROOT / "components/wmbus_native_sx126x/xmq_decode_catalog.h").read_text()
