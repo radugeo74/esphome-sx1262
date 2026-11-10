@@ -179,7 +179,7 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
   if(std::strcmp(driver,"munia")==0) {
     munia::Reading r{};
     if(munia::decode(frame,size,r)!=munia::Status::Ok)return out;
-    append(out,"status","OK"); // two original zero-status clear frames
+    append(out,"status",munia::status_text(r.tpl_status,r.error_flags));
     return out;
   }
   if(std::strcmp(driver,"waterstarm")==0) {
@@ -259,10 +259,8 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
   if (std::strcmp(driver, "iperl") == 0) {
     iperl::Reading reading{};
     if (iperl::decode(frame, size, reading) != iperl::Status::Ok) return out;
-    // Only status patterns explicitly covered by official iPERL fixtures.
-    if (reading.tpl_status == 0) append(out, "status", "OK");
-    else if (reading.tpl_status == 0x06)
-      append(out, "status", "ERROR POWER_LOW");
+    const char*status=iperl::status_text(reading.tpl_status);
+    if(status) append(out,"status",status);
     return out;
   }
   if (std::strcmp(driver, "hydrus") != 0) return out;

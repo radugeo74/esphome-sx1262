@@ -88,6 +88,50 @@ def main():
     assert generated["xmq_generated_full_profiles.h"]==source_compiled
     assert "namespace cma12w {" in source_compiled
     assert "namespace lansendw {" in source_compiled
+    assert "namespace iperl {" in source_compiled
+    assert "namespace munia {" in source_compiled
+    assert '"total_m3"' in source_compiled
+    assert '"max_flow_m3h"' in source_compiled
+    assert '"current_temperature_c"' in source_compiled
+    assert '"current_relative_humidity_rh"' in source_compiled
+    assert '"ERROR POWER_LOW"' in source_compiled
+    assert '0x06,0x0000' in source_compiled
+    # Both wrappers call the same generated application-profile interpreter.
+    for name in ("iperl","munia"):
+        header=(ROOT / "components/wmbus_native_sx126x" / f"{name}_plain.h").read_text()
+        assert "full_xmq::decode(" in header
+        assert f"xmq_compiled_profiles::{name}::profile" in header
+    # Prevent new source record selectors, TPL meanings or fixtures from
+    # being silently skipped by the XMQ compiler.
+    for name,mutations in (
+        ("iperl",(
+            ("vif_range        = VolumeFlow","vif_range        = ExternalTemperature"),
+            ('"total_m3":123.529','"total_m3":123.528'),
+            ("mvt = SEN,68,07","mvt = SEN,69,07"),
+            ('"status":"ERROR POWER_LOW"','"status":"OK"'),
+        )),
+        ("munia",(
+            ("difvifkey = 02FD971D","difvifkey = 02FD971E"),
+            ('"current_temperature_c":20.1','"current_temperature_c":20.2'),
+            ("mvt = WEP,02,1b","mvt = WEP,03,1b"),
+            ('"status":"OK"','"status":"UNKNOWN"'),
+        )),
+    ):
+        original=(ROOT / "experimental/xmq/drivers" / f"{name}.xmq").read_text()
+        with TemporaryDirectory() as td:
+            scratch=Path(td)
+            for x in ("iperl","munia","cma12w","lansendw"):
+                (scratch/f"{x}.xmq").write_text(
+                    (ROOT / "experimental/xmq/drivers" / f"{x}.xmq").read_text())
+            for before,after in mutations:
+                assert before in original
+                (scratch/f"{name}.xmq").write_text(original.replace(before,after,1))
+                try:
+                    generate_xmq_full_profiles(scratch)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f"{name} accepted unsafe XMQ drift: {before}")
     assert '"current_temperature_c"' in source_compiled
     assert '"average_temperature_1h_c"' in source_compiled
     assert '"a_counter"' in source_compiled and '"b_counter"' in source_compiled

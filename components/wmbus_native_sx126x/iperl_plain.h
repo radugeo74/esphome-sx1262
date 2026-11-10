@@ -6,6 +6,7 @@
 #include "pure_frame_header.h"
 #include "standard_dif_vif.h"
 #include "xmq_standard_match_runtime.h"
+#include "xmq_full_profile_runtime.h"
 #include "tpl_security_probe.h"
 
 namespace xmq_portable { namespace iperl {
@@ -58,35 +59,35 @@ inline Status decode_clear_application(const uint8_t *payload,size_t payload_siz
   }
   return Status::Ok;
 }
-// Strict on-air decoder: Mode 0 with N=0 only, never NOKEY-by-comment.
-inline Status decode(const uint8_t *frame, size_t size, Reading &out) {
-  out = {};
-  wmbus_pure::Header h{};
-  if (wmbus_pure::parse_header(frame, size, h) != wmbus_pure::HeaderStatus::Ok)
-    return Status::InvalidFrame;
-  // Exact source MVT triples: SEN/68/06, SEN/68/07, SEN/7C/07.
-  // In particular, SEN/7C/06 has no source detection contract.
-  const bool model=(h.version==0x68 &&
-                    (h.device_type==0x06 || h.device_type==0x07)) ||
-                   (h.version==0x7C && h.device_type==0x07);
-  if (h.manufacturer != 0x4CAE || !model || h.ci != 0x7A)
+// The one native RF admission/record/value/status interpreter is shared with
+// CMA12w, LansenDW and Munia. The separate helper above is offline-only:
+// upstream's first iPERL fixture is ALREADY DECRYPTED and must not be
+// accidentally promoted as a clear on-air telegram.
+inline const char *status_text(uint8_t tpl) {
+  const auto &p=xmq_compiled_profiles::iperl::profile;
+  for(size_t i=0;i<p.state_count;++i)
+    if(p.states[i].tpl==tpl && p.states[i].error==0)
+      return p.states[i].text;
+  return nullptr;
+}
+inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
+  out={};
+  full_xmq::Result value{};
+  const auto status=full_xmq::decode(
+    frame,length,xmq_compiled_profiles::iperl::profile,value);
+  if(status!=full_xmq::Status::Ok) {
+    if(status==full_xmq::Status::EncryptedOrUnknown)
+      return Status::Encrypted;
+    if(status==full_xmq::Status::Invalid)
+      return Status::InvalidFrame;
     return Status::Unsupported;
-  if(size<15) return Status::InvalidFrame;
-  // Shared 5-bit OMS check also validates the encrypted-block count N.
-  const auto security=wmbus_pure::tpl_security::inspect(frame,size);
-  if(security.state!=wmbus_pure::tpl_security::State::NotEncrypted)
-    return Status::Encrypted;
-  // The only public clear on-air examples use exact TPL status 0x00
-  // (OK) and 0x06 (ERROR POWER_LOW). Other states are not decoded as
-  // healthy, even when the two measurement records look plausible.
-  if(frame[12]!=0x00u && frame[12]!=0x06u)
-    return Status::Unsupported;
-  Reading decoded{};
-  const auto result=decode_clear_application(frame+15,size-15,decoded);
-  if(result!=Status::Ok) return result;
-  decoded.tpl_status=frame[12];
-  decoded.power_low=(frame[12]&0x04u)!=0;
-  out=decoded;
+  }
+  Reading result{};
+  result.total_m3=value.numeric[0];
+  result.max_flow_m3h=value.numeric[1];
+  result.tpl_status=value.tpl_status;
+  result.power_low=(value.tpl_status&0x04u)!=0;
+  out=result;
   return Status::Ok;
 }
 } } // namespace xmq_portable::iperl

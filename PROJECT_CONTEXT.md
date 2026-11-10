@@ -1,3 +1,53 @@
+## Migrare XMQ completă pentru profilele radio documentate — iPERL + Munia (2026-11-10)
+
+Al doilea calup de două familii este `iperl` și `munia`.
+Am extins **același** compilator
+`generate_xmq_full_profiles.py` și același interpret
+`xmq_full_profile_runtime.h` folosite deja de
+`cma12w` și `lansendw`. Compilatorul verifică
+`detect.mvt`, selectorii `match.measurement_type`,
+`match.vif_range`, `difvifkey`, unitățile și
+`status`/lookup-urile XMQ, plus întregul JSON original.
+Produce tabelele native în `xmq_generated_full_profiles.h`.
+
+Cele două decodoare `iperl_plain.h` și `munia_plain.h`
+au devenit adaptoare scurte către interpretul comun:
+nicio parcurgere proprie a înregistrărilor pentru traficul RF.
+Au fost extinse operațiile standard `Unsigned32` și `Bcd4`,
+cu scalarea din tipurile câmpurilor; numele de măsurători
+și mesajele de stare sunt din profilele generate.
+`iperl::decode_clear_application` rămâne **doar**
+o funcție compatibilă de testare offline a unor date deja
+decriptate, nicidecum o cale de publicare RF.
+
+**iPERL:** `SEN/68/07` cu exemplarele wireless reale
+necriptate `33225544`, `total_m3=123.529`,
+`max_flow_m3h=0`, stările `OK` și
+`ERROR POWER_LOW`. Primul exemplu `12345699`
+(`tpl-cfg=0x0010`, `N=1`) este verificat pentru
+paritatea XMQ, dar NU intră în mode0 RF fără cheia
+și decriptarea verificată.
+
+**Munia:** `WEP/02/1B` și `WEP/04/1B`,
+`20.1/65.7` și `21.7/61` pentru temperatură
+și umiditate, status `OK`, raport brut erori zero;
+întregul profil de 47 octeți necesită
+exact două octeți `2F` înainte de înregistrări și
+15 după acestea. Orice schimbare necunoscută de TPL,
+erori, BCD, lungime, structură, ordine, ID sau mod de
+securitate este respinsă fără publicare.
+
+CI verifică cele cinci fixture-uri originale (3 iPERL,
+2 Munia), teste negative, generare și mutații XMQ
+necompatibile. Ca la restul proiectului, un update
+upstream cere recompilare, teste și firmware nou.
+Nu s-a făcut flash pe Heltec.
+
+**Limită:** „complet” se referă la semantica
+**profilelor și fixture-urilor sursă acceptate**,
+nu la toate variantele posibile ale hardware-ului
+și nici la decriptarea automată a telegramelor noi.
+
 ## Calup de migrare XMQ completă pentru profilurile disponibile: CMA12w + Lansen DW (2026-11-10)
 
 Primele două familii convertite de la decodoare C++ independente la

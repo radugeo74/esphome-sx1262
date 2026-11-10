@@ -78,7 +78,7 @@ def source_fields(driver):
         selectors = {}
         if match:
             data = match[0]["entries"]
-            for key in ("measurement_type","vif_range","storage_nr","subunit_nr"):
+            for key in ("measurement_type","vif_range","storage_nr","subunit_nr","difvifkey"):
                 s = one(data,key,False)
                 if s is not None:
                     selectors[key] = s
@@ -421,7 +421,7 @@ def generate(path:Path):
         "#include <cstdint>",
         "#include <cstddef>",
         "namespace xmq_compiled_profiles {",
-        "enum class Op : uint8_t { Signed16, Unsigned16, Bcd12, Version3 };",
+        "enum class Op : uint8_t { Signed16, Unsigned16, Bcd12, Version3, Unsigned32, Bcd4 };",
         "struct Model {uint16_t maker;uint8_t ver,medium;uint16_t config;};",
         "struct Rule {const char*name;uint8_t key[5];uint8_t key_len,bytes;Op op;double scale;};",
         "struct State {uint8_t tpl;uint16_t error;const char*text;};",
@@ -434,10 +434,13 @@ def generate(path:Path):
         " size_t verified_length;bool trailing_0f;",
         " uint8_t error_index,lookup_index,battery_index,version_index;",
         " const char* battery_prefix;",
+        " size_t leading_pad,trailing_pad;bool strict_layout;",
         "};",
     ]
     for name in DRIVERS:
         lines.extend(emit(compile_one(path/f"{name}.xmq")))
+    from generate_xmq_simple_profiles import generate as compile_simple
+    lines.extend(compile_simple(path).splitlines())
     lines.append("}")
     return "\n".join(lines)+"\n"
 

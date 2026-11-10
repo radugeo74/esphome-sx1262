@@ -59,6 +59,25 @@ inline bool apply(const xmq_compiled_profiles::Rule &rule,
       r.numeric[index]=static_cast<double>(number);
       return true;
     }
+    case Op::Unsigned32: {
+      if(rule.bytes!=4) return false;
+      const uint32_t raw=static_cast<uint32_t>(p[0]) |
+          static_cast<uint32_t>(p[1])<<8 |
+          static_cast<uint32_t>(p[2])<<16 |
+          static_cast<uint32_t>(p[3])<<24;
+      r.numeric[index]=static_cast<double>(raw)*rule.scale;
+      return std::isfinite(r.numeric[index]);
+    }
+    case Op::Bcd4: {
+      if(rule.bytes!=2) return false;
+      for(unsigned i=0;i<2;++i)
+        if((p[i]&0x0Fu)>9 || (p[i]>>4)>9) return false;
+      const unsigned num=static_cast<unsigned>(p[1]>>4)*1000u+
+         static_cast<unsigned>(p[1]&15u)*100u+
+         static_cast<unsigned>(p[0]>>4)*10u+(p[0]&15u);
+      r.numeric[index]=static_cast<double>(num)*rule.scale;
+      return std::isfinite(r.numeric[index]);
+    }
     case Op::Version3: {
       if(rule.bytes!=5 ||
          p[1]!='.' || p[3]!='.' ||
@@ -92,6 +111,9 @@ inline Status decode(const uint8_t *f,size_t n,
     return Status::Invalid;
   if(h.control!=0x44 || h.ci!=0x7A)
     return Status::WrongModel;
+  if(wmbus_pure::tpl_security::inspect(f,n).state!=
+     wmbus_pure::tpl_security::State::NotEncrypted)
+    return Status::EncryptedOrUnknown;
   const uint16_t cfg=u16(f+13);
   bool matched_model=false;
   for(size_t i=0;i<profile.model_count;++i) {
@@ -103,9 +125,6 @@ inline Status decode(const uint8_t *f,size_t n,
     }
   }
   if(!matched_model) return Status::WrongModel;
-  if(wmbus_pure::tpl_security::inspect(f,n).state!=
-     wmbus_pure::tpl_security::State::NotEncrypted)
-    return Status::EncryptedOrUnknown;
   const uint8_t tpl=f[12];
   bool known_status=false;
   for(size_t i=0;i<profile.state_count;++i)
@@ -116,9 +135,24 @@ inline Status decode(const uint8_t *f,size_t n,
   uint16_t seen=0;
   bool ending=false;
   size_t offset=15;
+  const size_t first_record=15u+profile.leading_pad;
+  if(profile.strict_layout) {
+    if(profile.leading_pad>n-15 || profile.trailing_pad>n-15-
+       profile.leading_pad) return Status::InvalidRecord;
+    for(size_t k=15;k<first_record;++k)
+      if(f[k]!=0x2F) return Status::InvalidRecord;
+    offset=first_record;
+  }
   while(offset<n) {
+    if(profile.strict_layout && offset>=n-profile.trailing_pad) {
+      if(seen!=((1u<<profile.rule_count)-1u)) return Status::Missing;
+      for(size_t k=offset;k<n;++k)
+        if(f[k]!=0x2F) return Status::InvalidRecord;
+      offset=n;
+      break;
+    }
     if(f[offset]==0x2F) {
-      if(ending) return Status::InvalidRecord;
+      if(profile.strict_layout || ending) return Status::InvalidRecord;
       ++offset;
       continue;
     }
@@ -144,12 +178,17 @@ inline Status decode(const uint8_t *f,size_t n,
     }
     if(matched<0) return Status::InvalidRecord;
     const unsigned i=static_cast<unsigned>(matched);
+    if(profile.strict_layout && i!=static_cast<unsigned>(
+       __builtin_popcount(static_cast<unsigned>(seen))))
+      return Status::InvalidRecord;
     if(seen&(1u<<i)) return Status::Duplicate;
     const auto &rule=profile.rules[i];
     if(!apply(rule,f+offset+rule.key_len,candidate,i))
       return Status::InvalidRecord;
     seen|=1u<<i;
     offset+=rule.key_len+rule.bytes;
+    if(profile.strict_layout && offset>n-profile.trailing_pad)
+      return Status::InvalidRecord;
   }
   if(seen!=((1u<<profile.rule_count)-1u) ||
      (profile.trailing_0f && !ending))
