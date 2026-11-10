@@ -457,8 +457,8 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"consumption_at_set_date_hca",r.consumption_at_set_date_hca};
     output.values[1]={"duration_since_readout_h",r.duration_since_readout_h};
-    output.values[2]={"duration_since_readout_s",r.duration_since_readout_s};
-    output.values[3]={"tpl_status_raw",r.tpl_status};
+    output.values[2]={"duration_since_readout_s",static_cast<double>(r.duration_since_readout_s)};
+    output.values[3]={"tpl_status_raw",static_cast<double>(r.tpl_status)};
     output.value_count=4;return PureDecodeStatus::Ok;
   }
   // DWZ Waterstarm: two clear fixed 151-byte upstream public profiles.
