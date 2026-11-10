@@ -114,7 +114,7 @@ def main():
         ("sontex868",176,8),
         ("maddalena",79,6),
     ):
-        assert f"namespace {driver} {{" in clear
+        assert f"namespace {driver} {{" in supercom_generated
         assert f"inline constexpr size_t verified_frame_bytes = {frame_len};" in clear
         assert f"xmq_generated_clear::{driver}::offsets" in (
             ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h"
