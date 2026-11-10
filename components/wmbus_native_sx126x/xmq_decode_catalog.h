@@ -195,7 +195,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
   // mode-zero short TPL, original DIF/VIF byte signatures and 12-digit BCD.
   // The preceding configured DLL ID is mandatory; no guessed AUTO driver.
   if(driver_name && std::strcmp(driver_name,"lansenpu")==0) {
-    if(!output.values || output.value_capacity<2)
+    // A/B optional pulse inputs, raw TPL byte, and three source-proven
+    // diagnostic bits. No publishing an unverified status combination.
+    if(!output.values || output.value_capacity<6)
       return PureDecodeStatus::DecodeFailure;
     if(wmbus_pure::publication::inspect(
           frame,length,header.meter_id)!=
@@ -208,6 +210,14 @@ inline PureDecodeStatus decode_configured_plain_frame(
       output.values[output.value_count++]={"a_counter",counts.a_counter};
     if(counts.has_b)
       output.values[output.value_count++]={"b_counter",counts.b_counter};
+    output.values[output.value_count++]={"tpl_status_raw",
+        static_cast<double>(counts.tpl_status)};
+    output.values[output.value_count++]={"status_power_low",
+        lansenpu::power_low(counts.tpl_status)?1.0:0.0};
+    output.values[output.value_count++]={"status_permanent_error",
+        lansenpu::permanent_error(counts.tpl_status)?1.0:0.0};
+    output.values[output.value_count++]={"status_sabotage_enclosure",
+        lansenpu::sabotage_enclosure(counts.tpl_status)?1.0:0.0};
     return PureDecodeStatus::Ok;
   }
   // Lansen door/window: exact documented clear records and BCD

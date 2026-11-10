@@ -88,10 +88,10 @@ int main() {
       first.data(),first.size(),"00010206","00010206","auto",
       collision,2)==nullptr);
 
-  xmq_portable::CalcValue values[4]{};
+  xmq_portable::CalcValue values[8]{};
   xmq_portable::CalendarDate dates[1]{};
   xmq_portable::Capture captures[12]{};
-  xmq_portable::DecodedPayload decoded{values,4,0,dates,1,0};
+  xmq_portable::DecodedPayload decoded{values,8,0,dates,1,0};
   using Status=xmq_portable::PureDecodeStatus;
   const auto decode=[&](const std::vector<uint8_t> &bytes,const char *id,
                         const char *driver="lansenpu") {
@@ -99,22 +99,34 @@ int main() {
         bytes.data(),bytes.size(),id,id,driver,captures,12,decoded);
   };
   assert(decode(first,"00010206")==Status::Ok);
-  assert(decoded.value_count==2);
+  assert(decoded.value_count==6);
   assert(value(decoded,"a_counter",4711));
   assert(value(decoded,"b_counter",1234));
+  assert(value(decoded,"tpl_status_raw",4));
+  assert(value(decoded,"status_power_low",1));
+  assert(value(decoded,"status_permanent_error",0));
+  assert(value(decoded,"status_sabotage_enclosure",0));
   auto status=xmq_portable::text_fields::decode(
       first.data(),first.size(),"lansenpu");
   assert(status.count==1 && std::strcmp(status.fields[0].name,"status")==0);
   assert(std::strcmp(status.fields[0].text,"POWER_LOW")==0);
 
   assert(decode(second,"00023750")==Status::Ok);
-  assert(decoded.value_count==1 && value(decoded,"b_counter",870));
+  assert(decoded.value_count==5 && value(decoded,"b_counter",870));
+  assert(value(decoded,"tpl_status_raw",0));
+  assert(value(decoded,"status_power_low",0));
+  assert(value(decoded,"status_permanent_error",0));
+  assert(value(decoded,"status_sabotage_enclosure",0));
   status=xmq_portable::text_fields::decode(
       second.data(),second.size(),"lansenpu");
   assert(status.count==1 && std::strcmp(status.fields[0].text,"OK")==0);
 
   assert(decode(third,"00023750")==Status::Ok);
-  assert(decoded.value_count==1 && value(decoded,"b_counter",870));
+  assert(decoded.value_count==5 && value(decoded,"b_counter",870));
+  assert(value(decoded,"tpl_status_raw",76));
+  assert(value(decoded,"status_power_low",1));
+  assert(value(decoded,"status_permanent_error",1));
+  assert(value(decoded,"status_sabotage_enclosure",1));
   status=xmq_portable::text_fields::decode(
       third.data(),third.size(),"lansenpu");
   assert(status.count==1);
@@ -126,7 +138,11 @@ int main() {
   a_only.resize(26);
   a_only[0]=static_cast<uint8_t>(a_only.size()-1);
   assert(decode(a_only,"00010206")==Status::Ok);
-  assert(decoded.value_count==1 && value(decoded,"a_counter",4711));
+  assert(decoded.value_count==5 && value(decoded,"a_counter",4711));
+  assert(value(decoded,"tpl_status_raw",4));
+  assert(value(decoded,"status_power_low",1));
+  assert(value(decoded,"status_permanent_error",0));
+  assert(value(decoded,"status_sabotage_enclosure",0));
   assert(decode(first,"00010207")==Status::InvalidMeterId);
   // Encryption may still match AUTO metadata; strict decoded-data admission
   // must reject it without stale counts or RSSI publication.
@@ -157,6 +173,12 @@ int main() {
   invalid[12]=0x80; // unknown TPL status must not be guessed
   assert(decode(invalid,"00010206")!=Status::Ok);
   assert(decoded.value_count==0);
+  invalid=third;
+  invalid[12]=0x4D; // extra unreviewed bit: never silently drop alarm
+  assert(decode(invalid,"00023750")!=Status::Ok);
+  assert(decoded.value_count==0);
+  assert(xmq_portable::text_fields::decode(
+      invalid.data(),invalid.size(),"lansenpu").count==0);
   invalid=first;
   invalid[8]=0x15; // unknown Lansen model
   assert(decode(invalid,"00010206")!=Status::Ok);

@@ -34,6 +34,12 @@ inline bool bcd12(const uint8_t *bytes,double &result) {
   result=static_cast<double>(decoded); // all 12-digit BCD values exactly representable
   return true;
 }
+// Public XMQ status examples prove bit 2=POWER_LOW, bit 3=
+// PERMANENT_ERROR, and manufacturer-specific bit 6=SABOTAGE_ENCLOSURE.
+// Unknown TPL statuses remain rejected by status_text() below.
+inline bool power_low(uint8_t status) { return (status & 0x04u)!=0; }
+inline bool permanent_error(uint8_t status) { return (status & 0x08u)!=0; }
+inline bool sabotage_enclosure(uint8_t status) { return (status & 0x40u)!=0; }
 inline const char *status_text(uint8_t status) {
   // Explicit original fixtures only; no guessed TPL state interpretation.
   if(status==0x00) return "OK";
