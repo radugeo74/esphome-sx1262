@@ -36,7 +36,10 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   if(wmbus_pure::publication::inspect(frame,length,h.meter_id)!=
      wmbus_pure::publication::Decision::Allowed)
     return Status::Encrypted;
-  using namespace xmq_generated_clear::supercom587;
+  const auto &rules=xmq_generated_clear::supercom587::rules;
+  const auto &offsets=xmq_generated_clear::supercom587::offsets;
+  const size_t verified_frame_bytes=
+      xmq_generated_clear::supercom587::verified_frame_bytes;
   // The two original 163-byte CI=7A profiles share all three record offsets.
   // Refuse unverified variants rather than declaring a random tail valid.
   if(length!=verified_frame_bytes || frame[12]!=0 || frame[13]!=0 ||
