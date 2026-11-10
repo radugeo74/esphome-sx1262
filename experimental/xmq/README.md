@@ -1,3 +1,102 @@
+## Supercal 739 + LSE/01/08: toate câmpurile XMQ și diagnostice (2026-11-10)
+
+**Branch:** `experimental/xmq-multidriver-auto`; generatorul
+`experimental/xmq/tools/generate_supercal_lse08.py` validează integral
+cele două exemple originale XMQ, semnăturile MVT și toate
+înregistrările DIF/VIF ale telegramelor. Produce
+`xmq_generated_supercal_lse08.h` pentru ESPHome și testele native.
+Verificarea CRC DLL și a ID-ului configurat rămâne obligatorie;
+nu se acceptă automat profile criptate sau necunoscute.
+
+**`supercal` (SON/1B/04, CI=7A, 69 octeți, 1/1 fixture):**
+- `xmq_sensors`: `total_kwh=296`, `target_kwh=0`,
+  `total_m3=44.26`, `target_m3=0`,
+  `flow_temperature_c=40.67`, `return_temperature_c=31.14`,
+  `volume_flow_m3h=0.285`, `power_kw=3.14`.
+- `xmq_text_sensors`: `meter_datetime="2023-03-04 18:54"`,
+  `target_date="2127-01-01"`, plus `status="OK"` din TPL 0.
+  Data neobișnuită **2127** se păstrează exact, fără corectări
+  speculative. Toate cele zece înregistrări CI=7A sunt decodate;
+  registrele cu `storage_nr=20` sunt ținte, nu totaluri curente.
+
+**`lse_08` (LSE/01/08, CI=7A, 42 octeți, 1/1 fixture):**
+- `xmq_sensors`: `consumption_at_set_date_hca=321`,
+  `duration_since_readout_h=2.4891667` (Analyzer rotunjește
+  la 2.489167), `duration_since_readout_s=8961`,
+  `tpl_status_raw=128`. Durata originală este 0x2301 secunde,
+  convertită la ore /3600; nu este o durată în secunde inventată.
+- `xmq_text_sensors`: `set_date="2003-01-31"`,
+  `device_datetime="2003-02-15 14:26"`,
+  `model_version="01"`, `status="TPL_STS_128"`.
+  **Nu se publică OK** pentru codul TPL 128 și nu se deduce o
+  semnificație de alarmă pentru biții necunoscuți. Nu există
+  `current_consumption_hca` în această telegramă, deci nu se
+  sintetizează un astfel de senzor din valoarea istorică.
+
+Exemplu minimal al câmpurilor nou adăugate, cu ID-urile **fictive**
+din fixture-urile originale (înlocuiți cu ID-urile proprii):
+
+```yaml
+  meter_drivers:
+    - meter_id: "89508019"
+      driver: supercal  # sau auto, exclusiv pentru ID configurat
+    - meter_id: "04998541"
+      driver: lse_08    # sau auto, exclusiv pentru ID configurat
+  xmq_sensors:
+    - meter_id: "89508019"
+      field: target_kwh
+      sensor:
+        name: "Supercal energie la data țintă"
+        unit_of_measurement: "kWh"
+    - meter_id: "89508019"
+      field: target_m3
+      sensor:
+        name: "Supercal volum la data țintă"
+        unit_of_measurement: "m³"
+    - meter_id: "04998541"
+      field: duration_since_readout_h
+      sensor:
+        name: "LSE durata de la citire"
+        unit_of_measurement: "h"
+    - meter_id: "04998541"
+      field: tpl_status_raw
+      sensor:
+        name: "LSE stare TPL brută"
+  xmq_text_sensors:
+    - meter_id: "89508019"
+      field: target_date
+      sensor:
+        name: "Supercal data țintă"
+    - meter_id: "89508019"
+      field: meter_datetime
+      sensor:
+        name: "Supercal data și ora contorului"
+    - meter_id: "04998541"
+      field: set_date
+      sensor:
+        name: "LSE data bilanțului"
+    - meter_id: "04998541"
+      field: device_datetime
+      sensor:
+        name: "LSE ora dispozitivului"
+    - meter_id: "04998541"
+      field: model_version
+      sensor:
+        name: "LSE versiune model"
+    - meter_id: "04998541"
+      field: status
+      sensor:
+        name: "LSE stare"
+```
+
+Câmpurile de metadate `media`, `name`, `id` provin din antet
+și configurație, iar `timestamp` din Analyzer este ora procesării,
+nu un registru al contorului; Home Assistant folosește ora recepției.
+Componentele de senzori se declară explicit în YAML, nu sunt
+auto-create. Testele native acoperă toate valorile JSON originale,
+diagnosticele brute și mutații negative; compilarea nu dovedește
+recepție RF pe hardware. Niciun flash pe Heltec.
+
 ## Sontex868 + Maddalena: toate câmpurile verificabile din fixture-urile XMQ (2026-11-10)
 
 **Ramura:** `experimental/xmq-multidriver-auto`. Generare și controale:
