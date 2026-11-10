@@ -47,8 +47,10 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
  next.average_temperature_1h_c=decoded.numeric[1];
  next.battery_bits=decoded.raw16[2];
  next.tpl_status=decoded.tpl_status;
- std::snprintf(next.software_version,sizeof(next.software_version),"%s",
-               decoded.formatted[3]);
+ // The shared compiler's Version3 operator emits exactly "d.d.d\0".
+ // Copy its six known bytes, not an unbounded 32-byte text buffer.
+ if(decoded.formatted[3][5]!='\0') return Status::SoftwareVersion;
+ std::memcpy(next.software_version,decoded.formatted[3],6);
  out=next;
  return Status::Ok;
 }
