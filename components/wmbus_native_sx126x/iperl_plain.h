@@ -5,6 +5,7 @@
 #include <cstdint>
 #include "pure_frame_header.h"
 #include "standard_dif_vif.h"
+#include "xmq_standard_match_runtime.h"
 #include "tpl_security_probe.h"
 
 namespace xmq_portable { namespace iperl {
@@ -36,16 +37,19 @@ inline Status decode_clear_application(const uint8_t *payload,size_t payload_siz
   bool flow = false;
   for (size_t i = 0; i < count; ++i) {
     const auto &r = rec[i];
-    if (!r.numeric || r.function != 0 || r.storage != 0 || r.tariff != 0)
-      continue;
-    if (r.vif >= 0x10 && r.vif <= 0x17) {
+    double native_value=0;
+    // The quantity, original XMQ name and VIF selectors are generated
+    // from current iperl.xmq rather than embedded in this C++ decoder.
+    if (xmq_standard::scaled(
+          xmq_generated_standard::iperl::fields[0],r,native_value)) {
       if (total) return Status::Unsupported;
-      out.total_m3 = r.value * standard::scale10(static_cast<int>(r.vif) - 0x16);
-      total = true;
-    } else if (r.vif >= 0x38 && r.vif <= 0x3F) {
+      out.total_m3=native_value;
+      total=true;
+    } else if (xmq_standard::scaled(
+          xmq_generated_standard::iperl::fields[1],r,native_value)) {
       if (flow) return Status::Unsupported;
-      out.max_flow_m3h = r.value * standard::scale10(static_cast<int>(r.vif) - 0x3E);
-      flow = true;
+      out.max_flow_m3h=native_value;
+      flow=true;
     }
   }
   if (!total || !flow) {

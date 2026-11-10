@@ -173,8 +173,10 @@ inline PureDecodeStatus decode_configured_plain_frame(
     iperl::Reading water{};
     if (iperl::decode(frame, length, water) != iperl::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
-    output.values[0] = {"total_m3", water.total_m3};
-    output.values[1] = {"max_flow_m3h", water.max_flow_m3h};
+    output.values[0] = {
+      xmq_generated_standard::iperl::fields[0].name,water.total_m3};
+    output.values[1] = {
+      xmq_generated_standard::iperl::fields[1].name,water.max_flow_m3h};
     output.values[2] = {"tpl_status_raw",
                         static_cast<double>(water.tpl_status)};
     output.values[3] = {"tpl_status_unknown_raw", 0.0};
@@ -559,8 +561,10 @@ inline PureDecodeStatus decode_configured_plain_frame(
     munia::Reading r{};
     if(munia::decode(frame,length,r)!=munia::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
-    output.values[0]={"current_temperature_c",r.current_temperature_c};
-    output.values[1]={"current_relative_humidity_rh",r.current_relative_humidity_rh};
+    output.values[0]={xmq_generated_standard::munia::fields[0].name,
+                      r.current_temperature_c};
+    output.values[1]={xmq_generated_standard::munia::fields[1].name,
+                      r.current_relative_humidity_rh};
     output.values[2]={"tpl_status_raw",static_cast<double>(r.tpl_status)};
     output.values[3]={"tpl_status_unknown_raw",0.0};
     output.values[4]={"error_flags_raw",static_cast<double>(r.error_flags)};

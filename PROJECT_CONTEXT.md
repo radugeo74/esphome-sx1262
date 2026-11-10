@@ -1,3 +1,29 @@
+## Etapa initiala a compilatorului XMQ comun (2026-11-10)
+
+Dupa auditul celor 52 de surse, `iperl` si `munia` sunt
+primele doua decodoare portabile care folosesc efectiv selectori
+`match.measurement_type`, `match.vif_range`, unitati si
+nume de iesire **generate din XMQ la compilare**, prin:
+`generate_standard_selectors.py` ->
+`xmq_generated_standard_selectors.h` ->
+`xmq_standard_match_runtime.h`.
+
+Nu mai aleg manual din C++ intervalele VIF pentru volum/debit
+iPERL si temperatura/umiditatea Munia. Numele senzorilor
+numerici `total_m3`, `max_flow_m3h`,
+`current_temperature_c` si `current_relative_humidity_rh`
+sunt emise din declaratiile XMQ. Testul de mutatie verifica
+ca redenumirea unui camp schimba iesirea generata, iar o
+semantica incompatibila blocheaza generarea.
+
+**Aceasta este doar o migrare partiala.** Formatul RF, recunoasterea
+ID-ului, criptarea, codurile de stare si constrangerile
+`fixture` sunt pastrate separat in C++ pentru siguranta.
+Nici `iperl`, nici `munia` nu sunt inca decodoare complet
+declarative, iar celelalte 41 de decodoare portabile au in
+continuare algoritmi manuali. Numericul de 2 drivere generate
+IXML complet (`mkradio4`, `fhkvdataiii`) NU a fost modificat.
+
 ## Contract obligatoriu: XMQ upstream -> generator nativ (2026-11-10)
 
 **IMPORTANT:** Toate cele 52 de familii folosesc implementari native

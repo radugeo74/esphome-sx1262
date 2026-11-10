@@ -10,6 +10,7 @@ from build_native_generated import build
 from tempfile import TemporaryDirectory
 from generate_ixml_cpp import generate
 from generate_clear_profiles import generate as generate_clear_profiles, SPECS
+from generate_standard_selectors import generate as generate_standard_selectors, SOURCES
 from generate_vario451_ixml import generate as generate_vario451_ixml
 from generate_supercal_lse08 import generate as generate_supercal_lse08
 
@@ -32,6 +33,37 @@ def main():
     assert tuple(SPECS) == ("munia","cma12w","lansendw","lansenpu","supercom587","sontex868","maddalena")
     assert generated["xmq_generated_clear_profiles.h"] == generate_clear_profiles(
         ROOT / "experimental/xmq/drivers")
+    assert SOURCES == ("iperl", "munia")
+    standard_source = generate_standard_selectors(
+        ROOT / "experimental/xmq/drivers")
+    assert generated["xmq_generated_standard_selectors.h"] == standard_source
+    assert '"total_m3",Kind::Volume,0x0010,0x0017' in standard_source
+    assert '"max_flow_m3h",Kind::VolumeFlow,0x0038,0x003F' in standard_source
+    assert '"current_temperature_c",Kind::TemperatureC,0x0064,0x0067' in standard_source
+    assert '"current_relative_humidity_rh",Kind::RelativeHumidity,0x7B1A,0x7B1A' in standard_source
+    # A compatible upstream field rename changes generated output names.
+    # An unsupported quantity/VIF combination halts compilation safely.
+    with TemporaryDirectory() as temp:
+        scratch = Path(temp)
+        for name in SOURCES:
+            (scratch / f"{name}.xmq").write_text(
+                (ROOT / "experimental/xmq/drivers" / f"{name}.xmq").read_text())
+        iperl_xmq = scratch / "iperl.xmq"
+        original = iperl_xmq.read_text()
+        assert "name     = max_flow" in original
+        iperl_xmq.write_text(original.replace(
+            "name     = max_flow", "name     = peak_flow", 1))
+        revised = generate_standard_selectors(scratch)
+        assert '"peak_flow_m3h",Kind::VolumeFlow' in revised
+        iperl_xmq.write_text(original.replace(
+            "vif_range        = VolumeFlow",
+            "vif_range        = ExternalTemperature", 1))
+        try:
+            generate_standard_selectors(scratch)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Unreviewed XMQ quantity/VIF change was accepted")
     pair = generated["xmq_generated_supercal_lse08.h"]
     assert pair == generate_supercal_lse08(ROOT / "experimental/xmq/drivers")
     # Deliberately alter individual upstream fields/frames; the profile

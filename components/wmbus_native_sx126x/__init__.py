@@ -178,6 +178,7 @@ async def to_code(config):
         from native_driver_specs import validate, catalog_fragment, compiled_fragment
         from generate_ixml_cpp import generate
         from generate_clear_profiles import generate as generate_clear_profiles
+        from generate_standard_selectors import generate as generate_standard_selectors
         from generate_vario451_ixml import generate as generate_vario451_ixml
         from generate_supercal_lse08 import generate as generate_supercal_lse08
         generated = generate(validate(xmq))
@@ -196,6 +197,8 @@ async def to_code(config):
         (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
         (component_dir / "xmq_generated_clear_profiles.h").write_text(
             generate_clear_profiles(xmq / "drivers"), encoding="utf-8")
+        (component_dir / "xmq_generated_standard_selectors.h").write_text(
+            generate_standard_selectors(xmq / "drivers"), encoding="utf-8")
         (component_dir / "xmq_generated_vario451.h").write_text(
             generate_vario451_ixml(xmq / "drivers" / "vario451.xmq"),
             encoding="utf-8")

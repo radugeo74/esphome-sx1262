@@ -8,6 +8,7 @@
 #include "native_publication_gate.h"
 #include "standard_dif_vif.h"
 #include "xmq_generated_clear_profiles.h"
+#include "xmq_standard_match_runtime.h"
 namespace xmq_portable { namespace munia {
 enum class Status : uint8_t {Ok,Invalid,WrongModel,NotClear,BadRecords,Missing,Duplicate};
 struct Reading {
@@ -49,16 +50,18 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
     const auto &r=rec[i];
     if(!r.numeric || r.storage || r.function || r.tariff ||
        r.subunit)continue;
-    if(r.dif==0x0A && r.vif==0x66 && !r.vif_extension_count &&
-       !r.modifier_count) {
+    double native_value=0;
+    // DIF 0A and full frame layout remain source-fixture security gates;
+    // field VIF selectors/scaling come from original munia.xmq.
+    if(r.dif==0x0A && xmq_standard::scaled(
+        xmq_generated_standard::munia::fields[0],r,native_value)) {
       if(temp)return Status::Duplicate;
-      if(!standard::to_canonical(r.vif,r.value,next.current_temperature_c))
-        return Status::BadRecords;
+      next.current_temperature_c=native_value;
       temp=true;
-    } else if(r.dif==0x0A && r.full_vif==0x7B1A &&
-              r.vif_extension_count==1 && !r.modifier_count) {
+    } else if(r.dif==0x0A && xmq_standard::scaled(
+        xmq_generated_standard::munia::fields[1],r,native_value)) {
       if(humidity)return Status::Duplicate;
-      next.current_relative_humidity_rh=r.value/10.0;
+      next.current_relative_humidity_rh=native_value;
       humidity=true;
     }
  }
