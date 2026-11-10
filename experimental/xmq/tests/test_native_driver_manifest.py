@@ -328,7 +328,7 @@ def main():
         assert f'"{source_key}"' in txt
     for driver in SPECS:
         header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
-        if driver not in ("cma12w","lansendw"):
+        if driver not in ("cma12w","lansendw","munia"):
             assert '#include "xmq_generated_clear_profiles.h"' in header
             assert f"xmq_generated_clear::{driver}::models" in header
         if driver=="lansenpu":
@@ -337,7 +337,7 @@ def main():
             assert "xmq_generated_pulse::lansenpu::find_field" in header
             assert "inline constexpr KnownStatus statuses[]" in generated[
                 "xmq_generated_pulse_fields.h"]
-        elif driver in ("cma12w","lansendw"):
+        elif driver in ("cma12w","lansendw","munia"):
             # Both use a single C++ interpreter of complete source-compiled
             # record formats, mappings, conversions and verified statuses.
             assert "xmq_compiled_profiles::"+driver+"::profile" in header
