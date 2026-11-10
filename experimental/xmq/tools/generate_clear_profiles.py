@@ -100,6 +100,29 @@ def check(path, rules):
             if len(names)!=1 or names[0] in field_map:
                 raise ValueError(f"{name}: ambiguous field")
             field_map[names[0]]=f["entries"]
+    if name=="lansenpu":
+        # The source-defined manufacturer status bit must match the native
+        # SABOTAGE_ENCLOSURE bit (0x40); it is not a generic OMS status.
+        bits=blocks(d,"mfct_tpl_status_bits")
+        if len(bits)!=1:
+            raise ValueError("lansenpu: manufacturer status grammar changed")
+        bit_fields=bits[0]["entries"]
+        mapping=blocks(bit_fields,"map")
+        if (values(bit_fields,"mask_bits")!=["0xe0"] or
+                values(bit_fields,"default_message")!=["OK"] or
+                len(mapping)!=1 or
+                values(mapping[0]["entries"],"name")!=["SABOTAGE_ENCLOSURE"] or
+                values(mapping[0]["entries"],"value")!=["0x40"] or
+                values(mapping[0]["entries"],"test")!=["set"]):
+            raise ValueError("lansenpu: unreviewed status-bit mapping")
+        statuses=field_map.get("status",[])
+        if (values(statuses,"quantity")!=["Flags"] or
+                values(statuses,"attributes")!=["STATUS,INCLUDE_TPL_STATUS"]):
+            raise ValueError("lansenpu: changed TPL status source semantics")
+        flags=blocks(d,"flags")
+        declared=[flag for group in flags for flag in blocks(group["entries"],"flag")]
+        if len(declared)!=1 or values(declared[0]["entries"],"name")!=["SABOTAGE_ENCLOSURE"]:
+            raise ValueError("lansenpu: changed enclosure flag")
     libraries=[part.strip() for lib in blocks(d,"library")
                for use in values(lib["entries"],"use") for part in use.split(",")]
     for field,key,width,selector,expected in rules:
@@ -118,6 +141,7 @@ def check(path, rules):
     used=set()
     seen_variants=set()
     offsets={}
+    seen_lansen_status=set()
     for sample in samples:
         s=sample["entries"]
         telegram=values(s,"telegram")
@@ -141,6 +165,57 @@ def check(path, rules):
                 if len(matches)!=1:
                     raise ValueError(f"{name}: missing/duplicate original {field} record")
                 positions[field]=matches[0]
+        if name=="lansenpu":
+            expected=json.loads(values(s,"json")[0])
+            known_status={
+                0x00:"OK",
+                0x04:"POWER_LOW",
+                0x4C:"PERMANENT_ERROR POWER_LOW SABOTAGE_ENCLOSURE",
+            }
+            status_byte=frame[12]
+            if (frame[1]!=0x44 or status_byte not in known_status or
+                    frame[13:15] not in (bytes(2),bytes.fromhex("0020"))):
+                raise ValueError("lansenpu: unreviewed radio/status fixture")
+            seen_lansen_status.add(status_byte)
+            counters={}
+            offset=15
+            while offset<len(frame):
+                if frame[offset]==0x2F:
+                    offset+=1
+                    continue
+                matches=[(field,bytes.fromhex(key),width)
+                         for field,key,width,_,_ in rules
+                         if frame[offset:offset+len(bytes.fromhex(key))]==bytes.fromhex(key)]
+                if len(matches)!=1:
+                    raise ValueError("lansenpu: unknown DIF/VIF record in public fixture")
+                field,key,width=matches[0]
+                start=offset+len(key)
+                end=start+width
+                if field in counters or end>len(frame):
+                    raise ValueError("lansenpu: duplicate/truncated counter")
+                raw=frame[start:end]
+                if any((n&0x0F)>9 or (n>>4)>9 for n in raw):
+                    raise ValueError("lansenpu: malformed BCD")
+                counts=sum(((n>>4)*10+(n&0x0F))*100**i
+                           for i,n in enumerate(raw))
+                counters[field+"_counter"]=counts
+                offset=end
+            expected_keys=set(counters)|{
+                "_","media","driver","name","id","status","timestamp"}
+            actual_id="".join(f"{n:02X}" for n in reversed(frame[4:8]))
+            argument=values(s,"args")
+            expected_media="electricity" if frame[9]==0x02 else "other"
+            if (not counters or set(expected)!=expected_keys or
+                    expected.get("_")!="telegram" or
+                    expected.get("driver")!="lansenpu" or
+                    expected.get("id")!=actual_id or
+                    expected.get("media")!=expected_media or
+                    expected.get("status")!=known_status[status_byte] or
+                    expected.get("timestamp")!="1111-11-11T11:11:11Z" or
+                    len(argument)!=1 or
+                    argument[0].split()!=[expected.get("name"),"lansenpu",actual_id,"NOKEY"] or
+                    any(expected[field]!=v for field,v in counters.items())):
+                raise ValueError("lansenpu: full original JSON or pulse parity changed")
         if name=="supercom587":
             # All original source JSON keys are accounted for. The timestamp
             # is a test harness sentinel, not on-air device date/time.
@@ -221,6 +296,8 @@ def check(path, rules):
                         frame[15:17]!=bytes.fromhex("2F2F")):
                     raise ValueError("maddalena: unreviewed radio layout")
             offsets=positions
+    if name=="lansenpu" and seen_lansen_status!={0x00,0x04,0x4C}:
+        raise ValueError("lansenpu: original status fixture coverage changed")
     # A declared MVT can have no public fixture; do not invent RF evidence.
     if used!={r[0] for r in rules}:
         raise ValueError(f"{name}: fixture/schema evidence mismatch")
