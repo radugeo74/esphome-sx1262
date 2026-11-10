@@ -195,9 +195,10 @@ inline PureDecodeStatus decode_configured_plain_frame(
   // mode-zero short TPL, original DIF/VIF byte signatures and 12-digit BCD.
   // The preceding configured DLL ID is mandatory; no guessed AUTO driver.
   if(driver_name && std::strcmp(driver_name,"lansenpu")==0) {
-    // A/B optional pulse inputs, raw TPL byte, and three source-proven
-    // diagnostic bits. No publishing an unverified status combination.
-    if(!output.values || output.value_capacity<6)
+    // A/B pulse inputs plus complete standard Analyzer diagnostics for
+    // the three strictly admitted XMQ TPL statuses. Unsupported status
+    // combinations still fail closed. Maximum 11 mapped numeric fields.
+    if(!output.values || output.value_capacity<11)
       return PureDecodeStatus::DecodeFailure;
     if(wmbus_pure::publication::inspect(
           frame,length,header.meter_id)!=
@@ -218,6 +219,14 @@ inline PureDecodeStatus decode_configured_plain_frame(
         lansenpu::permanent_error(counts.tpl_status)?1.0:0.0};
     output.values[output.value_count++]={"status_sabotage_enclosure",
         lansenpu::sabotage_enclosure(counts.tpl_status)?1.0:0.0};
+    // All four standard flags are FALSE in the exact source-admitted
+    // status set (0x00, 0x04, 0x4C). 0x40 is a known LAS tamper bit,
+    // not an unknown TPL flag. No guess is made for other TPL states.
+    output.values[output.value_count++]={"status_alarm",0.0};
+    output.values[output.value_count++]={"status_busy",0.0};
+    output.values[output.value_count++]={"status_error",0.0};
+    output.values[output.value_count++]={"status_temporary_error",0.0};
+    output.values[output.value_count++]={"tpl_status_unknown_raw",0.0};
     return PureDecodeStatus::Ok;
   }
   // Lansen door/window: both pulse counters plus source-backed raw

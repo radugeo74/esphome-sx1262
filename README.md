@@ -1,3 +1,27 @@
+## Lansen Pulse LAS/14/00 — complete standard status diagnostics (2026-11-10)
+
+The original unencrypted `00010206` fixture (`LAS/14/00`, `CI=7A`,
+TPL status `0x04`) is already decoded as `a_counter=4711`,
+`b_counter=1234`, text `status=POWER_LOW`. The configured native
+decoder now also offers the four remaining standard Analyzer booleans
+`status_alarm`, `status_busy`, `status_error`,
+`status_temporary_error`, and `tpl_status_unknown_raw`, all zero
+for the three admitted public Lansen Pulse fixtures. The existing
+`status_power_low`, `status_permanent_error`,
+`status_sabotage_enclosure`, `tpl_status_raw`, A/B counts and status
+text are unchanged. TPL 0x40 is recognized as Lansen tamper, not
+an unknown bit. Only XMQ-proven TPL values 0x00/0x04/0x4C are
+accepted; unseen states and encrypted payloads still fail closed.
+
+The five additional fields are **optional** `xmq_sensors` bindings
+for explicitly configured IDs; no new Home Assistant entities are
+created automatically. Tests cover all numeric and text fields
+in all three upstream telegrams, including A-only records and
+the existing invalid-status/security cases. The source length
+field 0x23 denotes 35 octets **following** the length byte
+(36 bytes total in the XMQ fixture). No physical RF test or
+Heltec flash was performed.
+
 ## Lansen Door/Window `lansendw`: paritate Analyzer + diagnostice (2026-11-10)
 
 Ambele telegrame originale LAS/07/1D (CI=7A, 47 octeți,
