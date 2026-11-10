@@ -1,3 +1,127 @@
+## Sontex868 + Maddalena: toate câmpurile verificabile din fixture-urile XMQ (2026-11-10)
+
+**Ramura:** \`experimental/xmq-multidriver-auto\`. Generare și controale:
+\`experimental/xmq/tools/generate_clear_profiles.py\` compilează din
+\`sontex868.xmq\` și \`maddalena.xmq\` semnăturile MVT, cheile DIF/VIF,
+pozițiile înregistrărilor și verificarea completă a câmpurilor JSON C!.
+Tabelele sunt consumate de decodoarele native C++, fără vechiul runtime.
+
+- **\`sontex868\`**, SON/16/08, 1/1 fixture, 176 octeți, CI=7A:
+  câmpurile XMQ \`current_consumption_hca\`=119,
+  \`consumption_at_set_date_hca\`=102, \`current_temp_c\`=27.33,
+  \`current_room_temp_c\`=12.4, \`max_temp_c\`=27.33,
+  \`max_temp_previous_period_c\`=0; \`set_date\`=2127-07-01,
+  \`device_datetime\`=2020-10-31 10:04. Extras standard:
+  \`storage_48_consumption_hca\`=0, \`storage_48_date\`=2019-05-01,
+  \`tariff_1_duration_minutes\`=0, \`tariff_1_date\`=2000-01-01,
+  \`tariff_1_cumulation_counter\`=0,
+  \`tariff_2_date\`=2020-10-31,
+  \`software_version\`=010301, \`parameter_activation_state_raw\`=2220.
+  Vendor, **fără unități/sens inventate**:
+  \`manufacturer_ff2d_value\`=1,
+  \`manufacturer_ff2d_tariff_2_value\`=1,
+  \`manufacturer_ff2c_raw\`=0.
+  Înregistrarea proprietară CompactProfileWithRegister este
+  \`compact_profile_hex\` (106 caractere HEX / 53 octeți), **nu** o
+  istorie de consum interpretată. \`status\`=OK numai pentru TPL zero.
+
+- **\`maddalena\`**, MAD/01/07, 1/1 fixture, 79 octeți, CI=7A:
+  \`total_m3\`=0.167, \`target_m3\`=0,
+  \`target_date\`=2000-01-01,
+  \`meter_datetime\`=2024-11-22 12:14,
+  \`fabrication_no\`=\`FF0124018699\`,
+  \`status\`=OK. Extras standard:
+  \`storage_2_volume_m3\`=0.074,
+  \`storage_2_date\`=2024-10-31,
+  \`storage_3_max_flow_m3h\`=1.351,
+  \`storage_3_datetime\`=2024-11-21 20:27.
+  \`FF\` final din numărul de fabricație este santinelă vendor,
+  **nu** BCD numeric. Detectarea MAD/01/06 din metadatele XMQ
+  **nu** autorizează decodarea RF fără fixture.
+
+Toate câmpurile numerice sunt accesibile prin \`xmq_sensors\`,
+iar datele, statusul, versiunea, numărul de fabricație și profilul
+compact sunt disponibile prin \`xmq_text_sensors\`. Entitățile HA
+trebuie configurate explicit; nu sunt create implicit pentru orice contor.
+Data \`timestamp\` din fixture-urile XMQ este artificială; Home Assistant
+folosește momentul recepției, nu un timestamp inventat din payload.
+Datele \`C?\` sunt în mod deliberat numite după storage/tariff/VIF,
+nu după un sens comercial nedemonstrat. Pentru telegrame criptate,
+câmpuri invalide, statusuri de alarmă necunoscute sau layout
+neconfirmat, **nu se publică date** (fail-closed).
+
+Exemplu de configurare, cu ID-urile XMQ **fictive** și cu restul
+configurației SX126x păstrate:
+
+\`\`\`yaml
+  meter_drivers:
+    - meter_id: "27282728"
+      driver: sontex868
+    - meter_id: "24018699"
+      driver: maddalena
+  xmq_sensors:
+    - meter_id: "27282728"
+      field: current_consumption_hca
+      sensor:
+        name: "Sontex HCA curent"
+    - meter_id: "27282728"
+      field: storage_48_consumption_hca
+      sensor:
+        name: "Sontex HCA registru 48"
+    - meter_id: "27282728"
+      field: manufacturer_ff2d_value
+      sensor:
+        name: "Sontex valoare vendor FF2D (unitate necunoscută)"
+    - meter_id: "24018699"
+      field: total_m3
+      sensor:
+        name: "Maddalena volum total"
+        unit_of_measurement: "m³"
+    - meter_id: "24018699"
+      field: storage_2_volume_m3
+      sensor:
+        name: "Maddalena volum registru 2"
+        unit_of_measurement: "m³"
+    - meter_id: "24018699"
+      field: storage_3_max_flow_m3h
+      sensor:
+        name: "Maddalena debit maxim registru 3"
+        unit_of_measurement: "m³/h"
+  xmq_text_sensors:
+    - meter_id: "27282728"
+      field: set_date
+      sensor:
+        name: "Sontex data bilanț"
+    - meter_id: "27282728"
+      field: device_datetime
+      sensor:
+        name: "Sontex ora contorului"
+    - meter_id: "27282728"
+      field: software_version
+      sensor:
+        name: "Sontex versiune software"
+    - meter_id: "27282728"
+      field: compact_profile_hex
+      sensor:
+        name: "Sontex profil compact brut"
+    - meter_id: "24018699"
+      field: target_date
+      sensor:
+        name: "Maddalena data de referință"
+    - meter_id: "24018699"
+      field: fabrication_no
+      sensor:
+        name: "Maddalena număr fabricație"
+    - meter_id: "24018699"
+      field: meter_datetime
+      sensor:
+        name: "Maddalena ora contorului"
+\`\`\`
+
+Testele native compară toate câmpurile XMQ și toate valorile suplimentare
+de mai sus, inclusiv probe negative de layout, BCD, calendar, ID și criptare.
+RF pe hardware real nu a fost testat; nu s-a făcut flash Heltec.
+
 ## Supercom587: generare și paritate pentru toate câmpurile XMQ (2026-11-10)
 
 - Driverul `supercom587` utilizează acum modele și reguli DIF/VIF
