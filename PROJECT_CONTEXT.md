@@ -1,3 +1,77 @@
+## Elvaco CMA12w — paritate completă pentru două exemple XMQ (2026-11-10)
+
+Cele două telegrame publice originale `ELV/20/1B` și `ELV/1F/1B`
+(`CI=7A`, 40 octeți fiecare incluzând octetul de lungime)
+sunt decodificate exclusiv după CRC DLL verificat, ID configurat,
+mode-zero și toate cele patru înregistrări obligatorii.
+
+| Câmp | ID 66666666 | ID 68003902 |
+| --- | ---: | ---: |
+| `current_temperature_c` | 23.34 | 23.34 |
+| `average_temperature_1h_c` | 23.28 | 23.37 |
+| `battery` (text) | BATTERY_330 | BATTERY_4230 |
+| `software_version` (text) | 4.0.0 | 3.0.5 |
+| `status` (text) | OK | OK |
+| `battery_raw` (numeric) | 816 (0x0330) | 16944 (0x4230) |
+| `tpl_status_raw`, `tpl_status_unknown_raw` | 0 | 0 |
+| Toate cele șase `status_*` standard | 0 | 0 |
+
+Valoarea `battery_raw` **nu** reprezintă un procent sau o tensiune:
+este doar numărul brut folosit de originalul XMQ pentru `BATTERY_%X`.
+Câmpurile numerice suplimentare pot fi selectate în `xmq_sensors`:
+`battery_raw`, `tpl_status_raw`, `tpl_status_unknown_raw`,
+`status_alarm`, `status_busy`, `status_error`,
+`status_permanent_error`, `status_power_low`,
+`status_temporary_error`. Cele trei câmpuri text se configurează
+în `xmq_text_sensors` cu `status`, `battery`, `software_version`.
+
+Exemplu pentru un ID din fixture (înlocuiți ID-ul pentru un dispozitiv real):
+
+```yaml
+  meter_drivers:
+    - meter_id: "66666666"
+      driver: auto  # alternativ: cma12w
+  xmq_sensors:
+    - meter_id: "66666666"
+      field: current_temperature_c
+      sensor:
+        name: "Elvaco temperatura"
+        unit_of_measurement: "°C"
+    - meter_id: "66666666"
+      field: average_temperature_1h_c
+      sensor:
+        name: "Elvaco media 1h"
+        unit_of_measurement: "°C"
+    - meter_id: "66666666"
+      field: battery_raw
+      sensor:
+        name: "Elvaco baterie cod brut"
+    - meter_id: "66666666"
+      field: status_power_low
+      sensor:
+        name: "Elvaco baterie scăzută (0/1)"
+  xmq_text_sensors:
+    - meter_id: "66666666"
+      field: status
+      sensor:
+        name: "Elvaco stare"
+    - meter_id: "66666666"
+      field: battery
+      sensor:
+        name: "Elvaco baterie cod"
+    - meter_id: "66666666"
+      field: software_version
+      sensor:
+        name: "Elvaco versiune firmware"
+```
+
+Generatorul XMQ verifică strict ambele cadre și toate câmpurile din
+JSON-ul original (inclusiv codul bateriei și versiunea inversată).
+Testele native verifică toți cei 11 senzori numerici, cele trei
+câmpuri text și refuzul telegramelor criptate, cu stare TPL
+neconfirmată, cu ID greșit sau cu date invalide. Nu se creează
+automat entități Home Assistant; niciun flash sau test RF real.
+
 ## Lansen Pulse LAS/14/00 — complete standard status diagnostics (2026-11-10)
 
 The original unencrypted `00010206` fixture (`LAS/14/00`, `CI=7A`,

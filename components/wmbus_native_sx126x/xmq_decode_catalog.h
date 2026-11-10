@@ -259,10 +259,13 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.value_count=14;
     return PureDecodeStatus::Ok;
   }
-  // Elvaco CMA12w: two temperatures in degrees C, battery/software
-  // and OK status as optional text sensors. No general VIF inference.
+  // Elvaco CMA12w: two temperatures plus opt-in raw battery/TPL and
+  // standard Analyzer status flags. The source only proves TPL=0x00,
+  // so all six booleans are zero ONLY after the strict frame gate.
+  // Text battery, software version and status remain separate.
   if(driver_name && std::strcmp(driver_name,"cma12w")==0) {
-    if(!output.values || output.value_capacity<2) return PureDecodeStatus::DecodeFailure;
+    if(!output.values || output.value_capacity<11)
+      return PureDecodeStatus::DecodeFailure;
     if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
        wmbus_pure::publication::Decision::Allowed)
       return PureDecodeStatus::UnsupportedTransport;
@@ -271,7 +274,16 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"current_temperature_c",reading.current_temperature_c};
     output.values[1]={"average_temperature_1h_c",reading.average_temperature_1h_c};
-    output.value_count=2;
+    output.values[2]={"battery_raw",static_cast<double>(reading.battery_bits)};
+    output.values[3]={"tpl_status_raw",static_cast<double>(reading.tpl_status)};
+    output.values[4]={"tpl_status_unknown_raw",0.0};
+    output.values[5]={"status_alarm",0.0};
+    output.values[6]={"status_busy",0.0};
+    output.values[7]={"status_error",0.0};
+    output.values[8]={"status_permanent_error",0.0};
+    output.values[9]={"status_power_low",0.0};
+    output.values[10]={"status_temporary_error",0.0};
+    output.value_count=11;
     return PureDecodeStatus::Ok;
   }
   // Elvaco Sense only verified Mode-0 short TPL and strict records.

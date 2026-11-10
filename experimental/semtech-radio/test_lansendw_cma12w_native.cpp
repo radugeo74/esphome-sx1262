@@ -131,25 +131,37 @@ int main(){
   assert(select_auto(room_1,"66666666")!=nullptr);
   assert(std::strcmp(select_auto(room_1,"66666666"),"cma12w")==0);
   assert(decoded(room_1,"66666666","cma12w")==Status::Ok);
-  assert(result.value_count==2);
+  assert(result.value_count==11);
   assert(has_value(result,"current_temperature_c",23.34));
   assert(has_value(result,"average_temperature_1h_c",23.28));
+  assert(has_value(result,"battery_raw",0x0330));
+  for(const char *field:{"tpl_status_raw","tpl_status_unknown_raw",
+           "status_alarm","status_busy","status_error",
+           "status_permanent_error","status_power_low","status_temporary_error"})
+    assert(has_value(result,field,0));
   text=xmq_portable::text_fields::decode(
       room_1.data(),room_1.size(),"cma12w");
   assert(has_text(text,"status","OK"));
   assert(has_text(text,"battery","BATTERY_330"));
   assert(has_text(text,"software_version","4.0.0"));
+  assert(text.count==3);
   assert(select_auto(room_2,"68003902")!=nullptr);
   assert(std::strcmp(select_auto(room_2,"68003902"),"cma12w")==0);
   assert(decoded(room_2,"68003902","cma12w")==Status::Ok);
-  assert(result.value_count==2);
+  assert(result.value_count==11);
   assert(has_value(result,"current_temperature_c",23.34));
   assert(has_value(result,"average_temperature_1h_c",23.37));
+  assert(has_value(result,"battery_raw",0x4230));
+  for(const char *field:{"tpl_status_raw","tpl_status_unknown_raw",
+           "status_alarm","status_busy","status_error",
+           "status_permanent_error","status_power_low","status_temporary_error"})
+    assert(has_value(result,field,0));
   text=xmq_portable::text_fields::decode(
       room_2.data(),room_2.size(),"cma12w");
   assert(has_text(text,"status","OK"));
   assert(has_text(text,"battery","BATTERY_4230"));
   assert(has_text(text,"software_version","3.0.5"));
+  assert(text.count==3);
 
   // Unknown configured IDs and unknown signatures never resolve AUTO.
   assert(select_auto(door_closed,"00010206")==nullptr);
@@ -207,6 +219,25 @@ int main(){
   assert(decoded(bad,"00010205","lansendw")!=Status::Ok);
   bad=door_closed;bad.pop_back();bad[0]=static_cast<uint8_t>(bad.size()-1);
   assert(decoded(bad,"00010205","lansendw")!=Status::Ok);
+
+  // CMA: rejected TPL states cannot produce falsely healthy zero flags.
+  bad=room_1;bad[12]=0x04;
+  assert(decoded(bad,"66666666","cma12w")!=Status::Ok);
+  assert(result.value_count==0);
+  assert(xmq_portable::text_fields::decode(
+      bad.data(),bad.size(),"cma12w").count==0);
+  bad=room_2;bad[12]=0x80;
+  assert(decoded(bad,"68003902","cma12w")!=Status::Ok);
+  assert(result.value_count==0);
+  assert(xmq_portable::text_fields::decode(
+      bad.data(),bad.size(),"cma12w").count==0);
+  // A capacity of 10 cannot hold the 11 optional numeric fields.
+  xmq_portable::CalcValue limited_values[10]{};
+  xmq_portable::DecodedPayload limited{limited_values,10,0,dates,2,0};
+  assert(xmq_portable::batch2_plain::decode_configured(
+      room_1.data(),room_1.size(),"66666666","66666666",
+      "cma12w",captures,12,limited)==Status::DecodeFailure);
+  assert(limited.value_count==0);
 
   // CMA: wrong model, bad record, missing software and malformed L.
   bad=room_1;bad[8]=0x21;

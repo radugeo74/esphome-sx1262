@@ -20,6 +20,7 @@ struct Reading {
   double current_temperature_c{0};
   double average_temperature_1h_c{0};
   uint16_t battery_bits{0};
+  uint8_t tpl_status{0};
   char software_version[8]{};
 };
 inline uint16_t le16(const uint8_t *p) {
@@ -47,6 +48,7 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   if(length<17) return Status::InvalidFrame;
   if(frame[12]!=0x00) return Status::InvalidStatus; // only documented OK
   Reading tmp{};
+  tmp.tpl_status=frame[12]; // only 0x00 is admitted by the strict gate
   unsigned seen=0;
   size_t pos=15;
   while(pos<length) {

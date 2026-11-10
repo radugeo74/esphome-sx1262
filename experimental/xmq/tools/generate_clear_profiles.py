@@ -100,6 +100,20 @@ def check(path, rules):
             if len(names)!=1 or names[0] in field_map:
                 raise ValueError(f"{name}: ambiguous field")
             field_map[names[0]]=f["entries"]
+    if name=="cma12w":
+        # Verify original status and digital-input battery are raw flags.
+        # No percentage or alarm meanings are inferred from the battery mask.
+        status=field_map.get("status",[])
+        battery=field_map.get("battery",[])
+        lookups=blocks(battery,"lookup")
+        if (values(status,"quantity")!=["Flags"] or
+                values(status,"attributes")!=["STATUS,INCLUDE_TPL_STATUS"] or
+                len(lookups)!=1 or
+                values(lookups[0]["entries"],"name")!=["BATTERY"] or
+                values(lookups[0]["entries"],"map_type")!=["BitToString"] or
+                values(lookups[0]["entries"],"mask_bits")!=["0xffff"] or
+                blocks(lookups[0]["entries"],"map")):
+            raise ValueError("cma12w: original TPL/battery semantics changed")
     if name=="lansenpu":
         # The source-defined manufacturer status bit must match the native
         # SABOTAGE_ENCLOSURE bit (0x40); it is not a generic OMS status.
@@ -168,6 +182,7 @@ def check(path, rules):
     offsets={}
     seen_lansen_status=set()
     seen_lansendw_status=set()
+    seen_cma12w_ids=set()
     for sample in samples:
         s=sample["entries"]
         telegram=values(s,"telegram")
@@ -191,6 +206,48 @@ def check(path, rules):
                 if len(matches)!=1:
                     raise ValueError(f"{name}: missing/duplicate original {field} record")
                 positions[field]=matches[0]
+        if name=="cma12w":
+            expected=json.loads(values(s,"json")[0])
+            actual_id="".join(f"{byte:02X}" for byte in reversed(frame[4:8]))
+            known={
+                "66666666": (0x20, 0x0918, 0x0330, "0.0.4", "4.0.0", "Tempo"),
+                "68003902": (0x1F, 0x0921, 0x4230, "5.0.3", "3.0.5", "Tempo2"),
+            }
+            if (actual_id not in known or len(frame)!=40 or frame[1]!=0x44 or
+                    mvt!=(manufacturer_code("ELV"),frame[8],0x1B) or
+                    frame[12:17]!=bytes.fromhex("0000202F2F") or
+                    frame[17:19]!=bytes.fromhex("0265") or
+                    frame[21:23]!=bytes.fromhex("4265") or
+                    frame[25:28]!=bytes.fromhex("02FD1B") or
+                    frame[30:34]!=bytes.fromhex("0DFD0F05") or
+                    frame[39]!=0x0F):
+                raise ValueError("cma12w: unreviewed radio/status fixture")
+            version,avg_raw,battery_raw,ascii_raw,software,name_expected=known[actual_id]
+            seen_cma12w_ids.add(actual_id)
+            now=int.from_bytes(frame[19:21],"little",signed=True)
+            average=int.from_bytes(frame[23:25],"little",signed=True)
+            battery=int.from_bytes(frame[28:30],"little")
+            sw=frame[34:39].decode("ascii",errors="replace")
+            args=values(s,"args")
+            keys={"_","media","driver","name","id",
+                  "current_temperature_c","average_temperature_1h_c",
+                  "battery","software_version","status","timestamp"}
+            if (frame[8]!=version or now!=0x091E or average!=avg_raw or
+                    battery!=battery_raw or sw!=ascii_raw or
+                    set(expected)!=keys or expected["_"]!="telegram" or
+                    expected["media"]!="room sensor" or
+                    expected["driver"]!="cma12w" or
+                    expected["name"]!=name_expected or
+                    expected["id"]!=actual_id or
+                    expected["current_temperature_c"]!=now/100 or
+                    expected["average_temperature_1h_c"]!=average/100 or
+                    expected["battery"]!=f"BATTERY_{battery:X}" or
+                    expected["software_version"]!=software or
+                    expected["status"]!="OK" or
+                    expected["timestamp"]!="1111-11-11T11:11:11Z" or
+                    len(args)!=1 or
+                    args[0].split()!=[name_expected,"cma12w",actual_id,"NOKEY"]):
+                raise ValueError("cma12w: full source JSON or record parity changed")
         if name=="lansendw":
             expected=json.loads(values(s,"json")[0])
             correct={
@@ -366,6 +423,8 @@ def check(path, rules):
                         frame[15:17]!=bytes.fromhex("2F2F")):
                     raise ValueError("maddalena: unreviewed radio layout")
             offsets=positions
+    if name=="cma12w" and seen_cma12w_ids!={"66666666","68003902"}:
+        raise ValueError("cma12w: missing one original source fixture")
     if name=="lansenpu" and seen_lansen_status!={0x00,0x04,0x4C}:
         raise ValueError("lansenpu: original status fixture coverage changed")
     if name=="lansendw" and seen_lansendw_status!={0x48,0x68}:
