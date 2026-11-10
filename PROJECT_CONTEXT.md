@@ -1,3 +1,86 @@
+## Lansen Door/Window `lansendw`: paritate Analyzer + diagnostice (2026-11-10)
+
+Ambele telegrame originale LAS/07/1D (CI=7A, 47 octeți,
+mode-zero și CRC verificat separat) sunt validate integral din
+`lansendw.xmq`: starea ușii `status` (text `CLOSED` /
+`OPEN`), `error_flags` (text cu indicatorii necunoscuți
+păstrați literal), `a_counter` = 22 / 23, `b_counter` = 0.
+Verificarea din generator respinge modificări ale intrărilor XMQ
+sau ale mapărilor OPEN/CLOSED.
+
+**Semnificație status:** în ambele telegrame bitul standard
+`PERMANENT_ERROR` este activ; ceilalți cinci indicatori standard
+din Analyzer sunt `false`. Înregistrarea de eroare conține
+`0x0001` — `ERROR_FLAGS_1`, cu semnificație neidentificată.
+TPL este `0x48` (72) pentru CLOSED și `0x68` (104) pentru OPEN.
+Biții TPL neinterpretați sunt păstrați distinct drept
+`TPL_STS_64` (0x40) și `TPL_STS_96` (0x60);
+**nu** le atribuim sens comercial sau defecte inexistente.
+
+Pe lângă cele două valori număr de impulsuri, proiectul oferă
+**opțional** prin `xmq_sensors`:
+- `digital_input_raw` = 17 / 85; `door_open` = 0 / 1,
+  derive doar din codurile explicite `0x11` și `0x55`;
+- `error_flags_raw` = 1 și `error_flags_unknown_raw` = 1;
+- `tpl_status_raw` = 72 / 104;
+  `tpl_status_unknown_raw` = 64 / 96;
+- `status_permanent_error` = 1,
+  `status_alarm` = 0, `status_busy` = 0,
+  `status_error` = 0, `status_power_low` = 0,
+  `status_temporary_error` = 0.
+
+În `xmq_text_sensors` rămân `status` (`CLOSED`/`OPEN`)
+și `error_flags`, cu întregul șir XMQ original:
+`ERROR_FLAGS_1 PERMANENT_ERROR TPL_STS_64` sau
+`ERROR_FLAGS_1 PERMANENT_ERROR TPL_STS_96`.
+
+Exemplu — **ID-ul este numai cel fictiv din XMQ**, înlocuiți-l
+cu ID-ul unui dispozitiv configurat:
+
+```yaml
+  xmq_sensors:
+    - meter_id: "00010205"
+      field: a_counter
+      sensor:
+        name: "Lansen deschideri sau închideri"
+    - meter_id: "00010205"
+      field: door_open
+      sensor:
+        name: "Lansen ușă deschisă (0/1)"
+    - meter_id: "00010205"
+      field: tpl_status_raw
+      sensor:
+        name: "Lansen stare TPL brută"
+    - meter_id: "00010205"
+      field: tpl_status_unknown_raw
+      sensor:
+        name: "Lansen biți TPL neinterpretați"
+    - meter_id: "00010205"
+      field: error_flags_unknown_raw
+      sensor:
+        name: "Lansen biți eroare necunoscuți"
+    - meter_id: "00010205"
+      field: status_permanent_error
+      sensor:
+        name: "Lansen eroare permanentă (0/1)"
+  xmq_text_sensors:
+    - meter_id: "00010205"
+      field: status
+      sensor:
+        name: "Lansen stare ușă"
+    - meter_id: "00010205"
+      field: error_flags
+      sensor:
+        name: "Lansen diagnostic erori"
+```
+
+Nu se creează automat entități suplimentare. Restul driverelor,
+inclusiv `vario451`, sunt neschimbate. Valorile provin din
+două fixture-uri originale; alte configurații de status și
+criptare sunt respinse pentru a nu publica diagnostice false.
+Nu a fost făcut flash pe Heltec; testele CI nu substituie
+verificarea RF pe hardware real.
+
 ## Lansen Pulse `lansenpu`: stări TPL detaliate și paritate XMQ (2026-11-10)
 
 Cele trei exemple originale sunt verificate integral, inclusiv cele
