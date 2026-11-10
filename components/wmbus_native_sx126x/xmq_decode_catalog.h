@@ -518,9 +518,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(r.has_total_m3)output.values[output.value_count++]={"total_m3",r.total_m3};
     return PureDecodeStatus::Ok;
   }
-  // Maddalena: only source-verified MAD/01/07 Mode-0 water profile.
+  // Maddalena MAD/01/07: source-verified volumes and storage-3 peak.
   if(driver_name && std::strcmp(driver_name,"maddalena")==0) {
-    if(!output.values || output.value_capacity<2)
+    if(!output.values || output.value_capacity<4)
       return PureDecodeStatus::DecodeFailure;
     if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
        wmbus_pure::publication::Decision::Allowed)
@@ -530,7 +530,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"total_m3",r.total_m3};
     output.values[1]={"target_m3",r.target_m3};
-    output.value_count=2;return PureDecodeStatus::Ok;
+    output.values[2]={"storage_2_volume_m3",r.storage_2_volume_m3};
+    output.values[3]={"storage_3_max_flow_m3h",r.storage_3_max_flow_m3h};
+    output.value_count=4;return PureDecodeStatus::Ok;
   }
   // Itron/Allmess ITW/00/04 Mode0 clear 65-byte profile.
   if(driver_name && std::strcmp(driver_name,"itronheat")==0) {
@@ -761,9 +763,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(r.return_temp) output.values[output.value_count++]={"return_c",r.return_c};
     return PureDecodeStatus::Ok;
   }
-  // Native no-key Sontex868 HCA / temperatures.
+  // Native Sontex868 full source-verified HCA, scalar and vendor fields.
   if(driver_name && std::strcmp(driver_name,"sontex868")==0) {
-    if(!output.values || output.value_capacity<6)
+    if(!output.values || output.value_capacity<13)
       return PureDecodeStatus::DecodeFailure;
     sontex868::Reading r{};
     if(sontex868::decode(frame,length,r)!=sontex868::Status::Ok)
@@ -774,6 +776,13 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(r.room) output.values[output.value_count++]={"current_room_temp_c",r.room_c};
     if(r.max_flow) output.values[output.value_count++]={"max_temp_c",r.max_flow_c};
     if(r.previous_max_flow) output.values[output.value_count++]={"max_temp_previous_period_c",r.previous_max_flow_c};
+    output.values[output.value_count++]={"storage_48_consumption_hca",r.storage_48_consumption_hca};
+    output.values[output.value_count++]={"tariff_1_duration_minutes",r.tariff_1_duration_minutes};
+    output.values[output.value_count++]={"tariff_1_cumulation_counter",r.tariff_1_cumulation_counter};
+    output.values[output.value_count++]={"parameter_activation_state_raw",r.parameter_activation_state_raw};
+    output.values[output.value_count++]={"manufacturer_ff2d_value",r.manufacturer_ff2d_value};
+    output.values[output.value_count++]={"manufacturer_ff2d_tariff_2_value",r.manufacturer_ff2d_tariff_2_value};
+    output.values[output.value_count++]={"manufacturer_ff2c_raw",r.manufacturer_ff2c_raw};
     return PureDecodeStatus::Ok;
   }
   // Sontex Supercal 739: configured, short-TPL clear standard records only.

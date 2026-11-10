@@ -20,6 +20,7 @@
 #include "waterstarm_plain.h"
 #include "munia_plain.h"
 #include "maddalena_plain.h"
+#include "sontex868_plain.h"
 #include "qheatv2_plain.h"
 #include "c5isf_plain.h"
 #include "apatoreitn_plain.h"
@@ -31,18 +32,29 @@
 namespace xmq_portable { namespace text_fields {
 struct Field {
   const char *name{nullptr};
-  char text[64]{}; // long upstream status bit flags must not be truncated
+  char text[128]{}; // full 53-byte HEX compact profile needs 106 characters
 };
 struct Result {
-  Field fields[4]{};
+  Field fields[8]{};
   size_t count{0};
 };
 inline bool append(Result &out, const char *name, const char *value) {
-  if (!name || !value || out.count >= 4) return false;
+  if (!name || !value || out.count >= 8) return false;
   Field &slot = out.fields[out.count++];
   slot.name = name;
   std::snprintf(slot.text, sizeof(slot.text), "%s", value);
   return true;
+}
+inline void append_calendar(Result &out,const char *field,
+                            const standard::Calendar &date) {
+  char formatted[24]{};
+  if(date.has_time)
+    std::snprintf(formatted,sizeof(formatted),"%04d-%02d-%02d %02d:%02d",
+                  date.year,date.month,date.day,date.hour,date.minute);
+  else
+    std::snprintf(formatted,sizeof(formatted),"%04d-%02d-%02d",
+                  date.year,date.month,date.day);
+  append(out,field,formatted);
 }
 inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
   Result out{};
@@ -111,7 +123,25 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
   if(std::strcmp(driver,"maddalena")==0) {
     maddalena::Reading reading{};
     if(maddalena::decode(frame,size,reading)!=maddalena::Status::Ok)return out;
-    append(out,"status","OK"); // public clear 79-byte fixture with zero faults
+    append(out,"status","OK"); // zero flags source-verified
+    append(out,"fabrication_no",reading.fabrication_no);
+    append_calendar(out,"target_date",reading.target_date);
+    append_calendar(out,"meter_datetime",reading.meter_datetime);
+    append_calendar(out,"storage_2_date",reading.storage_2_date);
+    append_calendar(out,"storage_3_datetime",reading.storage_3_datetime);
+    return out;
+  }
+  if(std::strcmp(driver,"sontex868")==0) {
+    sontex868::Reading reading{};
+    if(sontex868::decode(frame,size,reading)!=sontex868::Status::Ok)return out;
+    append_calendar(out,"set_date",reading.set_date);
+    append_calendar(out,"device_datetime",reading.device_datetime);
+    append_calendar(out,"storage_48_date",reading.storage_48_date);
+    append_calendar(out,"tariff_1_date",reading.tariff_1_date);
+    append_calendar(out,"tariff_2_date",reading.tariff_2_date);
+    append(out,"software_version",reading.software_version);
+    append(out,"compact_profile_hex",reading.compact_profile_hex);
+    append(out,"status","OK"); // TPL status 0 and clear-mode gated
     return out;
   }
   if(std::strcmp(driver,"munia")==0) {
