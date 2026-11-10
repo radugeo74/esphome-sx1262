@@ -29,11 +29,10 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
    return Status::WrongModel;
  if(wmbus_pure::publication::inspect(frame,length,h.meter_id)!=
     wmbus_pure::publication::Decision::Allowed)return Status::NotClear;
- using namespace xmq_generated_pair;
- if(length!=supercal::verified_length || frame[12]!=0 ||
+ if(length!=xmq_generated_pair::supercal::verified_length || frame[12]!=0 ||
     frame[13]!=0 || frame[14]!=0)return Status::BadRecords;
- for(const auto &rule:supercal::rules)
-   if(!match(frame,length,rule))return Status::BadRecords;
+ for(const auto &rule:xmq_generated_pair::supercal::rules)
+   if(!xmq_generated_pair::match(frame,length,rule))return Status::BadRecords;
  standard::Record records[16]{};size_t count=0;
  if(standard::records(frame+15,length-15,records,16,count)!=
     standard::Status::Ok || count!=10)return Status::BadRecords;
