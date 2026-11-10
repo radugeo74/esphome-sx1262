@@ -1,3 +1,17 @@
+## ESP-IDF ESP32-S3 probe — rezolvare dublare antet (2026-11-10)
+
+În workflow #848, jobul ESP-IDF `stage-a-espidf-s3-portable-link`
+a eșuat deoarece un singur fișier `main.cpp` includea
+`pure_frame_header.h` prin două căi fizice diferite:
+`components/wmbus_native_sx126x` și
+`experimental/xmq/legacy_reference`. Cele două fișiere aveau
+conținut identic; `#pragma once` nu acoperă fișiere distincte.
+Am introdus un **include guard comun** în ambele copii, fără
+să schimbăm codul de parsing, decodoarele, securitatea sau API-ul.
+Acest lucru previne redeclararea `HeaderStatus`, `Header`
+și `parse_header`. Fixul trebuie confirmat și prin jobul
+ESP-IDF în CI; nu reprezintă probă RF.
+
 ## Sensus iPERL — diagnostice complete și proveniența criptării (2026-11-10)
 
 Driverul `iperl` suportă în software cele două telegrame originale

@@ -1,4 +1,8 @@
 #pragma once
+// Both native and legacy-reference paths may be used in one ESP-IDF TU.
+// Shared macro prevents duplicate wmbus_pure definitions across paths.
+#ifndef WMBUS_PURE_FRAME_HEADER_SHARED_GUARD
+#define WMBUS_PURE_FRAME_HEADER_SHARED_GUARD
 // Independent, bounded EN 13757 short application-header reader.
 // Does not decrypt, select drivers or parse application data.
 #include <cstddef>
@@ -49,3 +53,5 @@ inline HeaderStatus parse_header(const uint8_t *frame, size_t size, Header &out)
   return HeaderStatus::Ok;
 }
 }  // namespace wmbus_pure
+
+#endif  // WMBUS_PURE_FRAME_HEADER_SHARED_GUARD
