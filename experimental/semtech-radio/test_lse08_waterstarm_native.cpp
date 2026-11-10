@@ -48,9 +48,20 @@ int main() {
         std::strcmp(automatic(w4,"20050666"),"waterstarm")==0);
  assert(decode(l0,"04998541","lse_08")==PureDecodeStatus::Ok);
  assert(has(out,"consumption_at_set_date_hca",321));
+ assert(has(out,"duration_since_readout_h",2.489166666666667));
+ assert(out.value_count==2);
  const auto text_status=text_fields::decode(l0.data(),l0.size(),"lse_08");
- assert(text_status.count==1 && std::strcmp(text_status.fields[0].name,"status")==0);
- assert(std::strcmp(text_status.fields[0].text,"TPL_STS_128")==0);
+ assert(text_status.count==4);
+ const auto text_eq=[&](const char*name,const char*expected){
+   for(size_t i=0;i<text_status.count;++i)
+     if(std::strcmp(text_status.fields[i].name,name)==0 &&
+        std::strcmp(text_status.fields[i].text,expected)==0)return true;
+   return false;
+ };
+ assert(text_eq("status","TPL_STS_128"));
+ assert(text_eq("set_date","2003-01-31"));
+ assert(text_eq("device_datetime","2003-02-15 14:26"));
+ assert(text_eq("model_version","01"));
  assert(decode(w4,"20050666","waterstarm")==PureDecodeStatus::Ok);
  assert(has(out,"total_m3",55.36));
  assert(has(out,"consumption_at_set_date_m3",27.65));
@@ -75,6 +86,24 @@ int main() {
  assert(decode(bad,"04998541","lse_08")!=PureDecodeStatus::Ok);
  bad=l0;bad[23]=0xff;
  assert(decode(bad,"04998541","lse_08")!=PureDecodeStatus::Ok);
+ bad=l0;bad[18]=0; // invalid set_date day
+ assert(decode(bad,"04998541","lse_08")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ bad=l0;bad[32]=0x03; // missing duration-since-readout record
+ assert(decode(bad,"04998541","lse_08")!=PureDecodeStatus::Ok);
+ assert(text_fields::decode(bad.data(),bad.size(),"lse_08").count==0);
+ bad=l0;bad[35]=0; // missing combinable FutureValue semantics
+ assert(decode(bad,"04998541","lse_08")!=PureDecodeStatus::Ok);
+ bad=l0;bad[12]=0; // never map unexpected TPL status to OK
+ assert(decode(bad,"04998541","lse_08")!=PureDecodeStatus::Ok);
+ bad=l0;bad[41]=0x0F; // model version record changed
+ assert(decode(bad,"04998541","lse_08")==PureDecodeStatus::Ok);
+ const auto changed_version=text_fields::decode(bad.data(),bad.size(),"lse_08");
+ bool matched=false;
+ for(size_t i=0;i<changed_version.count;++i)
+   if(std::strcmp(changed_version.fields[i].name,"model_version")==0)
+     matched=(std::strcmp(changed_version.fields[i].text,"0F")==0);
+ assert(matched);
  bad=w4;bad[14]=0x25;
  assert(decode(bad,"20050666","waterstarm")!=PureDecodeStatus::Ok);
  bad=w4;bad[22]=0x15;

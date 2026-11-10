@@ -4,6 +4,7 @@
 // does not claim captured RF/HA validation or encrypted profile support.
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/xmq_auto_registry.h"
+#include "components/wmbus_native_sx126x/xmq_plain_text_fields.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -57,6 +58,21 @@ int main() {
   assert(value(out,"volume_flow_m3h",0.285));
   assert(value(out,"flow_temperature_c",40.67));
   assert(value(out,"return_temperature_c",31.14));
+  assert(value(out,"target_kwh",0));
+  assert(value(out,"target_m3",0));
+  assert(out.value_count==8);
+  const auto text=xmq_portable::text_fields::decode(
+      original.data(),original.size(),"supercal");
+  const auto text_is=[&](const char *name,const char *value) {
+    for(size_t i=0;i<text.count;++i)
+      if(std::strcmp(text.fields[i].name,name)==0 &&
+         std::strcmp(text.fields[i].text,value)==0)return true;
+    return false;
+  };
+  assert(text.count==3);
+  assert(text_is("target_date","2127-01-01"));
+  assert(text_is("meter_datetime","2023-03-04 18:54"));
+  assert(text_is("status","OK"));
   auto invalid=original;
   assert(decode(invalid,"89508018","supercal")!=S::Ok && out.value_count==0);
   invalid=original;invalid[8]=0x16;
@@ -68,9 +84,18 @@ int main() {
   assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
   invalid=original;invalid[0]^=1;
   assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
-  invalid=original;invalid[36]=0xFF; // invalidate a DIF/VIF record byte
-  // Invalid records must never publish stale output; mutation may be ignored
-  // when placed inside a non-numeric field, so do not claim this test rejects.
+  invalid=original;invalid[36]=0xFF; // malformed storage-20 energy data
+  assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
+  assert(xmq_portable::text_fields::decode(
+      invalid.data(),invalid.size(),"supercal").count==0);
+  invalid=original;invalid[24]=0; // target date has no day
+  assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
+  invalid=original;invalid[32]=0x04; // missing storage-20 energy marker
+  assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
+  invalid=original;invalid[12]=0x08; // unvalidated TPL alarm
+  assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
+  invalid=original;invalid[41]=0xFF; // total volume remains valid, target must not exceed total
+  assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
   assert(decode(original,"89508019","q400")!=S::Ok && out.value_count==0);
   std::cout<<"PASS Supercal configured clear native XMQ subset and negative gates; no RF/HA.\\n";
 }

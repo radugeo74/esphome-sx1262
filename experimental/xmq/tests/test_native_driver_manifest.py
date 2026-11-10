@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 from generate_ixml_cpp import generate
 from generate_clear_profiles import generate as generate_clear_profiles, SPECS
 from generate_vario451_ixml import generate as generate_vario451_ixml
+from generate_supercal_lse08 import generate as generate_supercal_lse08
 
 def main():
     assert SUPPORTED == tuple(d.name for d in GENERATED) + PORTABLE
@@ -31,6 +32,21 @@ def main():
     assert tuple(SPECS) == ("munia","cma12w","lansendw","lansenpu","supercom587","sontex868","maddalena")
     assert generated["xmq_generated_clear_profiles.h"] == generate_clear_profiles(
         ROOT / "experimental/xmq/drivers")
+    pair = generated["xmq_generated_supercal_lse08.h"]
+    assert pair == generate_supercal_lse08(ROOT / "experimental/xmq/drivers")
+    assert "namespace supercal {" in pair
+    assert "namespace lse_08 {" in pair
+    assert "verified_length=69;" in pair
+    assert "verified_length=42;" in pair
+    for driver in ("supercal","lse_08"):
+        decoder = (ROOT / "components/wmbus_native_sx126x" /
+                   f"{driver}_plain.h").read_text()
+        assert '#include "xmq_generated_supercal_lse08.h"' in decoder
+        assert f"xmq_generated_pair::{driver}::rules" in decoder
+    txt = (ROOT / "components/wmbus_native_sx126x/xmq_plain_text_fields.h").read_text()
+    for field in ("target_date","meter_datetime","set_date",
+                  "device_datetime","model_version"):
+        assert f'"{field}"' in txt
     vario = generated["xmq_generated_vario451.h"]
     assert vario == generate_vario451_ixml(
         ROOT / "experimental/xmq/drivers/vario451.xmq")
