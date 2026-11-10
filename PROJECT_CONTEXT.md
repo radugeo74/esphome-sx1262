@@ -1,3 +1,27 @@
+## Vario451: generare din IXML-ul XMQ original (2026-11-10)
+
+- `experimental/xmq/tools/generate_vario451_ixml.py` generează
+  `xmq_generated_vario451.h`, consumat direct de
+  `components/wmbus_native_sx126x/vario451_plain.h`.
+- Nibble-grammar IXML produce offseturile radio-relative
+  `DV_PREV=3` și `DV_CURR=7`; `calculate` validează coeficientul
+  comun `3.6` pentru `total_kwh`, `current_kwh` și
+  `previous_kwh`. Fixture-ul original verifică 6371.666667,
+  2729.444444 și respectiv 3642.222222 kWh (1/1).
+- Transformarea este limitată și fail-closed: modificări nevalidate
+  ale gramaticii, formulelor, mapării DIF/VIF, modelului MVT sau
+  telegramelor de exemplu provoacă erori de generare. Nu s-a introdus
+  un interpret XMQ general pe ESP32-S3.
+- Firmware-ul rămâne limitat la `TCH/27/C3`, CI=A2, telegrama
+  originală de 56 octeți; `TCH/27/04` este doar metadată de detectare,
+  nepublicabil fără fixture radio. Se păstrează verificarea DLL CRC,
+  identificatorul configurat, controalele de criptare și validarea
+  structurală existentă.
+- Numărul celor 52 de drivere și decodoarele celorlalte modele nu s-au
+  schimbat. Niciun flash pe Heltec. CI #816 a încheiat cu trei joburi
+  verzi; #817 adaugă teste negative de fail-closed.
+  https://github.com/radugeo74/esphome-sx1262/actions/runs/42775764071
+
 ## Native XMQ: primele 4 profile declarative generate (2026-11-10)
 
 - Branch: `experimental/xmq-multidriver-auto`. Generator nou:
