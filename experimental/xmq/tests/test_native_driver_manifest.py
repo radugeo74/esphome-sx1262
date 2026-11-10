@@ -28,7 +28,7 @@ def main():
     for driver in GENERATED:
         assert f'generated_ixml::{driver.name}::rules' in catalog
         assert f'namespace {driver.name} ' in generated["xmq_generated.h"]
-    assert tuple(SPECS) == ("munia","cma12w","lansendw","lansenpu","supercom587")
+    assert tuple(SPECS) == ("munia","cma12w","lansendw","lansenpu","supercom587","sontex868","maddalena")
     assert generated["xmq_generated_clear_profiles.h"] == generate_clear_profiles(
         ROOT / "experimental/xmq/drivers")
     vario = generated["xmq_generated_vario451.h"]
@@ -110,6 +110,21 @@ def main():
             else:
                 raise AssertionError(
                     "Supercom587 generator accepted changed source: " + original)
+    for driver, frame_len, fields in (
+        ("sontex868",176,8),
+        ("maddalena",79,6),
+    ):
+        assert f"namespace {driver} {{" in clear
+        assert f"inline constexpr size_t verified_frame_bytes = {frame_len};" in clear
+        assert f"xmq_generated_clear::{driver}::offsets" in (
+            ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h"
+        ).read_text()
+    txt = (ROOT / "components/wmbus_native_sx126x/xmq_plain_text_fields.h").read_text()
+    for source_key in ("storage_48_date", "tariff_1_date",
+                       "tariff_2_date", "compact_profile_hex",
+                       "fabrication_no", "target_date", "meter_datetime",
+                       "storage_2_date", "storage_3_datetime"):
+        assert f'"{source_key}"' in txt
     for driver in SPECS:
         header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
         assert '#include "xmq_generated_clear_profiles.h"' in header

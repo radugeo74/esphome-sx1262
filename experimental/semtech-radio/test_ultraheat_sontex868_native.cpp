@@ -3,6 +3,7 @@
 // native full-frame validation. No real RF/HA delivery is claimed.
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/xmq_auto_registry.h"
+#include "components/wmbus_native_sx126x/xmq_plain_text_fields.h"
 #include "components/wmbus_native_sx126x/pure_complete_frame.h"
 #include <cassert>
 #include <cmath>
@@ -120,6 +121,38 @@ int main() {
   assert(value(out,"current_room_temp_c",12.4));
   assert(value(out,"max_temp_c",27.33));
   assert(value(out,"max_temp_previous_period_c",0));
+  // Native C? records are exposed with explicit storage/tariff labels.
+  assert(out.value_count==13);
+  assert(value(out,"storage_48_consumption_hca",0));
+  assert(value(out,"tariff_1_duration_minutes",0));
+  assert(value(out,"tariff_1_cumulation_counter",0));
+  assert(value(out,"parameter_activation_state_raw",2220));
+  assert(value(out,"manufacturer_ff2d_value",1));
+  assert(value(out,"manufacturer_ff2d_tariff_2_value",1));
+  assert(value(out,"manufacturer_ff2c_raw",0));
+  const auto sontex_text=xmq_portable::text_fields::decode(
+      sontex.data(),sontex.size(),"sontex868");
+  const auto text_eq=[&](const char *field,const char *expected) {
+    for(size_t i=0;i<sontex_text.count;++i)
+      if(std::strcmp(sontex_text.fields[i].name,field)==0 &&
+         std::strcmp(sontex_text.fields[i].text,expected)==0)return true;
+    return false;
+  };
+  assert(sontex_text.count==8);
+  assert(text_eq("set_date","2127-07-01"));
+  assert(text_eq("device_datetime","2020-10-31 10:04"));
+  assert(text_eq("storage_48_date","2019-05-01"));
+  assert(text_eq("tariff_1_date","2000-01-01"));
+  assert(text_eq("tariff_2_date","2020-10-31"));
+  assert(text_eq("software_version","010301"));
+  assert(text_eq("status","OK"));
+  bool raw_profile=false;
+  for(size_t i=0;i<sontex_text.count;++i)
+    if(std::strcmp(sontex_text.fields[i].name,"compact_profile_hex")==0) {
+      const char *hex=sontex_text.fields[i].text;
+      raw_profile=std::strlen(hex)==106 && std::strncmp(hex,"33FE",4)==0;
+    }
+  assert(raw_profile);
   // Model-only matching never overrides original DLL meter ID or security.
   assert(decode(ultra,"71635606","ultraheat")!=Status::Ok &&
          out.value_count==0);
@@ -131,6 +164,17 @@ int main() {
          out.value_count==0);
   encrypted=sontex;encrypted[14]=0x05;
   assert(decode(encrypted,"27282728","sontex868")!=Status::Ok &&
+         out.value_count==0);
+  auto tampered=sontex;tampered[57]=0x34; // raw compact length changed
+  assert(decode(tampered,"27282728","sontex868")!=Status::Ok &&
+         out.value_count==0);
+  tampered=sontex;tampered[163]=0xFA; // non-BCD software version
+  assert(decode(tampered,"27282728","sontex868")!=Status::Ok &&
+         out.value_count==0);
+  assert(xmq_portable::text_fields::decode(
+      tampered.data(),tampered.size(),"sontex868").count==0);
+  tampered=sontex;tampered[28]=0; // set_date: day must be nonzero
+  assert(decode(tampered,"27282728","sontex868")!=Status::Ok &&
          out.value_count==0);
   auto invalid=ultra;invalid[8]=0x05; // different model
   assert(decode(invalid,"71635605","ultraheat")!=Status::Ok &&

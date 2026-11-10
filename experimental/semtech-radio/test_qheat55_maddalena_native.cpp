@@ -57,15 +57,29 @@ int main(){
  assert(has(out,"key_datetime_kwh",0));
  
  assert(decode(m0,"24018699","maddalena")==PureDecodeStatus::Ok);
- assert(out.value_count==2);
+ assert(out.value_count==4);
  assert(has(out,"total_m3",0.167));
  assert(has(out,"target_m3",0));
+ assert(has(out,"storage_2_volume_m3",0.074));
+ assert(has(out,"storage_3_max_flow_m3h",1.351));
  // BCD corruption, wrong manufacturer/MVT, encrypted header, frame truncation
  // and mismatched configured DLL IDs all fail before publication.
  const auto qstatus=text_fields::decode(q2.data(),q2.size(),"qheat_55_us");
  assert(qstatus.count==0); // F0 error fixture must NEVER be misreported OK
  const auto mstatus=text_fields::decode(m0.data(),m0.size(),"maddalena");
- assert(mstatus.count==1 && std::strcmp(mstatus.fields[0].text,"OK")==0);
+ assert(mstatus.count==6);
+ const auto text_is=[&](const char *field,const char *expect) {
+   for(size_t i=0;i<mstatus.count;++i)
+     if(std::strcmp(mstatus.fields[i].name,field)==0 &&
+        std::strcmp(mstatus.fields[i].text,expect)==0)return true;
+   return false;
+ };
+ assert(text_is("status","OK"));
+ assert(text_is("fabrication_no","FF0124018699"));
+ assert(text_is("target_date","2000-01-01"));
+ assert(text_is("meter_datetime","2024-11-22 12:14"));
+ assert(text_is("storage_2_date","2024-10-31"));
+ assert(text_is("storage_3_datetime","2024-11-21 20:27"));
  assert(decode(q0,"70835485","qheat_55_us")!=PureDecodeStatus::Ok);
  assert(decode(m0,"24018698","maddalena")!=PureDecodeStatus::Ok);
  auto bad=q0;bad[13]=0;bad[14]=0x25;
@@ -85,6 +99,18 @@ int main(){
  bad=m0;bad[45]=0x14;
  assert(decode(bad,"24018699","maddalena")!=PureDecodeStatus::Ok);
  bad=m0;bad[0]++;
+ assert(decode(bad,"24018699","maddalena")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ bad=m0;bad[43]=0; // fabrication terminal 0xFF
+ assert(decode(bad,"24018699","maddalena")!=PureDecodeStatus::Ok);
+ assert(text_fields::decode(bad.data(),bad.size(),"maddalena").count==0);
+ bad=m0;bad[32]=1; // nonzero error flags cannot publish OK
+ assert(decode(bad,"24018699","maddalena")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ bad=m0;bad[52]=0; // invalid target date
+ assert(decode(bad,"24018699","maddalena")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ bad=m0;bad[54]=0x04; // missing storage-2 volume signature
  assert(decode(bad,"24018699","maddalena")!=PureDecodeStatus::Ok);
  assert(out.value_count==0);
 }
