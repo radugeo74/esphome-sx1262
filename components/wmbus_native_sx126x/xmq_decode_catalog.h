@@ -220,9 +220,11 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(lansenpu::decode(frame,length,counts)!=lansenpu::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
     if(counts.has_a)
-      output.values[output.value_count++]={"a_counter",counts.a_counter};
+      output.values[output.value_count++]={
+        xmq_generated_pulse::lansenpu::fields[0].name,counts.a_counter};
     if(counts.has_b)
-      output.values[output.value_count++]={"b_counter",counts.b_counter};
+      output.values[output.value_count++]={
+        xmq_generated_pulse::lansenpu::fields[1].name,counts.b_counter};
     output.values[output.value_count++]={"tpl_status_raw",
         static_cast<double>(counts.tpl_status)};
     output.values[output.value_count++]={"status_power_low",

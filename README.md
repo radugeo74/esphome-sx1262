@@ -1,3 +1,31 @@
+## Migrare XMQ nativă: Lansen Pulse după iPERL și Munia (2026-11-10)
+
+Am adăugat `generate_pulse_fields.py` ca al treilea compilator de
+semantici native după `generate_ixml_cpp.py` și
+`generate_standard_selectors.py`. Pentru `lansenpu`,
+`difvifkey`, numele `a_counter` / `b_counter`,
+tipul BCD12, bitul specific `SABOTAGE_ENCLOSURE` și
+textele statusurilor admise sunt extrase efectiv din
+`experimental/xmq/drivers/lansenpu.xmq` și fixture-urile sale,
+apoi transpuse în `xmq_generated_pulse_fields.h`. C++ consumă
+aceste câmpuri, în loc să păstreze manual cheile DIF/VIF și
+etichetele de stare.
+
+Generatorul respinge valori BCD invalide, schimbări necunoscute
+ale semnificației bitului de sabotaj, modificări ale structurii
+de câmp, JSON-uri incompatibile și statusuri care nu pot fi
+justificate de definițiile XMQ existente. Verificările de
+criptare, de ID configurat, DLL CRC și de publicare rămân
+independente de aceste date generate.
+
+Aceasta este **migrare parțială** a unui al treilea driver, nu
+declarație de paritate universală pentru toate cele 52.
+Obiectivul este să înlocuim succesiv toate decodoarele manuale
+cu selectori, transformări, formule, lookup-uri și structuri
+generate la compilare din definițiile XMQ. Nu există XMQ
+descărcat/executat dinamic pe Heltec; după update upstream
+este obligatoriu build, teste și flash controlat.
+
 ## Etapa initiala a compilatorului XMQ comun (2026-11-10)
 
 Dupa auditul celor 52 de surse, `iperl` si `munia` sunt

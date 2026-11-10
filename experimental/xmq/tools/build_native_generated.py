@@ -9,6 +9,7 @@ from native_driver_specs import validate, catalog_fragment, compiled_fragment
 from generate_ixml_cpp import generate
 from generate_clear_profiles import generate as generate_clear_profiles
 from generate_standard_selectors import generate as generate_standard_selectors
+from generate_pulse_fields import generate as generate_pulse_fields
 from generate_vario451_ixml import generate as generate_vario451_ixml
 from generate_supercal_lse08 import generate as generate_supercal_lse08
 
@@ -21,6 +22,7 @@ def build(root: Path):
         "xmq_generated.h": generated,
         "xmq_generated_clear_profiles.h": generate_clear_profiles(xmq / "drivers"),
         "xmq_generated_standard_selectors.h": generate_standard_selectors(xmq / "drivers"),
+        "xmq_generated_pulse_fields.h": generate_pulse_fields(xmq / "drivers"),
         "xmq_generated_vario451.h": generate_vario451_ixml(xmq / "drivers" / "vario451.xmq"),
         "xmq_generated_supercal_lse08.h": generate_supercal_lse08(xmq / "drivers"),
         "xmq_native_descriptors.h": catalog_fragment(),

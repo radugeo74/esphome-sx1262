@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 from generate_ixml_cpp import generate
 from generate_clear_profiles import generate as generate_clear_profiles, SPECS
 from generate_standard_selectors import generate as generate_standard_selectors, SOURCES
+from generate_pulse_fields import generate as generate_pulse_fields
 from generate_vario451_ixml import generate as generate_vario451_ixml
 from generate_supercal_lse08 import generate as generate_supercal_lse08
 
@@ -64,6 +65,23 @@ def main():
             pass
         else:
             raise AssertionError("Unreviewed XMQ quantity/VIF change was accepted")
+    pulse_source = generate_pulse_fields(
+        ROOT / "experimental/xmq/drivers")
+    assert generated["xmq_generated_pulse_fields.h"] == pulse_source
+    assert '"a_counter",{0x0E,0xFD,0x3A,0x00},3,6' in pulse_source
+    assert '"b_counter",{0x8E,0x40,0xFD,0x3A},4,6' in pulse_source
+    assert '{0x4C,"PERMANENT_ERROR POWER_LOW SABOTAGE_ENCLOSURE"}' in pulse_source
+    with TemporaryDirectory() as temp:
+        scratch=Path(temp)
+        pulse=(ROOT / "experimental/xmq/drivers/lansenpu.xmq").read_text()
+        (scratch / "lansenpu.xmq").write_text(pulse.replace(
+            "value = 0x40", "value = 0x20", 1))
+        try:
+            generate_pulse_fields(scratch)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Changed manufacturer status passed pulse XMQ review")
     pair = generated["xmq_generated_supercal_lse08.h"]
     assert pair == generate_supercal_lse08(ROOT / "experimental/xmq/drivers")
     # Deliberately alter individual upstream fields/frames; the profile

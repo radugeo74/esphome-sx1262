@@ -10,6 +10,7 @@
 #include "pure_frame_header.h"
 #include "tpl_security_probe.h"
 #include "xmq_generated_clear_profiles.h"
+#include "xmq_generated_pulse_fields.h"
 
 namespace xmq_portable { namespace lansenpu {
 enum class Status : uint8_t {
@@ -39,13 +40,12 @@ inline bool bcd12(const uint8_t *bytes,double &result) {
 // Unknown TPL statuses remain rejected by status_text() below.
 inline bool power_low(uint8_t status) { return (status & 0x04u)!=0; }
 inline bool permanent_error(uint8_t status) { return (status & 0x08u)!=0; }
-inline bool sabotage_enclosure(uint8_t status) { return (status & 0x40u)!=0; }
+inline bool sabotage_enclosure(uint8_t status) {
+  return (status & xmq_generated_pulse::lansenpu::sabotage_bit)!=0;
+}
 inline const char *status_text(uint8_t status) {
-  // Explicit original fixtures only; no guessed TPL state interpretation.
-  if(status==0x00) return "OK";
-  if(status==0x04) return "POWER_LOW";
-  if(status==0x4C) return "PERMANENT_ERROR POWER_LOW SABOTAGE_ENCLOSURE";
-  return nullptr;
+  // Generated from original XMQ status/fixture declarations.
+  return xmq_generated_pulse::lansenpu::status_text(status);
 }
 inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   out={};
@@ -69,17 +69,19 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   while(offset<length) {
     // Wireless M-Bus filler bytes between DIF/VIF records.
     if(frame[offset]==0x2F) {++offset;continue;}
-    const int slot=xmq_generated_clear::find_rule(frame+offset,length-offset,
-        xmq_generated_clear::lansenpu::rules,2);
+    const int slot=xmq_generated_pulse::lansenpu::find_field(
+        frame+offset,length-offset);
     if(slot<0) return Status::BadRecords; // never skip unknown DIF/VIF
     const bool is_a=(slot==0);
     if(is_a ? candidate.has_a : candidate.has_b)
       return Status::DuplicateRecord;
-    offset+=xmq_generated_clear::lansenpu::rules[slot].key_len;
-    if(length-offset<6) return Status::BadRecords;
+    const auto &field=xmq_generated_pulse::lansenpu::fields[slot];
+    offset+=field.key_len;
+    if(field.bcd_bytes!=6 || length-offset<field.bcd_bytes)
+      return Status::BadRecords;
     double count=0;
     if(!bcd12(frame+offset,count)) return Status::InvalidBcd;
-    offset+=6;
+    offset+=field.bcd_bytes;
     if(is_a) {candidate.has_a=true;candidate.a_counter=count;}
     else {candidate.has_b=true;candidate.b_counter=count;}
   }
