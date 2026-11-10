@@ -10,6 +10,7 @@ from build_native_generated import build
 from tempfile import TemporaryDirectory
 from generate_ixml_cpp import generate
 from generate_clear_profiles import generate as generate_clear_profiles, SPECS
+from generate_vario451_ixml import generate as generate_vario451_ixml
 
 def main():
     assert SUPPORTED == tuple(d.name for d in GENERATED) + PORTABLE
@@ -30,6 +31,17 @@ def main():
     assert tuple(SPECS) == ("munia","cma12w","lansendw","lansenpu")
     assert generated["xmq_generated_clear_profiles.h"] == generate_clear_profiles(
         ROOT / "experimental/xmq/drivers")
+    vario = generated["xmq_generated_vario451.h"]
+    assert vario == generate_vario451_ixml(
+        ROOT / "experimental/xmq/drivers/vario451.xmq")
+    assert "previous_payload_offset = 3;" in vario
+    assert "current_payload_offset = 7;" in vario
+    assert "kwh_divisor = 3.6;" in vario
+    vario_decoder = (ROOT / "components/wmbus_native_sx126x/vario451_plain.h").read_text()
+    assert '#include "xmq_generated_vario451.h"' in vario_decoder
+    assert "xmq_generated_vario451::previous_payload_offset" in vario_decoder
+    assert "xmq_generated_vario451::current_payload_offset" in vario_decoder
+    assert "xmq_generated_vario451::kwh_divisor" in vario_decoder
     for driver in SPECS:
         header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
         assert '#include "xmq_generated_clear_profiles.h"' in header

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "native_publication_gate.h"
+#include "xmq_generated_vario451.h"
 namespace xmq_portable { namespace vario451 {
 enum class Status:uint8_t {Ok,Invalid,WrongModel,NotClear,BadRecords};
 struct Reading {double total_kwh{0},current_kwh{0},previous_kwh{0};};
@@ -14,8 +15,11 @@ inline Status decode(const uint8_t*f,size_t n,Reading &out) {
  out={};wmbus_pure::Header h{};
  if(wmbus_pure::parse_header(f,n,h)!=wmbus_pure::HeaderStatus::Ok)
    return Status::Invalid;
- if(h.control!=0x44 || h.manufacturer!=0x5068 ||
-    h.version!=0x27 || h.device_type!=0xC3 || h.ci!=0xA2)
+ if(h.control!=0x44 ||
+    h.manufacturer!=xmq_generated_vario451::manufacturer ||
+    h.version!=xmq_generated_vario451::version ||
+    h.device_type!=xmq_generated_vario451::device_type ||
+    h.ci!=xmq_generated_vario451::ci)
    return Status::WrongModel;
  if(wmbus_pure::publication::inspect(f,n,h.meter_id)!=
     wmbus_pure::publication::Decision::Allowed)
@@ -26,9 +30,13 @@ inline Status decode(const uint8_t*f,size_t n,Reading &out) {
     f[16]!=0x00 || f[17]!=0xA8 || f[20]!=0x00 ||
     f[21]!=0x00 || f[22]!=0x82)
    return Status::BadRecords;
- const uint32_t prev=u16(f+14),curr=u16(f+18);
- out.previous_kwh=prev/3.6;out.current_kwh=curr/3.6;
- out.total_kwh=(prev+curr)/3.6;
+ // Position and scaling are compiled from the original XMQ IXML.
+ // The strict frame/CI/ID/security admission above is not relaxed.
+ const uint32_t prev=u16(f+11+xmq_generated_vario451::previous_payload_offset);
+ const uint32_t curr=u16(f+11+xmq_generated_vario451::current_payload_offset);
+ const double divisor=xmq_generated_vario451::kwh_divisor;
+ out.previous_kwh=prev/divisor;out.current_kwh=curr/divisor;
+ out.total_kwh=(prev+curr)/divisor;
  return Status::Ok;
 }
 }} // namespace xmq_portable::vario451

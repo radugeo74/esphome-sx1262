@@ -8,6 +8,7 @@ from pathlib import Path
 from native_driver_specs import validate, catalog_fragment, compiled_fragment
 from generate_ixml_cpp import generate
 from generate_clear_profiles import generate as generate_clear_profiles
+from generate_vario451_ixml import generate as generate_vario451_ixml
 
 def build(root: Path):
     xmq = root / "experimental" / "xmq"
@@ -17,6 +18,7 @@ def build(root: Path):
     outputs = {
         "xmq_generated.h": generated,
         "xmq_generated_clear_profiles.h": generate_clear_profiles(xmq / "drivers"),
+        "xmq_generated_vario451.h": generate_vario451_ixml(xmq / "drivers" / "vario451.xmq"),
         "xmq_native_descriptors.h": catalog_fragment(),
         "xmq_native_compiled.h": compiled_fragment(),
     }

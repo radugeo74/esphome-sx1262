@@ -1,3 +1,17 @@
+## Vario451: XMQ hex-IXML compilat în firmware (2026-11-10)
+
+- `generate_vario451_ixml.py` parcurge gramatica IXML originală
+  `vario451.xmq` (`hex` reprezintă câte un nibble), derivă pozițiile
+  `DV_PREV` și `DV_CURR`, verifică mapările `027E/027F` și
+  formulele XMQ pentru conversia din mGJ în kWh.
+- Generează `xmq_generated_vario451.h` pentru decodorul C++ nativ
+  `vario451_plain.h`. Limitele de securitate, modelul admis
+  `TCH/27/C3`, antetul CI=A2, ID-ul configurat, verificarea CRC
+  externă și layoutul radio rămân stricte. Modelul `TCH/27/04`
+  nu devine publicabil fără fixture radio verificat.
+- Fixture-ul original verifică toate cele trei valori calculate;
+  build-only CI include și teste negative. Nu se fac flashuri.
+
 # Native XMQ wM-Bus on official ESPHome SX126x
 
 **Current branch:** `experimental/xmq-multidriver-auto` (native-only,
