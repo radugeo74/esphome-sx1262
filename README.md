@@ -1,3 +1,28 @@
+## Native XMQ: primele 4 profile declarative generate (2026-11-10)
+
+- Branch: `experimental/xmq-multidriver-auto`. Generator nou:
+  `experimental/xmq/tools/generate_clear_profiles.py`.
+  Drivere: `munia` (2 exemple), `cma12w` (2), `lansendw` (2)
+  și `lansenpu` (3). Toate cele **9 exemple originale XMQ** au
+  regresii native pentru câmpurile numerice și text de referință.
+- Generatorul parsează XMQ-urile originale, validează semnăturile
+  `detect.mvt`, selectorii `match` și prezența prefixelor de
+  înregistrări în fixture-urile complete. Generează tabelele C++
+  `xmq_generated_clear_profiles.h` cu modele și chei DIF/VIF.
+  `build_native_generated.py` și codegen-ul ESPHome le regenerează.
+- Cele patru decodoare native folosesc la runtime tabelele generate.
+  Restul decodării (BCD, scalare, software_version, stări) și verificările
+  stricte de ID, CRC, profil, status și criptare **rămân implementate
+  și validate în C++**. Nu este încă un compilator general XMQ și
+  nu s-au extins implicit profilele RF acceptate.
+- CI #814: `native-packet-input`, `stage-a-espidf-s3-portable-link`
+  și `native-esphome-build` toate SUCCESS; Heltec T1/C1 build-only.
+  https://github.com/radugeo74/esphome-sx1262/actions/runs/42772697739
+- Totalul celor 52 de drivere XMQ rămâne neschimbat. Nicio restaurare a
+  vechiului wmbus_radio/meter stack, niciun flash și nicio confirmare RF
+  pe dispozitive reale. Următorii candidați pentru generare se aleg după
+  echivalență completă a exemplelor și a câmpurilor JSON.
+
 ## Audit și curățenie native-only (2026-11-09)
 
 - Removed **108 obsolete files** from this branch: entire old
