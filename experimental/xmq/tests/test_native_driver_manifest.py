@@ -28,7 +28,7 @@ def main():
     for driver in GENERATED:
         assert f'generated_ixml::{driver.name}::rules' in catalog
         assert f'namespace {driver.name} ' in generated["xmq_generated.h"]
-    assert tuple(SPECS) == ("munia","cma12w","lansendw","lansenpu")
+    assert tuple(SPECS) == ("munia","cma12w","lansendw","lansenpu","supercom587")
     assert generated["xmq_generated_clear_profiles.h"] == generate_clear_profiles(
         ROOT / "experimental/xmq/drivers")
     vario = generated["xmq_generated_vario451.h"]
@@ -65,6 +65,16 @@ def main():
                 pass
             else:
                 raise AssertionError("Vario451 generator admitted changed XMQ: " + original)
+    supercom_generated = generated["xmq_generated_clear_profiles.h"]
+    assert "namespace supercom587 {" in supercom_generated
+    assert "inline constexpr size_t verified_frame_bytes = 163;" in supercom_generated
+    assert "15, // total_m3" in supercom_generated
+    assert "123, // software_version" in supercom_generated
+    assert "158, // status" in supercom_generated
+    text_router = (ROOT / "components/wmbus_native_sx126x/xmq_plain_text_fields.h").read_text()
+    assert 'append(out,"software_version",reading.software_version);' in text_router
+    native_yaml = (ROOT / "components/wmbus_native_sx126x/__init__.py").read_text()
+    assert '"software_version"' in native_yaml  # binding exposed as ESPHome text_sensor
     for driver in SPECS:
         header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
         assert '#include "xmq_generated_clear_profiles.h"' in header

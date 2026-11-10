@@ -52,10 +52,19 @@ int main(){
  assert(decode(superwarm,"12345678","supercom587")==PureDecodeStatus::Ok);
  assert(has(out,"total_m3",5.548));
  const auto super_status=text_fields::decode(superwarm.data(),superwarm.size(),"supercom587");
- assert(super_status.count==1 && std::strcmp(super_status.fields[0].name,"status")==0);
+ assert(super_status.count==2);
+ assert(std::strcmp(super_status.fields[0].name,"status")==0);
  assert(std::strcmp(super_status.fields[0].text,"OK")==0);
+ assert(std::strcmp(super_status.fields[1].name,"software_version")==0);
+ assert(std::strcmp(super_status.fields[1].text,"010002")==0);
  assert(decode(supercold,"11111111","supercom587")==PureDecodeStatus::Ok);
  assert(has(out,"total_m3",4.989));
+ const auto cold_text=text_fields::decode(supercold.data(),supercold.size(),"supercom587");
+ assert(cold_text.count==2);
+ assert(std::strcmp(cold_text.fields[0].name,"status")==0);
+ assert(std::strcmp(cold_text.fields[0].text,"OK")==0);
+ assert(std::strcmp(cold_text.fields[1].name,"software_version")==0);
+ assert(std::strcmp(cold_text.fields[1].text,"010002")==0);
  assert(decode(evo1,"79787777","evo868")!=PureDecodeStatus::Ok);
  assert(decode(superwarm,"12345679","supercom587")!=PureDecodeStatus::Ok);
  auto bad=evo1;bad[14]=0x25;
@@ -74,4 +83,25 @@ int main(){
  bad=superwarm;bad.pop_back();bad[0]=uint8_t(bad.size()-1);
  assert(decode(bad,"12345678","supercom587")!=PureDecodeStatus::Ok);
  assert(out.value_count==0);
+ // No stale numeric or text fields on malformed software/version or
+ // XMQ ErrorFlags; this matters for Home Assistant publication.
+ bad=superwarm;bad[126]=0xFA; // invalid BCD software version
+ assert(decode(bad,"12345678","supercom587")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ assert(text_fields::decode(bad.data(),bad.size(),"supercom587").count==0);
+ bad=superwarm;bad[123]=0x0A; // missing library software record
+ assert(decode(bad,"12345678","supercom587")!=PureDecodeStatus::Ok);
+ assert(text_fields::decode(bad.data(),bad.size(),"supercom587").count==0);
+ bad=supercold;bad[161]=0x01; // nonzero error flags cannot mean OK
+ assert(decode(bad,"11111111","supercom587")!=PureDecodeStatus::Ok);
+ assert(out.value_count==0);
+ assert(text_fields::decode(bad.data(),bad.size(),"supercom587").count==0);
+ bad=supercold;bad[158]=0x03; // missing upstream error record
+ assert(decode(bad,"11111111","supercom587")!=PureDecodeStatus::Ok);
+ assert(text_fields::decode(bad.data(),bad.size(),"supercom587").count==0);
+ // Match must remain restricted to correct MVT and ordinary mode-zero.
+ bad=superwarm;bad[8]=0x3D;
+ assert(decode(bad,"12345678","supercom587")!=PureDecodeStatus::Ok);
+ bad=superwarm;bad[14]=0x25;
+ assert(decode(bad,"12345678","supercom587")!=PureDecodeStatus::Ok);
 }

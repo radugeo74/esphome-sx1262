@@ -349,7 +349,7 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[1]={"consumption_at_set_date_m3",r.consumption_at_set_date_m3};
     output.value_count=2;return PureDecodeStatus::Ok;
   }
-  // Sontex Supercom 587: bounded standard Mode-0 BCD total only.
+  // Sontex Supercom 587: original XMQ total + software version + status.
   if(driver_name && std::strcmp(driver_name,"supercom587")==0) {
     if(!output.values || output.value_capacity<1)return PureDecodeStatus::DecodeFailure;
     if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
