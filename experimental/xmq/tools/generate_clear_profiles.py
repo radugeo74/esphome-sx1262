@@ -108,19 +108,19 @@ def check(path, rules):
             expected=json.loads(values(s,"json")[0])
             keys={"_","media","driver","name","id","total_m3",
                   "software_version","status","timestamp"}
-            if set(expected)!=keys or expected["_"]!="telegram" or
-                    expected["driver"]!="supercom587":
+            if (set(expected)!=keys or expected["_"]!="telegram" or
+                    expected["driver"]!="supercom587"):
                 raise ValueError("supercom587: unsupported upstream output fields")
             arguments=values(s,"args")
             if len(arguments)!=1:
                 raise ValueError("supercom587: missing test arguments")
             parts=arguments[0].split()
-            if len(parts)!=4 or parts[1:]!=["supercom587",expected["id"],"NOKEY"] or
-                    parts[0]!=expected["name"]:
+            if (len(parts)!=4 or parts[1:]!=["supercom587",expected["id"],"NOKEY"] or
+                    parts[0]!=expected["name"]):
                 raise ValueError("supercom587: fixture name/driver/ID mismatch")
             meter_id="".join(f"{byte:02X}" for byte in reversed(frame[4:8]))
-            if meter_id!=expected["id"] or
-                    expected["timestamp"]!="1111-11-11T11:11:11Z":
+            if (meter_id!=expected["id"] or
+                    expected["timestamp"]!="1111-11-11T11:11:11Z"):
                 raise ValueError("supercom587: fixture ID/timestamp drift")
             expected_media={0x06:"warm water",0x07:"water"}[frame[9]]
             if expected["media"]!=expected_media:
