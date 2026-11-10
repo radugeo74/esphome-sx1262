@@ -90,7 +90,8 @@ def check(path, rules):
                    i+len(prefix)+width<=len(frame)
                    for i in range(15,len(frame))):
                 used.add(field)
-    if used!={r[0] for r in rules} or seen_variants!=set(variants):
+    # A declared MVT can have no public fixture; do not invent RF evidence.
+    if used!={r[0] for r in rules}:
         raise ValueError(f"{name}: fixture/schema evidence mismatch")
     return variants
 

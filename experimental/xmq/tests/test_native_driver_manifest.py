@@ -30,6 +30,11 @@ def main():
     assert tuple(SPECS) == ("munia","cma12w","lansendw","lansenpu")
     assert generated["xmq_generated_clear_profiles.h"] == generate_clear_profiles(
         ROOT / "experimental/xmq/drivers")
+    for driver in SPECS:
+        header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
+        assert '#include "xmq_generated_clear_profiles.h"' in header
+        assert f"xmq_generated_clear::{driver}::models" in header
+        assert f"xmq_generated_clear::{driver}::rules" in header
     assert "lansenpu" in SUPPORTED
     assert 'std::strcmp(name, "lansenpu")' in compiled
     for experimental in CONFIGURED_NATIVE:

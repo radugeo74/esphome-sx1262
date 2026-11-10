@@ -7,6 +7,7 @@
 #include <cstdint>
 #include "native_publication_gate.h"
 #include "standard_dif_vif.h"
+#include "xmq_generated_clear_profiles.h"
 namespace xmq_portable { namespace munia {
 enum class Status : uint8_t {Ok,Invalid,WrongModel,NotClear,BadRecords,Missing,Duplicate};
 struct Reading {double current_temperature_c{0},current_relative_humidity_rh{0};};
@@ -14,9 +15,9 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
  out={};wmbus_pure::Header h{};
  if(wmbus_pure::parse_header(frame,length,h)!=wmbus_pure::HeaderStatus::Ok)
    return Status::Invalid;
- if(h.control!=0x44 || h.manufacturer!=0x5CB0 ||
-    (h.version!=0x02 && h.version!=0x04) ||
-    h.device_type!=0x1B || h.ci!=0x7A)return Status::WrongModel;
+ if(h.control!=0x44 || h.ci!=0x7A ||
+    !xmq_generated_clear::match_model(h.manufacturer,h.version,h.device_type,
+      xmq_generated_clear::munia::models,2))return Status::WrongModel;
  if(wmbus_pure::publication::inspect(frame,length,h.meter_id)!=
     wmbus_pure::publication::Decision::Allowed)return Status::NotClear;
  // Complete 47-byte profile:
@@ -24,10 +25,13 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
  // + 02FD971D(2 zero flags) + terminal 2F padding.
  if(length!=47 || frame[12]!=0 || frame[13]!=0 || frame[14]!=0 ||
     frame[15]!=0x2F || frame[16]!=0x2F ||
-    frame[17]!=0x0A || frame[18]!=0x66 ||
-    frame[21]!=0x0A || frame[22]!=0xFB || frame[23]!=0x1A ||
-    frame[26]!=0x02 || frame[27]!=0xFD || frame[28]!=0x97 ||
-    frame[29]!=0x1D || frame[30]!=0 || frame[31]!=0)
+    !xmq_generated_clear::match_rule(frame+17,length-17,
+      xmq_generated_clear::munia::rules[0]) ||
+    !xmq_generated_clear::match_rule(frame+21,length-21,
+      xmq_generated_clear::munia::rules[1]) ||
+    !xmq_generated_clear::match_rule(frame+26,length-26,
+      xmq_generated_clear::munia::rules[2]) ||
+    frame[30]!=0 || frame[31]!=0)
     return Status::BadRecords;
  for(size_t i=32;i<length;++i)if(frame[i]!=0x2F)return Status::BadRecords;
  standard::Record rec[4]{};size_t count=0;

@@ -9,6 +9,7 @@
 #include <cstdio>
 #include "pure_frame_header.h"
 #include "tpl_security_probe.h"
+#include "xmq_generated_clear_profiles.h"
 
 namespace xmq_portable { namespace cma12w {
 enum class Status : uint8_t {
@@ -36,8 +37,9 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   wmbus_pure::Header h{};
   if(wmbus_pure::parse_header(frame,length,h)!=wmbus_pure::HeaderStatus::Ok)
     return Status::InvalidFrame;
-  if(h.manufacturer!=0x1596 || h.device_type!=0x1B ||
-     (h.version!=0x20 && h.version!=0x1F) || h.ci!=0x7A)
+  if(h.ci!=0x7A ||
+     !xmq_generated_clear::match_model(h.manufacturer,h.version,h.device_type,
+       xmq_generated_clear::cma12w::models,2))
     return Status::WrongModel;
   if(wmbus_pure::tpl_security::inspect(frame,length).state!=
      wmbus_pure::tpl_security::State::NotEncrypted)
@@ -55,20 +57,12 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
       ++pos;
       continue;
     }
-    unsigned slot=4;
-    size_t prefix=0,bytes=0;
-    if(length-pos>=2 && frame[pos]==0x02 && frame[pos+1]==0x65) {
-      slot=0;prefix=2;bytes=2;
-    } else if(length-pos>=2 && frame[pos]==0x42 && frame[pos+1]==0x65) {
-      slot=1;prefix=2;bytes=2;
-    } else if(length-pos>=3 && frame[pos]==0x02 &&
-              frame[pos+1]==0xFD && frame[pos+2]==0x1B) {
-      slot=2;prefix=3;bytes=2;
-    } else if(length-pos>=4 && frame[pos]==0x0D &&
-              frame[pos+1]==0xFD && frame[pos+2]==0x0F &&
-              frame[pos+3]==0x05) {
-      slot=3;prefix=4;bytes=5;
-    } else return Status::BadRecords;
+    const int index=xmq_generated_clear::find_rule(frame+pos,length-pos,
+        xmq_generated_clear::cma12w::rules,4);
+    if(index<0) return Status::BadRecords;
+    const unsigned slot=static_cast<unsigned>(index);
+    const auto &rule=xmq_generated_clear::cma12w::rules[slot];
+    const size_t prefix=rule.key_len, bytes=rule.value_len;
     if((seen&(1u<<slot))!=0) return Status::Duplicate;
     if(length-pos<prefix+bytes) return Status::BadRecords;
     const uint8_t *data=frame+pos+prefix;

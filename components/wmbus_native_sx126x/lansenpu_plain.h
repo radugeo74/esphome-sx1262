@@ -9,6 +9,7 @@
 #include <cstdint>
 #include "pure_frame_header.h"
 #include "tpl_security_probe.h"
+#include "xmq_generated_clear_profiles.h"
 
 namespace xmq_portable { namespace lansenpu {
 enum class Status : uint8_t {
@@ -46,11 +47,9 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   if(wmbus_pure::parse_header(frame,length,header)!=
      wmbus_pure::HeaderStatus::Ok)
     return Status::InvalidFrame;
-  if(header.manufacturer!=0x3033 ||
-     !((header.version==0x14 && header.device_type==0x00) ||
-       (header.version==0x1B && header.device_type==0x00) ||
-       (header.version==0x0B && header.device_type==0x02)) ||
-     header.ci!=0x7A)
+  if(header.ci!=0x7A ||
+     !xmq_generated_clear::match_model(header.manufacturer,header.version,
+       header.device_type,xmq_generated_clear::lansenpu::models,3))
     return Status::WrongModel;
   if(wmbus_pure::tpl_security::inspect(frame,length).state!=
      wmbus_pure::tpl_security::State::NotEncrypted)
@@ -64,21 +63,13 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   while(offset<length) {
     // Wireless M-Bus filler bytes between DIF/VIF records.
     if(frame[offset]==0x2F) {++offset;continue;}
-    bool is_a=false;
-    if(length-offset>=3 &&
-       frame[offset]==0x0E && frame[offset+1]==0xFD &&
-       frame[offset+2]==0x3A) {
-      is_a=true;
-      offset+=3;
-      if(candidate.has_a) return Status::DuplicateRecord;
-    } else if(length-offset>=4 &&
-              frame[offset]==0x8E && frame[offset+1]==0x40 &&
-              frame[offset+2]==0xFD && frame[offset+3]==0x3A) {
-      offset+=4;
-      if(candidate.has_b) return Status::DuplicateRecord;
-    } else {
-      return Status::BadRecords; // no skipping unknown records or unknown VIFE
-    }
+    const int slot=xmq_generated_clear::find_rule(frame+offset,length-offset,
+        xmq_generated_clear::lansenpu::rules,2);
+    if(slot<0) return Status::BadRecords; // never skip unknown DIF/VIF
+    const bool is_a=(slot==0);
+    if(is_a ? candidate.has_a : candidate.has_b)
+      return Status::DuplicateRecord;
+    offset+=xmq_generated_clear::lansenpu::rules[slot].key_len;
     if(length-offset<6) return Status::BadRecords;
     double count=0;
     if(!bcd12(frame+offset,count)) return Status::InvalidBcd;

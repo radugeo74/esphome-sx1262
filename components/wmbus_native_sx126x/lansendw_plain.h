@@ -9,6 +9,7 @@
 #include "pure_frame_header.h"
 #include "tpl_security_probe.h"
 #include "lansenpu_plain.h"
+#include "xmq_generated_clear_profiles.h"
 
 namespace xmq_portable { namespace lansendw {
 enum class Status : uint8_t {
@@ -45,8 +46,9 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   wmbus_pure::Header h{};
   if(wmbus_pure::parse_header(frame,length,h)!=wmbus_pure::HeaderStatus::Ok)
     return Status::InvalidFrame;
-  if(h.manufacturer!=0x3033 || h.version!=0x07 ||
-     h.device_type!=0x1D || h.ci!=0x7A)
+  if(h.ci!=0x7A ||
+     !xmq_generated_clear::match_model(h.manufacturer,h.version,h.device_type,
+       xmq_generated_clear::lansendw::models,1))
     return Status::WrongModel;
   if(wmbus_pure::tpl_security::inspect(frame,length).state!=
      wmbus_pure::tpl_security::State::NotEncrypted)
@@ -60,23 +62,12 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   size_t pos=15;
   while(pos<length) {
     if(frame[pos]==0x2F) {++pos;continue;}
-    unsigned slot=4;
-    size_t prefix=0,bytes=0;
-    if(length-pos>=3 && frame[pos]==0x02 &&
-       frame[pos+1]==0xFD && frame[pos+2]==0x1B) {
-      slot=0;prefix=3;bytes=2;
-    } else if(length-pos>=4 && frame[pos]==0x02 &&
-              frame[pos+1]==0xFD && frame[pos+2]==0x97 &&
-              frame[pos+3]==0x1D) {
-      slot=1;prefix=4;bytes=2;
-    } else if(length-pos>=3 && frame[pos]==0x0E &&
-              frame[pos+1]==0xFD && frame[pos+2]==0x3A) {
-      slot=2;prefix=3;bytes=6;
-    } else if(length-pos>=4 && frame[pos]==0x8E &&
-              frame[pos+1]==0x40 && frame[pos+2]==0xFD &&
-              frame[pos+3]==0x3A) {
-      slot=3;prefix=4;bytes=6;
-    } else return Status::BadRecords;
+    const int index=xmq_generated_clear::find_rule(frame+pos,length-pos,
+        xmq_generated_clear::lansendw::rules,4);
+    if(index<0) return Status::BadRecords;
+    const unsigned slot=static_cast<unsigned>(index);
+    const auto &rule=xmq_generated_clear::lansendw::rules[slot];
+    const size_t prefix=rule.key_len, bytes=rule.value_len;
     if((seen&(1u<<slot))!=0) return Status::Duplicate;
     if(length-pos<prefix+bytes) return Status::BadRecords;
     const uint8_t *data=frame+pos+prefix;
