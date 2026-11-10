@@ -198,6 +198,48 @@ def main():
         assert '#include "xmq_generated_clear_profiles.h"' in header
         assert f"xmq_generated_clear::{driver}::models" in header
         assert f"xmq_generated_clear::{driver}::rules" in header
+    # Lansen DW: protect every upstream C! field and the Lansen
+    # OPEN/CLOSED + unknown TPL/error-bit interpretation.
+    dw_router = (ROOT / "components/wmbus_native_sx126x/xmq_decode_catalog.h").read_text()
+    for field in (
+        "a_counter", "b_counter", "digital_input_raw", "door_open",
+        "error_flags_raw", "error_flags_unknown_raw", "tpl_status_raw",
+        "tpl_status_unknown_raw", "status_alarm", "status_busy",
+        "status_error", "status_permanent_error", "status_power_low",
+        "status_temporary_error",
+    ):
+        assert f'{{"{field}",' in dw_router
+    original_dw=(ROOT / "experimental/xmq/drivers/lansendw.xmq").read_text()
+    dw_mutations=(
+        ("mvt = LAS,07,1d", "mvt = LAS,08,1d"),
+        ("value = 0x11", "value = 0x12"),
+        ("value = 0x55", "value = 0x54"),
+        ('"a_counter":22', '"a_counter":25'),
+        ('"b_counter":0', '"b_counter":1'),
+        ('"status":"CLOSED"', '"status":"OPEN"'),
+        ('"error_flags":"ERROR_FLAGS_1 PERMANENT_ERROR TPL_STS_96"',
+         '"error_flags":"OK"'),
+        ("2f2f02fd1b5500", "2f2f02fd1b5600"),
+        ("0efd3a220000000000", "0efd3a230000000000"),
+        ("attributes = STATUS,INCLUDE_TPL_STATUS",
+         "attributes = STATUS"),
+    )
+    with TemporaryDirectory() as tmp:
+        source_dir=Path(tmp)
+        for name in SPECS:
+            (source_dir / f"{name}.xmq").write_text(
+                (ROOT / "experimental/xmq/drivers" / f"{name}.xmq").read_text())
+        filename=source_dir / "lansendw.xmq"
+        for old,new in dw_mutations:
+            assert old in original_dw, old
+            filename.write_text(original_dw.replace(old,new,1))
+            try:
+                generate_clear_profiles(source_dir)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(
+                    "Lansendw changed original fixture/meaning accepted: "+old)
     assert "lansenpu" in SUPPORTED
     # The manufacturer-specific 0x40 bit is SABOTAGE_ENCLOSURE. Do not
     # silently lose any original JSON field, status meaning, or pulse value.
