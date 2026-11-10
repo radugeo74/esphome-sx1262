@@ -36,8 +36,47 @@ SPECS = {
   ("total_m3","0C13",4,"library","total_m3"),
   ("software_version","0BFD0F",3,"library","software_version"),
   ("status","02FD17",2,"vif_range","ErrorFlags")),
+ "sontex868": (
+  ("current_consumption","036E",3,"vif_range","HeatCostAllocation"),
+  ("set_date","426C",2,"vif_range","Date"),
+  ("consumption_at_set_date","436E",3,"vif_range","HeatCostAllocation"),
+  ("current_temp","0259",2,"vif_range","FlowTemperature"),
+  ("current_room_temp","0265",2,"vif_range","ExternalTemperature"),
+  ("max_temp","1259",2,"vif_range","FlowTemperature"),
+  ("max_temp_previous_period","5259",2,"vif_range","FlowTemperature"),
+  ("device","046D",4,"vif_range","DateTime")),
+ "maddalena": (
+  ("total_m3","0413",4,"library","total_m3"),
+  ("target_m3","4413",4,"library","target_m3"),
+  ("target_date","426C",2,"library","target_date"),
+  ("meter_datetime","046D",4,"library","meter_datetime"),
+  ("fabrication_no","0E78",6,"library","fabrication_no"),
+  ("status","04FD17",4,"vif_range","ErrorFlags")),
 }
-COUNTS={"munia":2,"cma12w":2,"lansendw":2,"lansenpu":3,"supercom587":2}
+COUNTS={"munia":2,"cma12w":2,"lansendw":2,"lansenpu":3,"supercom587":2,
+        "sontex868":1,"maddalena":1}
+EXTRA_OFFSETS = {
+    "sontex868": (21,26,30,126,130,134,35,15),
+    "maddalena": (17,44,50,23,36,29),
+}
+EXTRA_JSON = {
+    "sontex868": {
+        "current_consumption_hca":119,
+        "set_date":"2127-07-01",
+        "consumption_at_set_date_hca":102,
+        "current_temp_c":27.33,"current_room_temp_c":12.4,
+        "max_temp_c":27.33,"max_temp_previous_period_c":0,
+        "device_datetime":"2020-10-31 10:04",
+    },
+    "maddalena": {
+        "total_m3":0.167,"target_m3":0,
+        "target_date":"2000-01-01",
+        "fabrication_no":"FF0124018699",
+        "meter_datetime":"2024-11-22 12:14",
+        "status":"OK",
+    },
+}
+
 
 
 def check(path, rules):
@@ -98,9 +137,9 @@ def check(path, rules):
                      i+len(prefix)+width<=len(frame)]
             if matches:
                 used.add(field)
-            if name=="supercom587":
+            if name=="supercom587" or name in EXTRA_OFFSETS:
                 if len(matches)!=1:
-                    raise ValueError("supercom587: missing/duplicate original record")
+                    raise ValueError(f"{name}: missing/duplicate original {field} record")
                 positions[field]=matches[0]
         if name=="supercom587":
             # All original source JSON keys are accounted for. The timestamp
@@ -147,6 +186,41 @@ def check(path, rules):
                 if name_of_field in offsets and offsets[name_of_field]!=position:
                     raise ValueError("supercom587: inconsistent fixture offsets")
                 offsets[name_of_field]=position
+        if name in EXTRA_OFFSETS:
+            expected=json.loads(values(s,"json")[0])
+            fields=EXTRA_JSON[name]
+            # An original upstream JSON with a newly added field must cause
+            # a generator failure until that field is implemented.
+            expected_keys=set(fields)|{"_","media","driver","name","id","timestamp"}
+            if (set(expected)!=expected_keys or expected["driver"]!=name or
+                    expected["_"]!="telegram"):
+                raise ValueError(f"{name}: changed original XMQ output schema")
+            if any(expected[field]!=value for field,value in fields.items()):
+                raise ValueError(f"{name}: source XMQ values changed")
+            if expected["timestamp"]!="1111-11-11T11:11:11Z":
+                raise ValueError(f"{name}: source timestamp is not test sentinel")
+            name_of_sample=values(s,"args")
+            if len(name_of_sample)!=1:
+                raise ValueError(f"{name}: no original invocation")
+            parts=name_of_sample[0].split()
+            if len(parts)!=4 or parts!=[expected["name"],name,expected["id"],"NOKEY"]:
+                raise ValueError(f"{name}: original invocation changed")
+            actual_id="".join(f"{byte:02X}" for byte in reversed(frame[4:8]))
+            if actual_id!=expected["id"]:
+                raise ValueError(f"{name}: sample DLL identity changed")
+            if tuple(positions[field] for field,_,_,_,_ in rules)!=EXTRA_OFFSETS[name]:
+                raise ValueError(f"{name}: source record positions changed")
+            if name=="sontex868":
+                if (len(frame)!=176 or frame[1]!=0x46 or frame[9]!=0x08 or
+                        frame[12:15]!=bytes(3) or
+                        frame[160:163]!=bytes.fromhex("0BFD0F")):
+                    raise ValueError("sontex868: unreviewed radio layout")
+            if name=="maddalena":
+                if (len(frame)!=79 or frame[1]!=0x44 or frame[9]!=0x07 or
+                        frame[12:15]!=bytes.fromhex("000020") or
+                        frame[15:17]!=bytes.fromhex("2F2F")):
+                    raise ValueError("maddalena: unreviewed radio layout")
+            offsets=positions
     # A declared MVT can have no public fixture; do not invent RF evidence.
     if used!={r[0] for r in rules}:
         raise ValueError(f"{name}: fixture/schema evidence mismatch")
@@ -189,8 +263,8 @@ def generate(driver_dir: Path):
             padded=",".join(f"0x{v:02X}" for v in b+[0]*(4-len(b)))
             lines.append(f'  {{"{field}",{{{padded}}},{len(b)},{width}}},')
         lines.append("};")
-        if name=="supercom587":
-            lines.append("inline constexpr size_t verified_frame_bytes = 163;")
+        if name=="supercom587" or name in EXTRA_OFFSETS:
+            lines.append(f"inline constexpr size_t verified_frame_bytes = {163 if name=='supercom587' else 176 if name=='sontex868' else 79};")
             lines.append("inline constexpr size_t offsets[] = {")
             for field,_,_,_,_ in rules:
                 lines.append(f"  {offsets[field]}, // {field}")
