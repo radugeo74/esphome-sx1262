@@ -9,6 +9,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_TRIGGER_ID
 from esphome import automation
+from esphome.core import CORE
 from esphome.components.sx126x import SX126x
 from esphome.components import sensor, text_sensor
 
@@ -190,10 +191,13 @@ async def to_code(config):
         registry_files = sorted((xmq / "drivers").glob("*.xmq"))
         if not registry_files:
             raise cv.Invalid("No XMQ driver metadata available")
-        # Keep the generated include local to the native component. ESPHome
-        # copies this directory into build/src independently of wmbus_radio.
+        # Generate into ESPHome's build source tree. The checked-out component
+        # (including external-component caches) must remain read-only during
+        # code generation.
         registry_header = generate_registry(registry_files)
-        component_dir = Path(__file__).resolve().parent
+        component_dir = CORE.relative_src_path(
+            "esphome", "components", "wmbus_native_sx126x")
+        component_dir.mkdir(parents=True, exist_ok=True)
         (component_dir / "xmq_auto_registry.h").write_text(
             registry_header, encoding="utf-8")
         (component_dir / "xmq_generated.h").write_text(generated, encoding="utf-8")
@@ -214,8 +218,6 @@ async def to_code(config):
             catalog_fragment(), encoding="utf-8")
         (component_dir / "xmq_native_compiled.h").write_text(
             compiled_fragment(), encoding="utf-8")
-        # ESPHome copies components into build/src; absolute paths do not
-        # reliably survive the isolated ESP-IDF compilation stage.
         # Only copy explicitly approved runtime helpers. Never glob all .h:
         # legacy-reference tests contain a different xmq_decode_catalog.h
         # with relative includes that cannot compile in the native firmware.

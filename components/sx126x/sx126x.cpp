@@ -137,6 +137,7 @@ void SX126x::configure() {
 
   // wakeup
   this->read_opcode_(RADIO_GET_STATUS, nullptr, 0);
+  if (this->is_failed()) return;
 
   // config tcxo
   if (this->tcxo_voltage_ != TCXO_CTRL_NONE) {
@@ -146,23 +147,28 @@ void SX126x::configure() {
     buf[2] = (delay >> 8) & 0xFF;
     buf[3] = (delay >> 0) & 0xFF;
     this->write_opcode_(RADIO_SET_TCXOMODE, buf, 4);
+    if (this->is_failed()) return;
     buf[0] = 0x7F;
     this->write_opcode_(RADIO_CALIBRATE, buf, 1);
+    if (this->is_failed()) return;
   }
 
   // clear errors
   buf[0] = 0x00;
   buf[1] = 0x00;
   this->write_opcode_(RADIO_CLR_ERROR, buf, 2);
+  if (this->is_failed()) return;
 
   // rf switch
   if (this->rf_switch_) {
     buf[0] = 0x01;
     this->write_opcode_(RADIO_SET_RFSWITCHMODE, buf, 1);
+    if (this->is_failed()) return;
   }
 
   // check silicon version to make sure hw is ok
   this->read_register_(REG_VERSION_STRING, (uint8_t *) this->version_, sizeof(this->version_));
+  if (this->is_failed()) return;
   this->version_[sizeof(this->version_) - 1] = '\0';
   if (strncmp(this->version_, "SX126", 5) != 0 && strncmp(this->version_, "LLCC68", 6) != 0) {
     this->mark_failed();
@@ -172,9 +178,11 @@ void SX126x::configure() {
   // setup packet type
   buf[0] = this->modulation_;
   this->write_opcode_(RADIO_SET_PACKETTYPE, buf, 1);
+  if (this->is_failed()) return;
 
   // calibrate image
   this->run_image_cal();
+  if (this->is_failed()) return;
 
   // set frequency
   uint64_t freq = ((uint64_t) this->frequency_ << 25) / XTAL_FREQ;
@@ -183,6 +191,7 @@ void SX126x::configure() {
   buf[2] = (uint8_t) ((freq >> 8) & 0xFF);
   buf[3] = (uint8_t) (freq & 0xFF);
   this->write_opcode_(RADIO_SET_RFFREQUENCY, buf, 4);
+  if (this->is_failed()) return;
 
   // configure pa
   int8_t pa_power = this->pa_power_;
@@ -192,27 +201,33 @@ void SX126x::configure() {
     if (pa_power == 15) {
       uint8_t cfg[4] = {0x06, 0x00, 0x01, 0x01};
       this->write_opcode_(RADIO_SET_PACONFIG, cfg, 4);
+      if (this->is_failed()) return;
     } else {
       uint8_t cfg[4] = {0x04, 0x00, 0x01, 0x01};
       this->write_opcode_(RADIO_SET_PACONFIG, cfg, 4);
+      if (this->is_failed()) return;
     }
     pa_power = std::max(pa_power, (int8_t) -3);
     pa_power = std::min(pa_power, (int8_t) 14);
     buf[0] = OCP_80MA;
     this->write_register_(REG_OCP, buf, 1);
+      if (this->is_failed()) return;
   } else {
     // the following values were taken from section 13.1.14.1 table 13-21
     // in rev 2.1 of the datasheet
     uint8_t cfg[4] = {0x04, 0x07, 0x00, 0x01};
     this->write_opcode_(RADIO_SET_PACONFIG, cfg, 4);
+    if (this->is_failed()) return;
     pa_power = std::max(pa_power, (int8_t) -3);
     pa_power = std::min(pa_power, (int8_t) 22);
     buf[0] = OCP_140MA;
     this->write_register_(REG_OCP, buf, 1);
+    if (this->is_failed()) return;
   }
   buf[0] = pa_power;
   buf[1] = this->pa_ramp_;
   this->write_opcode_(RADIO_SET_TXPARAMS, buf, 2);
+  if (this->is_failed()) return;
 
   // configure modem
   if (this->modulation_ == PACKET_TYPE_LORA) {
@@ -223,11 +238,14 @@ void SX126x::configure() {
     buf[2] = this->coding_rate_;
     buf[3] = (duration > LOW_DATA_RATE_OPTIMIZE_THRESHOLD) ? 0x01 : 0x00;
     this->write_opcode_(RADIO_SET_MODULATIONPARAMS, buf, 4);
+    if (this->is_failed()) return;
 
     // set packet params and sync word
     this->set_packet_params_(this->get_max_packet_size());
+    if (this->is_failed()) return;
     if (this->sync_value_.size() == 2) {
       this->write_register_(REG_LORA_SYNCWORD, this->sync_value_.data(), this->sync_value_.size());
+      if (this->is_failed()) return;
     }
   } else {
     // set modulation params
@@ -242,15 +260,18 @@ void SX126x::configure() {
     buf[6] = (fdev >> 8) & 0xFF;
     buf[7] = (fdev >> 0) & 0xFF;
     this->write_opcode_(RADIO_SET_MODULATIONPARAMS, buf, 8);
+    if (this->is_failed()) return;
 
     // set crc params
     if (this->crc_enable_) {
       buf[0] = this->crc_initial_ >> 8;
       buf[1] = this->crc_initial_ & 0xFF;
       this->write_register_(REG_CRC_INITIAL, buf, 2);
+      if (this->is_failed()) return;
       buf[0] = this->crc_polynomial_ >> 8;
       buf[1] = this->crc_polynomial_ & 0xFF;
       this->write_register_(REG_CRC_POLYNOMIAL, buf, 2);
+      if (this->is_failed()) return;
     }
 
     // set whitening params
@@ -258,15 +279,19 @@ void SX126x::configure() {
       // according to the datasheet, section 12 table 12-1 "The user should not
       // change the value of the 7 MSB of this register"
       this->read_register_(REG_WHITENING_INITIAL, buf, 1);
+      if (this->is_failed()) return;
       buf[0] = (buf[0] & 0xFE) | ((this->whitening_initial_ >> 8) & 0x01);
       buf[1] = this->whitening_initial_ & 0xFF;
       this->write_register_(REG_WHITENING_INITIAL, buf, 2);
+      if (this->is_failed()) return;
     }
 
     // set packet params and sync word
     this->set_packet_params_(this->get_max_packet_size());
+    if (this->is_failed()) return;
     if (!this->sync_value_.empty()) {
       this->write_register_(REG_GFSK_SYNCWORD, this->sync_value_.data(), this->sync_value_.size());
+      if (this->is_failed()) return;
     }
   }
 
