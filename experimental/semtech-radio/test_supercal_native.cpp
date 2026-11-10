@@ -94,7 +94,7 @@ int main() {
   assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
   invalid=original;invalid[12]=0x08; // unvalidated TPL alarm
   assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
-  invalid=original;invalid[41]=0xFF; // total volume remains valid, target must not exceed total
+  invalid=original;invalid[49]=0xFF; // target volume exceeds total
   assert(decode(invalid,"89508019","supercal")!=S::Ok && out.value_count==0);
   assert(decode(original,"89508019","q400")!=S::Ok && out.value_count==0);
   std::cout<<"PASS Supercal configured clear native XMQ subset and negative gates; no RF/HA.\\n";
