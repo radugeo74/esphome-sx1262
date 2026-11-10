@@ -77,6 +77,12 @@ int main() {
  assert(dec(bad,"67552079","compact5")!=PureDecodeStatus::Ok);
  bad=v0;bad[8]=0x28;
  assert(dec(bad,"58234965","vario451")!=PureDecodeStatus::Ok);
+ // XMQ lists TCH/27/04 as metadata, but only TCH/27/C3 is radio-fixture
+ // verified; changing to 27/04 must not be treated as valid plaintext.
+ bad=v0;bad[9]=0x04;
+ assert(dec(bad,"58234965","vario451")!=PureDecodeStatus::Ok);
+ bad=v0;bad[11]=0x13;
+ assert(dec(bad,"58234965","vario451")!=PureDecodeStatus::Ok);
  bad=v0;bad[13]=0x00;
  assert(dec(bad,"58234965","vario451")!=PureDecodeStatus::Ok);
  bad=v0;bad[16]=0xFF;

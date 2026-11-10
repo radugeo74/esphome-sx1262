@@ -42,6 +42,29 @@ def main():
     assert "xmq_generated_vario451::previous_payload_offset" in vario_decoder
     assert "xmq_generated_vario451::current_payload_offset" in vario_decoder
     assert "xmq_generated_vario451::kwh_divisor" in vario_decoder
+    # Compiler must fail closed on changed IXML, MVT, scaling, DIF/VIF
+    # or source fixture; this does not authorize additional RF profiles.
+    source = (ROOT / "experimental/xmq/drivers/vario451.xmq").read_text()
+    mutations = (
+        ("hex, hex, hex, hex, @DV_PREV",
+         "hex, hex, hex, hex, hex, @DV_PREV"),
+        ("curr_raw_counter / 3.6 counter * 1 kwh",
+         "curr_raw_counter / 3.5 counter * 1 kwh"),
+        ("mvt = TCH,27,C3", "mvt = TCH,27,04"),
+        ("difvifkey = 027E", "difvifkey = 027D"),
+        ("129F25383300A86226", "129F25383300A86326"),
+    )
+    with TemporaryDirectory() as tmp:
+        fake = Path(tmp) / "vario451.xmq"
+        for original, replacement in mutations:
+            assert original in source, original
+            fake.write_text(source.replace(original, replacement, 1))
+            try:
+                generate_vario451_ixml(fake)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("Vario451 generator admitted changed XMQ: " + original)
     for driver in SPECS:
         header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
         assert '#include "xmq_generated_clear_profiles.h"' in header
