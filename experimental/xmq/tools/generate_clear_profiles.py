@@ -123,6 +123,31 @@ def check(path, rules):
         declared=[flag for group in flags for flag in blocks(group["entries"],"flag")]
         if len(declared)!=1 or values(declared[0]["entries"],"name")!=["SABOTAGE_ENCLOSURE"]:
             raise ValueError("lansenpu: changed enclosure flag")
+    if name=="lansendw":
+        # Preserve original OPEN/CLOSED and unrecognized ERROR_FLAGS bits:
+        # do not broaden manufacturer-specific mappings without new fixtures.
+        status=field_map.get("status",[])
+        error=field_map.get("error_flags",[])
+        state_lookup=blocks(status,"lookup")
+        error_lookup=blocks(error,"lookup")
+        if len(state_lookup)!=1 or len(error_lookup)!=1:
+            raise ValueError("lansendw: changed source status lookups")
+        state=state_lookup[0]["entries"]
+        error_state=error_lookup[0]["entries"]
+        states=blocks(state,"map")
+        known={tuple(values(m["entries"],k)[0] for k in
+                   ("name","value","test")) for m in states}
+        if (known!={("CLOSED","0x11","Set"),("OPEN","0x55","Set")} or
+                values(state,"name")!=["INPUT_FLAGS"] or
+                values(state,"map_type")!=["IndexToString"] or
+                values(state,"mask_bits")!=["0xffff"] or
+                values(error_state,"name")!=["ERROR_FLAGS"] or
+                values(error_state,"map_type")!=["BitToString"] or
+                values(error_state,"mask_bits")!=["0xffff"] or
+                values(error_state,"default_message")!=["OK"] or
+                blocks(error_state,"map") or
+                values(error,"attributes")!=["STATUS,INCLUDE_TPL_STATUS"]):
+            raise ValueError("lansendw: unreviewed original status or error lookup")
     libraries=[part.strip() for lib in blocks(d,"library")
                for use in values(lib["entries"],"use") for part in use.split(",")]
     for field,key,width,selector,expected in rules:
@@ -142,6 +167,7 @@ def check(path, rules):
     seen_variants=set()
     offsets={}
     seen_lansen_status=set()
+    seen_lansendw_status=set()
     for sample in samples:
         s=sample["entries"]
         telegram=values(s,"telegram")
@@ -165,6 +191,50 @@ def check(path, rules):
                 if len(matches)!=1:
                     raise ValueError(f"{name}: missing/duplicate original {field} record")
                 positions[field]=matches[0]
+        if name=="lansendw":
+            expected=json.loads(values(s,"json")[0])
+            correct={
+                0x48:("CLOSED",22,17,"ERROR_FLAGS_1 PERMANENT_ERROR TPL_STS_64"),
+                0x68:("OPEN",23,85,"ERROR_FLAGS_1 PERMANENT_ERROR TPL_STS_96"),
+            }
+            tpl=frame[12]
+            if (tpl not in correct or len(frame)!=47 or frame[1]!=0x44 or
+                    frame[13:15]!=bytes(2) or frame[15:17]!=bytes.fromhex("2F2F")):
+                raise ValueError("lansendw: unverified header or TPL alarm")
+            seen_lansendw_status.add(tpl)
+            expected_status,expected_a,expected_input,expected_errors=correct[tpl]
+            if ([frame[i:i+n] for i,n in ((17,3),(22,4),(28,3),(37,4))] !=
+                [bytes.fromhex("02FD1B"),bytes.fromhex("02FD971D"),
+                 bytes.fromhex("0EFD3A"),bytes.fromhex("8E40FD3A")]):
+                raise ValueError("lansendw: changed DIF/VIF mapping")
+            digital=int.from_bytes(frame[20:22],"little")
+            error_bits=int.from_bytes(frame[26:28],"little")
+            def count_bcd(start):
+                raw=frame[start:start+6]
+                if len(raw)!=6 or any((x&15)>9 or (x>>4)>9 for x in raw):
+                    raise ValueError("lansendw: invalid BCD counter")
+                return sum(((x>>4)*10+(x&15))*100**i
+                           for i,x in enumerate(raw))
+            a=count_bcd(31)
+            b=count_bcd(41)
+            actual_id="".join(f"{n:02X}" for n in reversed(frame[4:8]))
+            args=values(s,"args")
+            if (set(expected)!={"_","media","driver","name","id",
+                                "a_counter","b_counter","error_flags",
+                                "status","timestamp"} or
+                    expected.get("_")!="telegram" or
+                    expected.get("driver")!="lansendw" or
+                    expected.get("media")!="reserved" or
+                    expected.get("name")!="Dooro" or
+                    expected.get("id")!=actual_id or
+                    expected.get("timestamp")!="1111-11-11T11:11:11Z" or
+                    len(args)!=1 or args[0].split()!=["Dooro","lansendw",actual_id,"NOKEY"] or
+                    digital!=expected_input or error_bits!=1 or
+                    a!=expected_a or b!=0 or
+                    expected.get("a_counter")!=a or expected.get("b_counter")!=b or
+                    expected.get("status")!=expected_status or
+                    expected.get("error_flags")!=expected_errors):
+                raise ValueError("lansendw: full JSON/original frame parity changed")
         if name=="lansenpu":
             expected=json.loads(values(s,"json")[0])
             known_status={
@@ -298,6 +368,8 @@ def check(path, rules):
             offsets=positions
     if name=="lansenpu" and seen_lansen_status!={0x00,0x04,0x4C}:
         raise ValueError("lansenpu: original status fixture coverage changed")
+    if name=="lansendw" and seen_lansendw_status!={0x48,0x68}:
+        raise ValueError("lansendw: missing either original state")
     # A declared MVT can have no public fixture; do not invent RF evidence.
     if used!={r[0] for r in rules}:
         raise ValueError(f"{name}: fixture/schema evidence mismatch")
