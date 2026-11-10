@@ -168,14 +168,24 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
        wmbus_pure::publication::Decision::Allowed)
       return PureDecodeStatus::UnsupportedTransport;
-    if (!output.values || output.value_capacity < 2)
+    if (!output.values || output.value_capacity < 10)
       return PureDecodeStatus::DecodeFailure;
     iperl::Reading water{};
     if (iperl::decode(frame, length, water) != iperl::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
     output.values[0] = {"total_m3", water.total_m3};
     output.values[1] = {"max_flow_m3h", water.max_flow_m3h};
-    output.value_count = 2;
+    output.values[2] = {"tpl_status_raw",
+                        static_cast<double>(water.tpl_status)};
+    output.values[3] = {"tpl_status_unknown_raw", 0.0};
+    output.values[4] = {"status_alarm", 0.0};
+    output.values[5] = {"status_busy", 0.0};
+    output.values[6] = {"status_error",
+                        water.tpl_status==0x06u ? 1.0 : 0.0};
+    output.values[7] = {"status_permanent_error", 0.0};
+    output.values[8] = {"status_power_low", water.power_low ? 1.0 : 0.0};
+    output.values[9] = {"status_temporary_error", 0.0};
+    output.value_count = 10;
     return PureDecodeStatus::Ok;
   }
   // Diehl Hydrus: receive only actual plaintext CI=72/7A with TPL

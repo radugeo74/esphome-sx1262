@@ -425,6 +425,8 @@ jobs:
             experimental/semtech-radio/test_hydrus_plain.cpp \
             -o /tmp/test-hydrus-plain
           /tmp/test-hydrus-plain
+      - name: Test Sensus iPERL full original XMQ source parity and decryption provenance
+        run: python3 experimental/xmq/tests/test_iperl_source_parity.py
       - name: Test official Sensus iPERL plaintext NOKEY fixtures
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \

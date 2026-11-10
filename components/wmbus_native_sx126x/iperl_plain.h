@@ -60,14 +60,23 @@ inline Status decode(const uint8_t *frame, size_t size, Reading &out) {
   wmbus_pure::Header h{};
   if (wmbus_pure::parse_header(frame, size, h) != wmbus_pure::HeaderStatus::Ok)
     return Status::InvalidFrame;
-  if (h.manufacturer != 0x4CAE || (h.version != 0x68 && h.version != 0x7C) ||
-      (h.device_type != 0x06 && h.device_type != 0x07) || h.ci != 0x7A)
+  // Exact source MVT triples: SEN/68/06, SEN/68/07, SEN/7C/07.
+  // In particular, SEN/7C/06 has no source detection contract.
+  const bool model=(h.version==0x68 &&
+                    (h.device_type==0x06 || h.device_type==0x07)) ||
+                   (h.version==0x7C && h.device_type==0x07);
+  if (h.manufacturer != 0x4CAE || !model || h.ci != 0x7A)
     return Status::Unsupported;
   if(size<15) return Status::InvalidFrame;
   // Shared 5-bit OMS check also validates the encrypted-block count N.
   const auto security=wmbus_pure::tpl_security::inspect(frame,size);
   if(security.state!=wmbus_pure::tpl_security::State::NotEncrypted)
     return Status::Encrypted;
+  // The only public clear on-air examples use exact TPL status 0x00
+  // (OK) and 0x06 (ERROR POWER_LOW). Other states are not decoded as
+  // healthy, even when the two measurement records look plausible.
+  if(frame[12]!=0x00u && frame[12]!=0x06u)
+    return Status::Unsupported;
   Reading decoded{};
   const auto result=decode_clear_application(frame+15,size-15,decoded);
   if(result!=Status::Ok) return result;

@@ -1,3 +1,76 @@
+## Sensus iPERL — diagnostice complete și proveniența criptării (2026-11-10)
+
+Driverul `iperl` suportă în software cele două telegrame originale
+cu antet TPL cu adevărat necriptat, ID `33225544`, model
+`SEN/68/07`, `CI=7A`:
+
+| Câmp | TPL=0x00 | TPL=0x06 |
+| --- | ---: | ---: |
+| `total_m3` | 123.529 | 123.529 |
+| `max_flow_m3h` | 0 | 0 |
+| `status` (text) | OK | ERROR POWER_LOW |
+| `tpl_status_raw` | 0 | 6 |
+| `status_error` | 0 | 1 |
+| `status_power_low` | 0 | 1 |
+| `status_alarm`, `status_busy`, `status_permanent_error`, `status_temporary_error`, `tpl_status_unknown_raw` | 0 | 0 |
+
+Cei opt senzori numerici de diagnostic sunt opționali în
+`xmq_sensors`, fără crearea automată a entităților. `status`
+rămâne în `xmq_text_sensors`. Se acceptă numai TPL=0x00/0x06;
+alte stări sunt respinse în locul publicării unor diagnostice
+neconfirmate. `driver: auto` sau `driver: iperl` poate fi
+folosit pentru ID-urile explicit configurate.
+
+**Atenție la primul fixture original** (ID `12345699`):
+sursa spune explicit „after decryption” și antetul are `N=1`,
+deși `args` conține `NOKEY`. Valorile `total_m3=7.704`,
+`max_flow_m3h=0` se verifică **doar** prin parserul de aplicație
+deja decriptată. Telegrama respectivă nu este autorizată
+pentru publicare directă din RF fără o decriptare autentificată
+și o verificare separată a legării la dispozitiv.
+
+Exemplu (ID public de fixture, nu un contor real):
+
+```yaml
+  meter_drivers:
+    - meter_id: "33225544"
+      driver: auto  # sau iperl
+  xmq_sensors:
+    - meter_id: "33225544"
+      field: total_m3
+      sensor:
+        name: "iPERL consum apă"
+        unit_of_measurement: "m³"
+        accuracy_decimals: 3
+    - meter_id: "33225544"
+      field: max_flow_m3h
+      sensor:
+        name: "iPERL debit maxim"
+        unit_of_measurement: "m³/h"
+        accuracy_decimals: 3
+    - meter_id: "33225544"
+      field: status_error
+      sensor:
+        name: "iPERL eroare (0/1)"
+    - meter_id: "33225544"
+      field: status_power_low
+      sensor:
+        name: "iPERL baterie scăzută (0/1)"
+  xmq_text_sensors:
+    - meter_id: "33225544"
+      field: status
+      sensor:
+        name: "iPERL stare"
+```
+
+Un nou test al XMQ-ului original verifică toate cele trei
+fixture-uri, MVT, volume/debite, textul de stare și distincția
+dintre post-decriptare și TPL mode zero. C++ verifică
+`driver: auto`, ID configurat, toate câmpurile publicate,
+capacitatea bufferului, cadrele invalide și CRC format B într-o
+anvelopă sintetică; nu sunt probe RF fizice. Nu s-au modificat
+tehnica radio, cheile, celelalte drivere sau firmware-ul instalat.
+
 ## WEP Munia — temperatură, umiditate și diagnostice complete (2026-11-10)
 
 Cele două exemple originale din `munia.xmq` sunt `WEP/02/1B`
