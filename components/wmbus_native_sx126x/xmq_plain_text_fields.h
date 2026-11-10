@@ -17,6 +17,7 @@
 #include "itron_plain.h"
 #include "qualcosonic_plain.h"
 #include "lse_08_plain.h"
+#include "supercal_plain.h"
 #include "waterstarm_plain.h"
 #include "munia_plain.h"
 #include "maddalena_plain.h"
@@ -103,6 +104,17 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     if(lse_08::decode(frame,size,r)!=lse_08::Status::Ok)return out;
     // Source XMQ says TPL_STS_128; never mislabel as "OK".
     if(r.tpl_status==0x80)append(out,"status","TPL_STS_128");
+    append_calendar(out,"set_date",r.set_date);
+    append_calendar(out,"device_datetime",r.device_datetime);
+    append(out,"model_version",r.model_version);
+    return out;
+  }
+  if(std::strcmp(driver,"supercal")==0) {
+    supercal::Reading r{};
+    if(supercal::decode(frame,size,r)!=supercal::Status::Ok)return out;
+    append_calendar(out,"target_date",r.target_date);
+    append_calendar(out,"meter_datetime",r.meter_datetime);
+    append(out,"status","OK"); // verified TPL status 0
     return out;
   }
   if(std::strcmp(driver,"qheatv2")==0) {

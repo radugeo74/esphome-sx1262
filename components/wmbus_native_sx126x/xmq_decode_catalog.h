@@ -445,9 +445,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[3]={"power_kw",r.power_kw};
     output.value_count=4;return PureDecodeStatus::Ok;
   }
-  // LSE heat cost allocator: exact source-validated 01/08 clear TPL profile.
+  // LSE/01/08: all XMQ fields, including elapsed readout hours.
   if(driver_name && std::strcmp(driver_name,"lse_08")==0) {
-    if(!output.values || output.value_capacity<1)
+    if(!output.values || output.value_capacity<2)
       return PureDecodeStatus::DecodeFailure;
     if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
        wmbus_pure::publication::Decision::Allowed)
@@ -456,7 +456,8 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(lse_08::decode(frame,length,r)!=lse_08::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"consumption_at_set_date_hca",r.consumption_at_set_date_hca};
-    output.value_count=1;return PureDecodeStatus::Ok;
+    output.values[1]={"duration_since_readout_h",r.duration_since_readout_h};
+    output.value_count=2;return PureDecodeStatus::Ok;
   }
   // DWZ Waterstarm: two clear fixed 151-byte upstream public profiles.
   if(driver_name && std::strcmp(driver_name,"waterstarm")==0) {
@@ -785,9 +786,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[output.value_count++]={"manufacturer_ff2c_raw",r.manufacturer_ff2c_raw};
     return PureDecodeStatus::Ok;
   }
-  // Sontex Supercal 739: configured, short-TPL clear standard records only.
+  // Supercal 739: every XMQ measurement, including storage-20 targets.
   if(driver_name && std::strcmp(driver_name,"supercal")==0) {
-    if(!output.values || output.value_capacity<6)
+    if(!output.values || output.value_capacity<8)
       return PureDecodeStatus::DecodeFailure;
     supercal::Reading r{};
     if(supercal::decode(frame,length,r)!=supercal::Status::Ok)
@@ -798,6 +799,8 @@ inline PureDecodeStatus decode_configured_plain_frame(
     if(r.flow) output.values[output.value_count++]={"volume_flow_m3h",r.flow_m3h};
     if(r.flow_temp) output.values[output.value_count++]={"flow_temperature_c",r.flow_c};
     if(r.return_temp) output.values[output.value_count++]={"return_temperature_c",r.return_c};
+    output.values[output.value_count++]={"target_kwh",r.target_kwh};
+    output.values[output.value_count++]={"target_m3",r.target_m3};
     return PureDecodeStatus::Ok;
   }
   // Axioma Q400: only strictly unencrypted short-TPL standard fields.
