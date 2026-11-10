@@ -64,7 +64,7 @@ def check(path, rules):
     libraries=[part.strip() for lib in blocks(d,"library")
                for use in values(lib["entries"],"use") for part in use.split(",")]
     for field,key,width,selector,expected in rules:
-        if len(key)%2 or len(key)>8 or width not in (2,5,6):
+        if len(key)%2 or len(key)>8 or width not in (2,3,4,5,6):
             raise ValueError(f"{name}: unsupported record shape")
         if selector=="library":
             if expected not in libraries: raise ValueError(f"{name}: missing library {expected}")
