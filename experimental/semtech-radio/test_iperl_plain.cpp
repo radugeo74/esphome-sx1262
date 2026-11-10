@@ -57,14 +57,13 @@ int main() {
 
   // Real configured path: all numeric flags and text must match the
   // two source-proven Mode0 examples. AUTO requires exact MVT and ID.
-  const auto auto_driver=[&](const std::vector<uint8_t>&frame,
-                             const char*requested) {
+  const auto auto_driver=[&](const char*requested) {
     return wmbus_pure::auto_driver::resolve(
        requested,wmbus_pure::generated::signatures,
        wmbus_pure::generated::signature_count,
        0x4CAE,0x68,0x07);
   };
-  const auto picked=auto_driver(b,"auto");
+  const auto picked=auto_driver("auto");
   assert(picked.status==wmbus_pure::auto_driver::Status::Ready);
   assert(picked.driver && std::strcmp(picked.driver,"iperl")==0);
   xmq_portable::CalcValue values[12]{};
