@@ -213,6 +213,8 @@ jobs:
             experimental/semtech-radio/test_compact5_vario451_native.cpp \
             -o /tmp/test-compact5-vario451
           /tmp/test-compact5-vario451
+      - name: Verify all three original Ultraheat XMQ JSON and transport provenance
+        run: python3 experimental/xmq/tests/test_ultraheat_source_parity.py
       - name: Test native XMQ manifest and generated decoder parity
         run: python3 experimental/xmq/tests/test_native_driver_manifest.py
       - name: Audit OMS security evidence catalog for all 52 drivers

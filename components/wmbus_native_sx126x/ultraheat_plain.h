@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cmath>
+#include <cstdio>
 #include "standard_dif_vif.h"
 #include "native_publication_gate.h"
 
@@ -16,6 +17,9 @@ struct Reading {
        flow_temp{false},return_temp{false};
   double heat_kwh{0},volume_m3{0},power_kw{0},flow_m3h{0},
          flow_c{0},return_c{0};
+  uint8_t tpl_status{0};
+  uint16_t error_flags{0};
+  char meter_datetime[24]{};
 };
 inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
   out={};
@@ -29,14 +33,53 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
     return Status::WrongModel;
   if(wmbus_pure::publication::inspect(frame,length,h.meter_id)!=
      wmbus_pure::publication::Decision::Allowed) return Status::NotClear;
-  if(length<=15) return Status::BadRecords;
+  // Only source fixture #2 proves clear LUG/04/04 with TPL status
+  // 0x20 and synchronous mode 0x2000. #1 is wired; #3 is ELL.
+  if(h.control!=0x44 || length!=60 || frame[12]!=0x20 ||
+     frame[13]!=0x00 || frame[14]!=0x20 ||
+     frame[15]!=0x2F || frame[16]!=0x2F)
+    return Status::BadRecords;
   standard::Record rec[64]{};
   size_t count=0;
   if(standard::records(frame+15,length-15,rec,64,count)!=
      standard::Status::Ok) return Status::BadRecords;
   Reading next{};
+  next.tpl_status=frame[12];
+  bool error_seen=false,datetime_seen=false;
   for(size_t i=0;i<count;++i) {
     const auto &r=rec[i];
+    // 02 FD 17 00 00: no error bits in the only valid clear sample.
+    if(r.full_vif==0x7D17) {
+      if(error_seen || !r.numeric || r.dif!=0x02 ||
+         r.vif_extension_count!=1 || r.modifier_count ||
+         r.storage || r.tariff || r.subunit || r.function ||
+         r.raw64!=0) return Status::BadRecords;
+      error_seen=true;
+      next.error_flags=static_cast<uint16_t>(r.raw64);
+      continue;
+    }
+    // 06 6D six-byte date+time, with a distinct seconds octet.
+    if(r.vif==0x6D) {
+      if(datetime_seen || !r.numeric || r.dif!=0x06 ||
+         r.vif_extension_count || r.modifier_count ||
+         r.storage || r.tariff || r.subunit || r.function)
+        return Status::BadRecords;
+      const uint64_t raw=r.raw64;
+      const unsigned second=static_cast<unsigned>(raw & 0xFFu);
+      const unsigned minute=static_cast<unsigned>((raw >> 8) & 0xFFu);
+      const unsigned hour=static_cast<unsigned>((raw >> 16) & 0xFFu);
+      const uint32_t date_raw=static_cast<uint32_t>((raw >> 24) & 0xFFFFu);
+      standard::Calendar date{};
+      if(second>=60 || minute>=60 || hour>=24 || (raw >> 40)!=0 ||
+         !standard::decode_calendar(date_raw,false,date))
+        return Status::BadRecords;
+      const int chars=std::snprintf(next.meter_datetime,
+           sizeof(next.meter_datetime),"%04d-%02d-%02d %02u:%02u:%02u",
+           date.year,date.month,date.day,hour,minute,second);
+      if(chars!=19) return Status::BadRecords;
+      datetime_seen=true;
+      continue;
+    }
     if(!r.numeric || r.storage || r.tariff || r.subunit ||
        r.function!=0 || r.vif_extension_count || r.modifier_count) continue;
     double v=0;
@@ -65,7 +108,11 @@ inline Status decode(const uint8_t *frame,size_t length,Reading &out) {
       *present=true;*target=v;
     }
   }
-  if(!next.heat) return Status::MissingHeat;
+  // Only six complete measurements plus known zero error and time
+  // are source-verified. Reject partial/unknown variants transactionally.
+  if(!next.heat || !next.volume || !next.power || !next.flow ||
+     !next.flow_temp || !next.return_temp || !error_seen ||
+     !datetime_seen) return Status::MissingHeat;
   out=next;
   return Status::Ok;
 }

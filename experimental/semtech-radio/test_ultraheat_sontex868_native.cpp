@@ -108,12 +108,26 @@ int main() {
         frame.data(),frame.size(),id,id,driver,captures,12,out);
   };
   assert(decode(ultra,"71635605","ultraheat")==Status::Ok);
+  assert(out.value_count==16);
   assert(value(out,"heat_kwh",24277));
   assert(value(out,"volume_m3",5699.39));
   assert(value(out,"power_kw",-0.2));
   assert(value(out,"flow_m3h",1.83));
   assert(value(out,"flow_c",35.1));
   assert(value(out,"return_c",35.2));
+  assert(value(out,"tpl_status_raw",32));
+  assert(value(out,"tpl_status_unknown_raw",32));
+  for(const char *field:{"error_flags_raw","error_flags_unknown_raw",
+       "status_alarm","status_busy","status_error","status_permanent_error",
+       "status_power_low","status_temporary_error"})
+    assert(value(out,field,0));
+  const auto ultra_text=xmq_portable::text_fields::decode(
+      ultra.data(),ultra.size(),"ultraheat");
+  assert(ultra_text.count==2);
+  assert(std::strcmp(ultra_text.fields[0].name,"status")==0);
+  assert(std::strcmp(ultra_text.fields[0].text,"TPL_STS_32")==0);
+  assert(std::strcmp(ultra_text.fields[1].name,"meter_datetime")==0);
+  assert(std::strcmp(ultra_text.fields[1].text,"2023-05-20 10:08:12")==0);
   assert(decode(sontex,"27282728","sontex868")==Status::Ok);
   assert(value(out,"current_consumption_hca",119));
   assert(value(out,"consumption_at_set_date_hca",102));
@@ -189,6 +203,32 @@ int main() {
   invalid[0]=static_cast<uint8_t>(invalid.size()-1);
   assert(decode(invalid,"71635605","ultraheat")!=Status::Ok &&
          out.value_count==0);
+  invalid=ultra;invalid[12]=0x00; // don't invent status OK variant
+  assert(decode(invalid,"71635605","ultraheat")!=Status::Ok &&
+         out.value_count==0);
+  assert(xmq_portable::text_fields::decode(
+      invalid.data(),invalid.size(),"ultraheat").count==0);
+  invalid=ultra;invalid[12]=0x24; // unreviewed POWER_LOW bit
+  assert(decode(invalid,"71635605","ultraheat")!=Status::Ok &&
+         out.value_count==0);
+  invalid=ultra;invalid[50]=0x01; // original 02FD17 error flags now nonzero
+  assert(decode(invalid,"71635605","ultraheat")!=Status::Ok &&
+         out.value_count==0);
+  invalid=ultra;invalid[54]=0x7F; // 06 6D seconds outside 0..59
+  assert(decode(invalid,"71635605","ultraheat")!=Status::Ok &&
+         out.value_count==0);
+  invalid=ultra;invalid[58]=0x00; // invalid calendar month
+  assert(decode(invalid,"71635605","ultraheat")!=Status::Ok &&
+         out.value_count==0);
+  invalid=ultra;invalid[59]=0x01; // unsupported sixth date-time byte
+  assert(decode(invalid,"71635605","ultraheat")!=Status::Ok &&
+         out.value_count==0);
+  xmq_portable::CalcValue limited_vals[15]{};
+  xmq_portable::DecodedPayload limited{limited_vals,15,0,dates,2,0};
+  assert(xmq_portable::batch2_plain::decode_configured(
+      ultra.data(),ultra.size(),"71635605","71635605","ultraheat",
+      captures,12,limited)==Status::DecodeFailure);
+  assert(limited.value_count==0);
   // Original Ultraheat #3 is ELL + post-decrypted payload: do NOT
   // interpret its NOKEY label as a plaintext RF authorization.
   const auto ell=hex(

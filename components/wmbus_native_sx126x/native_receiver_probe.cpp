@@ -364,6 +364,7 @@ bool NativeReceiverProbe::publish_plain_batch2_(
     // successfully decoded counters. No status on failed/unknown frames.
     if(std::strcmp(selected_driver,"lansenpu")==0 ||
        std::strcmp(selected_driver,"lansendw")==0 ||
+       std::strcmp(selected_driver,"ultraheat")==0 ||
        std::strcmp(selected_driver,"cma12w")==0 ||
        std::strcmp(selected_driver,"elvsense")==0 ||
        std::strcmp(selected_driver,"lansenrp")==0 ||

@@ -28,6 +28,7 @@
 #include "evo868_plain.h"
 #include "supercom587_plain.h"
 #include "vario451_plain.h"
+#include "ultraheat_plain.h"
 #include "hcae2_plain.h"
 #include "tpl_security_probe.h"
 
@@ -151,6 +152,14 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     append_calendar(out,"meter_datetime",reading.meter_datetime);
     append_calendar(out,"storage_2_date",reading.storage_2_date);
     append_calendar(out,"storage_3_datetime",reading.storage_3_datetime);
+    return out;
+  }
+  if(std::strcmp(driver,"ultraheat")==0) {
+    ultraheat::Reading reading{};
+    if(ultraheat::decode(frame,size,reading)!=ultraheat::Status::Ok)
+      return out;
+    append(out,"status","TPL_STS_32");
+    append(out,"meter_datetime",reading.meter_datetime);
     return out;
   }
   if(std::strcmp(driver,"sontex868")==0) {

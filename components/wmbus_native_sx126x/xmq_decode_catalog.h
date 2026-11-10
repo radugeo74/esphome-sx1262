@@ -821,19 +821,31 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[4]={"curr_raw_counter",static_cast<double>(r.curr_raw_counter)};
     output.value_count=5;return PureDecodeStatus::Ok;
   }
-  // Native no-key Ultraheat (LUG) short TPL standard records.
+  // Ultraheat #2: TPL_STS_32 is an unknown TPL bit, not an alarm.
+  // Publish zero standard flags ONLY after the exact clear source gate.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
-    if(!output.values || output.value_capacity<6)
+    if(!output.values || output.value_capacity<16)
       return PureDecodeStatus::DecodeFailure;
     ultraheat::Reading r{};
     if(ultraheat::decode(frame,length,r)!=ultraheat::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
-    output.values[output.value_count++]={"heat_kwh",r.heat_kwh};
-    if(r.volume) output.values[output.value_count++]={"volume_m3",r.volume_m3};
-    if(r.power) output.values[output.value_count++]={"power_kw",r.power_kw};
-    if(r.flow) output.values[output.value_count++]={"flow_m3h",r.flow_m3h};
-    if(r.flow_temp) output.values[output.value_count++]={"flow_c",r.flow_c};
-    if(r.return_temp) output.values[output.value_count++]={"return_c",r.return_c};
+    output.values[0]={"heat_kwh",r.heat_kwh};
+    output.values[1]={"volume_m3",r.volume_m3};
+    output.values[2]={"power_kw",r.power_kw};
+    output.values[3]={"flow_m3h",r.flow_m3h};
+    output.values[4]={"flow_c",r.flow_c};
+    output.values[5]={"return_c",r.return_c};
+    output.values[6]={"tpl_status_raw",static_cast<double>(r.tpl_status)};
+    output.values[7]={"tpl_status_unknown_raw",32.0};
+    output.values[8]={"error_flags_raw",static_cast<double>(r.error_flags)};
+    output.values[9]={"error_flags_unknown_raw",0.0};
+    output.values[10]={"status_alarm",0.0};
+    output.values[11]={"status_busy",0.0};
+    output.values[12]={"status_error",0.0};
+    output.values[13]={"status_permanent_error",0.0};
+    output.values[14]={"status_power_low",0.0};
+    output.values[15]={"status_temporary_error",0.0};
+    output.value_count=16;
     return PureDecodeStatus::Ok;
   }
   // Native Sontex868 full source-verified HCA, scalar and vendor fields.

@@ -1,3 +1,74 @@
+## Landis+Gyr Ultraheat — clear RF, TPL status și data cu secunde (2026-11-10)
+
+Cele trei exemple oficiale `ultraheat.xmq` sunt diferite: `MyUltra` /
+`70444600` este **M-Bus cablat**, `MyUltra2` / `71635605` este
+**wireless CI=7A cu TPL mode 0**, iar `MyUltra3` / `72905678`
+este **ELL/AFL cu AES-CMAC și TPL AES-CBC**, cu aplicație deja
+decriptată în fixture-ul original. Nu transformăm `NOKEY` ori
+datele în clar dintr-un exemplu în dovadă de RF necriptat.
+
+Numai exemplul `71635605` este admis în decodorul nativ no-key,
+după verificarea separată DLL CRC, ID configurat, model LUG/04/04,
+securitate, octet de status `0x20`, configurație `0x2000` și
+înregistrările originale. Câmpurile originale sunt:
+
+| Câmp | Valoare |
+| --- | ---: |
+| `heat_kwh` | 24277 |
+| `volume_m3` | 5699.39 |
+| `power_kw` | -0.2 |
+| `flow_m3h` | 1.83 |
+| `flow_c` | 35.1 |
+| `return_c` | 35.2 |
+| `status` (text) | TPL_STS_32 |
+| `meter_datetime` (text) | 2023-05-20 10:08:12 |
+| `tpl_status_raw` și `tpl_status_unknown_raw` | 32 |
+| `error_flags_raw` și `error_flags_unknown_raw` | 0 |
+| Toți cei șase `status_*` standard | 0 |
+
+**TPL_STS_32 este bitul TPL necunoscut `0x20`**, nu
+`POWER_LOW`, `ALARM` ori un cod de eroare inventat.
+`06 6D` este decodat complet cu secundele păstrate și calendar
+validat. Înregistrarea `02 FD 17` trebuie să fie zero.
+
+Cele 10 câmpuri diagnostice sunt opționale în `xmq_sensors`;
+`status` și `meter_datetime` sunt disponibile în
+`xmq_text_sensors`, pentru ID-uri configurate explicit. Exemple
+de configurare (ID demonstrativ din fixture-ul original):
+
+```yaml
+  meter_drivers:
+    - meter_id: "71635605"
+      driver: auto    # alternativ: ultraheat
+  xmq_sensors:
+    - meter_id: "71635605"
+      field: heat_kwh
+      sensor:
+        name: "Ultraheat energie"
+        unit_of_measurement: "kWh"
+    - meter_id: "71635605"
+      field: tpl_status_unknown_raw
+      sensor:
+        name: "Ultraheat status brut necunoscut"
+  xmq_text_sensors:
+    - meter_id: "71635605"
+      field: status
+      sensor:
+        name: "Ultraheat stare"
+    - meter_id: "71635605"
+      field: meter_datetime
+      sensor:
+        name: "Ultraheat data contorului"
+```
+
+Teste native: 16 câmpuri numerice și două text, dată cu
+secunde, refuzul stărilor și erorilor nevalidate, al datelor
+invalide, cheii/transportului necunoscut, ID-urilor greșite,
+capacității insuficiente și al cadrelor ELL. Testul Python
+verifică toate cele trei JSON-uri originale, MVT și proveniența
+de transport M-Bus/Mode0/ELL-AFL. Nu au fost modificate
+recepția radio, firmware-ul instalat sau driverele existente.
+
 ## Sensus iPERL — diagnostice complete și proveniența criptării (2026-11-10)
 
 Driverul `iperl` suportă în software cele două telegrame originale
