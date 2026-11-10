@@ -113,7 +113,8 @@ def generate(driver_dir: Path):
      "  return true;}",
      "inline int find_rule(const uint8_t*b,size_t n,const Rule*r,size_t count){",
      "  int found=-1;for(size_t i=0;i<count;++i)if(match_rule(b,n,r[i])){",
-     "    if(found!=-1)return -2; found=static_cast<int>(i);}",
+     "    if(found!=-1)return -2;",
+     "    found=static_cast<int>(i);}",
      "  return found;}",
     ]
     for name,rules in SPECS.items():
