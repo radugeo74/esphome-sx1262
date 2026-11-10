@@ -3,6 +3,7 @@
 #include "components/wmbus_native_sx126x/xmq_batch2_plain_dispatch.h"
 #include "components/wmbus_native_sx126x/xmq_auto_registry.h"
 #include "components/wmbus_native_sx126x/native_publication_gate.h"
+#include "components/wmbus_native_sx126x/xmq_plain_text_fields.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -56,9 +57,17 @@ int main() {
  const char *selected=auto_driver(v0,"58234965");
  assert(selected && std::strcmp(selected,"vario451")==0);
  assert(dec(v0,"58234965","vario451")==PureDecodeStatus::Ok);
- assert(out.value_count==3 && has(out,"total_kwh",6371.666667) &&
+ assert(out.value_count==5 && has(out,"total_kwh",6371.666667) &&
         has(out,"current_kwh",2729.444444) &&
-        has(out,"previous_kwh",3642.222222));
+        has(out,"previous_kwh",3642.222222) &&
+        has(out,"prev_raw_counter",13112) &&
+        has(out,"curr_raw_counter",9826));
+ const auto vario_text=text_fields::decode(v0.data(),v0.size(),"vario451");
+ assert(vario_text.count==1);
+ assert(std::strcmp(vario_text.fields[0].name,"mfct_payload_hex")==0);
+ assert(std::strlen(vario_text.fields[0].text)==90);
+ assert(std::strcmp(vario_text.fields[0].text,
+     "129F25383300A8622600008200800A2AF862115175552877A36F26C9AB1CB24400000004000000000004908002")==0);
  assert(wmbus_pure::publication::inspect(c0.data(),c0.size(),66336633)==
         wmbus_pure::publication::Decision::Allowed);
  assert(wmbus_pure::publication::inspect(a1.data(),a1.size(),62626262)!=
@@ -90,4 +99,10 @@ int main() {
  bad=v0;bad[10]=0x7A;
  assert(dec(bad,"58234965","vario451")!=PureDecodeStatus::Ok);
  assert(out.value_count==0);
+ assert(text_fields::decode(bad.data(),bad.size(),"vario451").count==0);
+ bad=v0;bad[13]=0;
+ assert(text_fields::decode(bad.data(),bad.size(),"vario451").count==0);
+ bad=v0;bad[0]=0;
+ assert(text_fields::decode(bad.data(),bad.size(),"vario451").count==0);
+ assert(text_fields::decode(v0.data(),v0.size(),"compact5").count==0);
 }

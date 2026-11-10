@@ -27,6 +27,7 @@
 #include "apatoreitn_plain.h"
 #include "evo868_plain.h"
 #include "supercom587_plain.h"
+#include "vario451_plain.h"
 #include "hcae2_plain.h"
 #include "tpl_security_probe.h"
 
@@ -68,6 +69,15 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     if(apatoreitn::decode(frame,size,r)!=apatoreitn::Status::Ok)
       return out;
     append(out,"status",r.seal_broken?"SEAL_BROKEN":"OK");
+    return out;
+  }
+  if(std::strcmp(driver,"vario451")==0) {
+    // CI=A2 is manufacturer-specific and has no OMS config word.
+    // The native model-specific decoder is the only safe admission.
+    vario451::Reading reading{};
+    if(vario451::decode(frame,size,reading)!=vario451::Status::Ok)
+      return out;
+    append(out,"mfct_payload_hex",reading.mfct_payload_hex);
     return out;
   }
   const auto security = wmbus_pure::tpl_security::inspect(frame, size);

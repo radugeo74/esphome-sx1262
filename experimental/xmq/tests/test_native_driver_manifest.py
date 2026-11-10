@@ -103,6 +103,13 @@ def main():
     assert "xmq_generated_vario451::previous_payload_offset" in vario_decoder
     assert "xmq_generated_vario451::current_payload_offset" in vario_decoder
     assert "xmq_generated_vario451::kwh_divisor" in vario_decoder
+    for field in ("prev_raw_counter","curr_raw_counter","mfct_payload_hex"):
+        assert field in vario_decoder
+    vario_router = (ROOT / "components/wmbus_native_sx126x/xmq_decode_catalog.h").read_text()
+    assert '{"prev_raw_counter",static_cast<double>(r.prev_raw_counter)}' in vario_router
+    assert '{"curr_raw_counter",static_cast<double>(r.curr_raw_counter)}' in vario_router
+    vario_text = (ROOT / "components/wmbus_native_sx126x/xmq_plain_text_fields.h").read_text()
+    assert 'append(out,"mfct_payload_hex",reading.mfct_payload_hex);' in vario_text
     # Compiler must fail closed on changed IXML, MVT, scaling, DIF/VIF
     # or source fixture; this does not authorize additional RF profiles.
     source = (ROOT / "experimental/xmq/drivers/vario451.xmq").read_text()

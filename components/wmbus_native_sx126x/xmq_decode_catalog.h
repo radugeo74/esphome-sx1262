@@ -739,9 +739,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[2]={"previous_kwh",r.previous_kwh};
     output.value_count=3;return PureDecodeStatus::Ok;
   }
-  // Techem Vario451 strict configured-only A2 manufacturer profile.
+  // Vario451: 3 XMQ energy values plus 2 hidden raw counters.
   if(driver_name && std::strcmp(driver_name,"vario451")==0) {
-    if(!output.values || output.value_capacity<3)
+    if(!output.values || output.value_capacity<5)
       return PureDecodeStatus::DecodeFailure;
     vario451::Reading r{};
     if(vario451::decode(frame,length,r)!=vario451::Status::Ok)
@@ -749,7 +749,9 @@ inline PureDecodeStatus decode_configured_plain_frame(
     output.values[0]={"total_kwh",r.total_kwh};
     output.values[1]={"current_kwh",r.current_kwh};
     output.values[2]={"previous_kwh",r.previous_kwh};
-    output.value_count=3;return PureDecodeStatus::Ok;
+    output.values[3]={"prev_raw_counter",static_cast<double>(r.prev_raw_counter)};
+    output.values[4]={"curr_raw_counter",static_cast<double>(r.curr_raw_counter)};
+    output.value_count=5;return PureDecodeStatus::Ok;
   }
   // Native no-key Ultraheat (LUG) short TPL standard records.
   if(driver_name && std::strcmp(driver_name,"ultraheat")==0) {
