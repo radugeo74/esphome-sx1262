@@ -37,6 +37,18 @@ inline const char *error_text(uint16_t error,uint8_t tpl_status) {
     return "ERROR_FLAGS_1 PERMANENT_ERROR TPL_STS_96";
   return nullptr;
 }
+// Only two source-proven TPL states are admitted: 0x48 and 0x68.
+// Raw 0x40/0x60 are intentionally preserved as UNKNOWN, not assigned
+// guessed alarm meanings. Only PERMANENT_ERROR (bit 0x08) is set.
+inline bool confirmed_permanent_error(uint8_t tpl) {
+  return tpl==0x48u || tpl==0x68u;
+}
+inline uint8_t unknown_tpl_bits(uint8_t tpl) {
+  return static_cast<uint8_t>(tpl & 0x60u);
+}
+inline uint16_t unknown_error_bits(uint16_t error) {
+  return error; // 0x0001 -> ERROR_FLAGS_1, not a defined alarm
+}
 inline uint16_t le16(const uint8_t *p) {
   return static_cast<uint16_t>(p[0]) |
          (static_cast<uint16_t>(p[1]) << 8);

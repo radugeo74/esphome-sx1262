@@ -96,14 +96,27 @@ int main(){
     assert(select_auto(*f,"00010205")!=nullptr);
     assert(std::strcmp(select_auto(*f,"00010205"),"lansendw")==0);
     assert(decoded(*f,"00010205","lansendw")==Status::Ok);
-    assert(result.value_count==2);
+    assert(result.value_count==14);
     assert(has_value(result,"b_counter",0));
+    assert(has_value(result,"door_open",f==&door_open?1:0));
+    assert(has_value(result,"digital_input_raw",f==&door_open?85:17));
+    assert(has_value(result,"error_flags_raw",1));
+    assert(has_value(result,"error_flags_unknown_raw",1));
+    assert(has_value(result,"tpl_status_raw",f==&door_open?104:72));
+    assert(has_value(result,"tpl_status_unknown_raw",f==&door_open?96:64));
+    assert(has_value(result,"status_alarm",0));
+    assert(has_value(result,"status_busy",0));
+    assert(has_value(result,"status_error",0));
+    assert(has_value(result,"status_permanent_error",1));
+    assert(has_value(result,"status_power_low",0));
+    assert(has_value(result,"status_temporary_error",0));
   }
   assert(decoded(door_closed,"00010205","lansendw")==Status::Ok);
   assert(has_value(result,"a_counter",22));
   auto text=xmq_portable::text_fields::decode(
       door_closed.data(),door_closed.size(),"lansendw");
   assert(has_text(text,"status","CLOSED"));
+  assert(text.count==2);
   assert(has_text(text,"error_flags",
                   "ERROR_FLAGS_1 PERMANENT_ERROR TPL_STS_64"));
   assert(decoded(door_open,"00010205","lansendw")==Status::Ok);
@@ -111,6 +124,7 @@ int main(){
   text=xmq_portable::text_fields::decode(
       door_open.data(),door_open.size(),"lansendw");
   assert(has_text(text,"status","OPEN"));
+  assert(text.count==2);
   assert(has_text(text,"error_flags",
                   "ERROR_FLAGS_1 PERMANENT_ERROR TPL_STS_96"));
 
@@ -172,6 +186,21 @@ int main(){
   assert(decoded(bad,"00010205","lansendw")!=Status::Ok);
   bad=door_closed;bad[26]=0x02; // unknown error flags
   assert(decoded(bad,"00010205","lansendw")!=Status::Ok);
+  assert(result.value_count==0);
+  assert(xmq_portable::text_fields::decode(
+      bad.data(),bad.size(),"lansendw").count==0);
+  bad=door_open;bad[12]=0x69; // extra unverified TPL status bit
+  assert(decoded(bad,"00010205","lansendw")!=Status::Ok);
+  assert(result.value_count==0);
+  assert(xmq_portable::text_fields::decode(
+      bad.data(),bad.size(),"lansendw").count==0);
+  bad=door_closed;bad[12]=0x68; // same raw OPEN TPL, but actual state CLOSED
+  // The status byte alone is not used to infer OPEN/CLOSED.
+  assert(decoded(bad,"00010205","lansendw")==Status::Ok);
+  assert(has_value(result,"door_open",0));
+  text=xmq_portable::text_fields::decode(
+      bad.data(),bad.size(),"lansendw");
+  assert(has_text(text,"status","CLOSED"));
   bad=door_closed;bad.insert(bad.end(),
                              door_closed.begin()+17,door_closed.begin()+22);
   bad[0]=static_cast<uint8_t>(bad.size()-1);

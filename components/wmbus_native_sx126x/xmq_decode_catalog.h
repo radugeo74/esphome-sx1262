@@ -220,10 +220,10 @@ inline PureDecodeStatus decode_configured_plain_frame(
         lansenpu::sabotage_enclosure(counts.tpl_status)?1.0:0.0};
     return PureDecodeStatus::Ok;
   }
-  // Lansen door/window: exact documented clear records and BCD
-  // pulse counts; OPEN/CLOSED and error flags are separate text sensors.
+  // Lansen door/window: both pulse counters plus source-backed raw
+  // status diagnostics. Text CLOSE/OPEN and unknown flags remain distinct.
   if(driver_name && std::strcmp(driver_name,"lansendw")==0) {
-    if(!output.values || output.value_capacity<2) return PureDecodeStatus::DecodeFailure;
+    if(!output.values || output.value_capacity<14) return PureDecodeStatus::DecodeFailure;
     if(wmbus_pure::publication::inspect(frame,length,header.meter_id)!=
        wmbus_pure::publication::Decision::Allowed)
       return PureDecodeStatus::UnsupportedTransport;
@@ -232,7 +232,22 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     output.values[0]={"a_counter",reading.a_counter};
     output.values[1]={"b_counter",reading.b_counter};
-    output.value_count=2;
+    output.values[2]={"digital_input_raw",static_cast<double>(reading.digital_input)};
+    output.values[3]={"door_open",reading.digital_input==0x55u?1.0:0.0};
+    output.values[4]={"error_flags_raw",static_cast<double>(reading.error_flags)};
+    output.values[5]={"error_flags_unknown_raw",
+        static_cast<double>(lansendw::unknown_error_bits(reading.error_flags))};
+    output.values[6]={"tpl_status_raw",static_cast<double>(reading.tpl_status)};
+    output.values[7]={"tpl_status_unknown_raw",
+        static_cast<double>(lansendw::unknown_tpl_bits(reading.tpl_status))};
+    output.values[8]={"status_alarm",0.0};
+    output.values[9]={"status_busy",0.0};
+    output.values[10]={"status_error",0.0};
+    output.values[11]={"status_permanent_error",
+        lansendw::confirmed_permanent_error(reading.tpl_status)?1.0:0.0};
+    output.values[12]={"status_power_low",0.0};
+    output.values[13]={"status_temporary_error",0.0};
+    output.value_count=14;
     return PureDecodeStatus::Ok;
   }
   // Elvaco CMA12w: two temperatures in degrees C, battery/software
