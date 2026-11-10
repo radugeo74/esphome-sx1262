@@ -180,6 +180,7 @@ async def to_code(config):
         from generate_clear_profiles import generate as generate_clear_profiles
         from generate_standard_selectors import generate as generate_standard_selectors
         from generate_pulse_fields import generate as generate_pulse_fields
+        from generate_xmq_full_profiles import generate as generate_xmq_full_profiles
         from generate_vario451_ixml import generate as generate_vario451_ixml
         from generate_supercal_lse08 import generate as generate_supercal_lse08
         generated = generate(validate(xmq))
@@ -202,6 +203,8 @@ async def to_code(config):
             generate_standard_selectors(xmq / "drivers"), encoding="utf-8")
         (component_dir / "xmq_generated_pulse_fields.h").write_text(
             generate_pulse_fields(xmq / "drivers"), encoding="utf-8")
+        (component_dir / "xmq_generated_full_profiles.h").write_text(
+            generate_xmq_full_profiles(xmq / "drivers"), encoding="utf-8")
         (component_dir / "xmq_generated_vario451.h").write_text(
             generate_vario451_ixml(xmq / "drivers" / "vario451.xmq"),
             encoding="utf-8")

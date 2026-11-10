@@ -1,3 +1,50 @@
+## Calup de migrare XMQ completă pentru profilurile disponibile: CMA12w + Lansen DW (2026-11-10)
+
+Primele două familii convertite de la decodoare C++ independente la
+**interpretul C++ comun al profilelor compilate la build** sunt
+`cma12w` și `lansendw`.
+
+`experimental/xmq/tools/generate_xmq_full_profiles.py` parsează
+direct XMQ-ul sursă, pentru modelele MVT, `fields.match` cu
+`measurement_type`, `vif_range`, `storage_nr`, `subunit_nr`,
+`lookup` cu `mask_bits`, `map_type` și `map`, precum și
+`library.use=software_version` și toate JSON-urile exemplelor.
+Compilarea emite `xmq_generated_full_profiles.h`.
+`xmq_full_profile_runtime.h` interpretează același format
+generat pentru ambele familii: BCD12, signed16 scalat, raw16,
+versiune software și tabele de stare. Wrapper-ele
+`cma12w_plain.h` și `lansendw_plain.h` nu mai au bucle
+specifice de recunoaștere a înregistrărilor sau conversie
+individuală, doar păstrează API-ul structurilor `Reading`.
+Numele câmpurilor numerice și text sunt preluate din
+descriptorii generați.
+
+**CMA12w** (ELV/20/1B și ELV/1F/1B): temperatura curentă,
+media orară, bateria brută + `BATTERY_HEX`, versiunea
+software cu componente inversate și `status=OK`.
+
+**Lansen DW** (LAS/07/1D): `a_counter`, `b_counter`,
+`OPEN/CLOSED` din IndexToString, `ERROR_FLAGS_1` din
+BitToString și combinațiile dovedite `PERMANENT_ERROR
+TPL_STS_64/96`. Se păstrează separat câmpurile brute,
+bitii TPL neinterpretați și cele șase indicatoare standard.
+
+Generatorul acceptă numai operații, unități și structuri
+pe care interpretul comun le implementează demonstrabil.
+Schimbările incompatibile în XMQ opresc build-ul; sunt
+testate mutații ale selectorilor, tabelelor de lookup,
+lungimilor și câmpurilor. Declarațiile XMQ actualizate
+**nu sunt executate dinamic** de Heltec: sunt necesare
+regenerare, validare de fixture, CI și flash controlat.
+Nu au fost relaxate validarea DLL CRC, contor configurat,
+TPL fără criptare sau refuzul recordurilor necunoscute.
+
+Această migrare privește **semantica integrală din cele
+patru fixture-uri keyless existente** ale celor două familii,
+nu autorizează profiluri RF neprobate ori algoritmi de
+criptare. Alte 50 de familii rămân de evaluat individual
+pentru atingerea aceleiași arhitecturi finale.
+
 ## Migrare XMQ nativă: Lansen Pulse după iPERL și Munia (2026-11-10)
 
 Am adăugat `generate_pulse_fields.py` ca al treilea compilator de

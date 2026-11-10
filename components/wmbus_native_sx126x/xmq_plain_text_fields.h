@@ -88,9 +88,10 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     lansendw::Reading reading{};
     if(lansendw::decode(frame,size,reading)!=lansendw::Status::Ok)
       return out;
-    append(out,"status",lansendw::state_text(reading.digital_input));
-    append(out,"error_flags",lansendw::error_text(
-        reading.error_flags,reading.tpl_status));
+    append(out,xmq_compiled_profiles::lansendw::rules[0].name,
+           lansendw::state_text(reading.digital_input));
+    append(out,xmq_compiled_profiles::lansendw::rules[1].name,
+           lansendw::error_text(reading.error_flags,reading.tpl_status));
     return out;
   }
   if(std::strcmp(driver,"rfmamb")==0) {
@@ -238,11 +239,13 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
     if(cma12w::decode(frame,size,reading)!=cma12w::Status::Ok)
       return out;
     char battery[32]{};
-    std::snprintf(battery,sizeof(battery),"BATTERY_%X",
+    std::snprintf(battery,sizeof(battery),"%s_%X",
+                  xmq_compiled_profiles::cma12w::profile.battery_prefix,
                   static_cast<unsigned>(reading.battery_bits));
-    append(out,"status","OK");
-    append(out,"battery",battery);
-    append(out,"software_version",reading.software_version);
+    append(out,"status",cma12w::status_text(reading.tpl_status));
+    append(out,xmq_compiled_profiles::cma12w::rules[2].name,battery);
+    append(out,xmq_compiled_profiles::cma12w::rules[3].name,
+           reading.software_version);
     return out;
   }
   if (std::strcmp(driver, "lansenpu") == 0) {

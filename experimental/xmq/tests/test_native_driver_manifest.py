@@ -12,6 +12,7 @@ from generate_ixml_cpp import generate
 from generate_clear_profiles import generate as generate_clear_profiles, SPECS
 from generate_standard_selectors import generate as generate_standard_selectors, SOURCES
 from generate_pulse_fields import generate as generate_pulse_fields
+from generate_xmq_full_profiles import generate as generate_xmq_full_profiles
 from generate_vario451_ixml import generate as generate_vario451_ixml
 from generate_supercal_lse08 import generate as generate_supercal_lse08
 
@@ -82,6 +83,44 @@ def main():
             pass
         else:
             raise AssertionError("Changed manufacturer status passed pulse XMQ review")
+    source_compiled=generate_xmq_full_profiles(
+        ROOT / "experimental/xmq/drivers")
+    assert generated["xmq_generated_full_profiles.h"]==source_compiled
+    assert "namespace cma12w {" in source_compiled
+    assert "namespace lansendw {" in source_compiled
+    assert '"current_temperature_c"' in source_compiled
+    assert '"average_temperature_1h_c"' in source_compiled
+    assert '"a_counter"' in source_compiled and '"b_counter"' in source_compiled
+    assert '"ERROR_FLAGS_1 PERMANENT_ERROR TPL_STS_96"' in source_compiled
+    assert '"OPEN"' in source_compiled and '"CLOSED"' in source_compiled
+    # A changed upstream XMQ lookup that no longer matches original JSON
+    # must not silently regenerate a broken native decoder.
+    for name,mutations in (
+        ("cma12w",(
+            ("vif_range        = ExternalTemperature",
+             "vif_range        = FlowTemperature"),
+            ("map_type  = BitToString","map_type  = IndexToString"),
+        )),
+        ("lansendw",(
+            ("value = 0x55","value = 0x54"),
+            ("subunit_nr       = 1","subunit_nr       = 2"),
+        )),
+    ):
+        original=(ROOT / "experimental/xmq/drivers" / f"{name}.xmq").read_text()
+        with TemporaryDirectory() as td:
+            scratch=Path(td)
+            for other in ("cma12w","lansendw"):
+                (scratch/f"{other}.xmq").write_text(
+                    (ROOT / "experimental/xmq/drivers" / f"{other}.xmq").read_text())
+            for before,after in mutations:
+                assert before in original
+                (scratch/f"{name}.xmq").write_text(original.replace(before,after,1))
+                try:
+                    generate_xmq_full_profiles(scratch)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f"{name} accepted unsafe XMQ drift: {before}")
     pair = generated["xmq_generated_supercal_lse08.h"]
     assert pair == generate_supercal_lse08(ROOT / "experimental/xmq/drivers")
     # Deliberately alter individual upstream fields/frames; the profile
@@ -245,14 +284,20 @@ def main():
         assert f'"{source_key}"' in txt
     for driver in SPECS:
         header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
-        assert '#include "xmq_generated_clear_profiles.h"' in header
-        assert f"xmq_generated_clear::{driver}::models" in header
+        if driver not in ("cma12w","lansendw"):
+            assert '#include "xmq_generated_clear_profiles.h"' in header
+            assert f"xmq_generated_clear::{driver}::models" in header
         if driver=="lansenpu":
             # Its record keys, names and statuses now compile directly
             # from XMQ via the dedicated source-backed pulse compiler.
             assert "xmq_generated_pulse::lansenpu::find_field" in header
             assert "inline constexpr KnownStatus statuses[]" in generated[
                 "xmq_generated_pulse_fields.h"]
+        elif driver in ("cma12w","lansendw"):
+            # Both use a single C++ interpreter of complete source-compiled
+            # record formats, mappings, conversions and verified statuses.
+            assert "xmq_compiled_profiles::"+driver+"::profile" in header
+            assert "full_xmq::decode(" in header
         else:
             assert f"xmq_generated_clear::{driver}::rules" in header
     # Lansen DW: protect every upstream C! field and the Lansen

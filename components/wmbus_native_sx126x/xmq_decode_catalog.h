@@ -253,10 +253,13 @@ inline PureDecodeStatus decode_configured_plain_frame(
     lansendw::Reading reading{};
     if(lansendw::decode(frame,length,reading)!=lansendw::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
-    output.values[0]={"a_counter",reading.a_counter};
-    output.values[1]={"b_counter",reading.b_counter};
+    output.values[0]={xmq_compiled_profiles::lansendw::rules[2].name,
+                      reading.a_counter};
+    output.values[1]={xmq_compiled_profiles::lansendw::rules[3].name,
+                      reading.b_counter};
     output.values[2]={"digital_input_raw",static_cast<double>(reading.digital_input)};
-    output.values[3]={"door_open",reading.digital_input==0x55u?1.0:0.0};
+    output.values[3]={"door_open",
+        std::strcmp(lansendw::state_text(reading.digital_input),"OPEN")==0?1.0:0.0};
     output.values[4]={"error_flags_raw",static_cast<double>(reading.error_flags)};
     output.values[5]={"error_flags_unknown_raw",
         static_cast<double>(lansendw::unknown_error_bits(reading.error_flags))};
@@ -286,8 +289,10 @@ inline PureDecodeStatus decode_configured_plain_frame(
     cma12w::Reading reading{};
     if(cma12w::decode(frame,length,reading)!=cma12w::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
-    output.values[0]={"current_temperature_c",reading.current_temperature_c};
-    output.values[1]={"average_temperature_1h_c",reading.average_temperature_1h_c};
+    output.values[0]={xmq_compiled_profiles::cma12w::rules[0].name,
+                      reading.current_temperature_c};
+    output.values[1]={xmq_compiled_profiles::cma12w::rules[1].name,
+                      reading.average_temperature_1h_c};
     output.values[2]={"battery_raw",static_cast<double>(reading.battery_bits)};
     output.values[3]={"tpl_status_raw",static_cast<double>(reading.tpl_status)};
     output.values[4]={"tpl_status_unknown_raw",0.0};
