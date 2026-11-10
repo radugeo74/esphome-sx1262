@@ -32,8 +32,8 @@ static constexpr uint8_t OCP_140MA = 0x38;  // 140 mA max current
 static constexpr float LOW_DATA_RATE_OPTIMIZE_THRESHOLD = 16.38f;  // 16.38 ms
 
 uint8_t SX126x::read_fifo_(uint8_t offset, std::vector<uint8_t> &packet) {
+  if (!this->wait_busy_()) return 0;
   this->enable();
-  this->wait_busy_();
   this->transfer_byte(RADIO_READ_BUFFER);
   this->transfer_byte(offset);
   uint8_t status = this->transfer_byte(0x00);
@@ -45,8 +45,8 @@ uint8_t SX126x::read_fifo_(uint8_t offset, std::vector<uint8_t> &packet) {
 }
 
 void SX126x::write_fifo_(uint8_t offset, const uint8_t *data, size_t len) {
+  if (!this->wait_busy_()) return;
   this->enable();
-  this->wait_busy_();
   this->transfer_byte(RADIO_WRITE_BUFFER);
   this->transfer_byte(offset);
   for (size_t i = 0; i < len; i++) {
@@ -57,8 +57,8 @@ void SX126x::write_fifo_(uint8_t offset, const uint8_t *data, size_t len) {
 }
 
 uint8_t SX126x::read_opcode_(uint8_t opcode, uint8_t *data, uint8_t size) {
+  if (!this->wait_busy_()) return 0;
   this->enable();
-  this->wait_busy_();
   this->transfer_byte(opcode);
   uint8_t status = this->transfer_byte(0x00);
   for (int32_t i = 0; i < size; i++) {
@@ -69,8 +69,8 @@ uint8_t SX126x::read_opcode_(uint8_t opcode, uint8_t *data, uint8_t size) {
 }
 
 void SX126x::write_opcode_(uint8_t opcode, uint8_t *data, uint8_t size) {
+  if (!this->wait_busy_()) return;
   this->enable();
-  this->wait_busy_();
   this->transfer_byte(opcode);
   for (int32_t i = 0; i < size; i++) {
     this->transfer_byte(data[i]);
@@ -80,8 +80,8 @@ void SX126x::write_opcode_(uint8_t opcode, uint8_t *data, uint8_t size) {
 }
 
 void SX126x::read_register_(uint16_t reg, uint8_t *data, uint8_t size) {
+  if (!this->wait_busy_()) return;
   this->enable();
-  this->wait_busy_();
   this->write_byte(RADIO_READ_REGISTER);
   this->write_byte((reg >> 8) & 0xFF);
   this->write_byte((reg >> 0) & 0xFF);
@@ -93,8 +93,8 @@ void SX126x::read_register_(uint16_t reg, uint8_t *data, uint8_t size) {
 }
 
 void SX126x::write_register_(uint16_t reg, uint8_t *data, uint8_t size) {
+  if (!this->wait_busy_()) return;
   this->enable();
-  this->wait_busy_();
   this->write_byte(RADIO_WRITE_REGISTER);
   this->write_byte((reg >> 8) & 0xFF);
   this->write_byte((reg >> 0) & 0xFF);
@@ -762,7 +762,8 @@ void SX126x::set_mode_standby(SX126xStandbyMode mode) {
   this->write_opcode_(RADIO_SET_STANDBY, buf, 1);
 }
 
-void SX126x::wait_busy_() {
+bool SX126x::wait_busy_() {
+  if (this->is_failed()) return false;
   // wait if the device is busy, the maximum delay is only be a few ms
   // with most commands taking only a few us
   uint32_t start = millis();
@@ -770,9 +771,10 @@ void SX126x::wait_busy_() {
     if (millis() - start > BUSY_TIMEOUT_MS) {
       ESP_LOGE(TAG, "Wait busy timeout");
       this->mark_failed();
-      break;
+      return false;
     }
   }
+  return true;
 }
 
 void SX126x::dump_config() {

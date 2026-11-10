@@ -133,7 +133,7 @@ class SX126x final : public Component,
   void write_register_(uint16_t reg, uint8_t *data, uint8_t size);
   void read_register_(uint16_t reg, uint8_t *data, uint8_t size);
   void call_listeners_(const std::vector<uint8_t> &packet, float rssi, float snr);
-  void wait_busy_();
+  bool wait_busy_();
   Trigger<std::vector<uint8_t>, float, float> packet_trigger_;
   std::vector<SX126xListener *> listeners_;
   T1StreamCallback t1_stream_callback_{nullptr};
@@ -157,7 +157,7 @@ class SX126x final : public Component,
   GPIOPin *dio1_pin_{nullptr};
   GPIOPin *rst_pin_{nullptr};
   std::string hw_version_;
-  char version_[16];
+  char version_[16]{};
   SX126xBw bandwidth_{SX126X_BW_125000};
   uint32_t bitrate_{0};
   bool crc_enable_{false};
