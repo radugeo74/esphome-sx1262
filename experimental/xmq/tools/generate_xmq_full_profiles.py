@@ -408,6 +408,7 @@ def emit(profile):
         f"{list(profile['rules']).index('battery') if 'battery' in profile['rules'] else 255},",
         f"{list(profile['rules']).index('software_version') if 'software_version' in profile['rules'] else 255},",
         f'{json.dumps(next((f["mapping"]["name"] for f in profile["fields"] if f["name"]=="battery"), "") if profile["name"]=="cma12w" else "")}',
+        ",0,0,false",
         "};",
         "}",
     ])
