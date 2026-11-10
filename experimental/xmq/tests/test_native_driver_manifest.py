@@ -251,7 +251,7 @@ def main():
             # Its record keys, names and statuses now compile directly
             # from XMQ via the dedicated source-backed pulse compiler.
             assert "xmq_generated_pulse::lansenpu::find_field" in header
-            assert "xmq_generated_pulse::lansenpu::statuses" in generated[
+            assert "inline constexpr KnownStatus statuses[]" in generated[
                 "xmq_generated_pulse_fields.h"]
         else:
             assert f"xmq_generated_clear::{driver}::rules" in header
