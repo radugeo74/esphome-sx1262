@@ -1,3 +1,70 @@
+## Lansen Pulse `lansenpu`: stări TPL detaliate și paritate XMQ (2026-11-10)
+
+Cele trei exemple originale sunt verificate integral, inclusiv cele
+două telegrame **LAS/0B/02** pe care Analyzer le decodifică astfel:
+- `TPL=0x00`: `b_counter=870`, `status="OK"`, cele trei
+  indicatoare de mai jos sunt 0.
+- `TPL=0x4C`: `b_counter=870`,
+  `status="PERMANENT_ERROR POWER_LOW SABOTAGE_ENCLOSURE"`,
+  toate cele trei indicatoare de mai jos sunt 1.
+- `TPL=0x04` (modelul public LAS/14/00):
+  `a_counter=4711`, `b_counter=1234`,
+  `status="POWER_LOW"`.
+
+În plus față de `a_counter` și `b_counter` (senzori numerici) și
+`status` (senzor text existent), sunt acum disponibili **opțional** în
+`xmq_sensors` patru senzori numerici suplimentari:
+- `tpl_status_raw` = 0 / 4 / 76 (valoarea brută a octetului);
+- `status_power_low` = 0/1 (bitul 2, `0x04`);
+- `status_permanent_error` = 0/1 (bitul 3, `0x08`);
+- `status_sabotage_enclosure` = 0/1 (bitul proprietar LAS `0x40`).
+
+Bitul LAS de sabotaj este verificat explicit în definiția XMQ
+(`mfct_tpl_status_bits`, `mask_bits=0xE0`, valoare `0x40`).
+Nu s-au inventat semnificații pentru alți biți: numai
+stările `0x00`, `0x04` și `0x4C`, confirmate prin cele
+trei fixture-uri, sunt acceptate. Restul sunt respinse pentru a
+evita publicarea unei stări `OK` false. Indicatorii numerici
+se publică doar după verificările existente DLL CRC, ID configurat,
+mode-zero și DIF/VIF/BCD.
+
+Exemplu de configurare, folosind ID-ul **fictiv** din sursa XMQ:
+
+```yaml
+  xmq_sensors:
+    - meter_id: "00023750"
+      field: b_counter
+      sensor:
+        name: "Lansen impulsuri B"
+    - meter_id: "00023750"
+      field: tpl_status_raw
+      sensor:
+        name: "Lansen stare TPL brută"
+    - meter_id: "00023750"
+      field: status_power_low
+      sensor:
+        name: "Lansen baterie slabă (0/1)"
+    - meter_id: "00023750"
+      field: status_permanent_error
+      sensor:
+        name: "Lansen eroare permanentă (0/1)"
+    - meter_id: "00023750"
+      field: status_sabotage_enclosure
+      sensor:
+        name: "Lansen carcasa deschisă (0/1)"
+  xmq_text_sensors:
+    - meter_id: "00023750"
+      field: status
+      sensor:
+        name: "Lansen stare"
+```
+
+Nu se creează automat senzori noi și nu se modifică
+configurația `vario451`. Valorile `structured.status_flags`
+din Analyzer provin din interpretarea statusului, nu din
+înregistrări DIF/VIF suplimentare. Nu este test RF live și
+nu s-a făcut flash pe Heltec.
+
 ## Vario451: diagnostic complet al payloadului CI=A2 (2026-11-10)
 
 Pe lângă paritatea 3/3 pentru rezultatele XMQ `previous_kwh`,
