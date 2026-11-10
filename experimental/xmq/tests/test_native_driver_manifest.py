@@ -303,8 +303,13 @@ def main():
     # Lansen DW: protect every upstream C! field and the Lansen
     # OPEN/CLOSED + unknown TPL/error-bit interpretation.
     dw_router = (ROOT / "components/wmbus_native_sx126x/xmq_decode_catalog.h").read_text()
+    # a/b are now generated names, not C++ literals in the router.
+    assert 'xmq_compiled_profiles::lansendw::rules[2].name' in dw_router
+    assert 'xmq_compiled_profiles::lansendw::rules[3].name' in dw_router
+    assert '"a_counter"' in source_compiled
+    assert '"b_counter"' in source_compiled
     for field in (
-        "a_counter", "b_counter", "digital_input_raw", "door_open",
+        "digital_input_raw", "door_open",
         "error_flags_raw", "error_flags_unknown_raw", "tpl_status_raw",
         "tpl_status_unknown_raw", "status_alarm", "status_busy",
         "status_error", "status_permanent_error", "status_power_low",
