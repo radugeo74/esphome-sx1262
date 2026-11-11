@@ -1,6 +1,6 @@
 # Native SX126x → legacy wmbusmeters bridge
 
-**Status (11 November 2026): T1/A hardware-validated on Heltec with 12/12 configured meters publishing; C1-B and sustained/negative tests remain unvalidated.** This is still an experimental bridge, not a claim of universal C1 or dynamic XMQ support.
+**Status (11 November 2026): native-only source cleanup committed; new commit requires CI and RF regression. Previous native T1/A bridge was hardware-validated with 12/12 configured meters; C1-B and sustained/negative tests remain unvalidated.** This is still an experimental bridge, not a claim of universal C1 or dynamic XMQ support.
 
 This branch starts from `native-espidf`. Instead of replacing `wmbus_common`,
 `wmbus_meter`, and all existing sensor definitions, the bridge feeds the
@@ -22,9 +22,7 @@ wmbus_radio:
 Here `native_radio` must be the ID of an appropriately configured
 `sx126x:` component, with SPI, BUSY, DIO1 and reset pins declared
 **only there**. Do not add `radio_type`, `cs_pin`, `reset_pin` or
-`irq_pin` under `wmbus_radio` in native mode. The schemas are mutually
-exclusive. The legacy transceiver's FreeRTOS task and second SPI device are
-not instantiated in this mode.
+`irq_pin` under `wmbus_radio` in native mode. The old schema and legacy `RadioTransceiver` implementation were removed from this branch. Only SX126x owns SPI/IRQ; no additional radio task or queue exists.
 
 `native_stream_mode: T1_C1_B` opt-in uses the experimental combined
 sync-word stream. It recognizes T1 format A and C1 format B **up to 128 raw bytes**.
@@ -63,25 +61,13 @@ one SX126x, one wmbus_radio adapter, one configured mkradio4 meter and
 the original numeric/RSSI HA sensors. The CI workflow compiles both
 this integrated fixture and an isolated radio fixture.
 
-Before permanently removing the old
-`components/wmbus_radio/transceiver_sx1262.cpp/.h`, require:
-- ESPHome 2026.10.1 full **ESP-IDF firmware build** SUCCESS with the
-  new bridge, plus regression YAML using the old schema.
-- Host/frame tests for valid and corrupt T1, C1-B, CRC, invalid symbols,
-  unknown ID, wrong AES key, and power-loss/recovery.
-- Actual Heltec measurements of T1 and applicable C1 formats, RSSI,
-  receive stability and all configured household meters. **T1/A was observed for 12/12 configured meters on 11 November 2026; C1 and long-duration reception remain open.**
-- Confirm the original YAML or firmware can be restored.
-
-**Until the remaining tests and rollback gate pass, keep the legacy
-transceiver source strictly for rollback.** The native `sx126x_id` configuration does **not instantiate** this legacy SPI/IRQ receiver, even though its source remains in the repository. The `wmbusmeters` log prefix refers to the application decoder that remains intentionally active for real HCA/water readings, **not** to the old radio driver. Deleting it after a compile-only pass
-would be premature and could leave a working installation unrecoverable.
+The legacy radio files `transceiver.cpp/.h` and `transceiver_sx1262.cpp/.h` have been removed from this branch. The earlier branch commit and saved working firmware remain rollback options; the legacy YAML is intentionally rejected by CI. This removal does not eliminate the **application** decoding dependency on `wmbus_common`. New firmware still needs ESPHome compile and a controlled RF regression before deployment. C1-B, long-duration uptime, corruption/recovery and any encrypted modes require separate evidence. No OTA is authorized by this documentation change.
 
 For the separate goal of updating XMQ rules without firmware recompilation,
 see `docs/XMQ_RUNTIME_ARCHITECTURE.md`. This bridge is one prerequisite,
 not the runtime XMQ engine itself.
 
-Rollback schema validation: `tests/sx1262-legacy-rollback.yaml` exercises the original `radio_type: SX1262` path. It intentionally does NOT instantiate `sx126x:` and is never used concurrently with the new receiver.
+Negative schema regression: `tests/sx1262-legacy-rollback.yaml` contains the removed `radio_type: SX1262` schema and **must fail** validation. For actual rollback, restore an earlier Git commit and matching firmware.
 
 ## Migrating a full YAML from wmbus_native_sx126x
 
