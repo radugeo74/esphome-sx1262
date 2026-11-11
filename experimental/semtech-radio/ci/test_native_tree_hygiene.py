@@ -69,9 +69,18 @@ assert copied == (
     "numeric_bridge.h",
     "record_decoder.h",
 ), "Portable-to-native header allowlist changed"
-assert not set(copied) & {
-    p.name for p in (ROOT / "components/wmbus_native_sx126x").glob("*.h")
-}, "A copied portable header shadows an owned native header"
+# The ESPHome build stages these seven allowlisted helpers. They may
+# also be checked into the native component to make external-component
+# compilation deterministic, but must remain byte-for-byte identical.
+# A DIFFERENT native file would still shadow the reviewed portable source.
+native_root=ROOT / "components/wmbus_native_sx126x"
+for name in copied:
+    native=native_root / name
+    portable=ROOT / "experimental/xmq/portable_cpp" / name
+    if native.exists():
+        assert native.read_bytes()==portable.read_bytes(), (
+            f"Native runtime helper shadows a different portable header: {name}"
+        )
 assert '.glob("*.h")' not in source, (
     "Unbounded portable header copying could overwrite native decoder sources"
 )
