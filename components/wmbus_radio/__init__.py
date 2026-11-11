@@ -63,7 +63,6 @@ async def to_code(config):
     # Only patched SX126x owns the SPI bus and IRQ.
     var = cg.new_Pvariable(config[CONF_ID])
     radio = await cg.get_variable(config[CONF_SX126X_ID])
-    cg.add_define("USE_WMBUS_NATIVE_SX126X")
     cg.add(var.set_native_sx126x(radio))
     cg.add(var.set_native_t1_c1_b(
         config[CONF_NATIVE_STREAM_MODE] == "T1_C1_B"
