@@ -127,6 +127,13 @@ jobs:
       - name: Build host mbedTLS crypto locally without apt or Ubuntu mirrors
         run: |
           set -euo pipefail
+          # Upstream mbedTLS 2.28.8 disables CMAC by default, while our
+          # OMS Mode-5 key derivation needs mbedtls_cipher_cmac().
+          # Enable this specific feature in the CI-only source checkout.
+          grep -qx '//#define MBEDTLS_CMAC_C' .ci/mbedtls-host/include/mbedtls/config.h
+          sed -i 's@^//#define MBEDTLS_CMAC_C$@#define MBEDTLS_CMAC_C@' \
+            .ci/mbedtls-host/include/mbedtls/config.h
+          grep -qx '#define MBEDTLS_CMAC_C' .ci/mbedtls-host/include/mbedtls/config.h
           cmake -S .ci/mbedtls-host -B "$RUNNER_TEMP/mbedtls-host-build" \
             -DCMAKE_BUILD_TYPE=Release \
             -DENABLE_PROGRAMS=OFF -DENABLE_TESTING=OFF \
@@ -135,6 +142,735 @@ jobs:
             --target mbedcrypto --parallel 2
           test -f .ci/mbedtls-host/include/mbedtls/aes.h
           test -s "$RUNNER_TEMP/mbedtls-host-build/library/libmbedcrypto.a"
+          nm -g "$RUNNER_TEMP/mbedtls-host-build/library/libmbedcrypto.a" |
+            grep -Eq ' T mbedtls_cipher_cmac
+          # existing -lmbedcrypto commands to link the local static library.
+          printf 'CPATH=%s\n' "$GITHUB_WORKSPACE/.ci/mbedtls-host/include" >> "$GITHUB_ENV"
+          printf 'LIBRARY_PATH=%s\n' "$RUNNER_TEMP/mbedtls-host-build/library" >> "$GITHUB_ENV"
+      - name: Test explicit-key native Lansen TH and SM Mode-5 AES (synthetic ciphertext)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_lansen_th_sm_native_mode5.cpp \
+            -o /tmp/test-lansen-th-sm-native-aes -lmbedcrypto
+          /tmp/test-lansen-th-sm-native-aes
+      - name: Test configured native Elvaco Sense and Lansen R4 clear profiles
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_elvsense_lansenrp_native.cpp \
+            -o /tmp/test-elvsense-lansenrp-native
+          /tmp/test-elvsense-lansenrp-native
+      - name: Test QSmoke and QCaloric native clear-only fixture admission
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_qsmoke_qcaloric_native.cpp \
+            -o /tmp/test-qsmoke-qcaloric
+          /tmp/test-qsmoke-qcaloric
+      - name: Test RFM-AMB and Sensostar clear-only native profiles
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_rfmamb_sensostar_native.cpp \
+            -o /tmp/test-rfmamb-sensostar
+          /tmp/test-rfmamb-sensostar
+      - name: Test EVO868 and Supercom 587 configured clear-TPL original fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_evo868_supercom587_native.cpp \
+            -o /tmp/test-evo868-supercom587
+          /tmp/test-evo868-supercom587
+      - name: Test HCA E2 and BFW240 native Mode-0 subset with original fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_hcae2_bfw240radio_native.cpp \
+            -o /tmp/test-hcae2-bfw240
+          /tmp/test-hcae2-bfw240
+      - name: Test QWater V2 and Hydrodigit native strict Mode-0 original fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_qwaterv2_hydrodigit_native.cpp \
+            -o /tmp/test-qwaterv2-hydrodigit
+          /tmp/test-qwaterv2-hydrodigit
+      - name: Test Itron and Qualcosonic native Mode-0 original fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_itron_qualcosonic_native.cpp \
+            -o /tmp/test-itron-qualcosonic
+          /tmp/test-itron-qualcosonic
+      - name: Test LSE08 and Waterstarm native strict Mode-0 original fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_lse08_waterstarm_native.cpp \
+            -o /tmp/test-lse08-waterstarm
+          /tmp/test-lse08-waterstarm
+      - name: Test LSE 07/17 and WEP Munia original clear Mode-0 fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_lse0717_munia_native.cpp \
+            -o /tmp/test-lse0717-munia
+          /tmp/test-lse0717-munia
+      - name: Test QHeat 5.5 US and Maddalena original clear Mode-0 fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_qheat55_maddalena_native.cpp \
+            -o /tmp/test-qheat55-maddalena
+          /tmp/test-qheat55-maddalena
+      - name: Test Itron Heat and EMH eHZP native clear Mode-0 original fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_itronheat_ehzp_native.cpp \
+            -o /tmp/test-itronheat-ehzp
+          /tmp/test-itronheat-ehzp
+      - name: Test QHeat V2 and Zenner C5ISF clear source fixtures and encrypted rejection
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_qheatv2_c5isf_native.cpp \
+            -o /tmp/test-qheatv2-c5isf
+          /tmp/test-qheatv2-c5isf
+      - name: Test Microclima and ABB B23 native Mode0 with original XMQ fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_microclima_abbb23_native.cpp \
+            -o /tmp/test-microclima-abbb23
+          /tmp/test-microclima-abbb23
+      - name: Test Ei6500 diagnostic-only and Apator E-ITN40 original clear fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_ei6500_apatoreitn40_native.cpp \
+            -o /tmp/test-ei6500-apatoreitn40
+          /tmp/test-ei6500-apatoreitn40
+      - name: Test dual-ID Apator ELF and Engelmann FAW original Mode-0 fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_elf_engelmann_faw_native.cpp \
+            -o /tmp/test-elf-engelmann-faw
+          /tmp/test-elf-engelmann-faw
+      - name: Test source-verified Apator E-ITN A0 B6 and Gran Systems CI78 native profiles
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_apatoreitn_gransystems_native.cpp \
+            -o /tmp/test-apatoreitn-gransystems
+          /tmp/test-apatoreitn-gransystems
+      - name: Test original Techem Compact5 and Vario451 CI A2
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_compact5_vario451_native.cpp \
+            -o /tmp/test-compact5-vario451
+          /tmp/test-compact5-vario451
+      - name: Verify all three original Ultraheat XMQ JSON and transport provenance
+        run: python3 experimental/xmq/tests/test_ultraheat_source_parity.py
+      - name: Audit native XMQ upstream comparison tool and 52-driver coverage
+        run: python3 experimental/xmq/tests/test_upstream_xmq_audit.py
+      - name: Test native XMQ manifest and generated decoder parity
+        run: python3 experimental/xmq/tests/test_native_driver_manifest.py
+      - name: Audit OMS security evidence catalog for all 52 drivers
+        run: python3 experimental/xmq/tests/test_security_profile_catalog.py
+      - name: Check NOKEY provenance and 44 encrypted-header counterexamples from all XMQ fixtures
+        run: python3 experimental/xmq/tests/test_nokey_fixture_provenance.py
+      - name: Test live clear admission never trusts upstream NOKEY AES headers
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_nokey_rf_fail_closed.cpp \
+            -o /tmp/test-nokey-rf-fail-closed
+          /tmp/test-nokey-rf-fail-closed
+      - name: Test upstream XMQ C-style comment tokenization
+        run: python3 experimental/xmq/tests/test_portable_xmq_block_comments.py
+      - name: Audit second driver batch official XMQ fixture inventory and fail-closed publication
+        run: python3 experimental/xmq/tests/test_batch2_upstream_fixtures.py
+      - name: Stage B upstream golden fixture parity ledger (NOT_RUN until actual JSON comparison)
+        run: python3 experimental/xmq/tests/test_batch2_parity_ledger.py
+      - name: Stage A shared portable parser and pending runtime admission guard
+        run: |
+          python3 experimental/xmq/tests/test_stage_a_shared_portable_boundary.py
+      - name: Stage B exact original JSON functional-field gap audit (no full parity promotion)
+        run: |
+          python3 experimental/xmq/tests/test_batch2_field_gap_audit.py
+          python3 experimental/xmq/tests/test_batch2_field_gap_audit.py --json > /tmp/batch2-field-gap-audit.json
+          python3 -m json.tool /tmp/batch2-field-gap-audit.json > /dev/null
+      - name: Stage B compare native C++ clear application outputs with 7 upstream XMQ fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/legacy_reference \
+            -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_batch2_clear_fixture_cli.cpp \
+            -o /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_batch2_clear_fixture_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_apator162_upstream_volume_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_kamwater_compact_upstream_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_kamwater_status_upstream_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_kamwater_numeric_upstream_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_kamwater_tpl_status_upstream_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
+          python3 experimental/xmq/tests/test_minomess_wired_upstream_parity.py \
+            /tmp/test-batch2-clear-fixture-cli
+      - name: Test standard DIF VIF parity with original dvparser
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_standard_dif_vif_parity.cpp \
+            -o /tmp/test-standard-dif-vif
+          /tmp/test-standard-dif-vif
+      - name: Test public Minomess cleartext prefix and binary target sentinels
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_minomess_clear_prefix.cpp \
+            -o /tmp/test-minomess-clear-prefix
+          /tmp/test-minomess-clear-prefix
+      - name: Guard Kamwater OpenSSL AES CTR and DLL ingress host-only isolation
+        run: python3 experimental/semtech-radio/ci/test_kamwater_host_only_isolation.py
+      - name: Test authenticated OMS TPL AES CCM profile D (synthetic only)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_oms_tpl_ccm_openssl.cpp \
+            -o /tmp/test-oms-tpl-ccm-openssl -lcrypto
+          /tmp/test-oms-tpl-ccm-openssl
+      - name: Test original Apator162 AES-CBC mode 5 encrypted upstream fixture
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/legacy_reference \
+            -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_apator162_upstream_cbc_mode5.cpp \
+            -o /tmp/test-apator162-upstream-cbc -lcrypto
+          /tmp/test-apator162-upstream-cbc
+      - name: Execute ESP-IDF probe CCM implementation against public fixtures with host mbedTLS
+        run: |
+          # Reuse the dependency installed and verified before Lansen AES tests.
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/espidf_cpp_probe/test_kamwater_ccm_mbedtls_host.cpp \
+            -o /tmp/test-kamwater-ccm-mbedtls-host -lmbedcrypto
+          /tmp/test-kamwater-ccm-mbedtls-host
+      - name: Original encrypted Apator162 RF application through native mbedTLS and driver dispatch
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_apator162_native_mbedtls_dispatch.cpp \
+            -o /tmp/test-apator162-native-mbedtls -lmbedcrypto
+          /tmp/test-apator162-native-mbedtls
+      - name: Kamwater native mbedTLS ELL AES-CTR to compact XMQ fields
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_native_mbedtls_ell_ctr.cpp \
+            -o /tmp/test-kamwater-native-ctr -lmbedcrypto
+          /tmp/test-kamwater-native-ctr
+      - name: MK Radio4a configured AES Mode5 long-TPL to original target volume/date
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_mkradio4a_native_mode5.cpp \
+            -o /tmp/test-mkradio4a-native-mode5 -lmbedcrypto
+          /tmp/test-mkradio4a-native-mode5
+      - name: Minomess native long-TPL mbedTLS Mode5 to XMQ application
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_minomess_native_mbedtls_mode5.cpp \
+            -o /tmp/test-minomess-native-mode5 -lmbedcrypto
+          /tmp/test-minomess-native-mode5
+      - name: Verify T1/C1 CRC through real secure AES binding and mapped HA sensor callbacks
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_secure_rx_to_mapped_sensors.cpp \
+            -o /tmp/test-secure-rx-to-mapped-sensors -lmbedcrypto
+          /tmp/test-secure-rx-to-mapped-sensors
+      - name: Test real Kamwater ESP-IDF NVS adapter with host fake (no physical flash)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Iexperimental/xmq/espidf_cpp_probe/host_fake_nvs \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/xmq/espidf_cpp_probe/test_kamwater_nvs_host.cpp \
+            experimental/xmq/espidf_cpp_probe/main/kamwater_nvs_checkpoint.cpp \
+            -o /tmp/test-kamwater-nvs-host -lmbedcrypto
+          /tmp/test-kamwater-nvs-host
+      - name: Test original Kamwater OMS CCM encrypted upstream fixtures (valid and corrupt)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_upstream_ccm_openssl.cpp \
+            -o /tmp/test-kamwater-upstream-ccm -lcrypto
+          /tmp/test-kamwater-upstream-ccm
+      - name: Test host-only Kamwater ELL AES CTR decryption with synthetic key
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_ell_ctr_openssl.cpp \
+            -o /tmp/test-kamwater-ell-ctr-openssl -lcrypto
+          /tmp/test-kamwater-ell-ctr-openssl
+      - name: Test keyless host-only Kamwater ELL AES CTR IV construction
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_kamwater_ell_ctr_iv.cpp \
+            -o /tmp/test-kamwater-ell-ctr-iv
+          /tmp/test-kamwater-ell-ctr-iv
+      - name: Test Kamwater verified complete DLL and exact configured identity ingress
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_verified_dll_ingress.cpp \
+            -o /tmp/test-kamwater-verified-dll-ingress
+          /tmp/test-kamwater-verified-dll-ingress
+      - name: Test host-only Kamwater ELL II to TPL79 to record decode pipeline
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_clear_pipeline.cpp \
+            -o /tmp/test-kamwater-clear-pipeline
+          /tmp/test-kamwater-clear-pipeline
+      - name: Test Kamwater TPL79 compact reconstructed data CRC golden pairs
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_tpl79_probe.cpp \
+            -o /tmp/test-kamwater-tpl79
+          /tmp/test-kamwater-tpl79
+      - name: Test clear-only Kamwater ELL II security and CRC with AES CTR rejection
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_kamwater_ell_ii_probe.cpp \
+            -o /tmp/test-kamwater-ell-ii-probe
+          /tmp/test-kamwater-ell-ii-probe
+      - name: Test Kamwater EN13757 compact format signatures and fail-closed matching
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_kamwater_compact_signature.cpp \
+            -o /tmp/test-kamwater-compact-signature
+          /tmp/test-kamwater-compact-signature
+      - name: Test Kamwater compact profile admission requires identity format and ELL evidence
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_kamwater_compact_admission.cpp \
+            -o /tmp/test-kamwater-compact-admission
+          /tmp/test-kamwater-compact-admission
+      - name: Test generic compact DIF VIF expansion against Kamwater public fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_compact_profile.cpp \
+            -o /tmp/test-kamwater-compact
+          /tmp/test-kamwater-compact
+      - name: Test official Kamwater cleartext DIF VIF records without compact or decryption
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_kamwater_clear_records.cpp \
+            -o /tmp/test-kamwater-clear-records
+          /tmp/test-kamwater-clear-records
+      - name: Test official Hydrus cleartext records (no decryption)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_hydrus_plain.cpp \
+            -o /tmp/test-hydrus-plain
+          /tmp/test-hydrus-plain
+      - name: Test Sensus iPERL full original XMQ source parity and decryption provenance
+        run: python3 experimental/xmq/tests/test_iperl_source_parity.py
+      - name: Test official Sensus iPERL plaintext NOKEY fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_iperl_plain.cpp \
+            -o /tmp/test-iperl-plain
+          /tmp/test-iperl-plain
+      - name: Test official mkradio4a NOKEY examples (portable XMQ)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_mkradio4a_plain.cpp \
+            -o /tmp/test-mkradio4a-plain
+          /tmp/test-mkradio4a-plain
+      - name: Test synthetic complete C1 A and long C1 B CRC pipeline
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_combined_c1_crc_end_to_end.cpp \
+            -o /tmp/test-combined-c1-crc
+          /tmp/test-combined-c1-crc
+      - name: Build and test T1 3-of-6 decoder
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_3of6.cpp \
+            -o /tmp/test-native-t1
+          /tmp/test-native-t1
+      - name: Build and test common T1/C1 frame boundary
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_frame_boundary.cpp \
+            -o /tmp/test-native-frame-boundary
+          /tmp/test-native-frame-boundary
+      - name: Test native C1 boundary against existing pure DLL verifier
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_to_pure_validation.cpp \
+            -o /tmp/test-native-pure-validation
+          /tmp/test-native-pure-validation
+      - name: Test T1 symbols through pure DLL CRC verifier
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_to_pure_validation.cpp \
+            -o /tmp/test-native-t1-pure
+          /tmp/test-native-t1-pure
+      - name: Assert native fixture has no legacy radio owner
+        run: python3 experimental/semtech-radio/ci/check_native_only.py
+      - name: Verify all CRC-valid T1 frames reach on_verified without enabling sensor publication
+        run: python3 experimental/semtech-radio/ci/test_t1_verified_trigger_contract.py
+      - name: Test variable-length T1 packet framing
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_packet_framing.cpp \
+            -o /tmp/test-native-t1-packet-framing
+          /tmp/test-native-t1-packet-framing
+      - name: Test native verified DLL bridge
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_verified_bridge.cpp \
+            -o /tmp/test-native-verified-bridge
+          /tmp/test-native-verified-bridge
+      - name: Test native verified meter registry
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_meter_registry.cpp \
+            -o /tmp/test-native-meter-registry
+          /tmp/test-native-meter-registry
+      - name: Test Semtech GFSK sync RSSI against packet average and HA source contract
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_sx126x_gfsk_rssi.cpp \
+            -o /tmp/test-sx126x-gfsk-rssi
+          /tmp/test-sx126x-gfsk-rssi
+          python3 experimental/semtech-radio/ci/test_gfsk_rssi_source_contract.py
+      - name: Test progressive T1 FIFO collector
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_progressive_buffer.cpp \
+            -o /tmp/test-native-t1-progressive
+          /tmp/test-native-t1-progressive
+      - name: Test progressive T1 verified bridge
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_progressive_verified.cpp \
+            -o /tmp/test-native-t1-progressive-verified
+          /tmp/test-native-t1-progressive-verified
+      - name: Test non-owning T1 FIFO integration contract
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_t1_fifo_contract.cpp \
+            -o /tmp/test-native-t1-fifo-contract
+          /tmp/test-native-t1-fifo-contract
+      - name: Passive T1/C1 AUTO identifies Topas and both MK Radio4a meter profiles without keys
+        run: |
+          python3 experimental/xmq/tools/generate_driver_registry.py \
+            experimental/xmq/drivers/*.xmq \
+            --out /tmp/xmq_auto_registry.h
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -I/tmp \
+            experimental/semtech-radio/test_batch2_auto_identification.cpp \
+            -o /tmp/test-batch2-auto-identify
+          /tmp/test-batch2-auto-identify
+      - name: Test actual T1/C1 passive AUTO adapter for all 16 native XMQ drivers
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x \
+            experimental/semtech-radio/test_passive_auto_identification.cpp \
+            -o /tmp/test-passive-auto-identification
+          /tmp/test-passive-auto-identification
+      - name: Test independent DLL TPL address classification
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_identity_probe.cpp \
+            -o /tmp/test-native-identity
+          /tmp/test-native-identity
+      - name: Test independent ELL payload CRC integrity
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_ell_integrity.cpp \
+            -o /tmp/test-native-ell-integrity
+          /tmp/test-native-ell-integrity
+      - name: Test configured T1/C1 publication admission and identity gate
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/test_native_publication_gate.cpp \
+            -o /tmp/test-native-publication-gate
+          /tmp/test-native-publication-gate
+      - name: Test conservative TPL encryption classification
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/semtech-radio/tests/test_tpl_security_probe.cpp \
+            -o /tmp/test-tpl-security
+          /tmp/test-tpl-security
+      - name: Compile and run official XMQ heat and water fixture regression
+        run: |
+          python3 experimental/xmq/tools/generate_ixml_cpp.py \
+            experimental/xmq/drivers/mkradio4.xmq \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            --out experimental/xmq/portable_cpp/xmq_generated.h
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/xmq/tests/test_official_driver_fixtures.cpp \
+            -o /tmp/test-official-xmq-fixtures
+          /tmp/test-official-xmq-fixtures
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/xmq/tests/test_xmq_decode_catalog.cpp \
+            -o /tmp/test-xmq-reference-decode-catalog
+          /tmp/test-xmq-reference-decode-catalog
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            experimental/xmq/tests/test_xmq_field_parity.cpp \
+            -o /tmp/test-xmq-reference-field-parity
+          /tmp/test-xmq-reference-field-parity
+          for name in test_pure_crc test_pure_header test_pure_security test_pure_complete_frame test_pure_mode5_prepare; do
+            g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+              "experimental/xmq/tests/${name}.cpp" \
+              -o "/tmp/${name}-legacy-reference"
+            "/tmp/${name}-legacy-reference"
+          done
+
+      - name: Test typed text fields on official iPERL and Hydrus cleartext fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_xmq_plain_text_fields.cpp \
+            -o /tmp/test-xmq-text-fields
+          /tmp/test-xmq-text-fields
+      - name: First driver batch contract - iPERL Hydrus MK Radio 4a
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_xmq_batch1_driver_contract.cpp \
+            -o /tmp/test-xmq-batch1-contract
+          /tmp/test-xmq-batch1-contract
+
+      - name: Decode original Lansen DW and Elvaco CMA12w clear frames through native AUTO
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_lansendw_cma12w_native.cpp \
+            -o /tmp/test-lansen-dw-cma12w-native
+          /tmp/test-lansen-dw-cma12w-native
+
+      - name: Decode original Ultraheat and Sontex868 NOKEY fixtures with configured AUTO
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_ultraheat_sontex868_native.cpp \
+            -o /tmp/test-ultraheat-sontex868-native
+          /tmp/test-ultraheat-sontex868-native
+
+      - name: Decode original Sontex Supercal clear fixture with strict AUTO gates
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_supercal_native.cpp \
+            -o /tmp/test-supercal-native
+          /tmp/test-supercal-native
+
+      - name: Original Topas NOKEY supplied-clear offline decode (no key, no RF bypass)
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          python3 experimental/xmq/tools/generate_driver_registry.py \
+            experimental/xmq/drivers/*.xmq \
+            --out components/wmbus_native_sx126x/xmq_auto_registry.h
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_topaseskr_supplied_clear.cpp \
+            -o /tmp/test-topaseskr-supplied-clear
+          /tmp/test-topaseskr-supplied-clear
+
+      - name: Original MK Radio4a NOKEY warm/cold keyless offline with DLL-TPL guards
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          python3 experimental/xmq/tools/generate_driver_registry.py \
+            experimental/xmq/drivers/*.xmq \
+            --out components/wmbus_native_sx126x/xmq_auto_registry.h
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_mkradio4a_supplied_clear.cpp \
+            -o /tmp/test-mkradio4a-supplied-clear
+          /tmp/test-mkradio4a-supplied-clear
+
+      - name: Topas ESKR native Mode5 synthetic encrypted original XMQ applications
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_topaseskr_native_mode5.cpp \
+            -o /tmp/test-topaseskr-native-mode5 -lmbedcrypto
+          /tmp/test-topaseskr-native-mode5
+
+      - name: Original Axioma Q400 clear-only AUTO parity and encrypted NOKEY rejection
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_q400_native.cpp \
+            -o /tmp/test-q400-native
+          /tmp/test-q400-native
+
+      - name: AUTO-select and decode original Lansen NOKEY fixtures with configured-only guards
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_lansenpu_native_no_key.cpp \
+            -o /tmp/test-lansenpu-native-no-key
+          /tmp/test-lansenpu-native-no-key
+
+      - name: Test configured plaintext XMQ dispatch against official fixtures
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_configured_plain_decode.cpp \
+            -o /tmp/test-configured-plain-decode
+          /tmp/test-configured-plain-decode
+
+      - name: Batch-2 configured native clear-only dispatch regression
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_batch2_native_catalog_dispatch.cpp \
+            -o /tmp/test-batch2-native-catalog
+          /tmp/test-batch2-native-catalog
+
+      - name: End-to-end T1 and C1-A CRC to XMQ regression for official heat and water fixtures
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_rf_to_xmq_regression.cpp \
+            -o /tmp/test-rf-to-xmq-regression
+          /tmp/test-rf-to-xmq-regression
+
+      - name: Check ESPHome probe Python syntax
+        run: python3 -m py_compile components/wmbus_native_sx126x/__init__.py
+
+  stage-a-espidf-s3-portable-link:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate the unchanged live Techem XMQ driver tables
+        run: |
+          python3 experimental/xmq/tools/generate_ixml_cpp.py \
+            experimental/xmq/drivers/mkradio4.xmq \
+            experimental/xmq/drivers/fhkvdataiii.xmq \
+            --out experimental/xmq/generated/generated_ixml.h
+      - name: Build shared Apator162 and live XMQ runtime with real ESP-IDF ESP32-S3 toolchain
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.6
+          target: esp32s3
+          path: experimental/xmq/espidf_cpp_probe
+          command: |
+            idf.py build
+            idf.py size
+
+  native-esphome-build:
+    runs-on: ubuntu-24.04
+    env:
+      # ESPHome 2026.10.1 understands semicolon-separated framework mirrors.
+      # The first URL preserves the pinned ESPHome archive. Official Espressif
+      # release ZIP provides a fallback if GitHub release downloads return 504.
+      # Archive extraction checks file magic, not the temporary .tar.xz name.
+      ESPHOME_IDF_FRAMEWORK_MIRRORS: "https://github.com/esphome-libs/esp-idf/releases/download/v{VERSION}/esp-idf-v{VERSION}.tar.xz;https://dl.espressif.com/github_assets/espressif/esp-idf/releases/download/v{VERSION}/esp-idf-v{VERSION}.zip"
+      # Official Espressif alternative for xtensa/riscv/ROM toolchain assets.
+      IDF_GITHUB_ASSETS: dl.espressif.com/github_assets
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned ESPHome
+        run: python -m pip install 'esphome==2026.10.1'
+      - name: Restore cache for pinned ESPHome IDF framework and tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/esphome/idf
+          key: ${{ runner.os }}-${{ runner.arch }}-esphome-2026.10.1-idf-5.5.6-py312-v1
+      - name: Guard official SX126x 2026.10.1 RX hook
+        run: |
+          SX126X_CPP=$(python -c 'from pathlib import Path; import esphome; print(Path(esphome.__file__).parent / "components/sx126x/sx126x.cpp")')
+          python3 experimental/semtech-radio/ci/check_sx126x_rx_hook.py "$SX126X_CPP"
+      - name: Check T1 patcher Python syntax
+        run: python3 -m py_compile experimental/semtech-radio/ci/patch_sx126x_t1_stream.py
+      - name: Assert GitHub-supplied official SX126x includes T1 hook
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          h = Path('components/sx126x/sx126x.h').read_text()
+          cpp = Path('components/sx126x/sx126x.cpp').read_text()
+          assert 'SX126X_EXPERIMENTAL_T1_STREAM' in h
+          assert 't1_stream_loop_()' in cpp
+          assert 'IRQ_SYNCWORD_VALID' in cpp
+          PY
+      - name: Compile official SX126x T1 stream on Heltec (not flashed)
+        run: esphome compile experimental/semtech-radio/heltec-sx126x-t1-lab.yaml
+      - name: Diagnose generated XMQ header placement after a compile failure
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path("experimental/semtech-radio/.esphome")
+          for name in ("xmq_auto_registry.h", "xmq_generated_full_profiles.h",
+                       "driver_runtime.h"):
+              found=list(root.rglob(name))
+              print(f"{name}: count={len(found)}")
+              for path in found[:4]:
+                  print(f"  {path}")
+          for rsp in root.rglob("native_receiver_probe.cpp.obj.rsp"):
+              txt=rsp.read_text(errors="replace")
+              print(f"Compiler response file: {rsp}")
+              print("contains stable generated include directory:",
+                    "native-xmq-generated" in txt)
+              print("contains runtime component include directory:",
+                    "wmbus_native_sx126x" in txt)
+          PY
+      - name: Validate native receiver fixture
+        run: esphome config experimental/semtech-radio/ci/native-sx126x-esphome.yaml
+      - name: Validate real-pin Heltec diagnostic YAML
+        run: esphome config experimental/semtech-radio/heltec-sx126x-diagnostic.yaml
+      - name: Validate build-only Heltec T1 lab configuration
+        run: esphome config experimental/semtech-radio/heltec-sx126x-t1-lab.yaml
+      - name: Compile Heltec SX126x diagnostic firmware
+        run: esphome compile experimental/semtech-radio/heltec-sx126x-diagnostic.yaml
+      - name: Compile native SX126x receiver
+        run: esphome compile experimental/semtech-radio/ci/native-sx126x-esphome.yaml
+      - name: Validate build-only native encrypted Minomess Kamwater Apator162 bindings
+        run: esphome config experimental/semtech-radio/ci/native-sx126x-batch2-lab.yaml
+      - name: Compile opt-in encrypted native SX1262 receiver on ESP32-S3 (DO NOT FLASH)
+        run: esphome compile experimental/semtech-radio/ci/native-sx126x-batch2-lab.yaml
+      - name: Validate explicit NO-KEY Minomess Kamwater Apator162 on SX1262
+        run: esphome config experimental/semtech-radio/ci/native-sx126x-batch2-nokey-lab.yaml
+      - name: Compile three native XMQ no-key drivers without mbedTLS CCM or any AES key (DO NOT FLASH)
+        run: esphome compile experimental/semtech-radio/ci/native-sx126x-batch2-nokey-lab.yaml
+      - name: Validate combined T1/C1 Heltec laboratory YAML
+        run: esphome config experimental/semtech-radio/heltec-sx126x-combined-lab.yaml
+      - name: Compile combined T1/C1 Heltec firmware (not flashed)
+        run: esphome compile experimental/semtech-radio/heltec-sx126x-combined-lab.yaml
+
           # GCC reads these in all subsequent GitHub Actions steps, allowing
           # existing -lmbedcrypto commands to link the local static library.
           printf 'CPATH=%s\n' "$GITHUB_WORKSPACE/.ci/mbedtls-host/include" >> "$GITHUB_ENV"
