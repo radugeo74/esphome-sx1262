@@ -1,3 +1,42 @@
+## Calupul XMQ 3: Lansen Pulse și Sontex Supercom587 (11 noiembrie 2026)
+
+`lansenpu` și `supercom587` sunt migrate din implementări
+de decodare independente în **compilatorul XMQ comun**, prin backendul
+`generate_xmq_next_profiles.py` folosit de
+`generate_xmq_full_profiles.py`, apoi compilate în același
+`xmq_generated_full_profiles.h`.
+
+Interpretul `xmq_full_profile_runtime.h` reutilizează aceleași
+operații comune ca la CMA12w, LansenDW, iPERL și Munia:
+`Bcd12` pentru numărarea impulsurilor, `Bcd8` pentru volum
+și `BcdVersion6` pentru versiunea software. Adaptatoarele
+`lansenpu_plain.h` și `supercom587_plain.h` nu mai păstrează
+bucle proprii de interpretare a înregistrărilor, filtre
+DIF/VIF sau conversii BCD.
+
+- **Lansen Pulse:** `LAS/14/00` și `LAS/0B/02` (dintre
+  variantele sursă efectiv documentate), prefixul `2F2F`,
+  contoare opționale `a_counter`/`b_counter`, modelele,
+  configurațiile și cele trei stări `POWER_LOW`, `OK` și
+  `PERMANENT_ERROR POWER_LOW SABOTAGE_ENCLOSURE` provin din
+  cele trei fixture-uri XMQ. `LAS/1B/00` este identificat în
+  XMQ, dar rămâne fără autorizare RF până la un fixture validat.
+- **Supercom587:** `SON/3C/06` și `SON/3C/07` din cele două
+  fixture-uri clear, consum `total_m3`, versiune software
+  `010002`, status `OK`. Sunt generate din XMQ regulile
+  pentru înregistrări, configurațiile, pozițiile standard și
+  marcajele auxiliare dovedite de exemple. Restul
+  înregistrărilor sunt opace; **nu este revendicat suport
+  semantic pentru câmpurile care nu apar în JSON-ul original**.
+
+Noile forme ale interpretului comun păstrează cerința de CRC DLL
+validat înaintea decodării, ID configurat, verificarea securității
+TPL fără cheie, respingerea statusurilor și cadrelor nevalidate.
+Modificările upstream se compară, se compilează și se verifică
+cu fixture-urile sursă; **nu există update automat pe Heltec**.
+Aceste migrări sunt complete doar pentru profilele on-air
+necriptate documentate, nu pentru forme noi sau AES.
+
 ## Migrare XMQ completă pentru profilele radio documentate — iPERL + Munia (2026-11-10)
 
 Al doilea calup de două familii este `iperl` și `munia`.

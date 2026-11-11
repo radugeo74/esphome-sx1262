@@ -422,7 +422,7 @@ def generate(path:Path):
         "#include <cstdint>",
         "#include <cstddef>",
         "namespace xmq_compiled_profiles {",
-        "enum class Op : uint8_t { Signed16, Unsigned16, Bcd12, Version3, Unsigned32, Bcd4 };",
+        "enum class Op : uint8_t { Signed16, Unsigned16, Bcd12, Version3, Unsigned32, Bcd4, Bcd8, BcdVersion6 };",
         "struct Model {uint16_t maker;uint8_t ver,medium;uint16_t config;};",
         "struct Rule {const char*name;uint8_t key[5];uint8_t key_len,bytes;Op op;double scale;};",
         "struct State {uint8_t tpl;uint16_t error;const char*text;};",
@@ -441,7 +441,9 @@ def generate(path:Path):
     for name in DRIVERS:
         lines.extend(emit(compile_one(path/f"{name}.xmq")))
     from generate_xmq_simple_profiles import generate as compile_simple
+    from generate_xmq_next_profiles import generate as compile_next
     lines.extend(compile_simple(path).splitlines())
+    lines.extend(compile_next(path).splitlines())
     lines.append("}")
     return "\n".join(lines)+"\n"
 

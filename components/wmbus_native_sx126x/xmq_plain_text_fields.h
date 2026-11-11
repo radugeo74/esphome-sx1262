@@ -209,8 +209,10 @@ inline Result decode(const uint8_t *frame, size_t size, const char *driver) {
   if(std::strcmp(driver,"supercom587")==0) {
     supercom587::Reading reading{};
     if(supercom587::decode(frame,size,reading)!=supercom587::Status::Ok)return out;
-    append(out,"status","OK"); // only source-proven zero error flags
-    append(out,"software_version",reading.software_version);
+    append(out,"status",
+           xmq_compiled_profiles::supercom587::profile.status_ok);
+    append(out,xmq_compiled_profiles::supercom587::rules[1].name,
+           reading.software_version);
     return out;
   }
   if(std::strcmp(driver,"sensostar")==0) {

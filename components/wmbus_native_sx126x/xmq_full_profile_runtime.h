@@ -78,6 +78,26 @@ inline bool apply(const xmq_compiled_profiles::Rule &rule,
       r.numeric[index]=static_cast<double>(num)*rule.scale;
       return std::isfinite(r.numeric[index]);
     }
+    case Op::Bcd8: {
+      if(rule.bytes!=4) return false;
+      uint64_t count=0;
+      for(int i=3;i>=0;--i) {
+        const unsigned hi=p[i]>>4,lo=p[i]&15u;
+        if(hi>9 || lo>9)return false;
+        count=count*100+hi*10+lo;
+      }
+      r.numeric[index]=static_cast<double>(count)*rule.scale;
+      return std::isfinite(r.numeric[index]);
+    }
+    case Op::BcdVersion6: {
+      if(rule.bytes!=3) return false;
+      for(unsigned i=0;i<3;++i)
+        if((p[i]&15u)>9 || (p[i]>>4)>9)return false;
+      const int written=std::snprintf(
+         r.formatted[index],sizeof(r.formatted[index]),
+         "%02X%02X%02X",p[2],p[1],p[0]);
+      return written==6;
+    }
     case Op::Version3: {
       if(rule.bytes!=5 ||
          p[1]!='.' || p[3]!='.' ||
@@ -214,5 +234,120 @@ inline Status decode(const uint8_t *f,size_t n,
   }
   out=candidate;
   return Status::Ok;
+}
+
+// XMQ source-compiled pulse profile: variable optional BCD12 records,
+// but exact MVT/config/length/status/field mask from upstream fixtures.
+// No live XMQ parsing, fallback mode or acceptance of unconfigured data.
+inline Status decode_pulse(const uint8_t *f,size_t n,
+                           const xmq_compiled_profiles::PulseProfile &profile,
+                           Result &out,uint16_t &out_mask) {
+  out={};out_mask=0;
+  if(!f || n<19 || !profile.rules || profile.rule_count!=2 ||
+     !profile.variants || !profile.states) return Status::Invalid;
+  wmbus_pure::Header h{};
+  if(wmbus_pure::parse_header(f,n,h)!=wmbus_pure::HeaderStatus::Ok)
+    return Status::Invalid;
+  if(h.control!=0x44 || h.ci!=0x7A)return Status::WrongModel;
+  if(wmbus_pure::tpl_security::inspect(f,n).state!=
+     wmbus_pure::tpl_security::State::NotEncrypted)
+    return Status::EncryptedOrUnknown;
+  const auto cfg=u16(f+13);
+  const xmq_compiled_profiles::PulseVariant *variant=nullptr;
+  for(size_t i=0;i<profile.variant_count;++i) {
+    const auto &v=profile.variants[i];
+    if(v.maker==h.manufacturer && v.ver==h.version &&
+       v.medium==h.device_type && v.config==cfg &&
+       v.length==n && v.tpl==f[12]) {
+      if(variant) return Status::Invalid;
+      variant=&v;
+    }
+  }
+  if(!variant)return Status::WrongModel;
+  if(f[15]!=0x2F || f[16]!=0x2F)return Status::InvalidRecord;
+  Result decoded{};
+  decoded.tpl_status=f[12];
+  uint16_t seen=0;
+  size_t at=17;
+  while(at<n) {
+    int found=-1;
+    for(size_t i=0;i<profile.rule_count;++i) {
+      const auto&r=profile.rules[i];
+      if(n-at<static_cast<size_t>(r.key_len)+r.bytes)continue;
+      bool same=true;
+      for(size_t j=0;j<r.key_len;++j)
+        if(f[at+j]!=r.key[j])same=false;
+      if(same) {
+        if(found>=0)return Status::InvalidRecord;
+        found=static_cast<int>(i);
+      }
+    }
+    if(found<0)return Status::InvalidRecord;
+    const unsigned index=static_cast<unsigned>(found);
+    if(seen&(1u<<index))return Status::Duplicate;
+    if(index==0 && seen!=0)return Status::InvalidRecord;
+    const auto&r=profile.rules[index];
+    if(!apply(r,f+at+r.key_len,decoded,index))
+      return Status::InvalidRecord;
+    seen|=1u<<index;
+    at+=r.key_len+r.bytes;
+  }
+  if(seen!=variant->fields_mask)return Status::Missing;
+  for(size_t i=0;i<profile.state_count;++i)
+    if(profile.states[i].tpl==f[12] && profile.states[i].error==0)
+      decoded.status_text=profile.states[i].text;
+  if(!decoded.status_text)return Status::UnsupportedStatus;
+  out=decoded;out_mask=seen;return Status::Ok;
+}
+
+// XMQ source-compiled sparse standard record profile. Other upstream
+// records remain opaque, with verified source-backed auxiliary signatures
+// and strict size, model, TPL and format keys. No newly assumed alarm flags.
+inline Status decode_sparse(const uint8_t *f,size_t n,
+                            const xmq_compiled_profiles::SparseProfile &profile,
+                            Result &out) {
+  out={};
+  if(!f || n<19 || n!=profile.length ||
+     !profile.rules || profile.rule_count!=3 ||
+     !profile.models || !profile.offsets || !profile.guards ||
+     !profile.status_ok)return Status::Invalid;
+  wmbus_pure::Header h{};
+  if(wmbus_pure::parse_header(f,n,h)!=wmbus_pure::HeaderStatus::Ok)
+    return Status::Invalid;
+  if(h.control!=0x44 || h.ci!=0x7A)return Status::WrongModel;
+  if(wmbus_pure::tpl_security::inspect(f,n).state!=
+      wmbus_pure::tpl_security::State::NotEncrypted)
+    return Status::EncryptedOrUnknown;
+  const uint16_t cfg=u16(f+13);
+  bool matched=false;
+  for(size_t i=0;i<profile.model_count;++i) {
+    const auto &m=profile.models[i];
+    if(m.maker==h.manufacturer && m.ver==h.version &&
+       m.medium==h.device_type && m.config==cfg)matched=true;
+  }
+  if(!matched)return Status::WrongModel;
+  if(f[12]!=0)return Status::UnsupportedStatus;
+  for(size_t i=0;i<profile.guard_count;++i) {
+    const auto &g=profile.guards[i];
+    if(g.length>3 || static_cast<size_t>(g.at)+g.length>n)
+      return Status::InvalidRecord;
+    for(size_t j=0;j<g.length;++j)
+      if(f[g.at+j]!=g.key[j]) return Status::InvalidRecord;
+  }
+  Result decoded{};
+  for(size_t i=0;i<profile.rule_count;++i) {
+    const auto&r=profile.rules[i];
+    const size_t at=profile.offsets[i];
+    if(at>=n || at+static_cast<size_t>(r.key_len)+r.bytes>n)
+      return Status::InvalidRecord;
+    for(size_t j=0;j<r.key_len;++j)
+      if(f[at+j]!=r.key[j])return Status::InvalidRecord;
+    if(!apply(r,f+at+r.key_len,decoded,i))
+      return Status::InvalidRecord;
+  }
+  if(decoded.raw16[2]!=0)return Status::UnsupportedStatus;
+  decoded.tpl_status=f[12];
+  decoded.status_text=profile.status_ok;
+  out=decoded;return Status::Ok;
 }
 }} // namespace xmq_portable::full_xmq

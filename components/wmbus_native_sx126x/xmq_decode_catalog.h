@@ -221,10 +221,10 @@ inline PureDecodeStatus decode_configured_plain_frame(
       return PureDecodeStatus::DecodeFailure;
     if(counts.has_a)
       output.values[output.value_count++]={
-        xmq_generated_pulse::lansenpu::fields[0].name,counts.a_counter};
+        xmq_compiled_profiles::lansenpu::rules[0].name,counts.a_counter};
     if(counts.has_b)
       output.values[output.value_count++]={
-        xmq_generated_pulse::lansenpu::fields[1].name,counts.b_counter};
+        xmq_compiled_profiles::lansenpu::rules[1].name,counts.b_counter};
     output.values[output.value_count++]={"tpl_status_raw",
         static_cast<double>(counts.tpl_status)};
     output.values[output.value_count++]={"status_power_low",
@@ -423,7 +423,8 @@ inline PureDecodeStatus decode_configured_plain_frame(
     supercom587::Reading r{};
     if(supercom587::decode(frame,length,r)!=supercom587::Status::Ok)
       return PureDecodeStatus::DecodeFailure;
-    output.values[0]={"total_m3",r.total_m3};
+    output.values[0]={xmq_compiled_profiles::supercom587::rules[0].name,
+                      r.total_m3};
     output.value_count=1;return PureDecodeStatus::Ok;
   }
   // Engelmann HCA E2: source-validated T1 Mode-0 consumption subset.

@@ -90,6 +90,12 @@ def main():
     assert "namespace lansendw {" in source_compiled
     assert "namespace iperl {" in source_compiled
     assert "namespace munia {" in source_compiled
+    assert "namespace lansenpu {" in source_compiled
+    assert "namespace supercom587 {" in source_compiled
+    assert "struct PulseProfile" in source_compiled
+    assert "struct SparseProfile" in source_compiled
+    assert '"PERMANENT_ERROR POWER_LOW SABOTAGE_ENCLOSURE"' in source_compiled
+    assert '"software_version"' in source_compiled
     assert '"total_m3"' in source_compiled
     assert '"max_flow_m3h"' in source_compiled
     assert '"current_temperature_c"' in source_compiled
@@ -120,7 +126,7 @@ def main():
         original=(ROOT / "experimental/xmq/drivers" / f"{name}.xmq").read_text()
         with TemporaryDirectory() as td:
             scratch=Path(td)
-            for x in ("iperl","munia","cma12w","lansendw"):
+            for x in ("iperl","munia","cma12w","lansendw","lansenpu","supercom587"):
                 (scratch/f"{x}.xmq").write_text(
                     (ROOT / "experimental/xmq/drivers" / f"{x}.xmq").read_text())
             for before,after in mutations:
@@ -132,6 +138,35 @@ def main():
                     pass
                 else:
                     raise AssertionError(f"{name} accepted unsafe XMQ drift: {before}")
+    # The newly migrated Lansen Pulse and Supercom587 are generated
+    # through the SAME full-profile compiler and common C++ interpreter.
+    for name,mutations in (
+        ("lansenpu",(
+            ("difvifkey = 0EFD3A","difvifkey = 0EFD3B"),
+            ("value = 0x40","value = 0x20"),
+            ('"a_counter":4711','"a_counter":4712'),
+        )),
+        ("supercom587",(
+            ("use = total_m3","use = unknown_m3"),
+            ("mask_bits       = 0x000f","mask_bits       = 0xffff"),
+            ('"total_m3":5.548','"total_m3":5.549'),
+        )),
+    ):
+        original=(ROOT/"experimental/xmq/drivers"/f"{name}.xmq").read_text()
+        with TemporaryDirectory() as td:
+            scratch=Path(td)
+            for other in ("cma12w","lansendw","iperl","munia","lansenpu","supercom587"):
+                (scratch/f"{other}.xmq").write_text(
+                   (ROOT/"experimental/xmq/drivers"/f"{other}.xmq").read_text())
+            for before,after in mutations:
+                assert before in original
+                (scratch/f"{name}.xmq").write_text(original.replace(before,after,1))
+                try:
+                    generate_xmq_full_profiles(scratch)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f"{name} did not reject unsupported XMQ drift: {before}")
     assert '"current_temperature_c"' in source_compiled
     assert '"average_temperature_1h_c"' in source_compiled
     assert '"a_counter"' in source_compiled and '"b_counter"' in source_compiled
@@ -153,7 +188,7 @@ def main():
         original=(ROOT / "experimental/xmq/drivers" / f"{name}.xmq").read_text()
         with TemporaryDirectory() as td:
             scratch=Path(td)
-            for other in ("cma12w","lansendw"):
+            for other in ("cma12w","lansendw","iperl","munia","lansenpu","supercom587"):
                 (scratch/f"{other}.xmq").write_text(
                     (ROOT / "experimental/xmq/drivers" / f"{other}.xmq").read_text())
             for before,after in mutations:
@@ -328,15 +363,15 @@ def main():
         assert f'"{source_key}"' in txt
     for driver in SPECS:
         header = (ROOT / "components/wmbus_native_sx126x" / f"{driver}_plain.h").read_text()
-        if driver not in ("cma12w","lansendw","munia"):
+        if driver not in ("cma12w","lansendw","munia","lansenpu","supercom587"):
             assert '#include "xmq_generated_clear_profiles.h"' in header
             assert f"xmq_generated_clear::{driver}::models" in header
         if driver=="lansenpu":
-            # Its record keys, names and statuses now compile directly
-            # from XMQ via the dedicated source-backed pulse compiler.
-            assert "xmq_generated_pulse::lansenpu::find_field" in header
-            assert "inline constexpr KnownStatus statuses[]" in generated[
-                "xmq_generated_pulse_fields.h"]
+            assert "xmq_compiled_profiles::lansenpu::profile" in header
+            assert "full_xmq::decode_pulse(" in header
+        elif driver=="supercom587":
+            assert "xmq_compiled_profiles::supercom587::profile" in header
+            assert "full_xmq::decode_sparse(" in header
         elif driver in ("cma12w","lansendw","munia"):
             # Both use a single C++ interpreter of complete source-compiled
             # record formats, mappings, conversions and verified statuses.
