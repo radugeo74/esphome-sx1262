@@ -1,7 +1,5 @@
 #include "component.h"
 
-#include "freertos/queue.h"
-#include "freertos/task.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -28,103 +26,24 @@ namespace wmbus_radio {
 static const char *TAG = "wmbus";
 
 void Radio::setup() {
-#ifdef USE_WMBUS_NATIVE_SX126X
-  if (this->native_sx126x_ != nullptr) {
-    if (this->native_sx126x_->is_failed()) {
-      ESP_LOGE(TAG, "Native SX126x failed; refusing to start wM-Bus receiver");
-      this->mark_failed();
-      return;
-    }
-    // No FreeRTOS receiver task, second CS, IRQ or SX1262 SPI instance.
-    this->native_sx126x_->set_combined_t1_c1_stream(this->native_t1_c1_b_);
-    this->native_sx126x_->set_t1_stream_callback(
-        &Radio::native_stream_callback_, this);
-    // SX126x::setup has already run (PROCESSOR priority): re-arm with
-    // sync-word streaming now installed, before publication is enabled.
-    this->native_sx126x_->set_mode_rx();
-    if (this->native_sx126x_->is_failed()) {
-      this->mark_failed();
-      return;
-    }
-    ESP_LOGI(TAG, "Using patched SX126x stream (T1%s), legacy task disabled",
-             this->native_t1_c1_b_ ? "+C1 format B" : "");
-    return;
-  }
-#endif
-  // Create queue used to pass received packets to the main ESPHome loop.
-  this->packet_queue_ = xQueueCreate(3, sizeof(Packet *));
-
-  if (this->packet_queue_ == nullptr) {
-    ESP_LOGE(TAG, "Failed to create radio packet queue");
+  if (this->native_sx126x_ == nullptr || this->native_sx126x_->is_failed()) {
+    ESP_LOGE(TAG, "Native SX126x unavailable; refusing to start wM-Bus receiver");
     this->mark_failed();
     return;
   }
-
-  BaseType_t task_result;
-
-#if portNUM_PROCESSORS > 1
-  // ESP32 / ESP32-S3 dual-core:
-  // keep the receiver on core 1 and give it enough stack.
-  task_result = xTaskCreatePinnedToCore(
-      (TaskFunction_t) this->receiver_task,
-      "radio_recv",
-      8 * 1024,
-      this,
-      24,
-      &(this->receiver_task_handle_),
-      1
-  );
-#else
-  // Single-core ESP32 variants.
-  task_result = xTaskCreate(
-      (TaskFunction_t) this->receiver_task,
-      "radio_recv",
-      8 * 1024,
-      this,
-      24,
-      &(this->receiver_task_handle_)
-  );
-#endif
-
-  if (task_result != pdPASS) {
-    ESP_LOGE(TAG, "Failed to create radio receiver task");
+  this->native_sx126x_->set_combined_t1_c1_stream(this->native_t1_c1_b_);
+  this->native_sx126x_->set_t1_stream_callback(&Radio::native_stream_callback_, this);
+  this->native_sx126x_->set_mode_rx();
+  if (this->native_sx126x_->is_failed()) {
     this->mark_failed();
     return;
   }
-
-  ESP_LOGI(TAG, "Receiver task created [%p]", this->receiver_task_handle_);
-
-  this->radio->attach_data_interrupt(
-      Radio::wakeup_receiver_task_from_isr,
-      &(this->receiver_task_handle_)
-  );
+  ESP_LOGI(TAG, "Using native SX126x stream (T1%s); no legacy receiver",
+           this->native_t1_c1_b_ ? "+C1 format B" : "");
 }
 
 void Radio::loop() {
-#ifdef USE_WMBUS_NATIVE_SX126X
-  // Native SX126x invokes our callback from its ESPHome loop; data has
-  // already been delivered to handlers synchronously after CRC verification.
-  if (this->native_sx126x_ != nullptr) return;
-#endif
-  Packet *p;
-  if (xQueueReceive(this->packet_queue_, &p, 0) != pdPASS)
-    return;
-
-  // ESP_LOGI(TAG, "Have RAW data from radio (%zu bytes)",
-  //          p->calculate_payload_size());
-
-  auto frame = p->convert_to_frame();
-
-  if (!frame) {
-    ESP_LOGD(TAG, "Failed to convert packet to frame");
-    return;
-  }
-
-  ESP_LOGI(TAG, "Have data (%zu bytes) [RSSI: %ddBm, mode: %s %s]",
-           frame->data().size(), frame->rssi(), toString(frame->link_mode()),
-           frame->format().c_str());
-
-  this->dispatch_frame_(frame.value());
+  // Native SX126x invokes frame callbacks from its own ESPHome loop.
 }
 
 void Radio::dispatch_frame_(Frame &frame) {
@@ -149,48 +68,6 @@ void Radio::dispatch_frame_(Frame &frame) {
            (std::string{"https://wmbusmeters.org/analyze/"} +
             frame.as_hex()).c_str());
 }
-
-void Radio::wakeup_receiver_task_from_isr(TaskHandle_t *arg) {
-  BaseType_t xHigherPriorityTaskWoken;
-  vTaskNotifyGiveFromISR(*arg, &xHigherPriorityTaskWoken);
-  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-}
-
-void Radio::receive_frame() {
-  if (!ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(60000))) {
-    this->radio->restart_rx();
-    return;
-  }
-
-  auto packet = std::make_unique<Packet>();
-
-  if (!this->radio->read_in_task(packet->rx_data_ptr(), packet->rx_capacity(), 0))
-    return;
-
-  if (!packet->calculate_payload_size())
-    return;
-
-  if (!this->radio->read_in_task(packet->rx_data_ptr(), packet->rx_capacity(),  3))
-    return;
-
-  packet->set_rssi(this->radio->get_rssi());
-  auto packet_ptr = packet.get();
-
-  if (xQueueSend(this->packet_queue_, &packet_ptr, 0) == pdTRUE) {
-    ESP_LOGV(TAG, "Queue items: %zu",
-             uxQueueMessagesWaiting(this->packet_queue_));
-    ESP_LOGV(TAG, "Queue send success");
-    packet.release();
-  } else
-    ESP_LOGW(TAG, "Queue send failed");
-}
-
-void Radio::receiver_task(Radio *arg) {
-  int counter = 0;
-  while (true)
-    arg->receive_frame();
-}
-
 
 #ifdef USE_WMBUS_NATIVE_SX126X
 void Radio::native_stream_callback_(void *context, const uint8_t *data,
