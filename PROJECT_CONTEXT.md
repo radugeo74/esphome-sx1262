@@ -60,3 +60,12 @@ Citește `README.md`, `AGENTS.md`, `docs/SX126X_NATIVE_BASELINE.md` și `docs/XM
 **Mesaje / starea corectă:** prefixul de log `wmbusmeters` arată **decodorul de aplicație încă activ**, nu că driverul vechi de transceiver SX1262 a fost pornit. În configurația `sx126x_id`, receptorul vechi nu este instanțiat; fișierele `transceiver_sx1262.cpp/.h` există încă în surse pentru rollback. Mesajele `Telegram not handled` pentru ID-uri neconfigurate sunt normale; `3-of-6 symbol rejected` indică respingerea cadrelor invalide, nu erori ale valorilor deja publicate.
 
 **Stare rămasă:** C1-B pe noua punte, testele RF de durată și scenariile negative (cheie greșită / corupere / recuperare) nu sunt confirmate de această captură. Motorul comun XMQ și actualizarea regulilor fără OTA **NU sunt implementate**. Nu elimina `wmbus_common` sau decodoarele sale: ele furnizează acum valorile publicate. Ștergerea definitivă a transceiverului legacy rămâne separată de această validare și necesită criteriile de rollback/regresie din `docs/SX126X_WMBUS_BRIDGE.md`.
+
+
+## Etapa M1 — curățare native-only (11 noiembrie 2026)
+
+**IMPLEMENTAT ÎN SURSE, CI/HARDWARE PENTRU NOUL COMMIT ÎNCĂ NEVALIDATE:** `wmbus_radio` acceptă doar `sx126x_id` și folosește exclusiv componenta `sx126x` pentru SPI/IRQ. Au fost eliminate schema `radio_type`, clasele `RadioTransceiver`, `transceiver.cpp/.h`, `transceiver_sx1262.cpp/.h`, taskul FreeRTOS și coada radio legacy. `Frame` a rămas, iar `packet.cpp/.h` conțin exclusiv API-ul `Frame` folosit de `wmbus_meter`.
+
+**PĂSTRAT FĂRĂ ÎNLOCUIRE:** `wmbus_common` și driverele `fhkvdataiii` / `mkradio4`, identificarea contoarelor, verificarea CRC, RSSI, senzorii HA. Mesajele de aplicație `wmbusmeters` rămân corecte. Nu există încă interpret XMQ dinamic.
+
+**Rollback:** în această ramură schema legacy nu mai este validă; recuperarea cere commit Git anterior / firmware salvat. Testul CI `sx1262-legacy-rollback.yaml` verifică acum **respingerea** vechii scheme. Captura hardware cu 12/12 contoare validează baza de dinaintea curățării, nu dovedește încă noul commit. Nu face OTA până la CI verde și verificarea YAML-ului privat.
