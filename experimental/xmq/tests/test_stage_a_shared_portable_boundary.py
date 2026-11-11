@@ -29,8 +29,14 @@ native_component_source = component.read_text(encoding="utf-8")
 assert "for name in PORTABLE_RUNTIME_HEADERS:" in native_component_source
 assert "if target.read_bytes() != source.read_bytes():" in native_component_source
 assert 'for header in (xmq / "portable_cpp").glob("*.h")' not in native_component_source
-assert not (root/"components/wmbus_native_sx126x/apator162_ixml_fields.h").exists(), (
-    "Shared module should be copied at build time only, not committed as a second source")
+# The build now stages this allowlisted portable helper in the native
+# component source to satisfy ESP-IDF CMake and ESPHome external components.
+# Its single canonical implementation remains portable_cpp: a native copy
+# is valid ONLY when its bytes are identical (no forked algorithm).
+staged=root/"components/wmbus_native_sx126x/apator162_ixml_fields.h"
+assert staged.is_file(), "Native ESPHome source staging is missing"
+assert staged.read_bytes()==shared.read_bytes(), (
+    "Native staged Apator162 header differs from canonical portable source")
 # Kamwater status/numeric algorithms now have exactly one native header each.
 cmake=(root/"experimental/xmq/espidf_cpp_probe/main/CMakeLists.txt").read_text(encoding="utf-8")
 assert '"../../../../components/wmbus_native_sx126x"' in cmake
