@@ -1,10 +1,10 @@
 # ESPHome wM-Bus — XMQ runtime pe baza native-espidf
 
-> **Native SX126x bridge (experimental):** `wmbus_radio` now exposes `sx126x_id`, accepting the patched SX126x stream and dispatching CRC-verified frames to existing `wmbus_meter` handlers. See [docs/SX126X_WMBUS_BRIDGE.md](docs/SX126X_WMBUS_BRIDGE.md) and [tests/sx126x-wmbus-bridge.yaml](tests/sx126x-wmbus-bridge.yaml). The T1/A bridge is hardware-validated on Heltec (11 November 2026, 12/12 configured meters publishing). Legacy radio *source* is retained for rollback; C1-B and long-run regression are still open. **Dynamic XMQ reload remains unimplemented.**
+> **Native-only radio (11 November 2026):** `wmbus_radio` requires `sx126x_id` and uses patched SX126x exclusively. Legacy `transceiver_sx1262.*`/`transceiver.*` and the legacy YAML radio schema were removed from this branch. `wmbus_common`/`wmbus_meter` still decode and publish meter readings. The native T1/A bridge was previously hardware-validated with 12/12 configured meters; **this source cleanup itself still requires a fresh CI build and hardware regression test**. Dynamic XMQ reload is not implemented.
 
 **Branch:** `experimental/xmq-runtime-engine`  
 **Bază:** [`native-espidf`](https://github.com/radugeo74/esphome-sx1262/tree/native-espidf) la commit `c4284739be7f9a5ee251de268ae3904068906ca4`.  
-**Stare (11 noiembrie 2026):** puntea `sx126x → wmbus_radio → wmbus_meter` primește și publică T1/A pe Heltec pentru **12/12 contoare configurate (7 căldură, 5 apă)**. `wmbus_common` decodifică în continuare datele de aplicație; receptorul radio legacy nu este instanțiat în modul `sx126x_id`, dar sursele sale rămân pentru rollback. **C1-B nu este validat pe hardware; motorul dinamic XMQ NU este implementat.**
+**Stare (11 noiembrie 2026):** puntea `sx126x → wmbus_radio → wmbus_meter` primește și publică T1/A pe Heltec pentru **12/12 contoare configurate (7 căldură, 5 apă)**. `wmbus_common` decodifică în continuare datele de aplicație; vechiul receptor radio și schema lui YAML au fost eliminate din această ramură; rollback se face dintr-un commit anterior (sau din firmware-ul salvat). **C1-B nu este validat pe hardware; motorul dinamic XMQ NU este implementat.**
 
 ## Obiectiv
 
@@ -18,7 +18,7 @@ Nu înseamnă executarea fără limite a limbajului XMQ pe ESP32. Preferăm comp
 
 - `components/wmbus_common`: decodoarele `driver_*.cc`, DIF/VIF, formule, chei și funcții de interpretare, **cod legacy păstrat pentru paritate/rollback**.
 - `components/wmbus_meter`: contoare configurate și senzori numeric/text pentru Home Assistant.
-- `components/wmbus_radio`: receptorul existent SX1262 pentru T1/C1, bazat pe `transceiver_sx1262.cpp`.
+- `components/wmbus_radio`: punte exclusiv SX126x nativă T1/A (C1-B experimental) către `wmbus_meter`; fără vechiul `transceiver_sx1262.cpp`.
 - `components/socket_transmitter`: opțional, precum în ramura originală.
 - `NATIVE_ESPIDF_REPORT.md`: raportul buildurilor native ESP-IDF din 21 octombrie 2026, înaintea noii ramuri. Nu înseamnă test hardware al noului cod.
 
