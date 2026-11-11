@@ -16,7 +16,7 @@ config = yaml.safe_load(source.read_text(encoding="utf-8"))
 config["esphome"]["name"] = "sx126x-12-meter-ci"
 config["esphome"]["friendly_name"] = "Synthetic 12-Meter Native SX126x CI"
 config["api"] = {
-    "encryption": {"key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}
+    "encryption": {"key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="}
 }
 config["ota"] = [{"platform": "esphome", "password": "test-no-ota"}]
 config["wifi"] = {
