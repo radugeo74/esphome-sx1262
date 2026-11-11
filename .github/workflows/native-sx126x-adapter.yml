@@ -798,6 +798,26 @@ jobs:
           PY
       - name: Compile official SX126x T1 stream on Heltec (not flashed)
         run: esphome compile experimental/semtech-radio/heltec-sx126x-t1-lab.yaml
+      - name: Diagnose generated XMQ header placement after a compile failure
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path("experimental/semtech-radio/.esphome")
+          for name in ("xmq_auto_registry.h", "xmq_generated_full_profiles.h",
+                       "driver_runtime.h"):
+              found=list(root.rglob(name))
+              print(f"{name}: count={len(found)}")
+              for path in found[:4]:
+                  print(f"  {path}")
+          for rsp in root.rglob("native_receiver_probe.cpp.obj.rsp"):
+              txt=rsp.read_text(errors="replace")
+              print(f"Compiler response file: {rsp}")
+              print("contains stable generated include directory:",
+                    "native-xmq-generated" in txt)
+              print("contains runtime component include directory:",
+                    "wmbus_native_sx126x" in txt)
+          PY
       - name: Validate native receiver fixture
         run: esphome config experimental/semtech-radio/ci/native-sx126x-esphome.yaml
       - name: Validate real-pin Heltec diagnostic YAML
