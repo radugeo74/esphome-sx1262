@@ -11,40 +11,8 @@
 
 namespace esphome {
 namespace wmbus_radio {
-struct Frame;
-
-struct Packet {
-  friend class Frame;
-
-public:
-  Packet();
-
-  uint8_t *rx_data_ptr();
-  size_t rx_capacity();
-  uint32_t rx_offset();
-  bool calculate_payload_size();
-  void set_rssi(int8_t rssi);
-
-  std::optional<Frame> convert_to_frame();
-
-protected:
-  std::vector<uint8_t> data_;
-
-  size_t expected_size();
-  size_t expected_size_ = 0;
-
-  uint8_t l_field();
-  int8_t rssi_ = 0;
-
-  LinkMode link_mode();
-  LinkMode link_mode_ = LinkMode::UNKNOWN;
-
-  std::string frame_format_;
-};
-
 struct Frame {
 public:
-  Frame(Packet *packet);
   // Verified, CRC-stripped frame delivered by the patched native SX126x bridge.
   Frame(std::vector<uint8_t> &&data, LinkMode mode, int8_t rssi,
         const char *format);
