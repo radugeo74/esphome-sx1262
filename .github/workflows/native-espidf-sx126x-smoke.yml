@@ -55,3 +55,9 @@ jobs:
         run: esphome config tests/sx1262-legacy-rollback.yaml
       - name: Compile native SX126x bridge through original wmbus_meter (build-only)
         run: esphome compile tests/sx126x-wmbus-bridge.yaml
+      - name: Generate privacy-safe full 12-meter migrated fixture
+        run: python tests/build_full_meter_fixture.py
+      - name: Validate 12-meter YAML, preserved sensor types and LED callback
+        run: esphome config tests/sx126x-wmbus-12-meters-ci.yaml
+      - name: Compile full 12-meter ESP-IDF SX126x bridge (build-only)
+        run: esphome compile tests/sx126x-wmbus-12-meters-ci.yaml
