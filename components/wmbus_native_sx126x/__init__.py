@@ -191,12 +191,14 @@ async def to_code(config):
         registry_files = sorted((xmq / "drivers").glob("*.xmq"))
         if not registry_files:
             raise cv.Invalid("No XMQ driver metadata available")
-        # Generate into ESPHome's build source tree. The checked-out component
-        # (including external-component caches) must remain read-only during
-        # code generation.
+        # ESP-IDF's CMake compiler does not inherit cg.add_build_flag
+        # for generated custom-component includes. ESPHome may also clean
+        # CORE.relative_src_path after this function returns. Generate into
+        # the checked-out external-component staging copy (never commit the
+        # generated output); ESPHome's own source copy then includes every
+        # native XMQ header, exactly as in the verified Heltec #864 build.
         registry_header = generate_registry(registry_files)
-        component_dir = CORE.relative_src_path(
-            "esphome", "components", "wmbus_native_sx126x")
+        component_dir = Path(__file__).resolve().parent
         component_dir.mkdir(parents=True, exist_ok=True)
         (component_dir / "xmq_auto_registry.h").write_text(
             registry_header, encoding="utf-8")
@@ -234,10 +236,9 @@ async def to_code(config):
                         f"Conflicting native XMQ runtime header: {name}")
             else:
                 shutil.copyfile(source, target)
-        # ESPHome can clean the build/src tree AFTER Python codegen when
-        # framework or build configuration changes. Keep an identical copy
-        # of the generated allowlisted native XMQ headers outside that tree,
-        # and give the ESP-IDF compiler a stable absolute include path.
+        # Also retain an explicit, non-build-tree copy of these generated
+        # headers for reproducibility and troubleshooting. The primary
+        # include path is the external-component staging tree above.
         # Never copy arbitrary XMQ headers: only sources emitted above and
         # the fixed reviewed portable runtime allowlist are permitted.
         stable_dir = CORE.relative_internal_path("native-xmq-generated")
