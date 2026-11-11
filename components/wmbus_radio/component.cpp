@@ -4,10 +4,8 @@
 #include <cmath>
 #include <limits>
 #include <string>
-#ifdef USE_WMBUS_NATIVE_SX126X
 #include "esphome/components/sx126x/sx126x.h"
 #include "decode3of6.h"
-#endif
 
 #define ASSERT(expr, expected, before_exit)                                    \
   {                                                                            \
@@ -69,7 +67,6 @@ void Radio::dispatch_frame_(Frame &frame) {
             frame.as_hex()).c_str());
 }
 
-#ifdef USE_WMBUS_NATIVE_SX126X
 void Radio::native_stream_callback_(void *context, const uint8_t *data,
                                     size_t length, bool start, bool end,
                                     float rssi) {
@@ -189,7 +186,6 @@ void Radio::decode_native_stream_(float rssi) {
            toString(mode), format, frame.data().size(), signal);
   this->dispatch_frame_(frame);
 }
-#endif
 
 void Radio::add_frame_handler(std::function<void(Frame *)> &&callback) {
   this->handlers_.push_back(std::move(callback));
