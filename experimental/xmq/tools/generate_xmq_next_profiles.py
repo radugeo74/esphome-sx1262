@@ -63,7 +63,7 @@ def compile_lansen(path):
         f,e,mvt,cfg=frame_and_json(source["entries"],"lansenpu",declared)
         if f[15:17]!=b"\x2f\x2f" or f[12] not in states:
             raise ValueError("unsupported pulse leading markers/status")
-        if len(f) not in (27,36) or cfg not in (0,0x20):
+        if len(f) not in (27,36) or cfg not in (0,0x2000):
             raise ValueError("unsupported pulse source layout")
         mask=0
         offset=17
