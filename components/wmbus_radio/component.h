@@ -31,14 +31,12 @@ public:
 
 protected:
   void dispatch_frame_(Frame &frame);
-#ifdef USE_WMBUS_NATIVE_SX126X
   static void native_stream_callback_(void *context, const uint8_t *data,
                                       size_t length, bool start, bool end,
                                       float rssi);
   void native_stream_(const uint8_t *data, size_t length,
                       bool start, bool end, float rssi);
   void decode_native_stream_(float rssi);
-#endif
 
   sx126x::SX126x *native_sx126x_{nullptr};
   bool native_t1_c1_b_{false};
@@ -47,7 +45,6 @@ protected:
   std::array<uint8_t, MAX_NATIVE_PHY_SIZE> native_phy_{};
   size_t native_phy_size_{0};
   bool native_phy_active_{false};
-#endif
 
   std::vector<std::function<void(Frame *)>> handlers_;
 };
