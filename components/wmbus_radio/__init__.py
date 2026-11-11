@@ -6,8 +6,6 @@ from esphome.components import sx126x
 from esphome.cpp_generator import LambdaExpression
 from esphome.const import (
     CONF_ID,
-    CONF_RESET_PIN,
-    CONF_IRQ_PIN,
     CONF_TRIGGER_ID,
     CONF_FORMAT,
     CONF_DATA,
@@ -21,11 +19,9 @@ AUTO_LOAD = ["wmbus_common"]
 
 MULTI_CONF = True
 
-CONF_RADIO_ID = "radio_id"
 CONF_SX126X_ID = "sx126x_id"
 CONF_NATIVE_STREAM_MODE = "native_stream_mode"
 CONF_ON_FRAME = "on_frame"
-CONF_RADIO_TYPE = "radio_type"
 CONF_MARK_AS_HANDLED = "mark_as_handled"
 
 radio_ns = cg.esphome_ns.namespace("wmbus_radio")
