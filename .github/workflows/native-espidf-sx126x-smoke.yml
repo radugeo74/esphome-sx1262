@@ -1,0 +1,39 @@
+name: Native ESP-IDF SX126x baseline smoke
+on:
+  push:
+    branches:
+      - experimental/xmq-runtime-engine
+  workflow_dispatch:
+jobs:
+  native-radio-schema:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Python toolchain
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check patch presence and Python syntax
+        run: |
+          python -m compileall -q components/sx126x
+          python - <<'PY'
+          from pathlib import Path
+          root = Path("components/sx126x")
+          source = (root / "sx126x.cpp").read_text()
+          header = (root / "sx126x.h").read_text()
+          assert "if (!this->wait_busy_()) return" in source
+          assert "bool SX126x::wait_busy_()" in source
+          assert "bool wait_busy_();" in header
+          assert "char version_[16]{};" in header
+          assert (root / "packet_transport" / "sx126x_transport.cpp").is_file()
+          print("PASS: imported SX126x source guards and transport present")
+          PY
+      - name: Install pinned ESPHome for native ESP-IDF smoke
+        run: |
+          python -m pip install --disable-pip-version-check "esphome==2026.10.1"
+      - name: Validate isolated native SX126x YAML
+        run: esphome config tests/sx126x-native-espidf.yaml
+      - name: Compile SX126x native ESP-IDF Heltec fixture (build-only)
+        run: esphome compile tests/sx126x-native-espidf.yaml

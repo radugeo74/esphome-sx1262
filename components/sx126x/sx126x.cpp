@@ -1,0 +1,871 @@
+#include "sx126x.h"
+#include "gfsk_rssi.h"
+#include <algorithm>
+#include "esphome/core/hal.h"
+#include "esphome/core/log.h"
+
+namespace esphome::sx126x {
+
+static const char *const TAG = "sx126x";
+static const uint16_t RAMP[8] = {10, 20, 40, 80, 200, 800, 1700, 3400};
+static const uint32_t BW_HZ[31] = {4800,  5800,  7300,  9700,   11700,  14600,  19500,  23400,  29300,  39000,  46900,
+                                   58600, 78200, 93800, 117300, 156200, 187200, 234300, 312000, 373600, 467000, 7810,
+                                   10420, 15630, 20830, 31250,  41670,  62500,  125000, 250000, 500000};
+static const uint8_t BW_LORA[10] = {LORA_BW_7810,  LORA_BW_10420, LORA_BW_15630,  LORA_BW_20830,  LORA_BW_31250,
+                                    LORA_BW_41670, LORA_BW_62500, LORA_BW_125000, LORA_BW_250000, LORA_BW_500000};
+static const uint8_t BW_FSK[21] = {
+    FSK_BW_4800,   FSK_BW_5800,   FSK_BW_7300,   FSK_BW_9700,   FSK_BW_11700,  FSK_BW_14600,  FSK_BW_19500,
+    FSK_BW_23400,  FSK_BW_29300,  FSK_BW_39000,  FSK_BW_46900,  FSK_BW_58600,  FSK_BW_78200,  FSK_BW_93800,
+    FSK_BW_117300, FSK_BW_156200, FSK_BW_187200, FSK_BW_234300, FSK_BW_312000, FSK_BW_373600, FSK_BW_467000};
+
+static constexpr uint32_t RESET_DELAY_HIGH_US = 5000;
+static constexpr uint32_t RESET_DELAY_LOW_US = 2000;
+static constexpr uint32_t SWITCHING_DELAY_US = 1;
+static constexpr uint32_t TRANSMIT_TIMEOUT_MS = 4000;
+static constexpr uint32_t BUSY_TIMEOUT_MS = 20;
+
+// OCP (Over Current Protection) values
+static constexpr uint8_t OCP_80MA = 0x18;   // 80 mA max current
+static constexpr uint8_t OCP_140MA = 0x38;  // 140 mA max current
+
+// LoRa low data rate optimization threshold
+static constexpr float LOW_DATA_RATE_OPTIMIZE_THRESHOLD = 16.38f;  // 16.38 ms
+
+uint8_t SX126x::read_fifo_(uint8_t offset, std::vector<uint8_t> &packet) {
+  if (!this->wait_busy_()) return 0;
+  this->enable();
+  this->transfer_byte(RADIO_READ_BUFFER);
+  this->transfer_byte(offset);
+  uint8_t status = this->transfer_byte(0x00);
+  for (uint8_t &byte : packet) {
+    byte = this->transfer_byte(0x00);
+  }
+  this->disable();
+  return status;
+}
+
+void SX126x::write_fifo_(uint8_t offset, const uint8_t *data, size_t len) {
+  if (!this->wait_busy_()) return;
+  this->enable();
+  this->transfer_byte(RADIO_WRITE_BUFFER);
+  this->transfer_byte(offset);
+  for (size_t i = 0; i < len; i++) {
+    this->transfer_byte(data[i]);
+  }
+  this->disable();
+  delayMicroseconds(SWITCHING_DELAY_US);
+}
+
+uint8_t SX126x::read_opcode_(uint8_t opcode, uint8_t *data, uint8_t size) {
+  if (!this->wait_busy_()) return 0;
+  this->enable();
+  this->transfer_byte(opcode);
+  uint8_t status = this->transfer_byte(0x00);
+  for (int32_t i = 0; i < size; i++) {
+    data[i] = this->transfer_byte(0x00);
+  }
+  this->disable();
+  return status;
+}
+
+void SX126x::write_opcode_(uint8_t opcode, uint8_t *data, uint8_t size) {
+  if (!this->wait_busy_()) return;
+  this->enable();
+  this->transfer_byte(opcode);
+  for (int32_t i = 0; i < size; i++) {
+    this->transfer_byte(data[i]);
+  }
+  this->disable();
+  delayMicroseconds(SWITCHING_DELAY_US);
+}
+
+void SX126x::read_register_(uint16_t reg, uint8_t *data, uint8_t size) {
+  if (!this->wait_busy_()) return;
+  this->enable();
+  this->write_byte(RADIO_READ_REGISTER);
+  this->write_byte((reg >> 8) & 0xFF);
+  this->write_byte((reg >> 0) & 0xFF);
+  this->write_byte(0x00);
+  for (int32_t i = 0; i < size; i++) {
+    data[i] = this->transfer_byte(0x00);
+  }
+  this->disable();
+}
+
+void SX126x::write_register_(uint16_t reg, uint8_t *data, uint8_t size) {
+  if (!this->wait_busy_()) return;
+  this->enable();
+  this->write_byte(RADIO_WRITE_REGISTER);
+  this->write_byte((reg >> 8) & 0xFF);
+  this->write_byte((reg >> 0) & 0xFF);
+  for (int32_t i = 0; i < size; i++) {
+    this->transfer_byte(data[i]);
+  }
+  this->disable();
+  delayMicroseconds(SWITCHING_DELAY_US);
+}
+
+void IRAM_ATTR SX126x::gpio_intr(SX126x *arg) { arg->enable_loop_soon_any_context(); }
+
+void SX126x::setup() {
+  // setup pins
+  this->busy_pin_->setup();
+  this->rst_pin_->setup();
+  this->dio1_pin_->setup();
+  if (this->dio1_pin_->is_internal()) {
+    static_cast<InternalGPIOPin *>(this->dio1_pin_)
+        ->attach_interrupt(&SX126x::gpio_intr, this, gpio::INTERRUPT_RISING_EDGE);
+  }
+
+  // start spi
+  this->spi_setup();
+
+  // configure rf
+  this->configure();
+}
+
+void SX126x::configure() {
+  uint8_t buf[8];
+
+  // toggle chip reset
+  this->rst_pin_->digital_write(true);
+  delayMicroseconds(RESET_DELAY_HIGH_US);
+  this->rst_pin_->digital_write(false);
+  delayMicroseconds(RESET_DELAY_LOW_US);
+  this->rst_pin_->digital_write(true);
+  delayMicroseconds(RESET_DELAY_HIGH_US);
+
+  // wakeup
+  this->read_opcode_(RADIO_GET_STATUS, nullptr, 0);
+  if (this->is_failed()) return;
+
+  // config tcxo
+  if (this->tcxo_voltage_ != TCXO_CTRL_NONE) {
+    uint32_t delay = this->tcxo_delay_ >> 6;
+    buf[0] = this->tcxo_voltage_;
+    buf[1] = (delay >> 16) & 0xFF;
+    buf[2] = (delay >> 8) & 0xFF;
+    buf[3] = (delay >> 0) & 0xFF;
+    this->write_opcode_(RADIO_SET_TCXOMODE, buf, 4);
+    if (this->is_failed()) return;
+    buf[0] = 0x7F;
+    this->write_opcode_(RADIO_CALIBRATE, buf, 1);
+    if (this->is_failed()) return;
+  }
+
+  // clear errors
+  buf[0] = 0x00;
+  buf[1] = 0x00;
+  this->write_opcode_(RADIO_CLR_ERROR, buf, 2);
+  if (this->is_failed()) return;
+
+  // rf switch
+  if (this->rf_switch_) {
+    buf[0] = 0x01;
+    this->write_opcode_(RADIO_SET_RFSWITCHMODE, buf, 1);
+    if (this->is_failed()) return;
+  }
+
+  // check silicon version to make sure hw is ok
+  this->read_register_(REG_VERSION_STRING, (uint8_t *) this->version_, sizeof(this->version_));
+  if (this->is_failed()) return;
+  this->version_[sizeof(this->version_) - 1] = '\0';
+  if (strncmp(this->version_, "SX126", 5) != 0 && strncmp(this->version_, "LLCC68", 6) != 0) {
+    this->mark_failed();
+    return;
+  }
+
+  // setup packet type
+  buf[0] = this->modulation_;
+  this->write_opcode_(RADIO_SET_PACKETTYPE, buf, 1);
+  if (this->is_failed()) return;
+
+  // calibrate image
+  this->run_image_cal();
+  if (this->is_failed()) return;
+
+  // set frequency
+  uint64_t freq = ((uint64_t) this->frequency_ << 25) / XTAL_FREQ;
+  buf[0] = (uint8_t) ((freq >> 24) & 0xFF);
+  buf[1] = (uint8_t) ((freq >> 16) & 0xFF);
+  buf[2] = (uint8_t) ((freq >> 8) & 0xFF);
+  buf[3] = (uint8_t) (freq & 0xFF);
+  this->write_opcode_(RADIO_SET_RFFREQUENCY, buf, 4);
+  if (this->is_failed()) return;
+
+  // configure pa
+  int8_t pa_power = this->pa_power_;
+  if (this->hw_version_ == "sx1261") {
+    // the following values were taken from section 13.1.14.1 table 13-21
+    // in rev 2.1 of the datasheet
+    if (pa_power == 15) {
+      uint8_t cfg[4] = {0x06, 0x00, 0x01, 0x01};
+      this->write_opcode_(RADIO_SET_PACONFIG, cfg, 4);
+      if (this->is_failed()) return;
+    } else {
+      uint8_t cfg[4] = {0x04, 0x00, 0x01, 0x01};
+      this->write_opcode_(RADIO_SET_PACONFIG, cfg, 4);
+      if (this->is_failed()) return;
+    }
+    pa_power = std::max(pa_power, (int8_t) -3);
+    pa_power = std::min(pa_power, (int8_t) 14);
+    buf[0] = OCP_80MA;
+    this->write_register_(REG_OCP, buf, 1);
+      if (this->is_failed()) return;
+  } else {
+    // the following values were taken from section 13.1.14.1 table 13-21
+    // in rev 2.1 of the datasheet
+    uint8_t cfg[4] = {0x04, 0x07, 0x00, 0x01};
+    this->write_opcode_(RADIO_SET_PACONFIG, cfg, 4);
+    if (this->is_failed()) return;
+    pa_power = std::max(pa_power, (int8_t) -3);
+    pa_power = std::min(pa_power, (int8_t) 22);
+    buf[0] = OCP_140MA;
+    this->write_register_(REG_OCP, buf, 1);
+    if (this->is_failed()) return;
+  }
+  buf[0] = pa_power;
+  buf[1] = this->pa_ramp_;
+  this->write_opcode_(RADIO_SET_TXPARAMS, buf, 2);
+  if (this->is_failed()) return;
+
+  // configure modem
+  if (this->modulation_ == PACKET_TYPE_LORA) {
+    // set modulation params
+    float duration = 1000.0f * (1UL << this->spreading_factor_) / BW_HZ[this->bandwidth_];
+    buf[0] = this->spreading_factor_;
+    buf[1] = BW_LORA[this->bandwidth_ - SX126X_BW_7810];
+    buf[2] = this->coding_rate_;
+    buf[3] = (duration > LOW_DATA_RATE_OPTIMIZE_THRESHOLD) ? 0x01 : 0x00;
+    this->write_opcode_(RADIO_SET_MODULATIONPARAMS, buf, 4);
+    if (this->is_failed()) return;
+
+    // set packet params and sync word
+    this->set_packet_params_(this->get_max_packet_size());
+    if (this->is_failed()) return;
+    if (this->sync_value_.size() == 2) {
+      this->write_register_(REG_LORA_SYNCWORD, this->sync_value_.data(), this->sync_value_.size());
+      if (this->is_failed()) return;
+    }
+  } else {
+    // set modulation params
+    uint32_t bitrate = ((uint64_t) XTAL_FREQ * 32) / this->bitrate_;
+    uint32_t fdev = ((uint64_t) this->deviation_ << 25) / XTAL_FREQ;
+    buf[0] = (bitrate >> 16) & 0xFF;
+    buf[1] = (bitrate >> 8) & 0xFF;
+    buf[2] = (bitrate >> 0) & 0xFF;
+    buf[3] = this->shaping_;
+    buf[4] = BW_FSK[this->bandwidth_ - SX126X_BW_4800];
+    buf[5] = (fdev >> 16) & 0xFF;
+    buf[6] = (fdev >> 8) & 0xFF;
+    buf[7] = (fdev >> 0) & 0xFF;
+    this->write_opcode_(RADIO_SET_MODULATIONPARAMS, buf, 8);
+    if (this->is_failed()) return;
+
+    // set crc params
+    if (this->crc_enable_) {
+      buf[0] = this->crc_initial_ >> 8;
+      buf[1] = this->crc_initial_ & 0xFF;
+      this->write_register_(REG_CRC_INITIAL, buf, 2);
+      if (this->is_failed()) return;
+      buf[0] = this->crc_polynomial_ >> 8;
+      buf[1] = this->crc_polynomial_ & 0xFF;
+      this->write_register_(REG_CRC_POLYNOMIAL, buf, 2);
+      if (this->is_failed()) return;
+    }
+
+    // set whitening params
+    if (this->whitening_enable_) {
+      // according to the datasheet, section 12 table 12-1 "The user should not
+      // change the value of the 7 MSB of this register"
+      this->read_register_(REG_WHITENING_INITIAL, buf, 1);
+      if (this->is_failed()) return;
+      buf[0] = (buf[0] & 0xFE) | ((this->whitening_initial_ >> 8) & 0x01);
+      buf[1] = this->whitening_initial_ & 0xFF;
+      this->write_register_(REG_WHITENING_INITIAL, buf, 2);
+      if (this->is_failed()) return;
+    }
+
+    // set packet params and sync word
+    this->set_packet_params_(this->get_max_packet_size());
+    if (this->is_failed()) return;
+    if (!this->sync_value_.empty()) {
+      this->write_register_(REG_GFSK_SYNCWORD, this->sync_value_.data(), this->sync_value_.size());
+      if (this->is_failed()) return;
+    }
+  }
+
+  // switch to rx or sleep
+  if (this->rx_start_) {
+    this->set_mode_rx();
+  } else {
+    this->set_mode_sleep();
+  }
+}
+
+size_t SX126x::get_max_packet_size() {
+  if (this->payload_length_ > 0) {
+    return this->payload_length_;
+  }
+  return SX126X_MAX_PACKET_SIZE;
+}
+
+void SX126x::set_packet_params_(uint8_t payload_length) {
+  uint8_t buf[9];
+  if (this->modulation_ == PACKET_TYPE_LORA) {
+    buf[0] = (this->preamble_size_ >> 8) & 0xFF;
+    buf[1] = (this->preamble_size_ >> 0) & 0xFF;
+    buf[2] = (this->payload_length_ > 0) ? 0x01 : 0x00;
+    buf[3] = payload_length;
+    buf[4] = (this->crc_enable_) ? 0x01 : 0x00;
+    buf[5] = 0x00;
+    this->write_opcode_(RADIO_SET_PACKETPARAMS, buf, 6);
+  } else {
+    uint16_t preamble_size = this->preamble_size_ * 8;
+    buf[0] = (preamble_size >> 8) & 0xFF;
+    buf[1] = (preamble_size >> 0) & 0xFF;
+    buf[2] = (this->preamble_detect_ > 0) ? ((this->preamble_detect_ - 1) | 0x04) : 0x00;
+    buf[3] = this->sync_value_.size() * 8;
+    buf[4] = 0x00;
+    buf[5] = (this->payload_length_ > 0) ? 0x00 : 0x01;
+    buf[6] = payload_length;
+    if (this->crc_enable_) {
+      buf[7] = (this->crc_inverted_ ? 0x04 : 0x00) + (this->crc_size_ & 0x02);
+    } else {
+      buf[7] = 0x01;
+    }
+    buf[8] = (this->whitening_enable_) ? 0x01 : 0x00;
+    this->write_opcode_(RADIO_SET_PACKETPARAMS, buf, 9);
+  }
+}
+
+SX126xError SX126x::transmit_packet(const uint8_t *data, size_t len) {
+  if (this->payload_length_ > 0 && this->payload_length_ != len) {
+    ESP_LOGE(TAG, "Packet size does not match config");
+    return SX126xError::INVALID_PARAMS;
+  }
+  if (len == 0 || len > this->get_max_packet_size()) {
+    ESP_LOGE(TAG, "Packet size out of range");
+    return SX126xError::INVALID_PARAMS;
+  }
+
+  SX126xError ret = SX126xError::NONE;
+  this->set_mode_standby(STDBY_XOSC);
+  if (this->payload_length_ == 0) {
+    this->set_packet_params_(len);
+  }
+  this->write_fifo_(0x00, data, len);
+  this->set_mode_tx();
+
+  // wait until transmit completes, typically the delay will be less than 100 ms
+  uint32_t start = millis();
+  while (!this->dio1_pin_->digital_read()) {
+    if (millis() - start > TRANSMIT_TIMEOUT_MS) {
+      ESP_LOGE(TAG, "Transmit packet failure");
+      ret = SX126xError::TIMEOUT;
+      break;
+    }
+  }
+
+  uint8_t buf[2];
+  buf[0] = 0xFF;
+  buf[1] = 0xFF;
+  this->write_opcode_(RADIO_CLR_IRQSTATUS, buf, 2);
+  if (this->payload_length_ == 0) {
+    this->set_packet_params_(this->get_max_packet_size());
+  }
+  if (this->rx_start_) {
+    this->set_mode_rx();
+  } else {
+    this->set_mode_sleep();
+  }
+  return ret;
+}
+
+void SX126x::call_listeners_(const std::vector<uint8_t> &packet, float rssi, float snr) {
+  for (auto &listener : this->listeners_) {
+    listener->on_packet(packet, rssi, snr);
+  }
+  this->packet_trigger_.trigger(packet, rssi, snr);
+}
+
+
+// Format A T1 3-of-6 frame, single-owner FIFO stream. No meter publication here.
+void SX126x::t1_stream_reset_() {
+  this->t1_stream_receiving_ = false;
+  this->t1_stream_received_ = 0;
+  this->t1_stream_target_ = 0;
+  uint8_t value = 0xFF;
+  this->write_register_(0x06BB, &value, 1);  // GFSK payload length restored.
+  uint8_t irq_bytes[2] = {0xFF, 0xFF};
+  this->write_opcode_(RADIO_CLR_IRQSTATUS, irq_bytes, 2);
+  this->set_mode_rx();
+}
+
+void SX126x::t1_stream_loop_() {
+  // Bounded PHY diagnostics: no hard-coded meter IDs or captured telegrams.
+  static uint32_t last_report_ms = 0;
+  static uint32_t sync_events = 0;
+  static uint32_t other_irq_events = 0;
+  static uint32_t timeouts = 0;
+  static uint32_t completed = 0;
+  static uint32_t prefix_invalid = 0;
+  static uint32_t length_invalid = 0;
+  static uint32_t length_oversize = 0;
+  const uint32_t now_ms = millis();
+  if (now_ms - last_report_ms >= 30000) {
+    ESP_LOGI(TAG, "T1 PHY health sync=%" PRIu32 " other_irq=%" PRIu32
+                  " timeout=%" PRIu32 " complete=%" PRIu32 " prefix_bad=%" PRIu32
+                  " length_bad=%" PRIu32 " oversize=%" PRIu32 " busy=%u dio1=%u rx=%u",
+             sync_events, other_irq_events, timeouts, completed,
+             prefix_invalid, length_invalid, length_oversize,
+             static_cast<unsigned>(this->busy_pin_->digital_read()),
+             static_cast<unsigned>(this->dio1_pin_->digital_read()),
+             static_cast<unsigned>(this->t1_stream_receiving_));
+    last_report_ms = now_ms;
+  }
+  if (!this->t1_stream_receiving_) {
+    if (!this->dio1_pin_->digital_read()) return;
+    uint8_t irq_bytes[2] = {};
+    this->read_opcode_(RADIO_GET_IRQSTATUS, irq_bytes, 2);
+    uint16_t flags = (static_cast<uint16_t>(irq_bytes[0]) << 8) | irq_bytes[1];
+    this->write_opcode_(RADIO_CLR_IRQSTATUS, irq_bytes, 2);
+    if (!(flags & IRQ_SYNCWORD_VALID)) {
+      ++other_irq_events;
+      if (other_irq_events <= 5)
+        ESP_LOGD(TAG, "T1 PHY unexpected IRQ flags=0x%04X", static_cast<unsigned>(flags));
+      return;
+    }
+    ++sync_events;
+    if (sync_events <= 10)
+      ESP_LOGI(TAG, "T1 PHY sync detected count=%" PRIu32 " flags=0x%04X",
+               sync_events, static_cast<unsigned>(flags));
+    this->t1_stream_receiving_ = true;
+    this->t1_stream_received_ = 0;
+    this->t1_stream_target_ = 0;
+    this->t1_stream_started_ = millis();
+    this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, true, false, 0.0f);
+  }
+  // An interrupted stream must never emit a packet. RX re-arm is radio-owned.
+  if (millis() - this->t1_stream_started_ > 60) {
+    ++timeouts;
+    if (this->t1_stream_diagnostics_ && (timeouts <= 10 || timeouts % 50 == 0)) {
+      uint8_t ptr = 0;
+      this->read_register_(0x0803, &ptr, 1);
+      ESP_LOGW(TAG, "T1 PHY timeout received=%u target=%u ptr=%u age_ms=%u", 
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(this->t1_stream_target_),
+               static_cast<unsigned>(ptr), static_cast<unsigned>(millis() - this->t1_stream_started_));
+    } else if (timeouts <= 10)
+      ESP_LOGW(TAG, "T1 PHY timeout received=%u target=%u write progress stalled",
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(this->t1_stream_target_));
+    /* Incomplete PHY stream discarded; no DLL end callback. */
+    this->t1_stream_reset_();
+    return;
+  }
+  uint8_t write_ptr = 0;
+  this->read_register_(0x0803, &write_ptr, 1); // RX_ADDR_PTR
+  // Bounded diagnostics near the 256-byte FIFO pointer wrap.
+  if (this->t1_stream_received_ >= 240 && this->t1_stream_received_ <= 270) {
+    static uint32_t wrap_samples = 0;
+    if (wrap_samples < 12) {
+      ESP_LOGD(TAG, "T1 FIFO wrap ptr=%u consumed=%u target=%u",
+               static_cast<unsigned>(write_ptr),
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(this->t1_stream_target_));
+      ++wrap_samples;
+    }
+  }
+  // Bounded initial FIFO observation: distinguish pre-sync offset from lost bytes.
+  if (this->t1_stream_received_ < 2) {
+    static uint32_t prefix_samples = 0;
+    if (prefix_samples < 12) {
+      ESP_LOGD(TAG, "T1 FIFO prefix ptr=%u consumed=%u target=%u",
+               static_cast<unsigned>(write_ptr),
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(this->t1_stream_target_));
+      ++prefix_samples;
+    }
+  }
+  uint8_t payload = static_cast<uint8_t>(write_ptr - 1);
+  this->write_register_(0x06BB, &payload, 1);
+  const uint8_t read_ptr = static_cast<uint8_t>(this->t1_stream_received_);
+  size_t available = static_cast<uint8_t>(write_ptr - read_ptr);
+  if (this->t1_stream_target_ != 0)
+    available = std::min(available, this->t1_stream_target_ - this->t1_stream_received_);
+  else {
+    // C1 uses a two-byte mode marker followed by the L field.
+    const bool c1_prefix = this->combined_t1_c1_stream_ && this->t1_stream_received_ >= 2 &&
+        this->t1_stream_prefix_[0] == 0x54 &&
+        (this->t1_stream_prefix_[1] == 0xCD || this->t1_stream_prefix_[1] == 0x3D);
+    const size_t minimum = c1_prefix ? 3 : 2;
+    available = std::min<size_t>(available, minimum - this->t1_stream_received_);
+  }
+  if (available == 0) return;
+  std::vector<uint8_t> fragment(available);
+  this->read_fifo_(read_ptr, fragment);
+  if (this->t1_stream_received_ < 3) {
+    for (size_t i = 0; i < available && this->t1_stream_received_ + i < 3; ++i)
+      this->t1_stream_prefix_[this->t1_stream_received_ + i] = fragment[i];
+  }
+  this->t1_stream_received_ += available;
+  if (this->combined_t1_c1_stream_ && this->t1_stream_received_ == 3 &&
+      this->t1_stream_prefix_[0] == 0x54 &&
+      (this->t1_stream_prefix_[1] == 0xCD || this->t1_stream_prefix_[1] == 0x3D)) {
+    static uint32_t c1_fifo_probe_count = 0;
+    if (c1_fifo_probe_count++ < 12) {
+      uint8_t check_ptr = 0;
+      this->read_register_(0x0803, &check_ptr, 1);
+      ESP_LOGD(TAG, "COMBINED C1 FIFO start marker=%02X%02X L=%02X rx_ptr=%u read_ptr=%u age_ms=%u",
+               this->t1_stream_prefix_[0], this->t1_stream_prefix_[1], this->t1_stream_prefix_[2],
+               static_cast<unsigned>(check_ptr),
+               static_cast<unsigned>(this->t1_stream_received_),
+               static_cast<unsigned>(millis() - this->t1_stream_started_));
+    }
+  }
+  this->t1_stream_callback_(this->t1_stream_context_, fragment.data(), fragment.size(), false, false, 0.0f);
+  if (this->t1_stream_target_ == 0 && this->t1_stream_received_ >= 2) {
+    const bool combined_c1 = this->combined_t1_c1_stream_ &&
+        this->t1_stream_prefix_[0] == 0x54 &&
+        (this->t1_stream_prefix_[1] == 0xCD || this->t1_stream_prefix_[1] == 0x3D);
+    if (combined_c1 && this->t1_stream_received_ < 3) return;
+    // Determine the L-field from the first two encoded bytes via validated
+    // 3-of-6 symbols. Receiver callback collects full frame separately.
+    static constexpr int8_t inverse[64] = {
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,3,-1,1,2,-1,
+      -1,-1,-1,7,-1,-1,0,-1,-1,5,6,-1,4,-1,-1,-1,
+      -1,-1,-1,11,-1,9,10,-1,-1,15,-1,-1,8,-1,-1,-1,
+      -1,13,14,-1,12,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+    };
+    // The first two bytes are held in the radio-owned prefix buffer.
+    const uint16_t first = (static_cast<uint16_t>(this->t1_stream_prefix_[0]) << 8) |
+                           this->t1_stream_prefix_[1];
+    if (this->c1_stream_mode_ || combined_c1) {
+      const size_t l = combined_c1 ? this->t1_stream_prefix_[2] : this->t1_stream_prefix_[0];
+      if (l < 10) {
+        ++length_invalid;
+        if (this->t1_stream_diagnostics_ && length_invalid <= 10)
+          ESP_LOGW(TAG, "C1 PHY invalid L=%u", static_cast<unsigned>(l));
+        this->t1_stream_reset_();
+        return;
+      }
+      // C1-B: L includes the frame CRC. C1-A: L excludes block CRCs.
+      const size_t blocks = l < 26 ? 2 : ((l - 26) / 16 + 3);
+      const bool format_b = combined_c1 ? this->t1_stream_prefix_[1] == 0x3D : this->c1_stream_format_b_;
+      const size_t target = (format_b ? l + 1 : l + 1 + 2 * blocks) + (combined_c1 ? 2 : 0);
+      if (target > 255) {
+        ++length_oversize;
+        this->t1_stream_reset_();
+        return;
+      }
+      this->t1_stream_target_ = target;
+      // In common-sync mode, a delayed poll can observe a FIFO write
+      // pointer already past the complete C1 frame (e.g. 213 for 65).
+      // The first bytes can be genuine, but the RX stream is no longer
+      // bounded by the expected frame. Fail closed, never publish.
+      if (combined_c1 && write_ptr > target) {
+        static uint32_t c1_late_count = 0;
+        ++c1_late_count;
+        if (c1_late_count <= 20 || c1_late_count % 100 == 0) {
+          ESP_LOGW(TAG, "COMBINED C1 late FIFO L=%u target=%u ptr=%u age_ms=%u count=%u; discarded",
+                   static_cast<unsigned>(l), static_cast<unsigned>(target),
+                   static_cast<unsigned>(write_ptr),
+                   static_cast<unsigned>(millis() - this->t1_stream_started_),
+                   static_cast<unsigned>(c1_late_count));
+        }
+        this->t1_stream_reset_();
+        return;
+      }
+    } else {
+    const int8_t hi = inverse[(first >> 10) & 0x3F];
+    const int8_t lo = inverse[(first >> 4) & 0x3F];
+    if (hi < 0 || lo < 0) {
+      ++prefix_invalid;
+      if (this->t1_stream_diagnostics_ && prefix_invalid <= 10)
+        ESP_LOGW(TAG, "T1 PHY early abort invalid L prefix=%02X%02X hi=%d lo=%d", 
+                 this->t1_stream_prefix_[0], this->t1_stream_prefix_[1], hi, lo);
+      /* Incomplete PHY stream discarded; no DLL end callback. */
+      this->t1_stream_reset_();
+      return;
+    }
+    const size_t l = static_cast<size_t>((hi << 4) | lo);
+    if (l < 10) {
+      ++length_invalid;
+      if (this->t1_stream_diagnostics_ && length_invalid <= 10)
+        ESP_LOGW(TAG, "T1 PHY early abort short L=%u", static_cast<unsigned>(l));
+      /* Incomplete PHY stream discarded; no DLL end callback. */
+      this->t1_stream_reset_();
+      return;
+    }
+    const size_t crc_blocks = 1 + (l - 9 + 15) / 16;
+    const size_t decoded = l + 1 + 2 * crc_blocks;
+    if (decoded > 255) {
+      ++length_oversize;
+      if (this->t1_stream_diagnostics_ && length_oversize <= 10)
+        ESP_LOGW(TAG, "T1 PHY early abort oversize L=%u decoded=%u", 
+                 static_cast<unsigned>(l), static_cast<unsigned>(decoded));
+      /* Incomplete PHY stream discarded; no DLL end callback. */
+      this->t1_stream_reset_();
+      return;
+    }
+    this->t1_stream_target_ = (decoded * 12 + 7) / 8;
+    }
+  }
+  if (this->t1_stream_target_ && this->t1_stream_received_ == this->t1_stream_target_) {
+    ++completed;
+    if (completed <= 10)
+      ESP_LOGI(TAG, "T1 PHY stream collected bytes=%u", static_cast<unsigned>(this->t1_stream_received_));
+    // Complete FIFO may precede RxDone. GetPacketStatus GFSK fields:
+    // [0]=RxStatus, [1]=RssiSync latched at sync, [2]=RssiAvg latched
+    // only after packet done. Publish sync, NEVER premature average.
+    // This is the same Semtech rule for standalone T1 and combined T1/C1.
+    uint8_t packet_status[3] = {};
+    this->read_opcode_(RADIO_GET_PACKETSTATUS, packet_status, 3);
+    const auto measurement = gfsk_rssi::parse(packet_status);
+    const float rssi_dbm = measurement.sync_dbm;
+    // Bounded, opt-in diagnostics: compare raw values on actual hardware.
+    // Do not use RssiAvg as a fallback, calibration, or sensor value.
+    if (this->t1_stream_diagnostics_) {
+      static uint32_t rssi_samples = 0;
+      if (++rssi_samples <= 24 || rssi_samples % 100 == 0) {
+        ESP_LOGI(TAG, "T1/C1 GFSK RSSI source=sync sync_raw=%u sync=%.1f dBm avg_raw=%u avg=%.1f dBm packet_received=%s (avg unreliable before RxDone)",
+                 static_cast<unsigned>(measurement.sync_raw),
+                 measurement.sync_dbm,
+                 static_cast<unsigned>(measurement.average_raw),
+                 measurement.average_dbm,
+                 measurement.packet_received ? "yes" : "no");
+      }
+    }
+    // RX must be re-armed BEFORE potentially expensive logger/XMQ callbacks.
+    // The entire encoded frame has already been copied into the adapter's RAM.
+    // In the previous sequence, RX remained inactive during processing.
+    this->t1_stream_reset_();
+    this->t1_stream_callback_(this->t1_stream_context_, nullptr, 0, false, true, rssi_dbm);
+  }
+}
+
+void SX126x::loop() {
+  if (this->t1_stream_callback_ != nullptr) {
+    this->t1_stream_loop_();
+    return;
+  }
+  if (this->dio1_pin_->is_internal()) {
+    this->disable_loop();
+  }
+  if (!this->dio1_pin_->digital_read()) {
+    return;
+  }
+
+  uint16_t status;
+  uint8_t buf[3];
+  uint8_t rssi;
+  int8_t snr;
+  this->read_opcode_(RADIO_GET_IRQSTATUS, buf, 2);
+  this->write_opcode_(RADIO_CLR_IRQSTATUS, buf, 2);
+  status = (buf[0] << 8) | buf[1];
+  if ((status & IRQ_RX_DONE) == IRQ_RX_DONE) {
+    if ((status & IRQ_CRC_ERROR) != IRQ_CRC_ERROR) {
+      this->read_opcode_(RADIO_GET_PACKETSTATUS, buf, 3);
+      if (this->modulation_ == PACKET_TYPE_LORA) {
+        rssi = buf[0];
+        snr = buf[1];
+      } else {
+        // Standard RX_DONE GFSK path: [2] is valid packet average.
+        // Progressive T1/C1 uses the separate sync reading above.
+        rssi = buf[2];
+        snr = 0;
+      }
+      this->read_opcode_(RADIO_GET_RXBUFFERSTATUS, buf, 2);
+      this->packet_.resize(buf[0]);
+      this->read_fifo_(buf[1], this->packet_);
+      this->call_listeners_(this->packet_, (float) rssi / -2.0f, (float) snr / 4.0f);
+    }
+  }
+}
+
+void SX126x::run_image_cal() {
+  // the following values were taken from section 9.2.1 table 9-2
+  // in rev 2.1 of the datasheet
+  uint8_t buf[2] = {0, 0};
+  if (this->frequency_ > 900000000) {
+    buf[0] = 0xE1;
+    buf[1] = 0xE9;
+  } else if (this->frequency_ > 850000000) {
+    buf[0] = 0xD7;
+    buf[1] = 0xDB;
+  } else if (this->frequency_ > 770000000) {
+    buf[0] = 0xC1;
+    buf[1] = 0xC5;
+  } else if (this->frequency_ > 460000000) {
+    buf[0] = 0x75;
+    buf[1] = 0x81;
+  } else if (this->frequency_ > 425000000) {
+    buf[0] = 0x6B;
+    buf[1] = 0x6F;
+  }
+  if (buf[0] > 0 && buf[1] > 0) {
+    this->write_opcode_(RADIO_CALIBRATEIMAGE, buf, 2);
+  }
+}
+
+void SX126x::set_mode_rx() {
+  uint8_t buf[8];
+
+  if (this->t1_stream_callback_ != nullptr) {
+    // Combined 100-kbit/s frames finish in ~5 ms, below ESPHome's default
+    // ~16-ms loop cadence. Poll continuously while this lab mode owns RX.
+    if (this->combined_t1_c1_stream_) this->combined_rx_fast_loop_.start();
+    // SX126x continuous RX carries its FIFO write pointer across packets.
+    // A new progressive T1 stream starts at FIFO offset zero: explicitly
+    // restart RX and reset both buffer bases before arming sync-word IRQ.
+    // The official SX126x remains the sole owner of SPI, IRQ and RX state.
+    this->set_mode_standby(STDBY_XOSC);
+    if (this->c1_stream_mode_ || this->combined_t1_c1_stream_) {
+      uint8_t sync[2] = {0x54, static_cast<uint8_t>(this->combined_t1_c1_stream_ || this->c1_stream_format_b_ ? 0x3D : 0xCD)};
+      this->write_register_(REG_GFSK_SYNCWORD, sync, sizeof(sync));
+    }
+    uint8_t bases[2] = {0x00, 0x00};
+    this->write_opcode_(RADIO_SET_BUFFERBASEADDRESS, bases, 2);
+  }
+
+  // configure irq params
+  uint16_t irq = this->t1_stream_callback_ != nullptr ? IRQ_SYNCWORD_VALID : (IRQ_RX_DONE | IRQ_RX_TX_TIMEOUT | IRQ_CRC_ERROR);
+  buf[0] = (irq >> 8) & 0xFF;
+  buf[1] = (irq >> 0) & 0xFF;
+  buf[2] = (irq >> 8) & 0xFF;
+  buf[3] = (irq >> 0) & 0xFF;
+  buf[4] = (IRQ_RADIO_NONE >> 8) & 0xFF;
+  buf[5] = (IRQ_RADIO_NONE >> 0) & 0xFF;
+  buf[6] = (IRQ_RADIO_NONE >> 8) & 0xFF;
+  buf[7] = (IRQ_RADIO_NONE >> 0) & 0xFF;
+  this->write_opcode_(RADIO_SET_DIOIRQPARAMS, buf, 8);
+
+  // set timeout to 0
+  buf[0] = 0x00;
+  this->write_opcode_(RADIO_SET_LORASYMBTIMEOUT, buf, 1);
+
+  // switch to continuous mode rx
+  buf[0] = 0xFF;
+  buf[1] = 0xFF;
+  buf[2] = 0xFF;
+  this->write_opcode_(RADIO_SET_RX, buf, 3);
+}
+
+void SX126x::set_mode_tx() {
+  uint8_t buf[8];
+
+  // configure irq params
+  uint16_t irq = IRQ_TX_DONE | IRQ_RX_TX_TIMEOUT;
+  buf[0] = (irq >> 8) & 0xFF;
+  buf[1] = (irq >> 0) & 0xFF;
+  buf[2] = (irq >> 8) & 0xFF;
+  buf[3] = (irq >> 0) & 0xFF;
+  buf[4] = (IRQ_RADIO_NONE >> 8) & 0xFF;
+  buf[5] = (IRQ_RADIO_NONE >> 0) & 0xFF;
+  buf[6] = (IRQ_RADIO_NONE >> 8) & 0xFF;
+  buf[7] = (IRQ_RADIO_NONE >> 0) & 0xFF;
+  this->write_opcode_(RADIO_SET_DIOIRQPARAMS, buf, 8);
+
+  // switch to single mode tx
+  buf[0] = 0x00;
+  buf[1] = 0x00;
+  buf[2] = 0x00;
+  this->write_opcode_(RADIO_SET_TX, buf, 3);
+}
+
+void SX126x::set_mode_sleep(bool cold) {
+  // 0x04 = warm start (config retained), 0x00 = cold start (config lost, lowest power)
+  uint8_t buf[1];
+  buf[0] = cold ? 0x00 : 0x04;
+  this->write_opcode_(RADIO_SET_SLEEP, buf, 1);
+}
+
+void SX126x::set_mode_standby(SX126xStandbyMode mode) {
+  uint8_t buf[1];
+  buf[0] = mode;
+  this->write_opcode_(RADIO_SET_STANDBY, buf, 1);
+}
+
+bool SX126x::wait_busy_() {
+  if (this->is_failed()) return false;
+  // wait if the device is busy, the maximum delay is only be a few ms
+  // with most commands taking only a few us
+  uint32_t start = millis();
+  while (this->busy_pin_->digital_read()) {
+    if (millis() - start > BUSY_TIMEOUT_MS) {
+      ESP_LOGE(TAG, "Wait busy timeout");
+      this->mark_failed();
+      return false;
+    }
+  }
+  return true;
+}
+
+void SX126x::dump_config() {
+  ESP_LOGCONFIG(TAG, "SX126x:");
+  LOG_PIN("  CS Pin: ", this->cs_);
+  LOG_PIN("  BUSY Pin: ", this->busy_pin_);
+  LOG_PIN("  RST Pin: ", this->rst_pin_);
+  LOG_PIN("  DIO1 Pin: ", this->dio1_pin_);
+  ESP_LOGCONFIG(TAG,
+                "  HW Version: %15s\n"
+                "  Frequency: %" PRIu32 " Hz\n"
+                "  Bandwidth: %" PRIu32 " Hz\n"
+                "  PA Power: %" PRId8 " dBm\n"
+                "  PA Ramp: %" PRIu16 " us\n"
+                "  Payload Length: %" PRIu32 "\n"
+                "  CRC Enable: %s\n"
+                "  Rx Start: %s",
+                this->version_, this->frequency_, BW_HZ[this->bandwidth_], this->pa_power_, RAMP[this->pa_ramp_],
+                this->payload_length_, TRUEFALSE(this->crc_enable_), TRUEFALSE(this->rx_start_));
+  if (this->modulation_ == PACKET_TYPE_GFSK) {
+    const char *shaping = "NONE";
+    if (this->shaping_ == GAUSSIAN_BT_0_3) {
+      shaping = "GAUSSIAN_BT_0_3";
+    } else if (this->shaping_ == GAUSSIAN_BT_0_5) {
+      shaping = "GAUSSIAN_BT_0_5";
+    } else if (this->shaping_ == GAUSSIAN_BT_0_7) {
+      shaping = "GAUSSIAN_BT_0_7";
+    } else if (this->shaping_ == GAUSSIAN_BT_1_0) {
+      shaping = "GAUSSIAN_BT_1_0";
+    }
+    ESP_LOGCONFIG(TAG,
+                  "  Modulation: FSK\n"
+                  "  Deviation: %" PRIu32 " Hz\n"
+                  "  Shaping: %s\n"
+                  "  Preamble Size: %" PRIu16 "\n"
+                  "  Preamble Detect: %" PRIu16 "\n"
+                  "  Bitrate: %" PRIu32 "b/s",
+                  this->deviation_, shaping, this->preamble_size_, this->preamble_detect_, this->bitrate_);
+  } else if (this->modulation_ == PACKET_TYPE_LORA) {
+    const char *cr = "4/8";
+    if (this->coding_rate_ == LORA_CR_4_5) {
+      cr = "4/5";
+    } else if (this->coding_rate_ == LORA_CR_4_6) {
+      cr = "4/6";
+    } else if (this->coding_rate_ == LORA_CR_4_7) {
+      cr = "4/7";
+    }
+    ESP_LOGCONFIG(TAG,
+                  "  Modulation: LORA\n"
+                  "  Spreading Factor: %" PRIu8 "\n"
+                  "  Coding Rate: %s\n"
+                  "  Preamble Size: %" PRIu16,
+                  this->spreading_factor_, cr, this->preamble_size_);
+  }
+  if (!this->sync_value_.empty()) {
+    char hex_buf[17];  // 8 bytes max = 16 hex chars + null
+    ESP_LOGCONFIG(TAG, "  Sync Value: 0x%s",
+                  format_hex_to(hex_buf, this->sync_value_.data(), this->sync_value_.size()));
+  }
+  ESP_LOGCONFIG(TAG, "  Whitening Enable: %s", TRUEFALSE(this->whitening_enable_));
+  if (this->whitening_enable_) {
+    ESP_LOGCONFIG(TAG, "  Whitening Initial: 0x%03x", this->whitening_initial_);
+  }
+  if (this->is_failed()) {
+    ESP_LOGE(TAG, "Configuring SX126x failed");
+  }
+}
+
+}  // namespace esphome::sx126x

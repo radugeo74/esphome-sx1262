@@ -1,0 +1,50 @@
+# Build-only test fixture for the imported, patched SX126x native component.
+# Do not flash. Does NOT bridge wmbus_radio or wmbus_meter to sx126x.
+# One radio owner only. Pin mapping/TCXO/RF switch require board verification.
+esphome:
+  name: sx126x-native-idf-test
+  friendly_name: SX126x Native ESP-IDF Test
+
+esp32:
+  board: heltec_wifi_lora_32_V3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [sx126x]
+
+spi:
+  clk_pin: GPIO9
+  mosi_pin: GPIO10
+  miso_pin: GPIO11
+
+sx126x:
+  id: native_radio
+  hw_version: sx1262
+  modulation: FSK
+  frequency: 868950000
+  bitrate: 100000
+  deviation: 50000
+  bandwidth: 234_3kHz
+  shaping: NONE
+  crc_enable: false
+  whitening_enable: false
+  sync_value: [0x54, 0x3D]
+  preamble_size: 2
+  preamble_detect: 2
+  payload_length: 255
+  rx_start: true
+  rf_switch: true
+  tcxo_voltage: 3_0V
+  tcxo_delay: 5ms
+  busy_pin: GPIO13
+  dio1_pin: GPIO14
+  rst_pin: GPIO12
+  cs_pin: GPIO8
