@@ -1,10 +1,10 @@
 # ESPHome wM-Bus — XMQ runtime pe baza native-espidf
 
-> **Native SX126x bridge (experimental):** `wmbus_radio` now exposes `sx126x_id`, accepting the patched SX126x stream and dispatching CRC-verified frames to existing `wmbus_meter` handlers. See [docs/SX126X_WMBUS_BRIDGE.md](docs/SX126X_WMBUS_BRIDGE.md) and [tests/sx126x-wmbus-bridge.yaml](tests/sx126x-wmbus-bridge.yaml). The legacy transceiver is deliberately retained for rollback until real Heltec RF validation. **Dynamic XMQ reload remains unimplemented.**
+> **Native SX126x bridge (experimental):** `wmbus_radio` now exposes `sx126x_id`, accepting the patched SX126x stream and dispatching CRC-verified frames to existing `wmbus_meter` handlers. See [docs/SX126X_WMBUS_BRIDGE.md](docs/SX126X_WMBUS_BRIDGE.md) and [tests/sx126x-wmbus-bridge.yaml](tests/sx126x-wmbus-bridge.yaml). The T1/A bridge is hardware-validated on Heltec (11 November 2026, 12/12 configured meters publishing). Legacy radio *source* is retained for rollback; C1-B and long-run regression are still open. **Dynamic XMQ reload remains unimplemented.**
 
 **Branch:** `experimental/xmq-runtime-engine`  
 **Bază:** [`native-espidf`](https://github.com/radugeo74/esphome-sx1262/tree/native-espidf) la commit `c4284739be7f9a5ee251de268ae3904068906ca4`.  
-**Stare:** codul C++/ESP-IDF existent este păstrat; componenta SX126x nativă patch-uită este importată ca alternativă radio; **motorul dinamic XMQ NU este implementat**.
+**Stare (11 noiembrie 2026):** puntea `sx126x → wmbus_radio → wmbus_meter` primește și publică T1/A pe Heltec pentru **12/12 contoare configurate (7 căldură, 5 apă)**. `wmbus_common` decodifică în continuare datele de aplicație; receptorul radio legacy nu este instanțiat în modul `sx126x_id`, dar sursele sale rămân pentru rollback. **C1-B nu este validat pe hardware; motorul dinamic XMQ NU este implementat.**
 
 ## Obiectiv
 
@@ -32,7 +32,7 @@ Am importat `components/sx126x` **integral** din commitul [`bd3035ed`](https://g
 - oprirea configurării la `is_failed()`, bufferul versiunii inițializat și patch-urile GFSK/RSSI / recepție T1 pe care le conține acel snapshot;
 - `packet_transport` și fișierele asociate componentului, cu dependențele ESPHome SPI.
 
-**Important:** `sx126x` nu este încă legat de `wmbus_radio/wmbus_meter`. Într-un YAML real nu trebuie configurate două drivere SPI care controlează **același SX1262** simultan. Exemplul [`tests/sx126x-native-espidf.yaml`](tests/sx126x-native-espidf.yaml) este izolat, doar pentru validarea compilării; nu este configurație de instalat.
+**Important (actualizare):** `sx126x` este acum conectat la `wmbus_radio/wmbus_meter` prin `sx126x_id`; în acest mod nu se instanțiază receptorul SPI legacy. Nu configura două drivere SPI pe **același SX1262**. Exemplul [`tests/sx126x-native-espidf.yaml`](tests/sx126x-native-espidf.yaml) este izolat, doar pentru validarea compilării; nu este configurație de instalat.
 
 ## Ce construim în continuare
 
@@ -52,7 +52,7 @@ Heltec: un singur interpret C++ + receptor SX126x nativ
 entități și senzori Home Assistant
 ```
 
-Înaintea acestui flux trebuie creat **adaptorul SX126x → wM-Bus**, cu verificările de transport/CRC și evenimentele recepției. Până atunci, receptorul legacy rămâne funcțional conceptual ca în `native-espidf`; nu afirmăm că noua componentă radio este deja integrată cu el.
+**Adaptorul SX126x → wM-Bus este implementat și verificat pentru T1/A pe hardware.** Recepția nativă ajunge în parserul și decodoarele aplicației existente. Pasul următor este proiectarea/implementarea interpretului comun XMQ cu reguli actualizabile fără OTA, nu pretinderea că există deja sau eliminarea prematură a `wmbus_common`.
 
 ## Documente
 
