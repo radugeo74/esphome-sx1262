@@ -16,6 +16,10 @@
 
 **Criteriu de ieșire:** documentația și noua ramură sunt create în GitHub.
 
+## Etapă intermediară — integrarea SX126x în pipeline-ul legacy
+
+**Stare:** implementare experimentală în noua ramură; verificare prin compilare ESPHome și apoi prin testare RF. Componenta radio patch-uită livrează cadrele validate către interfața `wmbus_radio::Frame` consumată de contoarele existente. Vechiul transceiver rămâne pentru rollback. Fără a confunda această etapă cu motorul XMQ actualizabil dinamic.
+
 ## M1 — Un motor generic de date, iPERL (fără HA)
 
 **Stare:** DE IMPLEMENTAT.

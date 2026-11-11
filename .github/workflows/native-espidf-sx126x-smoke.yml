@@ -37,3 +37,7 @@ jobs:
         run: esphome config tests/sx126x-native-espidf.yaml
       - name: Compile SX126x native ESP-IDF Heltec fixture (build-only)
         run: esphome compile tests/sx126x-native-espidf.yaml
+      - name: Validate new bridge schema with legacy mkradio4 meter
+        run: esphome config tests/sx126x-wmbus-bridge.yaml
+      - name: Compile native SX126x bridge through original wmbus_meter (build-only)
+        run: esphome compile tests/sx126x-wmbus-bridge.yaml

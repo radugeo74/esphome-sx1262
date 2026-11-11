@@ -43,3 +43,11 @@ Citește `README.md`, `AGENTS.md`, `docs/SX126X_NATIVE_BASELINE.md` și `docs/XM
 - Refuz pentru fișiere invalide, cadre neconfigurate, criptare necunoscută; rollback la ultima versiune bună.
 
 **La crearea ramurii:** doar noul baseline/structură/doc/test fixture. Motorul XMQ nu există încă.
+
+## Bridge SX126x → wmbus_meter (în implementare/test software)
+
+- Noua cale `wmbus_radio: {sx126x_id: ..., native_stream_mode: T1}` folosește SX126x patch-uit ca unic proprietar SPI și callback-ul T1 3-of-6. Opțional `T1_C1_B` este experimental; C1-A nu este suportat pe această cale.
+- Adapterul reunește fragmente limitate, verifică structura și toate CRC-urile DLL prin funcțiile wmbusmeters, apoi trimite `Frame` către aceiași handleri `wmbus_meter`, cu ID/cheie/link-mode neschimbate.
+- Configurăria de test e în `tests/sx126x-wmbus-bridge.yaml`. Verificările software vor rula în CI.
+- `transceiver_sx1262.cpp/.h` rămâne doar pentru rollback până la teste RF reale confirmate de utilizator; nu îl șterge pe baza unui simplu build.
+- Motorul dinamic XMQ și hot reload-ul nu sunt încă implementate. Vezi `docs/SX126X_WMBUS_BRIDGE.md`.

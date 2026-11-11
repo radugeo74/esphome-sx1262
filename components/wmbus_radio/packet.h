@@ -45,6 +45,9 @@ protected:
 struct Frame {
 public:
   Frame(Packet *packet);
+  // Verified, CRC-stripped frame delivered by the patched native SX126x bridge.
+  Frame(std::vector<uint8_t> &&data, LinkMode mode, int8_t rssi,
+        const char *format);
 
   std::vector<uint8_t> &data();
   LinkMode link_mode();

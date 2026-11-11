@@ -1,5 +1,7 @@
 # ESPHome wM-Bus — XMQ runtime pe baza native-espidf
 
+> **Native SX126x bridge (experimental):** `wmbus_radio` now exposes `sx126x_id`, accepting the patched SX126x stream and dispatching CRC-verified frames to existing `wmbus_meter` handlers. See [docs/SX126X_WMBUS_BRIDGE.md](docs/SX126X_WMBUS_BRIDGE.md) and [tests/sx126x-wmbus-bridge.yaml](tests/sx126x-wmbus-bridge.yaml). The legacy transceiver is deliberately retained for rollback until real Heltec RF validation. **Dynamic XMQ reload remains unimplemented.**
+
 **Branch:** `experimental/xmq-runtime-engine`  
 **Bază:** [`native-espidf`](https://github.com/radugeo74/esphome-sx1262/tree/native-espidf) la commit `c4284739be7f9a5ee251de268ae3904068906ca4`.  
 **Stare:** codul C++/ESP-IDF existent este păstrat; componenta SX126x nativă patch-uită este importată ca alternativă radio; **motorul dinamic XMQ NU este implementat**.

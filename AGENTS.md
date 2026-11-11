@@ -13,3 +13,5 @@
 7. Testează fixture-uri originale (clear, encrypted și post-decrypted separate), mutații, rollback, C++ host, ESP-IDF S3 și ESPHome; nu confunda verde CI cu validarea pe Heltec.
 8. Păstrează `NATIVE_ESPIDF_REPORT.md` ca raport istoric fără rescriere. Nu flash-ui dispozitive și nu modifica configurația activă.
 9. După milestone actualizează `PROJECT_CONTEXT.md` și `docs/XMQ_RUNTIME_ROADMAP.md` cu **implementat / testat / planificat**.
+
+11. Puntea radio nouă: schema `wmbus_radio.sx126x_id` trebuie să creeze un singur proprietar SPI, iar `wmbus_meter` să primească exclusiv cadre cu CRC verificat. Vezi `docs/SX126X_WMBUS_BRIDGE.md` și fișierul de test. Nu șterge vechiul SX1262 până la validarea RF reală și confirmarea rollbackului.

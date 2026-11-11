@@ -137,6 +137,10 @@ Frame::Frame(Packet *packet)
     : data_(std::move(packet->data_)), link_mode_(packet->link_mode_),
       rssi_(packet->rssi_), format_(packet->frame_format_) {}
 
+Frame::Frame(std::vector<uint8_t> &&data, LinkMode mode, int8_t rssi,
+             const char *format)
+    : data_(std::move(data)), link_mode_(mode), rssi_(rssi), format_(format) {}
+
 std::vector<uint8_t> &Frame::data() { return this->data_; }
 LinkMode Frame::link_mode() { return this->link_mode_; }
 int8_t Frame::rssi() { return this->rssi_; }

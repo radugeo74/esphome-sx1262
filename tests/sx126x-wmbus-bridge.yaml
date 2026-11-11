@@ -1,0 +1,78 @@
+# Build-only integration fixture. Never flash without RF validation.
+# One physical SX1262, exclusively owned by patched components/sx126x.
+# Legacy wmbus_radio SPI/IRQ transceiver is NOT instantiated.
+esphome:
+  name: sx126x-wmbus-bridge
+  friendly_name: SX126x wM-Bus Bridge Test
+
+esp32:
+  board: heltec_wifi_lora_32_V3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [sx126x, wmbus_radio, wmbus_meter]
+
+spi:
+  clk_pin: GPIO9
+  mosi_pin: GPIO10
+  miso_pin: GPIO11
+
+sx126x:
+  id: native_radio
+  hw_version: sx1262
+  modulation: FSK
+  frequency: 868950000
+  bitrate: 100000
+  deviation: 50000
+  bandwidth: 234_3kHz
+  shaping: NONE
+  crc_enable: false
+  whitening_enable: false
+  sync_value: [0x54, 0x3D]
+  preamble_size: 2
+  preamble_detect: 2
+  payload_length: 255
+  rx_start: true
+  rf_switch: true
+  tcxo_voltage: 3_0V
+  tcxo_delay: 5ms
+  busy_pin: GPIO13
+  dio1_pin: GPIO14
+  rst_pin: GPIO12
+  cs_pin: GPIO8
+
+wmbus_radio:
+  id: wmbus_receiver
+  sx126x_id: native_radio
+  # Only T1 is automatically used by default; C1 Format B is optional
+  # and requires RF evidence before enabling on a live device.
+  native_stream_mode: T1
+
+wmbus_meter:
+  - id: lab_water
+    radio_id: wmbus_receiver
+    meter_id: 0x12345678  # synthetic, NOT a private meter
+    type: mkradio4
+    mode: [T1]
+
+sensor:
+  - platform: wmbus_meter
+    parent_id: lab_water
+    name: "Lab Water Volume"
+    field: total_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: lab_water
+    name: "Lab Water RSSI"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
