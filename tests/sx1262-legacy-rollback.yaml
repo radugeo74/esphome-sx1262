@@ -1,0 +1,46 @@
+# Read-only, build-only rollback schema check.
+# Only the legacy transceiver owns SPI. Do not combine with sx126x:.
+esphome:
+  name: sx1262-legacy-rollback
+  friendly_name: SX1262 Legacy Rollback
+
+esp32:
+  board: heltec_wifi_lora_32_V3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [wmbus_common, wmbus_radio, wmbus_meter]
+
+spi:
+  clk_pin: GPIO9
+  mosi_pin: GPIO10
+  miso_pin: GPIO11
+
+wmbus_radio:
+  id: legacy_receiver
+  radio_type: SX1262
+  cs_pin: GPIO8
+  reset_pin: GPIO12
+  irq_pin: GPIO14
+
+wmbus_meter:
+  - id: legacy_lab_meter
+    radio_id: legacy_receiver
+    meter_id: 0x12345678
+    type: mkradio4
+    mode: [T1]
+
+sensor:
+  - platform: wmbus_meter
+    parent_id: legacy_lab_meter
+    name: "Legacy Water RSSI (lab)"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"

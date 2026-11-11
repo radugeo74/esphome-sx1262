@@ -51,5 +51,7 @@ jobs:
         run: esphome compile tests/sx126x-native-espidf.yaml
       - name: Validate new bridge schema with legacy mkradio4 meter
         run: esphome config tests/sx126x-wmbus-bridge.yaml
+      - name: Verify legacy SX1262 rollback schema remains available
+        run: esphome config tests/sx1262-legacy-rollback.yaml
       - name: Compile native SX126x bridge through original wmbus_meter (build-only)
         run: esphome compile tests/sx126x-wmbus-bridge.yaml

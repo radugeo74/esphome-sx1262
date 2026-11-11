@@ -80,3 +80,5 @@ would be premature and could leave a working installation unrecoverable.
 For the separate goal of updating XMQ rules without firmware recompilation,
 see `docs/XMQ_RUNTIME_ARCHITECTURE.md`. This bridge is one prerequisite,
 not the runtime XMQ engine itself.
+
+Rollback schema validation: `tests/sx1262-legacy-rollback.yaml` exercises the original `radio_type: SX1262` path. It intentionally does NOT instantiate `sx126x:` and is never used concurrently with the new receiver.
