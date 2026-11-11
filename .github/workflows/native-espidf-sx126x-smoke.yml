@@ -51,9 +51,14 @@ jobs:
         run: esphome compile tests/sx126x-native-espidf.yaml
       - name: Validate new bridge schema with legacy mkradio4 meter
         run: esphome config tests/sx126x-wmbus-bridge.yaml
-      - name: Verify legacy SX1262 rollback schema remains available
-        run: esphome config tests/sx1262-legacy-rollback.yaml
-      - name: Compile native SX126x bridge through original wmbus_meter (build-only)
+      - name: Reject removed legacy SX1262 radio schema
+        run: |
+          if esphome config tests/sx1262-legacy-rollback.yaml; then
+            echo "FAIL: legacy radio schema unexpectedly accepted"
+            exit 1
+          fi
+          echo "PASS: legacy radio schema is rejected"
+      - name: Compile native-only SX126x through original wmbus_meter (build-only)
         run: esphome compile tests/sx126x-wmbus-bridge.yaml
       - name: Generate privacy-safe full 12-meter migrated fixture
         run: python tests/build_full_meter_fixture.py
