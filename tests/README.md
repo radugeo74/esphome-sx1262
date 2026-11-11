@@ -1,40 +1,17 @@
-# Native ESP-IDF build regression fixture
+# Native-only SX126x ESP-IDF regression tests
 
-Create an isolated Python 3.13 environment and install `requirements.txt`.
-Run from the repository root:
+Current branch: `experimental/xmq-runtime-engine`. The **native SX126x receiver** is the only radio implementation. The existing `wmbus_common` application decoder and `wmbus_meter` Home Assistant sensor interface are retained.
 
-```sh
-python -m pip uninstall -y platformio
-python -m esphome config tests/native-espidf.yaml
-python -m esphome compile tests/native-espidf.yaml --only-generate
-python -m esphome compile tests/native-espidf.yaml
-```
+CI (`.github/workflows/native-espidf-sx126x-smoke.yml`) runs on push and compiles with pinned ESPHome 2026.10.1:
 
-The fixture pins ESP-IDF 5.5.6, uses the native ESP-IDF backend (CMake/Ninja),
-and loads the working tree so unpublished changes are tested. It covers SX1262,
-Heltec V3 / ESP32-S3 / 8 MB, the specified SPI/radio pins, T1, seven fhkvdataiii
-and five mkradio4 meters, 50 numeric sensors, native API, OTA, the generic socket
-action and all three frame socket formats. Credentials and meter IDs are dummy
-values. It is not a replacement for an existing Home Assistant configuration.
-Do not flash this test firmware.
+- `tests/sx126x-native-espidf.yaml`: isolated patched SX126x receiver, build-only.
+- `tests/sx126x-wmbus-bridge.yaml`: native receiver → `wmbus_radio` → `wmbus_meter` with a synthetic water meter, build-only.
+- `tests/build_full_meter_fixture.py`: generates `tests/sx126x-wmbus-12-meters-ci.yaml` with **7 synthetic heat meters, 5 synthetic water meters and 50 wM-Bus sensors**; this fixture is compiled in CI, not flashed.
+- `tests/test_decode3of6_bridge.cpp`: checks T1 symbol decoding under sanitizers.
+- `tests/sx1262-legacy-rollback.yaml`: intentionally invalid **negative schema regression**; CI must reject the removed `radio_type: SX1262` configuration. It is **not** a usable firmware rollback YAML.
 
-For a deployed configuration, use:
+The legacy radio source files were removed from this branch. Recovery requires an older Git commit and a saved working firmware/YAML; there is no in-branch switch to the old receiver.
 
-```yaml
-external_components:
-  - source: github://radugeo74/esphome-sx1262@native-espidf
-    refresh: always
-```
+Hardware evidence (11 November 2026, pre-cleanup): 12/12 configured meters published real values with T1/A. CI validates builds only. The native-only source cleanup still requires a controlled on-device regression before it can be called hardware-validated. C1-B remains experimental. Dynamic XMQ rule hot-reload is not implemented.
 
-No MQTT configuration or PlatformIO backend is needed. ESPHome's Python package
-may install PlatformIO as an upstream package dependency; this build uses its
-native ESP-IDF backend, not PlatformIO. The validation environment removes that
-package explicitly before the regression build.
-
-On Windows, if IDF tool discovery reports a missing `riscv32-esp-elf` after the
-ESP32-S3-only install, set `ESPHOME_IDF_DEFAULT_TARGETS=esp32s3;esp32c3` for the
-first build to install both required compiler archives. The firmware target
-remains ESP32-S3.
-
-Compilation cannot validate RF reception, actual meter telegrams, RSSI accuracy,
-Home Assistant connectivity or an OTA update. Verify those on hardware separately.
+**Do not flash the synthetic fixtures.** Keep real meter IDs, Wi-Fi credentials and keys in the private HA/ESPHome configuration.
