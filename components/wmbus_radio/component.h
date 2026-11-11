@@ -40,7 +40,6 @@ protected:
 
   sx126x::SX126x *native_sx126x_{nullptr};
   bool native_t1_c1_b_{false};
-#ifdef USE_WMBUS_NATIVE_SX126X
   static constexpr size_t MAX_NATIVE_PHY_SIZE = 384;
   std::array<uint8_t, MAX_NATIVE_PHY_SIZE> native_phy_{};
   size_t native_phy_size_{0};
