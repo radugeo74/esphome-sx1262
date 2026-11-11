@@ -30,8 +30,17 @@ decode3of6(std::vector<uint8_t> &coded_data) {
     auto bit_offset = bit_idx % 8;
 
     uint8_t code = (data[byte_idx] << bit_offset);
-    if (bit_offset > 0)
-      code |= (data[byte_idx + 1] >> (8 - bit_offset));
+    if (bit_offset > 0) {
+      // A 6-bit symbol starting at bit offset 2 ends at this byte's
+      // boundary. The original implementation read one byte past the end
+      // for an exact 3-byte / 24-bit encoded buffer.
+      if (byte_idx + 1 < coded_data.size()) {
+        code |= (data[byte_idx + 1] >> (8 - bit_offset));
+      } else if (bit_offset > 2) {
+        // Any symbol requiring next-byte bits is truncated: fail closed.
+        return {};
+      }
+    }
     code >>= 2;
 
     auto it = lookupTable.find(code);

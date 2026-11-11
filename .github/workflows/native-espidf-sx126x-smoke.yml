@@ -30,6 +30,18 @@ jobs:
           assert (root / "packet_transport" / "sx126x_transport.cpp").is_file()
           print("PASS: imported SX126x source guards and transport present")
           PY
+      - name: Test T1 3-of-6 decoder under ASan and UBSan
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/wmbus_stubs/esphome/core"
+          printf '#pragma once\n' > "$RUNNER_TEMP/wmbus_stubs/esphome/core/helpers.h"
+          printf '#pragma once\n' > "$RUNNER_TEMP/wmbus_stubs/esphome/core/log.h"
+          g++ -std=c++17 -O1 -g -Wall -Wextra -Wno-unused-variable \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -I. -I"$RUNNER_TEMP/wmbus_stubs" \
+            components/wmbus_radio/decode3of6.cpp \
+            tests/test_decode3of6_bridge.cpp -o "$RUNNER_TEMP/wmbus-3of6"
+          "$RUNNER_TEMP/wmbus-3of6"
       - name: Install pinned ESPHome for native ESP-IDF smoke
         run: |
           python -m pip install --disable-pip-version-check "esphome==2026.10.1"

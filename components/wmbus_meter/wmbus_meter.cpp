@@ -23,12 +23,13 @@ void Meter::set_radio(wmbus_radio::Radio *radio) {
 void Meter::dump_config() {
   std::string id = this->get_id();
   std::string driver = this->get_driver();
-  std::string key = this->get_key();
+  // Never print an AES key in ESPHome logs (including DEBUG logs).
+  const bool has_key = this->get_key() != "not-encrypted";
 
   ESP_LOGCONFIG(TAG, "wM-Bus Meter:");
   ESP_LOGCONFIG(TAG, "  ID: 0x%s", id.c_str());
   ESP_LOGCONFIG(TAG, "  Driver: %s", driver.c_str());
-  ESP_LOGCONFIG(TAG, "  Key: %s", key.c_str());
+  ESP_LOGCONFIG(TAG, "  Key: %s", has_key ? "configured (redacted)" : "not configured");
 }
 
 std::string Meter::get_id() {
