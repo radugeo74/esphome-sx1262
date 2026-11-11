@@ -51,3 +51,12 @@ Citește `README.md`, `AGENTS.md`, `docs/SX126X_NATIVE_BASELINE.md` și `docs/XM
 - Configurăria de test e în `tests/sx126x-wmbus-bridge.yaml`. Verificările software vor rula în CI.
 - `transceiver_sx1262.cpp/.h` rămâne doar pentru rollback până la teste RF reale confirmate de utilizator; nu îl șterge pe baza unui simplu build.
 - Motorul dinamic XMQ și hot reload-ul nu sunt încă implementate. Vezi `docs/SX126X_WMBUS_BRIDGE.md`.
+
+
+## Actualizare hardware — 11 noiembrie 2026 (Heltec, log 75)
+
+**M1 T1/A: VALIDAT PE HARDWARE (recepție și publicare).** În configurația reală cu `sx126x_id`, un singur transceiver SX126x nativ livrează cadre CRC-verificate către `wmbus_radio`, apoi către decodoarele **existente** `wmbus_common` / `wmbus_meter`. În captura din 11 noiembrie au publicat valori **12/12 contoare configurate**: 7 repartitoare `fhkvdataiii` (HCA, anterior, temperaturi, RSSI) și 5 apometre `mkradio4` (target/total, RSSI). Această captură confirmă T1/A pe hardware, nu C1 și nu o probă de stabilitate pe termen lung.
+
+**Mesaje / starea corectă:** prefixul de log `wmbusmeters` arată **decodorul de aplicație încă activ**, nu că driverul vechi de transceiver SX1262 a fost pornit. În configurația `sx126x_id`, receptorul vechi nu este instanțiat; fișierele `transceiver_sx1262.cpp/.h` există încă în surse pentru rollback. Mesajele `Telegram not handled` pentru ID-uri neconfigurate sunt normale; `3-of-6 symbol rejected` indică respingerea cadrelor invalide, nu erori ale valorilor deja publicate.
+
+**Stare rămasă:** C1-B pe noua punte, testele RF de durată și scenariile negative (cheie greșită / corupere / recuperare) nu sunt confirmate de această captură. Motorul comun XMQ și actualizarea regulilor fără OTA **NU sunt implementate**. Nu elimina `wmbus_common` sau decodoarele sale: ele furnizează acum valorile publicate. Ștergerea definitivă a transceiverului legacy rămâne separată de această validare și necesită criteriile de rollback/regresie din `docs/SX126X_WMBUS_BRIDGE.md`.
