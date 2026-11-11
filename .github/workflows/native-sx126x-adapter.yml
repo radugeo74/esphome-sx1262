@@ -24,6 +24,32 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Fast independent regression for source-compiled drivers. Does not
+  # depend on external mbedTLS apt downloads needed by keyed AES tests.
+  xmq-compiler-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify native source/portable byte identity
+        run: python3 experimental/semtech-radio/ci/test_native_tree_hygiene.py
+      - name: Generate and verify all source-compiled XMQ profiles
+        run: |
+          python3 experimental/xmq/tools/build_native_generated.py
+          python3 experimental/xmq/tests/test_native_driver_manifest.py
+      - name: Verify original Lansen Pulse and synthetic optional A-only
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_lansenpu_native_no_key.cpp \
+            -o /tmp/test-lansenpu-full-xmq
+          /tmp/test-lansenpu-full-xmq
+      - name: Verify original Supercom587 warm and cold clear profiles
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
+            -Icomponents/wmbus_native_sx126x -Iexperimental/xmq/portable_cpp \
+            experimental/semtech-radio/test_evo868_supercom587_native.cpp \
+            -o /tmp/test-supercom-full-xmq
+          /tmp/test-supercom-full-xmq
   native-packet-input:
     runs-on: ubuntu-24.04
     steps:
