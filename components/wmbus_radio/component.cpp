@@ -255,6 +255,14 @@ void Radio::decode_native_stream_(float rssi) {
     format = "B";
     telegram.assign(this->native_phy_.begin() + 2,
                     this->native_phy_.begin() + n);
+    // The legacy Format-B CRC helper is not memory-safe for two-block
+    // frames >128 bytes (it uses an absolute offset as a CRC length).
+    // Until a fully tested two-block implementation is available,
+    // reject those frames rather than read past the input buffer.
+    if (telegram.size() > 128) {
+      ESP_LOGD(TAG, "C1-B two-block frame unsupported; discarded");
+      return;
+    }
     if (telegram.empty() || telegram[0] < 10 ||
         static_cast<size_t>(telegram[0]) + 1 != telegram.size() ||
         !trimCRCsFrameFormatB(telegram)) {

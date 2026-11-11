@@ -27,8 +27,11 @@ exclusive. The legacy transceiver's FreeRTOS task and second SPI device are
 not instantiated in this mode.
 
 `native_stream_mode: T1_C1_B` opt-in uses the experimental combined
-sync-word stream. It recognizes T1 format A and C1 format B; **C1 format A
-is not yet supported** by this path. The combined option has not been RF
+sync-word stream. It recognizes T1 format A and C1 format B **up to 128 raw bytes**.
+The legacy wmbusmeters Format-B helper has an unsafe two-block CRC-length
+calculation for longer inputs, so the new bridge rejects them until that
+case is repaired and regression-tested. **C1 format A is not yet supported**
+by this path. The combined option has not been RF
 validated in this branch.
 
 ## Data path and security
