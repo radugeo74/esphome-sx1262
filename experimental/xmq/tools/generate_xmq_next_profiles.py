@@ -95,6 +95,19 @@ def compile_lansen(path):
         if (mvt,cfg,len(f),mask,f[12]) in variants:
             raise ValueError("duplicate source pulse variant")
         variants.append((*mvt,cfg,len(f),mask,f[12]))
+        # The XMQ a/b fields are independent optional pulse counters.
+        # Generate strict projected variants from the source-verified
+        # a+b layout; the old native regression also verifies a-only.
+        # A projection only removes one COMPLETE source-defined record,
+        # never changes TPL status, mode or manufacturer metadata.
+        if mask==3:
+            for index,rule in enumerate(rules):
+                projected_mask=1<<index
+                removed=rules[1-index]
+                projected_length=len(f)-len(removed[1])-removed[2]
+                candidate=(*mvt,cfg,projected_length,projected_mask,f[12])
+                if candidate not in variants:
+                    variants.append(candidate)
     return rules,states,sabotage,variants
 
 
