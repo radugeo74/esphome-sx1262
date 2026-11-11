@@ -1,8 +1,8 @@
 from contextlib import suppress
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome import pins, automation
-from esphome.components import spi, sx126x
+from esphome import automation
+from esphome.components import sx126x
 from esphome.cpp_generator import LambdaExpression
 from esphome.const import (
     CONF_ID,
@@ -12,11 +12,10 @@ from esphome.const import (
     CONF_FORMAT,
     CONF_DATA,
 )
-from pathlib import Path
 
 CODEOWNERS = ["@SzczepanLeon", "@kubasaw"]
 
-DEPENDENCIES = ["esp32", "spi"]
+DEPENDENCIES = ["esp32", "sx126x"]
 
 AUTO_LOAD = ["wmbus_common"]
 
@@ -31,23 +30,12 @@ CONF_MARK_AS_HANDLED = "mark_as_handled"
 
 radio_ns = cg.esphome_ns.namespace("wmbus_radio")
 RadioComponent = radio_ns.class_("Radio", cg.Component)
-RadioTransceiver = radio_ns.class_(
-    "RadioTransceiver", spi.SPIDevice, cg.Component)
 Frame = radio_ns.class_("Frame")
 FrameOutputFormat = Frame.enum("OutputFormat")
 FramePtr = Frame.operator("ptr")
 FrameTrigger = radio_ns.class_(
     "FrameTrigger", automation.Trigger.template(FramePtr))
 
-TRANSCEIVER_NAMES = {
-    r.stem.removeprefix("transceiver_").upper()
-    for r in Path(__file__).parent.glob("transceiver_*.cpp")
-    if r.is_file()
-}
-
-
-# Keep the original ESP-IDF radio configuration for rollback, but make
-# native SX126x the sole SPI/IRQ owner when sx126x_id is selected.
 COMMON_SCHEMA = {
     cv.GenerateID(): cv.declare_id(RadioComponent),
     cv.Optional(CONF_ON_FRAME): automation.validate_automation(
@@ -57,20 +45,6 @@ COMMON_SCHEMA = {
         }
     ),
 }
-
-LEGACY_SCHEMA = (
-    cv.Schema(
-        {
-            **COMMON_SCHEMA,
-            cv.GenerateID(CONF_RADIO_ID): cv.declare_id(RadioTransceiver),
-            cv.Required(CONF_RADIO_TYPE): cv.one_of(*TRANSCEIVER_NAMES, upper=True),
-            cv.Required(CONF_RESET_PIN): pins.internal_gpio_output_pin_schema,
-            cv.Required(CONF_IRQ_PIN): pins.internal_gpio_input_pin_schema,
-        }
-    )
-    .extend(spi.spi_device_schema())
-    .extend(cv.COMPONENT_SCHEMA)
-)
 
 NATIVE_SCHEMA = (
     cv.Schema(
@@ -85,35 +59,19 @@ NATIVE_SCHEMA = (
     .extend(cv.COMPONENT_SCHEMA)
 )
 
-CONFIG_SCHEMA = cv.Any(NATIVE_SCHEMA, LEGACY_SCHEMA)
+CONFIG_SCHEMA = NATIVE_SCHEMA
 
 
 
 async def to_code(config):
-    # A native configuration generates only ONE SX126x SPI device.
-    # Legacy support remains available for rollback without importing
-    # the new radio state machine into the legacy path.
+    # Only patched SX126x owns the SPI bus and IRQ.
     var = cg.new_Pvariable(config[CONF_ID])
-    if CONF_SX126X_ID in config:
-        radio = await cg.get_variable(config[CONF_SX126X_ID])
-        cg.add_define("USE_WMBUS_NATIVE_SX126X")
-        cg.add(var.set_native_sx126x(radio))
-        cg.add(var.set_native_t1_c1_b(
-            config[CONF_NATIVE_STREAM_MODE] == "T1_C1_B"
-        ))
-    else:
-        config[CONF_RADIO_ID].type = radio_ns.class_(
-            config[CONF_RADIO_TYPE], RadioTransceiver
-        )
-        radio_var = cg.new_Pvariable(config[CONF_RADIO_ID])
-        reset_pin = await cg.gpio_pin_expression(config[CONF_RESET_PIN])
-        cg.add(radio_var.set_reset_pin(reset_pin))
-        irq_pin = await cg.gpio_pin_expression(config[CONF_IRQ_PIN])
-        cg.add(radio_var.set_irq_pin(irq_pin))
-        await spi.register_spi_device(radio_var, config)
-        await cg.register_component(radio_var, config)
-        cg.add(var.set_radio(radio_var))
-
+    radio = await cg.get_variable(config[CONF_SX126X_ID])
+    cg.add_define("USE_WMBUS_NATIVE_SX126X")
+    cg.add(var.set_native_sx126x(radio))
+    cg.add(var.set_native_t1_c1_b(
+        config[CONF_NATIVE_STREAM_MODE] == "T1_C1_B"
+    ))
     await cg.register_component(var, config)
 
     for conf in config.get(CONF_ON_FRAME, []):
