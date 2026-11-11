@@ -114,19 +114,31 @@ jobs:
             experimental/semtech-radio/test_lansen_th_sm_supplied_clear.cpp \
             -o /tmp/test-lansen-th-sm-supplied-clear
           /tmp/test-lansen-th-sm-supplied-clear
-      - name: Install host mbedTLS once for all native AES tests (official Ubuntu mirrors)
+      # Ubuntu archive DNS can fail independently of GitHub checkout.
+      # Compile the same mbedTLS 2.28.8 API used by Ubuntu 24.04, pinned to
+      # the immutable upstream commit. Do not remove or skip any AES tests.
+      - name: Checkout pinned upstream mbedTLS 2.28.8 (host tests only)
+        uses: actions/checkout@v5
+        with:
+          repository: Mbed-TLS/mbedtls
+          ref: 5a764e5555c64337ed17444410269ff21cb617b1
+          path: .ci/mbedtls-host
+          persist-credentials: false
+      - name: Build host mbedTLS crypto locally without apt or Ubuntu mirrors
         run: |
           set -euo pipefail
-          # GitHub ubuntu-24.04 runners can pin an Azure archive mirror.
-          # It has intermittently failed DNS resolution, unrelated to XMQ.
-          # Keep Ubuntu's signed package verification; change only mirror URL.
-          if [ -f /etc/apt/apt-mirrors.txt ]; then
-            sudo sed -i -E 's#https?://azure.archive.ubuntu.com/ubuntu#https://archive.ubuntu.com/ubuntu#g' /etc/apt/apt-mirrors.txt
-          fi
-          # Retry transient package-index and package-fetch failures.
-          sudo apt-get -o Acquire::Retries=5 -o APT::Update::Error-Mode=any update
-          sudo apt-get -o Acquire::Retries=5 install -y --no-install-recommends libmbedtls-dev
-          test -f /usr/include/mbedtls/aes.h
+          cmake -S .ci/mbedtls-host -B "$RUNNER_TEMP/mbedtls-host-build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_PROGRAMS=OFF -DENABLE_TESTING=OFF \
+            -DUSE_SHARED_MBEDTLS_LIBRARY=OFF
+          cmake --build "$RUNNER_TEMP/mbedtls-host-build" \
+            --target mbedcrypto --parallel 2
+          test -f .ci/mbedtls-host/include/mbedtls/aes.h
+          test -s "$RUNNER_TEMP/mbedtls-host-build/library/libmbedcrypto.a"
+          # GCC reads these in all subsequent GitHub Actions steps, allowing
+          # existing -lmbedcrypto commands to link the local static library.
+          printf 'CPATH=%s\n' "$GITHUB_WORKSPACE/.ci/mbedtls-host/include" >> "$GITHUB_ENV"
+          printf 'LIBRARY_PATH=%s\n' "$RUNNER_TEMP/mbedtls-host-build/library" >> "$GITHUB_ENV"
       - name: Test explicit-key native Lansen TH and SM Mode-5 AES (synthetic ciphertext)
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. \
