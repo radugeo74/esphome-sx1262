@@ -1,6 +1,6 @@
 # Native SX126x → legacy wmbusmeters bridge
 
-**Status:** integration under software test. **Not approved for RF deployment.**
+**Status (11 November 2026): T1/A hardware-validated on Heltec with 12/12 configured meters publishing; C1-B and sustained/negative tests remain unvalidated.** This is still an experimental bridge, not a claim of universal C1 or dynamic XMQ support.
 
 This branch starts from `native-espidf`. Instead of replacing `wmbus_common`,
 `wmbus_meter`, and all existing sensor definitions, the bridge feeds the
@@ -63,18 +63,18 @@ one SX126x, one wmbus_radio adapter, one configured mkradio4 meter and
 the original numeric/RSSI HA sensors. The CI workflow compiles both
 this integrated fixture and an isolated radio fixture.
 
-Before removing the old
+Before permanently removing the old
 `components/wmbus_radio/transceiver_sx1262.cpp/.h`, require:
 - ESPHome 2026.10.1 full **ESP-IDF firmware build** SUCCESS with the
   new bridge, plus regression YAML using the old schema.
 - Host/frame tests for valid and corrupt T1, C1-B, CRC, invalid symbols,
   unknown ID, wrong AES key, and power-loss/recovery.
 - Actual Heltec measurements of T1 and applicable C1 formats, RSSI,
-  receive stability and all six household meters.
+  receive stability and all configured household meters. **T1/A was observed for 12/12 configured meters on 11 November 2026; C1 and long-duration reception remain open.**
 - Confirm the original YAML or firmware can be restored.
 
-**Until these tests and the owner's RF validation pass, keep the legacy
-transceiver strictly for rollback.** Deleting it after a compile-only pass
+**Until the remaining tests and rollback gate pass, keep the legacy
+transceiver source strictly for rollback.** The native `sx126x_id` configuration does **not instantiate** this legacy SPI/IRQ receiver, even though its source remains in the repository. The `wmbusmeters` log prefix refers to the application decoder that remains intentionally active for real HCA/water readings, **not** to the old radio driver. Deleting it after a compile-only pass
 would be premature and could leave a working installation unrecoverable.
 
 For the separate goal of updating XMQ rules without firmware recompilation,
