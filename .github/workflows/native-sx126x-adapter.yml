@@ -142,8 +142,9 @@ jobs:
             --target mbedcrypto --parallel 2
           test -f .ci/mbedtls-host/include/mbedtls/aes.h
           test -s "$RUNNER_TEMP/mbedtls-host-build/library/libmbedcrypto.a"
-          nm -g "$RUNNER_TEMP/mbedtls-host-build/library/libmbedcrypto.a" |
-            grep -Eq ' T mbedtls_cipher_cmac
+          nm -g "$RUNNER_TEMP/mbedtls-host-build/library/libmbedcrypto.a" > "$RUNNER_TEMP/mbedcrypto-symbols.txt"
+          grep -Fq 'mbedtls_cipher_cmac' "$RUNNER_TEMP/mbedcrypto-symbols.txt"
+          # GCC reads these in all subsequent GitHub Actions steps, allowing
           # existing -lmbedcrypto commands to link the local static library.
           printf 'CPATH=%s\n' "$GITHUB_WORKSPACE/.ci/mbedtls-host/include" >> "$GITHUB_ENV"
           printf 'LIBRARY_PATH=%s\n' "$RUNNER_TEMP/mbedtls-host-build/library" >> "$GITHUB_ENV"
