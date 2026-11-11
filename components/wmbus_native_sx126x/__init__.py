@@ -234,7 +234,30 @@ async def to_code(config):
                         f"Conflicting native XMQ runtime header: {name}")
             else:
                 shutil.copyfile(source, target)
+        # ESPHome can clean the build/src tree AFTER Python codegen when
+        # framework or build configuration changes. Keep an identical copy
+        # of the generated allowlisted native XMQ headers outside that tree,
+        # and give the ESP-IDF compiler a stable absolute include path.
+        # Never copy arbitrary XMQ headers: only sources emitted above and
+        # the fixed reviewed portable runtime allowlist are permitted.
+        stable_dir = CORE.relative_internal_path("native-xmq-generated")
+        stable_dir.mkdir(parents=True, exist_ok=True)
+        expected = (
+            "xmq_auto_registry.h",
+            "xmq_generated.h",
+            "xmq_generated_clear_profiles.h",
+            "xmq_generated_standard_selectors.h",
+            "xmq_generated_pulse_fields.h",
+            "xmq_generated_full_profiles.h",
+            "xmq_generated_vario451.h",
+            "xmq_generated_supercal_lse08.h",
+            "xmq_native_descriptors.h",
+            "xmq_native_compiled.h",
+        ) + PORTABLE_RUNTIME_HEADERS
+        for name in expected:
+            shutil.copyfile(component_dir / name, stable_dir / name)
         cg.add_build_flag(f"-I{component_dir}")
+        cg.add_build_flag(f"-I{stable_dir}")
         cg.add_define("WMBUS_NATIVE_XMQ_ENABLED")
         if config[CONF_SECURE_METERS]:
             # ESPHome's lean ESP-IDF build can omit CCM and CMAC from
