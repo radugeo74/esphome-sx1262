@@ -1,5 +1,12 @@
 # Context curent — dual radio SX126x + SX127x
 
+## SX127x FIFO + auto-recovery (software, 12 noiembrie 2026)
+
+Pe backendul SX127x am înlocuit citirile individuale per octet cu SPI în rafale de 16 octeți atunci când bitul FSK `FifoLevel` confirmă pragul de 15. Coada finală de sub 16 octeți se citește numai cât timp DIO1/FifoEmpty indică date disponibile; `FifoOverrun` respinge cadrul. Recepția completă T1/C1-A/C1-B are termen-limită de 120ms, watchdog la 1s pentru întreruperi ratate, `RX timeout`/modem ieșit din RX și rearmare după 60s de inactivitate. Recuperarea resetează FIFO-ul și starea RX fără publicarea cadrelor parțiale.
+
+Acest calup privește **numai SX127x**; SX126x și decodoarele aplicației sunt nemodificate. Testele host verifică deciziile FIFO/watchdog; hardware RF T3-S3 este încă nevalidat.
+
+
 **Ramură:** `experimental/dual-radio-sx126x-sx127x`. SX126x nativ funcționează pe Heltec (T1/C1) cu filtrare ID DLL/TPL; SX127x T1 și C1-A/B sunt implementate experimental în cod și încă nevalidate pe RF. `wmbus_radio` folosește `sx126x_id` **sau** `sx127x_id`, niciodată ambele. Ambele folosesc `wmbus_meter` și `wmbus_common` existente.
 
 SX127x are componentă locală `components/sx127x` (derivată din ESPHome 2026.10.1), citire FIFO prin DIO1, lungime T1 determinată prin 3-of-6, task pentru captură, coadă pentru procesare în loop și verificarea finală a cadrului prin CRC comun. Fixture-urile `tests/sx127x-wmbus-lab.yaml` (T1) și `tests/sx127x-wmbus-c1-lab.yaml` (T1+C1/A+B) sunt **build-only**. În modul combinat sync hardware este numai `54`; al doilea octet (`3D` sau `CD`) rămâne în FIFO. T1 și C1/B cu `54 3D` sunt păstrate ca potențiali candidați până la verificarea strictă a CRC de către pipeline-ul comun. Nu instala pe hardware până când recepția T1 și C1 este validată.

@@ -109,7 +109,9 @@ class SX127x final : public Component,
   static void IRAM_ATTR wmbus_fifo_intr_(SX127x *arg);
   static void wmbus_task_entry_(void *ctx);
   void wmbus_task_();
-  bool wmbus_read_byte_(uint8_t *out);
+  enum class WmbusReadStatus : uint8_t { COMPLETE, TIMEOUT, OVERRUN };
+  WmbusReadStatus wmbus_read_fifo_(uint8_t *buffer, size_t length,
+                                   int64_t deadline_us);
   void wmbus_restart_rx_();
   void configure_fsk_ook_();
   void configure_lora_();

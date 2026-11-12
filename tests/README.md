@@ -17,6 +17,8 @@ When `native_stream_mode: T1_C1`, use `sync_value: [0x54]`: the first byte in th
 
 For either mode, keep `dio1_pin`, `wmbus_t1_mode: true`, `packet_mode: true`, `preamble_polarity: 0x55`, `crc_enable: false`, `payload_length: 0`, `bitrate: 100000`. **C1 encrypted payload still needs the meter AES key for application decoding; this PHY support does not bypass encryption.**
 
+**FIFO reliability and automatic recovery (software only):** SX127x uses a 16-byte SPI FIFO burst only after the FSK `FifoLevel` flag confirms at least 16 bytes; the final 1–15 bytes are read only while DIO1/`FifoEmpty` indicates data. `FifoOverrun` aborts the frame before any dispatch. A 120ms end-to-end frame deadline prevents waiting forever on truncated T1/C1 packets. A one-second watchdog notices missed DIO1 wakeups, hardware RX timeouts and unexpected modem state; on failure it clears the FIFO, resets RX and discards stale notifications. An idle RX re-arm runs after 60 seconds without activity. Partial/CRC-invalid data never reaches meter sensors. The host test `tests/test_sx127x_fifo_guard.cpp` covers the FIFO-level/overflow and RX-state decision logic, not RF timing.
+
 This is **not RF-validated**. The SX127x FIFO timing, sync acquisition, and restart behavior need a dedicated hardware test. Do not flash as a replacement for the working SX126x firmware until tests pass. The CI GPIOs are placeholders.
 
 
@@ -27,6 +29,7 @@ This is **not RF-validated**. The SX127x FIFO timing, sync acquisition, and rest
 - `tests/sx127x-wmbus-lab.yaml`: SX127x T1-only FSK FIFO streaming; synthetic meter ID.
 - `tests/sx127x-wmbus-c1-lab.yaml`: SX127x combined T1+C1-A/B, single-byte sync; synthetic meter ID.
 - `tests/test_sx127x_t1_length.cpp`: 3-of-6 and C1 length/collision candidates.
+- `tests/test_sx127x_fifo_guard.cpp`: FIFO bursts, short tails, overrun and RX watchdog decisions.
 - `tests/build_full_meter_fixture.py`: 12 synthetic meters and sensors for SX126x regressions.
 
 CI on this branch validates and compiles both backends independently. Passing CI proves only schema and build compatibility, not SX127x RF correctness. No AES keys or real meter IDs are embedded.

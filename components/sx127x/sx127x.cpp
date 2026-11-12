@@ -1,5 +1,6 @@
 #include "sx127x.h"
 #include "wmbus_t1_length.h"
+#include "wmbus_fifo_guard.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 #include "esp_timer.h"
@@ -201,7 +202,10 @@ void SX127x::configure_fsk_ook_() {
   // the 64-byte hardware FIFO fills. The radio does not generate CRC
   // acceptance: native wM-Bus PHY validation remains mandatory.
   if (this->wmbus_t1_mode_) {
-    this->write_register_(REG_FIFO_THRESH, TX_START_FIFO_EMPTY);
+    // FIFO_LEVEL after 16 bytes. Drain 16-byte bursts with one SPI
+    // transaction each; DIO1/FifoEmpty is used only for the last <16 bytes.
+    this->write_register_(REG_FIFO_THRESH,
+                          TX_START_FIFO_EMPTY | WmbusFifoGuard::FIFO_THRESHOLD);
     this->write_register_(REG_PACKET_CONFIG_1, FIXED_LENGTH | CRC_OFF);
     this->write_register_(REG_PAYLOAD_LENGTH_LSB, 0);
     this->write_register_(REG_PACKET_CONFIG_2, PACKET_MODE);
@@ -487,100 +491,185 @@ void SX127x::wmbus_task_entry_(void *ctx) {
   static_cast<SX127x *>(ctx)->wmbus_task_();
 }
 
-bool SX127x::wmbus_read_byte_(uint8_t *out) {
-  // 100 kbit/s => roughly 80 us per byte. Never read the FIFO while
-  // FifoEmpty is asserted; the chip would return stale/undefined bytes.
-  const int64_t started = esp_timer_get_time();
-  while (this->dio1_pin_->digital_read()) {
-    if (esp_timer_get_time() - started >= 1500)
-      return false;
-    taskYIELD();
+SX127x::WmbusReadStatus SX127x::wmbus_read_fifo_(
+    uint8_t *buffer, size_t length, int64_t deadline_us) {
+  if (length == 0)
+    return WmbusReadStatus::COMPLETE;
+  if (buffer == nullptr)
+    return WmbusReadStatus::TIMEOUT;
+
+  size_t received = 0;
+  while (received < length) {
+    if (esp_timer_get_time() >= deadline_us)
+      return WmbusReadStatus::TIMEOUT;
+    const uint8_t flags = this->read_register_(WmbusFifoGuard::IRQ2_REGISTER);
+    const auto action = wmbus_fifo_next_action(flags, length - received);
+    if (action == WmbusFifoAction::OVERRUN)
+      return WmbusReadStatus::OVERRUN;
+    if (action == WmbusFifoAction::WAIT) {
+      // 1ms at 100kbps collects at most ~13 bytes; the burst path drains
+      // 16 bytes once FifoLevel is asserted, leaving ample FIFO headroom.
+      vTaskDelay(1);
+      continue;
+    }
+
+    // Keep CS asserted for one FIFO transaction. Never read 16 bytes
+    // speculatively: FifoLevel confirms they are already buffered.
+    const size_t want = action == WmbusFifoAction::BURST
+                            ? WmbusFifoGuard::FIFO_BURST
+                            : length - received;
+    size_t got = 0;
+    this->enable();
+    this->write_byte(REG_FIFO & 0x7F);
+    while (got < want) {
+      // Tails are shorter than the programmed threshold. Stop exactly
+      // when DIO1/FifoEmpty says there is no byte to read.
+      if (action == WmbusFifoAction::TAIL && this->dio1_pin_->digital_read())
+        break;
+      buffer[received + got] = this->transfer_byte(0x00);
+      ++got;
+    }
+    this->disable();
+    received += got;
+    if (got == 0)
+      vTaskDelay(1);
   }
-  *out = this->read_register_(REG_FIFO);
-  return true;
+
+  // The FIFO may overrun during the final burst; never submit such data.
+  return (this->read_register_(WmbusFifoGuard::IRQ2_REGISTER) &
+          WmbusFifoGuard::FIFO_OVERRUN)
+             ? WmbusReadStatus::OVERRUN : WmbusReadStatus::COMPLETE;
 }
 
 void SX127x::wmbus_restart_rx_() {
-  // Re-arm hardware synchronization between distinct telegrams.
+  if (this->is_failed())
+    return;
+  // Switching to Standby, clearing FIFO/overrun, then entering RX
+  // re-arms the sync detector even after a truncated/overflowed frame.
   this->set_mode_standby();
-  this->write_register_(0x3F, 0x10);  // FSK IrqFlags2: FIFO overrun clear
+  if (this->is_failed())
+    return;
+  this->write_register_(WmbusFifoGuard::IRQ2_REGISTER,
+                        WmbusFifoGuard::FIFO_OVERRUN);
   this->set_mode_rx();
+  if (this->is_failed())
+    return;
+
+  // Clear stale DIO1 notifications from the prior frame. If a fresh
+  // byte has already arrived, schedule a new read instead of losing it.
+  ulTaskNotifyTake(pdTRUE, 0);
+  if (this->wmbus_task_handle_ != nullptr &&
+      !(this->read_register_(WmbusFifoGuard::IRQ2_REGISTER) &
+        WmbusFifoGuard::FIFO_EMPTY))
+    xTaskNotifyGive(this->wmbus_task_handle_);
 }
 
 void SX127x::wmbus_task_() {
+  uint32_t last_activity_ms = millis();
   while (true) {
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    const uint32_t notified = ulTaskNotifyTake(
+        pdTRUE, pdMS_TO_TICKS(WmbusFifoGuard::RX_WATCHDOG_INTERVAL_MS));
     if (this->is_failed())
       continue;
 
-    // In T1-only mode hardware consumes 54 3D. In combined mode it
-    // consumes only 54, so the first FIFO byte distinguishes CD vs 3D.
-    uint8_t marker = 0x3D;
-    bool complete = true;
-    if (this->wmbus_c1_mode_ && !this->wmbus_read_byte_(&marker))
-      complete = false;
-
-    std::array<uint8_t, WMBUS_MAX_RAW_SIZE> body{};
-    if (complete && marker != 0x3D && marker != 0xCD)
-      complete = false;
-
-    if (complete) {
-      for (size_t i = 0; i < 3; i++) {
-        if (!this->wmbus_read_byte_(&body[i])) {
-          complete = false;
-          break;
-        }
-      }
+    // Time-bounded wait also watches for a missed DIO1 falling edge,
+    // a modem no longer in RX, a hardware timeout or FIFO overrun.
+    const uint8_t flags2 = this->read_register_(WmbusFifoGuard::IRQ2_REGISTER);
+    const uint8_t flags1 = this->read_register_(WmbusFifoGuard::IRQ1_REGISTER);
+    const uint8_t mode = this->read_register_(REG_OP_MODE);
+    const auto health = wmbus_rx_health(mode, flags1, flags2);
+    if (health != WmbusRxHealth::OK) {
+      const char *reason = health == WmbusRxHealth::FIFO_OVERRUN ? "FIFO overrun" :
+                           health == WmbusRxHealth::RX_TIMEOUT ? "modem timeout" :
+                           "unexpected RX mode";
+      ESP_LOGW(TAG, "SX127x wM-Bus recovery: %s; re-arming receiver", reason);
+      this->wmbus_restart_rx_();
+      last_activity_ms = millis();
+      continue;
     }
+    if (!notified && (flags2 & WmbusFifoGuard::FIFO_EMPTY)) {
+      // A prolonged quiet period may be a stuck RX/sync state. Re-arm
+      // occasionally without interpreting silence as a received frame.
+      if (millis() - last_activity_ms >= WmbusFifoGuard::IDLE_REARM_MS) {
+        ESP_LOGD(TAG, "SX127x wM-Bus idle watchdog re-arm");
+        this->wmbus_restart_rx_();
+        last_activity_ms = millis();
+      }
+      continue;
+    }
+    if (flags2 & WmbusFifoGuard::FIFO_EMPTY)
+      continue;  // stale notification; do not read an empty FIFO
+    last_activity_ms = millis();
 
-    if (complete) {
+    // At 100kbps a full 384-byte stream takes <31ms on-air. Every
+    // marker/prefix/body read shares one finite frame deadline.
+    const int64_t deadline_us = esp_timer_get_time() +
+                                WmbusFifoGuard::FRAME_DEADLINE_US;
+    WmbusReadStatus status = WmbusReadStatus::COMPLETE;
+    uint8_t marker = 0x3D;
+    if (this->wmbus_c1_mode_)
+      status = this->wmbus_read_fifo_(&marker, 1, deadline_us);
+    std::array<uint8_t, WMBUS_MAX_RAW_SIZE> body{};
+    if (status == WmbusReadStatus::COMPLETE && marker != 0x3D && marker != 0xCD) {
+      this->wmbus_restart_rx_();
+      continue;
+    }
+    if (status == WmbusReadStatus::COMPLETE)
+      status = this->wmbus_read_fifo_(body.data(), 3, deadline_us);
+
+    if (status == WmbusReadStatus::COMPLETE) {
       const auto candidates = wmbus_raw_candidates(
           marker, this->wmbus_c1_mode_, body.data(), 3,
           WMBUS_MAX_RAW_SIZE);
       const size_t target = std::max(candidates.t1, candidates.c1);
       if (target != 0) {
-        // SX127x FSK RegRssiValue is in -0.5 dBm units.
-        // Record it while the signal is being received.
+        // Capture live signal RSSI, not the noise floor after restart.
         const int16_t rssi = -static_cast<int16_t>(this->read_register_(0x11));
-        for (size_t received = 3; received <= target; received++) {
-          // If both interpretations have plausible lengths, queue each
-          // completed candidate independently. The shared parser validates
-          // the correct PHY length and full DLL CRC before dispatch.
-          const bool t1_ready = received == candidates.t1;
-          const bool c1_ready = received == candidates.c1;
-          if (t1_ready || c1_ready) {
-            for (unsigned choice = 0; choice < 2; choice++) {
-              if ((choice == 0 && !t1_ready) || (choice == 1 && !c1_ready))
-                continue;
-              const bool c1 = choice == 1;
-              const size_t total = received + (c1 ? 2 : 0);
-              if (total > WMBUS_MAX_RAW_SIZE)
-                continue;
-              WmbusRxPacket frame;
-              frame.size = static_cast<uint16_t>(total);
-              frame.rssi_half_dbm = rssi;
-              if (c1) {
-                frame.bytes[0] = 0x54;
-                frame.bytes[1] = marker;
-              }
-              std::copy_n(body.begin(), received,
-                          frame.bytes.begin() + (c1 ? 2 : 0));
-              if (this->wmbus_rx_queue_ != nullptr &&
-                  xQueueSend(this->wmbus_rx_queue_, &frame, 0) != pdTRUE)
-                ESP_LOGW(TAG, "SX127x wM-Bus queue full; candidate discarded");
+        size_t received = 3;
+        while (received < target) {
+          // Read exactly to the next plausible T1 or C1 frame boundary.
+          // Both lengths may be candidates for the same 54 3D sync.
+          size_t boundary = target;
+          if (candidates.t1 > received)
+            boundary = std::min(boundary, candidates.t1);
+          if (candidates.c1 > received)
+            boundary = std::min(boundary, candidates.c1);
+          status = this->wmbus_read_fifo_(body.data() + received,
+                                          boundary - received, deadline_us);
+          if (status != WmbusReadStatus::COMPLETE)
+            break;
+          received = boundary;
+          for (unsigned choice = 0; choice < 2; choice++) {
+            const bool c1 = choice == 1;
+            if (received != (c1 ? candidates.c1 : candidates.t1))
+              continue;
+            const size_t total = received + (c1 ? 2 : 0);
+            if (total > WMBUS_MAX_RAW_SIZE)
+              continue;
+            WmbusRxPacket frame;
+            frame.size = static_cast<uint16_t>(total);
+            frame.rssi_half_dbm = rssi;
+            if (c1) {
+              frame.bytes[0] = 0x54;
+              frame.bytes[1] = marker;
             }
-          }
-          if (received == target)
-            break;
-          if (!this->wmbus_read_byte_(&body[received])) {
-            // A shorter valid candidate may already be queued. A truncated
-            // longer candidate is never published.
-            break;
+            std::copy_n(body.begin(), received,
+                        frame.bytes.begin() + (c1 ? 2 : 0));
+            // Only the existing wmbus_radio CRC/length checks can dispatch
+            // these candidates to configured meter subscriptions.
+            if (this->wmbus_rx_queue_ != nullptr &&
+                xQueueSend(this->wmbus_rx_queue_, &frame, 0) != pdTRUE)
+              ESP_LOGW(TAG, "SX127x wM-Bus queue full; candidate discarded");
           }
         }
       }
     }
+    if (status != WmbusReadStatus::COMPLETE) {
+      ESP_LOGW(TAG, "SX127x wM-Bus %s before frame completion; restarting RX",
+               status == WmbusReadStatus::OVERRUN ? "FIFO overrun" : "frame timeout");
+    }
     this->wmbus_restart_rx_();
+    last_activity_ms = millis();
   }
 }
 
