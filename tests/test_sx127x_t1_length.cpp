@@ -38,5 +38,35 @@ int main() {
   assert(esphome::sx127x::t1_expected_raw_bytes(invalid.data(),3,384) == 0);
   const auto too_long = t1_encode_prefix(0xFF,0x44);
   assert(esphome::sx127x::t1_expected_raw_bytes(too_long.data(),3,384) == 0);
-  std::puts("PASS SX127x T1 length and 3-of-6 prefix checks");
+  // C1/A carries CRC bytes after the L-length, C1/B counts CRC in L.
+  assert(esphome::sx127x::c1_expected_raw_bytes(0x36, false, 382) == 63);
+  assert(esphome::sx127x::c1_expected_raw_bytes(0x36, true, 382) == 55);
+  assert(esphome::sx127x::c1_expected_raw_bytes(0x2E, false, 382) == 55);
+  assert(esphome::sx127x::c1_expected_raw_bytes(0x2E, true, 382) == 47);
+  assert(esphome::sx127x::c1_expected_raw_bytes(9, false, 382) == 0);
+  assert(esphome::sx127x::c1_expected_raw_bytes(0x36, false, 62) == 0);
+  assert(esphome::sx127x::c1_expected_raw_bytes(0x36, true, 54) == 0);
+
+  // The same 54 3D can introduce T1 3-of-6 or a C1/B clear payload.
+  const auto t1_only = esphome::sx127x::wmbus_raw_candidates(
+      0x3D, false, a.data(), a.size(), 384);
+  assert(t1_only.t1 == 84 && t1_only.c1 == 0);
+  const auto ambiguous = esphome::sx127x::wmbus_raw_candidates(
+      0x3D, true, a.data(), a.size(), 384);
+  assert(ambiguous.t1 == 84 && ambiguous.c1 != 0);
+  const std::array<uint8_t, 3> c1_prefix{{0x36, 0x44, 0x68}};
+  const auto cb = esphome::sx127x::wmbus_raw_candidates(
+      0x3D, true, c1_prefix.data(), 3, 384);
+  assert(cb.c1 == 55);
+  const auto ca = esphome::sx127x::wmbus_raw_candidates(
+      0xCD, true, c1_prefix.data(), 3, 384);
+  assert(ca.c1 == 63 && ca.t1 == 0);
+  const auto no_c1 = esphome::sx127x::wmbus_raw_candidates(
+      0xCD, false, c1_prefix.data(), 3, 384);
+  assert(no_c1.c1 == 0 && no_c1.t1 == 0);
+  const auto unsupported = esphome::sx127x::wmbus_raw_candidates(
+      0x12, true, c1_prefix.data(), 3, 384);
+  assert(unsupported.c1 == 0 && unsupported.t1 == 0);
+
+  std::puts("PASS SX127x T1/C1-A/C1-B frame sizes and ambiguous 54 3D");
 }
