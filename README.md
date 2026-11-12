@@ -69,3 +69,10 @@ entități și senzori Home Assistant
 ## Restricții
 
 Fără chei AES, ID-uri private sau configurări personale în Git. Nu se ignoră CRC, TPL, criptarea sau filtrele de ID. Nu se acceptă operatori XMQ necunoscuți în mod implicit și nu se publică valori nedovedite. **Nu se face flash automat pe Heltec**. Separăm explicit „importat”, „testat software”, „validat hardware” și „implementat dinamic”.
+
+
+## Combined T1/C1 receiver status (12 November 2026)
+
+The working default remains `native_stream_mode: T1`. The opt-in `native_stream_mode: T1_C1` adds experimental C1 Format A (`54 CD`) and C1 Format B (`54 3D`) parsing, exact physical length checks, complete DLL CRC checking and a corrected bounded second CRC in the existing `wmbus_common` Format-B routine. The previous experimental name `T1_C1_B` is still accepted as an alias for the same combined mode. PHY length remains limited to 255 bytes including the C1 mode prefix.
+
+**Status:** implemented in code, pending CI and real C1 RF validation. The known-good Heltec T1/A configuration does not need to change. Do not mistake CRC unit tests or an ESPHome compile for confirmation of simultaneous T1/C1 reception.
