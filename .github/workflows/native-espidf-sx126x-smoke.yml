@@ -63,6 +63,8 @@ jobs:
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I"$RUNNER_TEMP/sx127x_rf_stubs" -I. \
             tests/test_sx127x_rf_profile.cpp -o "$RUNNER_TEMP/sx127x-rf-profile"
           "$RUNNER_TEMP/sx127x-rf-profile"
+      - name: Guard SX127x FSK register snapshot against runtime SPI access
+        run: python tests/test_sx127x_snapshot_contract.py
       - name: Install pinned ESPHome for native ESP-IDF smoke
         run: |
           python -m pip install --disable-pip-version-check "esphome==2026.10.1"

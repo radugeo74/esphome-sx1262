@@ -1,5 +1,10 @@
 # Context curent — dual radio SX126x + SX127x
 
+## Snapshot FSK la reconectare API ESPHome (12 noiembrie 2026)
+
+Rezultatele testului LILYGO după AFC 333 kHz au venit prin loguri ESPHome API pornite după boot, deci lipseau mesajele de citire directă hardware. `configure_fsk_ook_()` stochează acum cele 7 valori ale registrelor SX1276 și rezultatul verificării `matches_expected`, numai în etapa de inițializare. `dump_config()` le afișează la conectarea ulterioară a clientului log ESPHome, fără SPI (critică pentru FIFO streaming 100 kb/s). Test contract `tests/test_sx127x_snapshot_contract.py` și build CI ambele backenduri. Nicio schimbare în SX126x sau funcția radio în timp real. Snapshotul este de la boot, nu citire în timp real.
+
+
 ## AFC + registru read-back SX1276 (12 noiembrie 2026)
 
 Comparație simultană Heltec SX1262 vs LILYGO T3-S3 SX1276: în fereastra comună de ~138 s, Heltec a validat 66 T1 și 28 C1/A, LILYGO doar 21 T1 și 0 C1/A. Cauza nu este demonstrată. Am comparat `SzczepanLeon/esphome-components` și am preluat exclusiv reglajul AFC util: în configurația SX127x **native wM-Bus FSK** se scrie `RegAfcBw 0x13=0x10` (333,3 kHz), în loc de reset `0x0B` (50 kHz). `RegAfcFei=0x01` (AfcAutoClearOn, bit 0) rămâne corect; nu copiem eroarea din upstream `0x10` (AgcStart). La configurare se citesc din hardware `RegRxBw`, `RegAfcBw`, `RegRxConfig`, `RegAfcFei`, `RegPreambleDetect`, `RegSyncConfig`, `RegRssiThresh`, logate înainte de pornirea taskului FIFO; divergențele sunt avertizate.

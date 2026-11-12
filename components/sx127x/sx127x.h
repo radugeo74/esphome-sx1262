@@ -150,6 +150,21 @@ class SX127x final : public Component,
   bool wmbus_c1_mode_{false};
   bool wmbus_phy_diagnostics_{false};
   uint32_t wmbus_last_log_ms_{0};
+
+  // Boot-only hardware snapshot, safe to report on late ESPHome API reconnect.
+  // Never touch the radio SPI bus from dump_config() during active FIFO RX.
+  struct WmbusFskRegisters {
+    uint8_t rx_bw{0};
+    uint8_t afc_bw{0};
+    uint8_t rx_config{0};
+    uint8_t afc_fei{0};
+    uint8_t preamble_detect{0};
+    uint8_t sync_config{0};
+    uint8_t rssi_thresh{0};
+    bool captured{false};
+    bool matches_expected{false};
+  } wmbus_fsk_registers_{};
+
   // Atomic since the FIFO task and ESPHome main loop run independently.
   // No meter addresses, payloads or keys are stored in these statistics.
   struct WmbusPhyCounters {

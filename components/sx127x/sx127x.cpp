@@ -298,13 +298,20 @@ void SX127x::configure_fsk_ook_() {
         : static_cast<uint8_t>(AUTO_RESTART_PLL_LOCK |
                                (this->preamble_polarity_ == 0xAA ? PREAMBLE_AA : PREAMBLE_55) |
                                SYNC_ON | (this->sync_value_.size() - 1));
-    if (rx_bw != BW_FSK_OOK[this->bandwidth_] ||
-        afc_bw != AFC_BW_333_3 ||
-        rx_config != expected_rx_config ||
-        (afc_fei & AFC_AUTO_CLEAR_ON) == 0 ||
-        preamble != expected_preamble || sync_config != expected_sync ||
-        rssi_thresh != static_cast<uint8_t>(std::abs(int(this->rx_floor_ * 2.0f)))) {
-      // Report but do not silently modify modem settings or disturb SX126x.
+    const bool matches_expected = rx_bw == BW_FSK_OOK[this->bandwidth_] &&
+                                  afc_bw == AFC_BW_333_3 &&
+                                  rx_config == expected_rx_config &&
+                                  (afc_fei & AFC_AUTO_CLEAR_ON) != 0 &&
+                                  preamble == expected_preamble &&
+                                  sync_config == expected_sync &&
+                                  rssi_thresh == static_cast<uint8_t>(
+                                      std::abs(int(this->rx_floor_ * 2.0f)));
+    // Store only registers already read while configuring FSK. Once RX starts,
+    // subsequent dump_config() calls must not access SPI.
+    this->wmbus_fsk_registers_ = {rx_bw, afc_bw, rx_config, afc_fei,
+                                  preamble, sync_config, rssi_thresh,
+                                  true, matches_expected};
+    if (!matches_expected) {
       ESP_LOGW(TAG, "SX127x FSK readback differs from YAML/expected AFC profile");
     }
   }
@@ -889,6 +896,25 @@ void SX127x::dump_config() {
                     "  Preamble Detect: %" PRIu8 "\n"
                     "  Preamble Errors: %" PRIu8,
                     this->preamble_polarity_, this->preamble_size_, this->preamble_detect_, this->preamble_errors_);
+    }
+  }
+  if (this->wmbus_t1_mode_) {
+    // Only cached boot values. dump_config() can run after Wi-Fi/API connects,
+    // while another task is actively draining the 100-kb/s radio FIFO.
+    const auto &regs = this->wmbus_fsk_registers_;
+    if (regs.captured) {
+      ESP_LOGCONFIG(TAG, "  SX127x FSK register snapshot (captured at setup):");
+      ESP_LOGCONFIG(TAG,
+                    "    RegRxBw[12]=0x%02X RegAfcBw[13]=0x%02X RegRxConfig[0D]=0x%02X RegAfcFei[1A]=0x%02X",
+                    static_cast<unsigned>(regs.rx_bw), static_cast<unsigned>(regs.afc_bw),
+                    static_cast<unsigned>(regs.rx_config), static_cast<unsigned>(regs.afc_fei));
+      ESP_LOGCONFIG(TAG,
+                    "    RegPreambleDetect[1F]=0x%02X RegSyncConfig[27]=0x%02X RegRssiThresh[10]=0x%02X",
+                    static_cast<unsigned>(regs.preamble_detect), static_cast<unsigned>(regs.sync_config),
+                    static_cast<unsigned>(regs.rssi_thresh));
+      ESP_LOGCONFIG(TAG, "    FSK profile matches expected: %s", TRUEFALSE(regs.matches_expected));
+    } else {
+      ESP_LOGW(TAG, "  SX127x FSK register snapshot unavailable (configuration incomplete)");
     }
   }
   if (this->is_failed()) {
