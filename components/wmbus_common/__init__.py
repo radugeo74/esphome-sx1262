@@ -36,7 +36,10 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(): cv.declare_id(WMBusCommon),
         cv.Optional(CONF_DRIVERS, default=set()): cv.All(
             lambda x: AVAILABLE_DRIVERS if x == "all" else x,
-            {validate_driver},
+            # YAML sequences are lists; retain support for legacy sets.
+            lambda x: list(x) if isinstance(x, (set, tuple)) else x,
+            cv.ensure_list(validate_driver),
+            lambda drivers: set(drivers),
         ),
     }
 )
