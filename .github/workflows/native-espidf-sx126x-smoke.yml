@@ -5,6 +5,9 @@ on:
       - experimental/xmq-runtime-engine
       - experimental/dual-radio-sx126x-sx127x
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   native-radio-schema:
     runs-on: ubuntu-24.04
@@ -18,7 +21,7 @@ jobs:
           python-version: '3.12'
       - name: Check patch presence and Python syntax
         run: |
-          python -m compileall -q components/sx126x
+          python -m compileall -q components/sx126x components/sx127x components/wmbus_radio
           python - <<'PY'
           from pathlib import Path
           root = Path("components/sx126x")
@@ -56,6 +59,19 @@ jobs:
         run: esphome config tests/sx126x-wmbus-bridge.yaml
       - name: Validate SX127x selectable backend (experimental build-only)
         run: esphome config tests/sx127x-wmbus-lab.yaml
+      - name: Reject SX127x C1 and missing DIO1 (negative schema)
+        run: |
+          sed 's/native_stream_mode: T1/native_stream_mode: T1_C1/' tests/sx127x-wmbus-lab.yaml > tests/sx127x-invalid-mode-ci.yaml
+          if esphome config tests/sx127x-invalid-mode-ci.yaml; then
+            echo "FAIL: SX127x C1 was incorrectly accepted"
+            exit 1
+          fi
+          sed '/dio1_pin:/d' tests/sx127x-wmbus-lab.yaml > tests/sx127x-missing-dio1-ci.yaml
+          if esphome config tests/sx127x-missing-dio1-ci.yaml; then
+            echo "FAIL: SX127x streaming without DIO1 was incorrectly accepted"
+            exit 1
+          fi
+          echo "PASS: SX127x rejects unsupported modes and missing FIFO interrupt"
       - name: Compile SX127x experimental backend (build-only)
         run: esphome compile tests/sx127x-wmbus-lab.yaml
       - name: Reject removed legacy SX1262 radio schema
