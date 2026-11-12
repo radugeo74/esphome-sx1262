@@ -1,3 +1,23 @@
+# ESPHome wM-Bus — două radiouri: SX126x + SX127x
+
+**Ramură activă:** `experimental/dual-radio-sx126x-sx127x`, derivată din `experimental/xmq-runtime-engine` (12 noiembrie 2026).
+
+Acest branch are două variante hardware selectabile prin `wmbus_radio`. YAML include **exact una** dintre proprietățile `sx126x_id` sau `sx127x_id`; decodoarele `wmbus_common` și senzorii `wmbus_meter` rămân comune.
+
+- **SX126x:** `components/sx126x` — receptor T1/C1 existent, verificat pe Heltec; nu se modifică pentru experimentele SX127x.
+- **SX127x:** `components/sx127x` — extensie a componentei ESPHome 2026.10.1 pentru T1 FSK cu citire DIO1/FifoEmpty din FIFO în task dedicat, nu prin callbackul de pachete de maximum 64 octeți. **Build-only, fără validare RF.** C1 încă nu este implementat; schema refuză modul T1_C1 pentru SX127x.
+- **Partajat:** `components/wmbus_radio` validează simbolurile 3-of-6, lungimea cadrului, CRC și ID DLL/TPL înainte de a publica valori; telegramele străine păstrează mesajele de diagnostic și linkurile de analiză.
+
+**Teste:** `tests/sx126x-wmbus-bridge.yaml`, `tests/sx127x-wmbus-lab.yaml`, `tests/test_sx127x_t1_length.cpp`. Workflow: `.github/workflows/native-espidf-sx126x-smoke.yml`. GPIO-urile testului SX127x sunt doar exemple și nu autorizează flash.
+
+Pentru RX SX127x, folosește `external_components` incluzând override-ul local `sx127x`; selectează `wmbus_radio.sx127x_id` și configurează `dio1_pin`, `wmbus_t1_mode: true`, `packet_mode: true`, `sync_value: [0x54, 0x3D]`, `preamble_polarity: 0x55`, `bitrate: 100000`, `payload_length: 0`. Pentru detalii vezi [tests/README.md](tests/README.md).
+
+**Important:** versiunile mai vechi din această documentație descriu istoric ramura SX126x/XMQ, nu starea completă a ramurii dual-radio de acum.
+
+---
+
+## Context istoric moștenit din ramura XMQ
+
 # ESPHome wM-Bus — XMQ runtime pe baza native-espidf
 
 > **Native-only radio (11 November 2026):** `wmbus_radio` requires `sx126x_id` and uses patched SX126x exclusively. Legacy `transceiver_sx1262.*`/`transceiver.*` and the legacy YAML radio schema were removed from this branch. `wmbus_common`/`wmbus_meter` still decode and publish meter readings. The native T1/A bridge was previously hardware-validated with 12/12 configured meters; **this source cleanup itself still requires a fresh CI build and hardware regression test**. Dynamic XMQ reload is not implemented.
