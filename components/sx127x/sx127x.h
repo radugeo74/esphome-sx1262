@@ -110,7 +110,6 @@ class SX127x final : public Component,
   void wmbus_task_();
   bool wmbus_read_byte_(uint8_t *out);
   void wmbus_restart_rx_();
-  static int wmbus_decode_nibble_(uint8_t code);
   void configure_fsk_ook_();
   void configure_lora_();
   void set_mode_(uint8_t modulation, uint8_t mode);
