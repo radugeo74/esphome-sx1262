@@ -21,6 +21,7 @@ MULTI_CONF = True
 
 CONF_SX126X_ID = "sx126x_id"
 CONF_NATIVE_STREAM_MODE = "native_stream_mode"
+CONF_NATIVE_PHY_DIAGNOSTICS = "native_phy_diagnostics"
 CONF_ON_FRAME = "on_frame"
 CONF_MARK_AS_HANDLED = "mark_as_handled"
 
@@ -47,6 +48,7 @@ NATIVE_SCHEMA = (
         {
             **COMMON_SCHEMA,
             cv.Required(CONF_SX126X_ID): cv.use_id(sx126x.SX126x),
+            cv.Optional(CONF_NATIVE_PHY_DIAGNOSTICS, default=False): cv.boolean,
             cv.Optional(CONF_NATIVE_STREAM_MODE, default="T1"): cv.one_of(
                 "T1", "T1_C1", "T1_C1_B", upper=True
             ),
@@ -67,6 +69,7 @@ async def to_code(config):
     cg.add(var.set_native_t1_c1_b(
         config[CONF_NATIVE_STREAM_MODE] != "T1"
     ))
+    cg.add(var.set_native_phy_diagnostics(config[CONF_NATIVE_PHY_DIAGNOSTICS]))
     await cg.register_component(var, config)
 
     for conf in config.get(CONF_ON_FRAME, []):
