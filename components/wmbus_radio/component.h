@@ -10,6 +10,7 @@
 #include "esphome/core/component.h"
 
 #include "esphome/components/wmbus_common/wmbus.h"
+#include "esphome/components/wmbus_common/address.h"
 
 #include "packet.h"
 
@@ -29,6 +30,9 @@ public:
   void loop() override;
 
   void add_frame_handler(std::function<void(Frame *)> &&callback);
+  // Meter callbacks are routed only when DLL/TPL addresses match.
+  void add_meter_frame_handler(std::vector<AddressExpression> addresses,
+                               std::function<void(Frame *)> &&callback);
 
 protected:
   void dispatch_frame_(Frame &frame);
@@ -51,6 +55,11 @@ protected:
   size_t native_phy_size_{0};
   bool native_phy_active_{false};
 
+  struct MeterFrameHandler {
+    std::vector<AddressExpression> addresses;
+    std::function<void(Frame *)> callback;
+  };
+  std::vector<MeterFrameHandler> meter_handlers_;
   std::vector<std::function<void(Frame *)>> handlers_;
 };
 } // namespace wmbus_radio
