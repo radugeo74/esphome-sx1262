@@ -48,7 +48,7 @@ NATIVE_SCHEMA = (
             **COMMON_SCHEMA,
             cv.Required(CONF_SX126X_ID): cv.use_id(sx126x.SX126x),
             cv.Optional(CONF_NATIVE_STREAM_MODE, default="T1"): cv.one_of(
-                "T1", "T1_C1_B", upper=True
+                "T1", "T1_C1", "T1_C1_B", upper=True
             ),
         }
     )
@@ -65,7 +65,7 @@ async def to_code(config):
     radio = await cg.get_variable(config[CONF_SX126X_ID])
     cg.add(var.set_native_sx126x(radio))
     cg.add(var.set_native_t1_c1_b(
-        config[CONF_NATIVE_STREAM_MODE] == "T1_C1_B"
+        config[CONF_NATIVE_STREAM_MODE] != "T1"
     ))
     await cg.register_component(var, config)
 
