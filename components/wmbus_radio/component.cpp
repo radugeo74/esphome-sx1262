@@ -123,24 +123,25 @@ void Radio::decode_native_stream_(float rssi) {
   const LinkMode mode = c1 ? LinkMode::C1 : LinkMode::T1;
   std::vector<uint8_t> telegram;
   if (c1) {
-    // Combined T1/C1 PHY currently supports format B. Format A would
-    // require independently verified on-air RX semantics and a mode gate.
-    if (this->native_phy_[1] != 0x3D) return;
-    format = "B";
+    // C1 mode marker: 54 CD = Format A; 54 3D = Format B.
+    // Validate complete on-air length before removing any CRC bytes.
+    const bool format_b = this->native_phy_[1] == 0x3D;
+    format = format_b ? "B" : "A";
     telegram.assign(this->native_phy_.begin() + 2,
                     this->native_phy_.begin() + n);
-    // The legacy Format-B CRC helper is not memory-safe for two-block
-    // frames >128 bytes (it uses an absolute offset as a CRC length).
-    // Until a fully tested two-block implementation is available,
-    // reject those frames rather than read past the input buffer.
-    if (telegram.size() > 128) {
-      ESP_LOGD(TAG, "C1-B two-block frame unsupported; discarded");
+    if (telegram.empty()) return;
+    const size_t l = telegram.front();
+    if (l < 10) return;
+    // Format A L excludes CRC blocks; Format B L includes them.
+    const size_t blocks = 1 + (l - 9 + 15) / 16;
+    const size_t expected = format_b ? l + 1 : l + 1 + 2 * blocks;
+    if (telegram.size() != expected) {
+      ESP_LOGD(TAG, "C1 format %s DLL length rejected", format);
       return;
     }
-    if (telegram.empty() || telegram[0] < 10 ||
-        static_cast<size_t>(telegram[0]) + 1 != telegram.size() ||
-        !trimCRCsFrameFormatB(telegram)) {
-      ESP_LOGD(TAG, "C1 format B DLL CRC/length rejected");
+    if (!(format_b ? trimCRCsFrameFormatB(telegram)
+                   : trimCRCsFrameFormatA(telegram))) {
+      ESP_LOGD(TAG, "C1 format %s DLL CRC rejected", format);
       return;
     }
   } else {
