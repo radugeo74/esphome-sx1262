@@ -578,21 +578,22 @@ void SX126x::t1_stream_loop_() {
         return;
       }
       this->t1_stream_target_ = target;
-      // In common-sync mode, a delayed poll can observe a FIFO write
-      // pointer already past the complete C1 frame (e.g. 213 for 65).
-      // The first bytes can be genuine, but the RX stream is no longer
-      // bounded by the expected frame. Fail closed, never publish.
+      // With delayed loop polling, RX_ADDR_PTR can advance beyond the
+      // calculated C1 frame length before the first L field is examined.
+      // This is NOT proof that the first 'target' bytes were overwritten:
+      // they still fit within the SX126x FIFO until pointer wrap. Read only
+      // that bounded prefix and let the adapter's full DLL CRC verification
+      // decide whether the candidate can be dispatched. An invalid CRC must
+      // never be published. Do not attempt recovery across FIFO wrap.
       if (combined_c1 && write_ptr > target) {
         ++c1_late;
         if (c1_late <= 20 || c1_late % 100 == 0) {
-          ESP_LOGW(TAG, "COMBINED C1 late FIFO L=%u target=%u ptr=%u age_ms=%u count=%u; discarded",
+          ESP_LOGW(TAG, "COMBINED C1 FIFO ahead L=%u target=%u ptr=%u age_ms=%u count=%u; bounded CRC candidate",
                    static_cast<unsigned>(l), static_cast<unsigned>(target),
                    static_cast<unsigned>(write_ptr),
                    static_cast<unsigned>(millis() - this->t1_stream_started_),
                    static_cast<unsigned>(c1_late));
         }
-        this->t1_stream_reset_();
-        return;
       }
     } else {
     const int8_t hi = inverse[(first >> 10) & 0x3F];
