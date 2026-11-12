@@ -150,8 +150,11 @@ def validate_config(config: ConfigType) -> ConfigType:
             raise cv.Invalid("wmbus_t1_mode requires packet_mode: true")
         if CONF_DIO1_PIN not in config:
             raise cv.Invalid("wmbus_t1_mode requires dio1_pin (FIFO empty IRQ)")
-        if config[CONF_SYNC_VALUE] != [0x54, 0x3D]:
-            raise cv.Invalid("wmbus_t1_mode requires sync_value: [0x54, 0x3D]")
+        if config[CONF_SYNC_VALUE] not in ([0x54, 0x3D], [0x54]):
+            raise cv.Invalid(
+                "wmbus_t1_mode requires sync_value: [0x54, 0x3D] for T1 "
+                "or [0x54] for combined T1/C1"
+            )
         if config[CONF_BITRATE] != 100000 or config[CONF_CRC_ENABLE]:
             raise cv.Invalid("wmbus_t1_mode requires bitrate: 100000 and crc_enable: false")
         if config[CONF_PREAMBLE_POLARITY] != 0x55:
