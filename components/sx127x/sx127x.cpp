@@ -583,6 +583,26 @@ void SX127x::wmbus_log_statistics_() {
            static_cast<unsigned>(s.missed_irq_wakeups.load()),
            static_cast<unsigned>(s.queue_drops.load()),
            static_cast<unsigned>(s.rx_rearms.load()));
+  if (this->wmbus_c1_mode_) {
+    ESP_LOGI(TAG,
+             "SX127x SYNC54 probe irq_at_fifo preamble=%u sync=%u marker_3D=%u marker_CD=%u other=%u unreadable=%u",
+             static_cast<unsigned>(s.irq1_preamble_at_fifo.load()),
+             static_cast<unsigned>(s.irq1_sync_at_fifo.load()),
+             static_cast<unsigned>(s.fifo_marker_3d.load()),
+             static_cast<unsigned>(s.fifo_marker_cd.load()),
+             static_cast<unsigned>(s.fifo_marker_other.load()),
+             static_cast<unsigned>(s.fifo_marker_unreadable.load()));
+    ESP_LOGI(TAG,
+             "SX127x C1A stages marker_CD=%u header_ok=%u header_bad=%u body_complete=%u queued=%u queue_drop=%u read_abort=%u crc_verified=%u",
+             static_cast<unsigned>(s.fifo_marker_cd.load()),
+             static_cast<unsigned>(s.c1a_candidates.load()),
+             static_cast<unsigned>(s.c1a_bad_prefix.load()),
+             static_cast<unsigned>(s.c1a_body_complete.load()),
+             static_cast<unsigned>(s.c1a_queued.load()),
+             static_cast<unsigned>(s.c1a_queue_dropped.load()),
+             static_cast<unsigned>(s.c1a_read_aborted.load()),
+             static_cast<unsigned>(s.c1a_verified.load()));
+  }
 }
 
 void IRAM_ATTR SX127x::wmbus_fifo_intr_(SX127x *arg) {
@@ -716,6 +736,14 @@ void SX127x::wmbus_task_() {
     if (!notified)
       ++this->wmbus_stats_.missed_irq_wakeups;
     ++this->wmbus_stats_.rx_starts;
+    if (this->wmbus_phy_diagnostics_ && this->wmbus_c1_mode_) {
+      // Existing IRQ1 read at task wake; sampled flags only with FIFO data.
+      // This is NOT a count of all RF preambles or missed syncs.
+      if (flags1 & WmbusFifoGuard::IRQ1_PREAMBLE_DETECTED)
+        ++this->wmbus_stats_.irq1_preamble_at_fifo;
+      if (flags1 & WmbusFifoGuard::IRQ1_SYNC_ADDRESS_MATCH)
+        ++this->wmbus_stats_.irq1_sync_at_fifo;
+    }
     last_activity_ms = millis();
 
     // At 100kbps a full 384-byte stream takes <31ms on-air. Every
@@ -724,8 +752,27 @@ void SX127x::wmbus_task_() {
                                 WmbusFifoGuard::FRAME_DEADLINE_US;
     WmbusReadStatus status = WmbusReadStatus::COMPLETE;
     uint8_t marker = 0x3D;
-    if (this->wmbus_c1_mode_)
+    if (this->wmbus_c1_mode_) {
       status = this->wmbus_read_fifo_(&marker, 1, deadline_us);
+      if (this->wmbus_phy_diagnostics_) {
+        if (status != WmbusReadStatus::COMPLETE) {
+          ++this->wmbus_stats_.fifo_marker_unreadable;
+        } else {
+          // FIFO byte immediately following hardware 0x54 sync, pre-CRC.
+          switch (classify_wmbus_sync54_marker(marker)) {
+            case WmbusSync54Marker::T1_OR_C1B:
+              ++this->wmbus_stats_.fifo_marker_3d;
+              break;
+            case WmbusSync54Marker::C1A:
+              ++this->wmbus_stats_.fifo_marker_cd;
+              break;
+            case WmbusSync54Marker::OTHER:
+              ++this->wmbus_stats_.fifo_marker_other;
+              break;
+          }
+        }
+      }
+    }
     std::array<uint8_t, WMBUS_MAX_RAW_SIZE> body{};
     if (status == WmbusReadStatus::COMPLETE && marker != 0x3D && marker != 0xCD) {
       ++this->wmbus_stats_.bad_marker;
@@ -740,9 +787,11 @@ void SX127x::wmbus_task_() {
           marker, this->wmbus_c1_mode_, body.data(), 3,
           WMBUS_MAX_RAW_SIZE);
       const size_t target = std::max(candidates.t1, candidates.c1);
-      if (target == 0)
+      if (target == 0) {
         ++this->wmbus_stats_.bad_prefix;
-      else {
+        if (this->wmbus_phy_diagnostics_ && this->wmbus_c1_mode_ && marker == 0xCD)
+          ++this->wmbus_stats_.c1a_bad_prefix;
+      } else {
         if (candidates.t1 != 0) ++this->wmbus_stats_.t1_candidates;
         if (candidates.c1 != 0) {
           if (marker == 0xCD) ++this->wmbus_stats_.c1a_candidates;
@@ -782,11 +831,19 @@ void SX127x::wmbus_task_() {
                         frame.bytes.begin() + (c1 ? 2 : 0));
             // Only the existing wmbus_radio CRC/length checks can dispatch
             // these candidates to configured meter subscriptions.
+            const bool c1a_probe = this->wmbus_phy_diagnostics_ &&
+                                   this->wmbus_c1_mode_ && c1 && marker == 0xCD;
+            if (c1a_probe)
+              ++this->wmbus_stats_.c1a_body_complete;
             if (this->wmbus_rx_queue_ != nullptr) {
-              if (xQueueSend(this->wmbus_rx_queue_, &frame, 0) == pdTRUE)
+              if (xQueueSend(this->wmbus_rx_queue_, &frame, 0) == pdTRUE) {
                 ++this->wmbus_stats_.frames_queued;
-              else {
+                if (c1a_probe)
+                  ++this->wmbus_stats_.c1a_queued;
+              } else {
                 ++this->wmbus_stats_.queue_drops;
+                if (c1a_probe)
+                  ++this->wmbus_stats_.c1a_queue_dropped;
                 ESP_LOGW(TAG, "SX127x wM-Bus queue full; candidate discarded");
               }
             }
@@ -795,6 +852,8 @@ void SX127x::wmbus_task_() {
       }
     }
     if (status != WmbusReadStatus::COMPLETE) {
+      if (this->wmbus_phy_diagnostics_ && this->wmbus_c1_mode_ && marker == 0xCD)
+        ++this->wmbus_stats_.c1a_read_aborted;
       if (status == WmbusReadStatus::OVERRUN)
         ++this->wmbus_stats_.fifo_overruns;
       else

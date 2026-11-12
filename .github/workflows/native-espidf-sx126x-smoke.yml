@@ -56,6 +56,11 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. tests/test_sx127x_fifo_guard.cpp -o "$RUNNER_TEMP/sx127x-fifo-guard"
           "$RUNNER_TEMP/sx127x-fifo-guard"
+      - name: Test SX127x C1/A FIFO marker and pre-CRC stage diagnostics
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. tests/test_sx127x_c1_probe.cpp -o "$RUNNER_TEMP/sx127x-c1-probe"
+          "$RUNNER_TEMP/sx127x-c1-probe"
+          python tests/test_sx127x_c1_probe_contract.py
       - name: Check SX127x AFC and RX register encodings (host)
         run: |
           mkdir -p "$RUNNER_TEMP/sx127x_rf_stubs/esphome/core"

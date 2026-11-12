@@ -64,6 +64,14 @@ inline size_t c1_expected_raw_bytes(uint8_t l, bool format_b, size_t max_size) {
   return length >= 3 && length <= max_size ? length : 0;
 }
 
+// The first FIFO byte after SX1276 hardware sync=0x54 identifies
+// a possible C1-A (CD) vs T1/C1-B (3D) BEFORE L and CRC checks.
+enum class WmbusSync54Marker : uint8_t { T1_OR_C1B, C1A, OTHER };
+constexpr WmbusSync54Marker classify_wmbus_sync54_marker(uint8_t marker) {
+  return marker == 0x3D ? WmbusSync54Marker::T1_OR_C1B :
+         marker == 0xCD ? WmbusSync54Marker::C1A : WmbusSync54Marker::OTHER;
+}
+
 struct WmbusRawCandidates {
   size_t t1{0};
   size_t c1{0};

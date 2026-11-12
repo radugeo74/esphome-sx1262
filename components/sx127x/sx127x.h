@@ -188,6 +188,18 @@ class SX127x final : public Component,
     std::atomic<uint32_t> missed_irq_wakeups{0};
     std::atomic<uint32_t> queue_drops{0};
     std::atomic<uint32_t> rx_rearms{0};
+    // Pre-CRC receive-stage statistics; atomic across FIFO task and main loop.
+    std::atomic<uint32_t> irq1_preamble_at_fifo{0};
+    std::atomic<uint32_t> irq1_sync_at_fifo{0};
+    std::atomic<uint32_t> fifo_marker_3d{0};
+    std::atomic<uint32_t> fifo_marker_cd{0};
+    std::atomic<uint32_t> fifo_marker_other{0};
+    std::atomic<uint32_t> fifo_marker_unreadable{0};
+    std::atomic<uint32_t> c1a_bad_prefix{0};
+    std::atomic<uint32_t> c1a_body_complete{0};
+    std::atomic<uint32_t> c1a_queued{0};
+    std::atomic<uint32_t> c1a_queue_dropped{0};
+    std::atomic<uint32_t> c1a_read_aborted{0};
   } wmbus_stats_{};
 
   SX127xBw bandwidth_;

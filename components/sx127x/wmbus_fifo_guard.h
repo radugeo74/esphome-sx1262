@@ -12,6 +12,9 @@ struct WmbusFifoGuard {
   static constexpr uint8_t IRQ1_REGISTER = 0x3E;
   static constexpr uint8_t IRQ2_REGISTER = 0x3F;
   static constexpr uint8_t IRQ1_TIMEOUT = 0x04;
+  // Sampled from an existing RegIrqFlags1 read when FIFO is nonempty.
+  static constexpr uint8_t IRQ1_PREAMBLE_DETECTED = 0x02;
+  static constexpr uint8_t IRQ1_SYNC_ADDRESS_MATCH = 0x01;
   static constexpr uint8_t FIFO_FULL = 0x80;
   static constexpr uint8_t FIFO_EMPTY = 0x40;
   static constexpr uint8_t FIFO_LEVEL = 0x20;

@@ -1,5 +1,9 @@
 # Context curent — dual radio SX126x + SX127x
 
+## Diagnostic C1/A înainte de verificarea CRC (12 noiembrie 2026)
+
+Pentru problema de pe LILYGO T3-S3 (T1 mai puține decât Heltec și aproape niciun C1/A), pe SX1276 am separat marcajul FIFO imediat după sincronizarea hardware 0x54: 0x3D (T1/C1-B), 0xCD (C1/A posibil), altele și citire eșuată. Folosim bitii `PreambleDetect=0x02` și `SyncAddressMatch=0x01` din `RegIrqFlags1` deja citit în task, numai când FIFO are date. După 0xCD, se numără: L-field/antet plauzibil, antet invalid, corp complet, punere în coada decodorului, queue drop, abort citire și C1/A CRC-valid (contor existent). Două loguri cumulative la 60 secunde: `SX127x SYNC54 probe` și `SX127x C1A stages`. Modificările sunt exclusiv diagnostic SX127x și sunt activate de `wmbus_radio.native_phy_diagnostics: true`; nu adaugă SPI reads, IRQ logging, schimbare RF, priorități, FIFO, senzori sau modificări SX126x. IRQ bits eșantionați la FIFO nu pot detecta preambul/sync RF ratat. Teste noi `tests/test_sx127x_c1_probe.cpp`, `tests/test_sx127x_c1_probe_contract.py`.
+
 ## Snapshot FSK la reconectare API ESPHome (12 noiembrie 2026)
 
 Rezultatele testului LILYGO după AFC 333 kHz au venit prin loguri ESPHome API pornite după boot, deci lipseau mesajele de citire directă hardware. `configure_fsk_ook_()` stochează acum cele 7 valori ale registrelor SX1276 și rezultatul verificării `matches_expected`, numai în etapa de inițializare. `dump_config()` le afișează la conectarea ulterioară a clientului log ESPHome, fără SPI (critică pentru FIFO streaming 100 kb/s). Test contract `tests/test_sx127x_snapshot_contract.py` și build CI ambele backenduri. Nicio schimbare în SX126x sau funcția radio în timp real. Snapshotul este de la boot, nu citire în timp real.
