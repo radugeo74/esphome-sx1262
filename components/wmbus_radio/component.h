@@ -10,19 +10,23 @@
 #include "esphome/core/component.h"
 
 #include "esphome/components/wmbus_common/wmbus.h"
+#include "esphome/components/sx127x/sx127x.h"
 #include "esphome/components/wmbus_common/address.h"
 
 #include "packet.h"
 
 namespace esphome {
 namespace sx126x { class SX126x; }
+namespace sx127x { class SX127x; class SX127xListener; }
 namespace wmbus_radio {
 
-class Radio : public Component {
+class Radio : public Component, public sx127x::SX127xListener {
 public:
   // The patched SX126x is the ONLY SPI/IRQ owner in the native path.
   // No legacy radio transceiver is created for this configuration.
   void set_native_sx126x(sx126x::SX126x *radio) { this->native_sx126x_ = radio; }
+  void set_native_sx127x(sx127x::SX127x *radio) { this->native_sx127x_ = radio; }
+  void on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) override;
   void set_native_t1_c1_b(bool enabled) { this->native_t1_c1_b_ = enabled; }
   void set_native_phy_diagnostics(bool enabled) { this->native_phy_diagnostics_ = enabled; }
 
@@ -44,6 +48,7 @@ protected:
   void decode_native_stream_(float rssi);
 
   sx126x::SX126x *native_sx126x_{nullptr};
+  sx127x::SX127x *native_sx127x_{nullptr};
   bool native_t1_c1_b_{false};
   bool native_phy_diagnostics_{false};
   uint32_t c1_a_verified_{0};
