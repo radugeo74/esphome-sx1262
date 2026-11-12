@@ -62,6 +62,8 @@ NATIVE_SCHEMA = (
 def validate_radio_source(config):
     if (CONF_SX126X_ID in config) == (CONF_SX127X_ID in config):
         raise cv.Invalid("Configure exactly one of sx126x_id or sx127x_id")
+    if CONF_SX127X_ID in config and config[CONF_NATIVE_STREAM_MODE] != "T1":
+        raise cv.Invalid("SX127x FIFO stream currently supports T1 only; C1 requires separate PHY support")
     return config
 
 
@@ -78,6 +80,7 @@ async def to_code(config):
     else:
         radio = await cg.get_variable(config[CONF_SX127X_ID])
         cg.add(var.set_native_sx127x(radio))
+        cg.add(radio.set_wmbus_t1_mode(True))
     cg.add(var.set_native_t1_c1_b(
         config[CONF_NATIVE_STREAM_MODE] != "T1"
     ))
