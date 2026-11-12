@@ -48,6 +48,10 @@ jobs:
           "$RUNNER_TEMP/wmbus-3of6"
       - name: Test C1 Format A and two-block Format B under ASan and UBSan
         run: python tests/test_c1_crc_safety.py
+      - name: Unit-test SX127x T1 physical length gate
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. tests/test_sx127x_t1_length.cpp -o "$RUNNER_TEMP/sx127x-t1-length"
+          "$RUNNER_TEMP/sx127x-t1-length"
       - name: Install pinned ESPHome for native ESP-IDF smoke
         run: |
           python -m pip install --disable-pip-version-check "esphome==2026.10.1"
