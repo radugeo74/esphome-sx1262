@@ -540,10 +540,9 @@ void SX127x::wmbus_task_() {
         complete = false;
       } else {
         const size_t l = (l_hi << 4) | l_lo;
-        // Accept conventional wM-Bus send requests only; CRC will still
-        // be checked end-to-end in wmbus_radio, before dispatch.
-        const uint8_t control = (c_hi << 4) | c_lo;
-        if (l < 10 || control != 0x44) {
+        // Accept the decoded C-field independently of its function code;
+        // the common wmbus parser validates the complete frame and DLL CRC.
+        if (l < 10) {
           complete = false;
         } else {
           const size_t blocks = 1 + (l - 9 + 15) / 16;
