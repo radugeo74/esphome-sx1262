@@ -64,6 +64,19 @@ jobs:
         run: |
           sed 's/native_stream_mode: T1/native_stream_mode: T1_C1/' tests/sx126x-wmbus-bridge.yaml > tests/sx126x-wmbus-c1-ci.yaml
           esphome config tests/sx126x-wmbus-c1-ci.yaml
+      - name: Validate opt-in combined stream PHY diagnostics schema
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          p = Path("tests/sx126x-wmbus-bridge.yaml")
+          obj = yaml.safe_load(p.read_text())
+          obj["wmbus_radio"]["native_stream_mode"] = "T1_C1"
+          obj["wmbus_radio"]["native_phy_diagnostics"] = True
+          dest = Path("tests/sx126x-wmbus-c1-diag-ci.yaml")
+          dest.write_text(yaml.safe_dump(obj, sort_keys=False))
+          PY
+          esphome config tests/sx126x-wmbus-c1-diag-ci.yaml
       - name: Compile native-only SX126x through original wmbus_meter (build-only)
         run: esphome compile tests/sx126x-wmbus-bridge.yaml
       - name: Generate privacy-safe full 12-meter migrated fixture
