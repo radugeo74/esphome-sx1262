@@ -42,6 +42,8 @@ jobs:
             components/wmbus_radio/decode3of6.cpp \
             tests/test_decode3of6_bridge.cpp -o "$RUNNER_TEMP/wmbus-3of6"
           "$RUNNER_TEMP/wmbus-3of6"
+      - name: Test C1 Format A and two-block Format B under ASan and UBSan
+        run: python tests/test_c1_crc_safety.py
       - name: Install pinned ESPHome for native ESP-IDF smoke
         run: |
           python -m pip install --disable-pip-version-check "esphome==2026.10.1"
@@ -58,6 +60,10 @@ jobs:
             exit 1
           fi
           echo "PASS: legacy radio schema is rejected"
+      - name: Validate combined C1 A/B native stream schema (build-only)
+        run: |
+          sed 's/native_stream_mode: T1/native_stream_mode: T1_C1/' tests/sx126x-wmbus-bridge.yaml > tests/sx126x-wmbus-c1-ci.yaml
+          esphome config tests/sx126x-wmbus-c1-ci.yaml
       - name: Compile native-only SX126x through original wmbus_meter (build-only)
         run: esphome compile tests/sx126x-wmbus-bridge.yaml
       - name: Generate privacy-safe full 12-meter migrated fixture
