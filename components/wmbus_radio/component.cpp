@@ -24,6 +24,16 @@ namespace wmbus_radio {
 static const char *TAG = "wmbus";
 
 void Radio::setup() {
+  if (this->native_sx127x_ != nullptr) {
+    if (this->native_sx127x_->is_failed()) {
+      ESP_LOGE(TAG, "Native SX127x unavailable; refusing to start wM-Bus receiver");
+      this->mark_failed();
+      return;
+    }
+    this->native_sx127x_->register_listener(this);
+    ESP_LOGW(TAG, "SX127x FSK packet backend is experimental: ESPHome FIFO is limited to 64 bytes; full T1/C1 PHY reception is not validated");
+    return;
+  }
   if (this->native_sx126x_ == nullptr || this->native_sx126x_->is_failed()) {
     ESP_LOGE(TAG, "Native SX126x unavailable; refusing to start wM-Bus receiver");
     this->mark_failed();
@@ -44,6 +54,21 @@ void Radio::setup() {
 
 void Radio::loop() {
   // Native SX126x invokes frame callbacks from its own ESPHome loop.
+}
+
+void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) {
+  // SX127x official packet mode supplies a bounded FIFO payload.
+  // Feed it to the same strict T1/C1 PHY decoder as SX126x. No frame is
+  // dispatched unless 3-of-6, length and DLL CRC checks all pass.
+  // A normal long T1 or C1 telegram may exceed SX127x's 64-byte FIFO;
+  // such frames require a future streaming RF backend.
+  (void) snr;
+  if (packet.empty() || packet.size() > MAX_NATIVE_PHY_SIZE || !std::isfinite(rssi))
+    return;
+  std::copy(packet.begin(), packet.end(), this->native_phy_.begin());
+  this->native_phy_size_ = packet.size();
+  this->decode_native_stream_(rssi);
+  this->native_phy_size_ = 0;
 }
 
 void Radio::dispatch_frame_(Frame &frame) {
