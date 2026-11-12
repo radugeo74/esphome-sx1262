@@ -30,14 +30,16 @@ void Radio::setup() {
     return;
   }
   this->native_sx126x_->set_combined_t1_c1_stream(this->native_t1_c1_b_);
+  this->native_sx126x_->set_t1_stream_diagnostics(this->native_phy_diagnostics_);
   this->native_sx126x_->set_t1_stream_callback(&Radio::native_stream_callback_, this);
   this->native_sx126x_->set_mode_rx();
   if (this->native_sx126x_->is_failed()) {
     this->mark_failed();
     return;
   }
-  ESP_LOGI(TAG, "Using native SX126x stream (T1%s); no legacy receiver",
-           this->native_t1_c1_b_ ? "+C1 format B" : "");
+  ESP_LOGI(TAG, "Using native SX126x stream (T1%s), diagnostics=%s; no legacy receiver",
+           this->native_t1_c1_b_ ? "+C1 A/B (experimental)" : "",
+           this->native_phy_diagnostics_ ? "enabled" : "disabled");
 }
 
 void Radio::loop() {
@@ -136,13 +138,37 @@ void Radio::decode_native_stream_(float rssi) {
     const size_t blocks = 1 + (l - 9 + 15) / 16;
     const size_t expected = format_b ? l + 1 : l + 1 + 2 * blocks;
     if (telegram.size() != expected) {
-      ESP_LOGD(TAG, "C1 format %s DLL length rejected", format);
+      ++this->c1_length_rejected_;
+      if (this->native_phy_diagnostics_ &&
+          (this->c1_length_rejected_ <= 12 ||
+           this->c1_length_rejected_ % 100 == 0)) {
+        ESP_LOGI(TAG, "C1/%s length rejected L=%u received=%u expected=%u total=%u",
+                 format, static_cast<unsigned>(l),
+                 static_cast<unsigned>(telegram.size()),
+                 static_cast<unsigned>(expected),
+                 static_cast<unsigned>(this->c1_length_rejected_));
+      }
       return;
     }
     if (!(format_b ? trimCRCsFrameFormatB(telegram)
                    : trimCRCsFrameFormatA(telegram))) {
-      ESP_LOGD(TAG, "C1 format %s DLL CRC rejected", format);
+      ++this->c1_crc_rejected_;
+      if (this->native_phy_diagnostics_ &&
+          (this->c1_crc_rejected_ <= 12 ||
+           this->c1_crc_rejected_ % 100 == 0)) {
+        ESP_LOGI(TAG, "C1/%s CRC rejected total=%u", format,
+                 static_cast<unsigned>(this->c1_crc_rejected_));
+      }
       return;
+    }
+    if (format_b) ++this->c1_b_verified_;
+    else ++this->c1_a_verified_;
+    if (this->native_phy_diagnostics_) {
+      ESP_LOGI(TAG, "C1 PHY adapter verified A=%u B=%u crc_bad=%u len_bad=%u",
+               static_cast<unsigned>(this->c1_a_verified_),
+               static_cast<unsigned>(this->c1_b_verified_),
+               static_cast<unsigned>(this->c1_crc_rejected_),
+               static_cast<unsigned>(this->c1_length_rejected_));
     }
   } else {
     std::vector<uint8_t> raw(this->native_phy_.begin(),
