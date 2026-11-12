@@ -57,6 +57,19 @@ void SX127x::write_fifo_(const uint8_t *data, size_t len) {
 void IRAM_ATTR SX127x::gpio_intr(SX127x *arg) { arg->enable_loop_soon_any_context(); }
 
 void SX127x::setup() {
+  // Fail closed if the radio hardware sync width and selected link modes
+  // disagree. The C1 path must keep the byte following 0x54 in FIFO.
+  if (this->wmbus_t1_mode_) {
+    const bool sync_ok = this->wmbus_c1_mode_
+        ? this->sync_value_.size() == 1 && this->sync_value_[0] == 0x54
+        : this->sync_value_.size() == 2 && this->sync_value_[0] == 0x54 &&
+          this->sync_value_[1] == 0x3D;
+    if (!sync_ok) {
+      ESP_LOGE(TAG, "SX127x wM-Bus sync mismatch: T1 expects 54 3D, T1+C1 expects 54");
+      this->mark_failed();
+      return;
+    }
+  }
   // setup reset
   this->rst_pin_->setup();
   if (this->wmbus_t1_mode_) {
@@ -94,7 +107,8 @@ void SX127x::setup() {
                                       gpio::INTERRUPT_FALLING_EDGE);
     if (!this->dio1_pin_->digital_read())
       xTaskNotifyGive(this->wmbus_task_handle_);
-    ESP_LOGW(TAG, "SX127x wM-Bus T1 FIFO stream enabled (experimental RF)");
+    ESP_LOGW(TAG, "SX127x wM-Bus %s FIFO stream enabled (experimental RF)" ,
+             this->wmbus_c1_mode_ ? "T1+C1/A+B" : "T1");
   }
 }
 
@@ -499,35 +513,72 @@ void SX127x::wmbus_task_() {
     if (this->is_failed())
       continue;
 
-    WmbusRxPacket frame;
+    // In T1-only mode hardware consumes 54 3D. In combined mode it
+    // consumes only 54, so the first FIFO byte distinguishes CD vs 3D.
+    uint8_t marker = 0x3D;
     bool complete = true;
-    // T1 first 3 encoded bytes provide L and C fields (2 decoded bytes).
-    for (size_t i = 0; i < 3; i++) {
-      if (!this->wmbus_read_byte_(&frame.bytes[i])) {
-        complete = false;
-        break;
+    if (this->wmbus_c1_mode_ && !this->wmbus_read_byte_(&marker))
+      complete = false;
+
+    std::array<uint8_t, WMBUS_MAX_RAW_SIZE> body{};
+    if (complete && marker != 0x3D && marker != 0xCD)
+      complete = false;
+
+    if (complete) {
+      for (size_t i = 0; i < 3; i++) {
+        if (!this->wmbus_read_byte_(&body[i])) {
+          complete = false;
+          break;
+        }
       }
     }
+
     if (complete) {
-      const size_t raw = t1_expected_raw_bytes(
-          frame.bytes.data(), 3, WMBUS_MAX_RAW_SIZE);
-      if (raw == 0) {
-        complete = false;
-      } else {
-        frame.size = static_cast<uint16_t>(raw);
-        // Capture signal RSSI during reception, not after RX restart.
-        frame.rssi_half_dbm = -static_cast<int16_t>(this->read_register_(0x11));
-        for (size_t i = 3; i < raw; i++) {
-          if (!this->wmbus_read_byte_(&frame.bytes[i])) {
-            complete = false;
+      const auto candidates = wmbus_raw_candidates(
+          marker, this->wmbus_c1_mode_, body.data(), 3,
+          WMBUS_MAX_RAW_SIZE);
+      const size_t target = std::max(candidates.t1, candidates.c1);
+      if (target != 0) {
+        // SX127x FSK RegRssiValue is in -0.5 dBm units.
+        // Record it while the signal is being received.
+        const int16_t rssi = -static_cast<int16_t>(this->read_register_(0x11));
+        for (size_t received = 3; received <= target; received++) {
+          // If both interpretations have plausible lengths, queue each
+          // completed candidate independently. The shared parser validates
+          // the correct PHY length and full DLL CRC before dispatch.
+          const bool t1_ready = received == candidates.t1;
+          const bool c1_ready = received == candidates.c1;
+          if (t1_ready || c1_ready) {
+            for (unsigned choice = 0; choice < 2; choice++) {
+              if ((choice == 0 && !t1_ready) || (choice == 1 && !c1_ready))
+                continue;
+              const bool c1 = choice == 1;
+              const size_t total = received + (c1 ? 2 : 0);
+              if (total > WMBUS_MAX_RAW_SIZE)
+                continue;
+              WmbusRxPacket frame;
+              frame.size = static_cast<uint16_t>(total);
+              frame.rssi_half_dbm = rssi;
+              if (c1) {
+                frame.bytes[0] = 0x54;
+                frame.bytes[1] = marker;
+              }
+              std::copy_n(body.begin(), received,
+                          frame.bytes.begin() + (c1 ? 2 : 0));
+              if (this->wmbus_rx_queue_ != nullptr &&
+                  xQueueSend(this->wmbus_rx_queue_, &frame, 0) != pdTRUE)
+                ESP_LOGW(TAG, "SX127x wM-Bus queue full; candidate discarded");
+            }
+          }
+          if (received == target)
+            break;
+          if (!this->wmbus_read_byte_(&body[received])) {
+            // A shorter valid candidate may already be queued. A truncated
+            // longer candidate is never published.
             break;
           }
         }
       }
-    }
-    if (complete && this->wmbus_rx_queue_ != nullptr) {
-      if (xQueueSend(this->wmbus_rx_queue_, &frame, 0) != pdTRUE)
-        ESP_LOGW(TAG, "SX127x wM-Bus queue full; frame discarded");
     }
     this->wmbus_restart_rx_();
   }
