@@ -49,11 +49,19 @@ sx126x:
   rst_pin: GPIO12
   cs_pin: GPIO8
 
+# Include the optional C1 water-meter driver without configuring a real meter.
+# The fixture uses synthetic meter IDs and remains build-only.
+wmbus_common:
+  drivers:
+    - fhkvdataiii
+    - mkradio4
+    - mkradio4a
+
 wmbus_radio:
   id: wmbus_receiver
   sx126x_id: native_radio
-  # Only T1 is automatically used by default; C1 Format B is optional
-  # and requires RF evidence before enabling on a live device.
+  # Default stays T1 for build-only safety; real Heltec T1+C1/A RF
+  # validation is documented separately. Enable T1_C1 only for RF tests.
   native_stream_mode: T1
 
 wmbus_meter:
