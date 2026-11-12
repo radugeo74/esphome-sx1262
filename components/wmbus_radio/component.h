@@ -51,6 +51,8 @@ public:
 
 protected:
   void dispatch_frame_(Frame &frame);
+  static void sx127x_stream_callback_(void *context, const uint8_t *data,
+                                      size_t length, float rssi);
   static void native_stream_callback_(void *context, const uint8_t *data,
                                       size_t length, bool start, bool end,
                                       float rssi);
