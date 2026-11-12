@@ -1,0 +1,69 @@
+# Build-only SX127x radio backend smoke test. NOT RF-validated; DO NOT FLASH.
+# Official ESPHome SX127x FSK packet-mode FIFO is limited to 64 bytes.
+# Typical wM-Bus T1/C1 physical frames can exceed this; full reception
+# requires a dedicated SX127x continuous/streaming PHY implementation.
+# All IDs below are synthetic; pins are placeholders for an ESP32 dev board.
+esphome:
+  name: sx127x-wmbus-lab
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [wmbus_common, wmbus_radio, wmbus_meter]
+
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO23
+  miso_pin: GPIO19
+
+sx127x:
+  id: sx127x_receiver
+  cs_pin: GPIO5
+  rst_pin: GPIO14
+  dio0_pin: GPIO26
+  modulation: FSK
+  frequency: 868950000
+  bitrate: 100000
+  deviation: 50000
+  bandwidth: 250_0kHz
+  shaping: NONE
+  packet_mode: true
+  bitsync: true
+  crc_enable: false
+  sync_value: [0x54, 0x3D]
+  rx_start: true
+
+wmbus_common:
+  drivers:
+    - fhkvdataiii
+    - mkradio4
+    - mkradio4a
+
+wmbus_radio:
+  id: wmbus_receiver
+  sx127x_id: sx127x_receiver
+  native_stream_mode: T1
+
+wmbus_meter:
+  - id: lab_water
+    radio_id: wmbus_receiver
+    meter_id: 0x12345678
+    type: mkradio4
+    mode: [T1]
+
+sensor:
+  - platform: wmbus_meter
+    parent_id: lab_water
+    name: Lab SX127x Water Volume
+    field: total_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
