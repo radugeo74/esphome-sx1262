@@ -1,4 +1,5 @@
 #include "sx127x.h"
+#include "wmbus_t1_length.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 #include "esp_timer.h"
@@ -485,29 +486,6 @@ bool SX127x::wmbus_read_byte_(uint8_t *out) {
   return true;
 }
 
-int SX127x::wmbus_decode_nibble_(uint8_t code) {
-  // EN13757-4 T-mode 3-of-6 symbol map.
-  switch (code) {
-    case 0b010110: return 0x0;
-    case 0b001101: return 0x1;
-    case 0b001110: return 0x2;
-    case 0b001011: return 0x3;
-    case 0b011100: return 0x4;
-    case 0b011001: return 0x5;
-    case 0b011010: return 0x6;
-    case 0b010011: return 0x7;
-    case 0b101100: return 0x8;
-    case 0b100101: return 0x9;
-    case 0b100110: return 0xA;
-    case 0b100011: return 0xB;
-    case 0b110100: return 0xC;
-    case 0b110001: return 0xD;
-    case 0b110010: return 0xE;
-    case 0b101001: return 0xF;
-    default: return -1;
-  }
-}
-
 void SX127x::wmbus_restart_rx_() {
   // Re-arm hardware synchronization between distinct telegrams.
   this->set_mode_standby();
@@ -531,35 +509,18 @@ void SX127x::wmbus_task_() {
       }
     }
     if (complete) {
-      const uint8_t *b = frame.bytes.data();
-      const int l_hi = wmbus_decode_nibble_(b[0] >> 2);
-      const int l_lo = wmbus_decode_nibble_(((b[0] & 0x03) << 4) | (b[1] >> 4));
-      const int c_hi = wmbus_decode_nibble_(((b[1] & 0x0F) << 2) | (b[2] >> 6));
-      const int c_lo = wmbus_decode_nibble_(b[2] & 0x3F);
-      if (l_hi < 0 || l_lo < 0 || c_hi < 0 || c_lo < 0) {
+      const size_t raw = t1_expected_raw_bytes(
+          frame.bytes.data(), 3, WMBUS_MAX_RAW_SIZE);
+      if (raw == 0) {
         complete = false;
       } else {
-        const size_t l = (l_hi << 4) | l_lo;
-        // Accept the decoded C-field independently of its function code;
-        // the common wmbus parser validates the complete frame and DLL CRC.
-        if (l < 10) {
-          complete = false;
-        } else {
-          const size_t blocks = 1 + (l - 9 + 15) / 16;
-          const size_t decoded = l + 1 + 2 * blocks;
-          const size_t raw = (3 * decoded + 1) / 2;
-          if (raw < 3 || raw > WMBUS_MAX_RAW_SIZE) {
+        frame.size = static_cast<uint16_t>(raw);
+        // Capture signal RSSI during reception, not after RX restart.
+        frame.rssi_half_dbm = -static_cast<int16_t>(this->read_register_(0x11));
+        for (size_t i = 3; i < raw; i++) {
+          if (!this->wmbus_read_byte_(&frame.bytes[i])) {
             complete = false;
-          } else {
-            frame.size = static_cast<uint16_t>(raw);
-            // Read signal RSSI while the telegram is still in progress.
-            frame.rssi_half_dbm = -static_cast<int16_t>(this->read_register_(0x11));
-            for (size_t i = 3; i < raw; i++) {
-              if (!this->wmbus_read_byte_(&frame.bytes[i])) {
-                complete = false;
-                break;
-              }
-            }
+            break;
           }
         }
       }
