@@ -1,6 +1,6 @@
 # Instrucțiuni specifice ramurii dual-radio (12 noiembrie 2026)
 
-Pe `experimental/dual-radio-sx126x-sx127x` sunt **două backenduri**: SX126x stabil și SX127x experimental. Alege exact un radio per configurație, fără doi proprietari SPI. Nu elimina/adapta SX126x ca să rezolvi SX127x. Pentru SX127x folosește override-ul `components/sx127x`, `dio1_pin` și `wmbus_t1_mode: true`. T1 este implementat software, **nevalidat RF**; C1 este respins explicit. Nu declara firmware-ul SX127x gata de instalare doar pe baza CI. Adresele străine trebuie să păstreze mesajele `Unhandled meter address` și URL-ul analizorului, fără broadcast către toți handlerii.
+Pe `experimental/dual-radio-sx126x-sx127x` sunt **două backenduri**: SX126x stabil și SX127x experimental. Alege exact un radio per configurație, fără doi proprietari SPI. Nu elimina/adapta SX126x ca să rezolvi SX127x. Pentru SX127x folosește override-ul `components/sx127x`, `dio1_pin` și `wmbus_t1_mode: true`. T1 și C1/A+B sunt implementate software, **nevalidate RF**; configurația combinată SX127x folosește `sync_value: [0x54]` și `native_stream_mode: T1_C1`. Nu declara firmware-ul SX127x gata de instalare doar pe baza CI. Adresele străine trebuie să păstreze mesajele `Unhandled meter address` și URL-ul analizorului, fără broadcast către toți handlerii.
 
 **Documentație curentă:** primele secțiuni din `README.md` și `PROJECT_CONTEXT.md`. Restul instrucțiunilor de mai jos descriu ramura XMQ din care s-a derivat această ramură.
 

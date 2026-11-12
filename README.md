@@ -5,12 +5,12 @@
 Acest branch are două variante hardware selectabile prin `wmbus_radio`. YAML include **exact una** dintre proprietățile `sx126x_id` sau `sx127x_id`; decodoarele `wmbus_common` și senzorii `wmbus_meter` rămân comune.
 
 - **SX126x:** `components/sx126x` — receptor T1/C1 existent, verificat pe Heltec; nu se modifică pentru experimentele SX127x.
-- **SX127x:** `components/sx127x` — extensie a componentei ESPHome 2026.10.1 pentru T1 FSK cu citire DIO1/FifoEmpty din FIFO în task dedicat, nu prin callbackul de pachete de maximum 64 octeți. **Build-only, fără validare RF.** C1 încă nu este implementat; schema refuză modul T1_C1 pentru SX127x.
+- **SX127x:** `components/sx127x` — extensie a componentei ESPHome 2026.10.1 pentru **T1 + C1/A + C1/B** în FSK, cu citire DIO1/FifoEmpty din FIFO în task dedicat. În modul combinat SX127x sincronizează pe `54`, apoi clasifică `3D` (T1 sau C1/B) și `CD` (C1/A). Candidaturile ambigue T1/C1-B sunt verificate separat prin CRC înainte de publicare. **Build-only, fără validare RF.**
 - **Partajat:** `components/wmbus_radio` validează simbolurile 3-of-6, lungimea cadrului, CRC și ID DLL/TPL înainte de a publica valori; telegramele străine păstrează mesajele de diagnostic și linkurile de analiză.
 
-**Teste:** `tests/sx126x-wmbus-bridge.yaml`, `tests/sx127x-wmbus-lab.yaml`, `tests/test_sx127x_t1_length.cpp`. Workflow: `.github/workflows/native-espidf-sx126x-smoke.yml`. GPIO-urile testului SX127x sunt doar exemple și nu autorizează flash.
+**Teste:** `tests/sx126x-wmbus-bridge.yaml`, `tests/sx127x-wmbus-lab.yaml`, `tests/sx127x-wmbus-c1-lab.yaml`, `tests/test_sx127x_t1_length.cpp`. Workflow: `.github/workflows/native-espidf-sx126x-smoke.yml`. GPIO-urile testului SX127x sunt doar exemple și nu autorizează flash.
 
-Pentru RX SX127x, folosește `external_components` incluzând override-ul local `sx127x`; selectează `wmbus_radio.sx127x_id` și configurează `dio1_pin`, `wmbus_t1_mode: true`, `packet_mode: true`, `sync_value: [0x54, 0x3D]`, `preamble_polarity: 0x55`, `bitrate: 100000`, `payload_length: 0`. Pentru detalii vezi [tests/README.md](tests/README.md).
+Pentru RX SX127x, folosește `external_components` incluzând override-ul local `sx127x`; selectează `wmbus_radio.sx127x_id` și configurează `dio1_pin`, `wmbus_t1_mode: true`, `packet_mode: true`, `sync_value: [0x54, 0x3D]`, `preamble_polarity: 0x55`, `bitrate: 100000`, `payload_length: 0`. Pentru **T1_C1**, schimbă `sync_value` în `[0x54]` și `wmbus_radio.native_stream_mode: T1_C1`; vezi `tests/sx127x-wmbus-c1-lab.yaml`. Pentru detalii vezi [tests/README.md](tests/README.md).
 
 **Important:** versiunile mai vechi din această documentație descriu istoric ramura SX126x/XMQ, nu starea completă a ramurii dual-radio de acum.
 

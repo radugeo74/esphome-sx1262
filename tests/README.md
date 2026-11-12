@@ -5,19 +5,28 @@ Branch: `experimental/dual-radio-sx126x-sx127x` (forked from `experimental/xmq-r
 The `wmbus_radio` component supports exactly one radio source **per receiver**:
 
 - `sx126x_id: native_radio` — existing patched SX126x native streaming implementation, hardware-tested on Heltec.
-- `sx127x_id: sx127x_receiver` — new **experimental** patched official SX127x FSK FIFO-streaming T1 backend; build-only, not hardware-validated.
+- `sx127x_id: sx127x_receiver` — new **experimental** patched official SX127x FSK FIFO-streaming T1+C1/A+B backend; build-only, not hardware-validated.
 
 The same validated-frame decoder, DLL CRC checks, DLL/TPL ID routing, unhandled-meter logs and application drivers (`fhkvdataiii`, `mkradio4`, `mkradio4a`) remain shared. Both radio frontends are available as alternatives, not simultaneously on the same `wmbus_radio` instance.
 
-**Experimental SX127x T1 streaming (software candidate):** `components/sx127x/` is a local extension of ESPHome 2026.10.1 with DIO1/FifoEmpty-driven 100 kb/s T1 capture. It reads bytes before the 64-byte FIFO fills, derives full raw physical length from EN13757-4 3-of-6 symbols, queues complete raw streams and feeds them to the same CRC-checked `wmbus_radio` decoder as SX126x. The SX127x hardware removes the configured `54 3D` sync bytes before FIFO; do not prepend them to T1 raw data. This implementation is **not RF-validated**, and timing/restart behavior may need adjustments on hardware. C1 is **not supported on SX127x** at this stage; `native_stream_mode: T1_C1` is explicitly rejected. Do not flash as a substitute for the working SX126x firmware until RF tests are successful.
+**Experimental SX127x combined T1/C1:** `components/sx127x/` extends ESPHome 2026.10.1 with DIO1/FifoEmpty-driven 100 kb/s FIFO capture. Its high-priority task drains the 64-byte FIFO during the frame, computes the physical length from 3-of-6 (T1), the C1/A L-field plus CRC blocks, or the C1/B L-field (CRC included). The full frame enters the existing `wmbus_radio` length/CRC validator before any meter callbacks. **No raw or CRC-invalid frame may publish values.**
 
-Use the local external-component override (`sx127x`) and set `dio1_pin`, `wmbus_t1_mode: true`, `sync_value: [0x54, 0x3D]`, `packet_mode: true`, `payload_length: 0`, and `bitrate: 100000` in the experimental SX127x YAML. Pin values in CI are placeholders; actual modules differ in wiring and RF-band matching.
+When `native_stream_mode: T1`, use `sync_value: [0x54, 0x3D]`: hardware consumes both bytes and the FIFO starts with T1-encoded data.
+
+When `native_stream_mode: T1_C1`, use `sync_value: [0x54]`: the first byte in the FIFO is `0x3D` (T1 or C1/B) or `0xCD` (C1/A). Since T1 and C1/B share `54 3D`, both candidate lengths are considered independently. Invalid candidates are rejected by the shared DLL CRC verification. The C1/A and C1/B candidates are reconstructed with their `54 CD` / `54 3D` mode prefixes before invoking the common parser.
+
+For either mode, keep `dio1_pin`, `wmbus_t1_mode: true`, `packet_mode: true`, `preamble_polarity: 0x55`, `crc_enable: false`, `payload_length: 0`, `bitrate: 100000`. **C1 encrypted payload still needs the meter AES key for application decoding; this PHY support does not bypass encryption.**
+
+This is **not RF-validated**. The SX127x FIFO timing, sync acquisition, and restart behavior need a dedicated hardware test. Do not flash as a replacement for the working SX126x firmware until tests pass. The CI GPIOs are placeholders.
+
 
 ## CI fixtures
 
 - `tests/sx126x-native-espidf.yaml`: standalone SX126x baseline.
 - `tests/sx126x-wmbus-bridge.yaml`: SX126x plus shared wM-Bus application pipeline.
-- `tests/sx127x-wmbus-lab.yaml`: build-only SX127x packet listener + same wM-Bus meter pipeline; synthetic meter ID and placeholder GPIOs.
+- `tests/sx127x-wmbus-lab.yaml`: SX127x T1-only FSK FIFO streaming; synthetic meter ID.
+- `tests/sx127x-wmbus-c1-lab.yaml`: SX127x combined T1+C1-A/B, single-byte sync; synthetic meter ID.
+- `tests/test_sx127x_t1_length.cpp`: 3-of-6 and C1 length/collision candidates.
 - `tests/build_full_meter_fixture.py`: 12 synthetic meters and sensors for SX126x regressions.
 
 CI on this branch validates and compiles both backends independently. Passing CI proves only schema and build compatibility, not SX127x RF correctness. No AES keys or real meter IDs are embedded.

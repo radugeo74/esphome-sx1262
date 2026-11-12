@@ -1,10 +1,10 @@
 # Context curent — dual radio SX126x + SX127x
 
-**Ramură:** `experimental/dual-radio-sx126x-sx127x`. SX126x nativ funcționează pe Heltec (T1/C1) cu filtrare ID DLL/TPL; SX127x T1 este o implementare experimentală, compilabilă, nevalidată pe RF. `wmbus_radio` folosește `sx126x_id` **sau** `sx127x_id`, niciodată ambele. Ambele folosesc `wmbus_meter` și `wmbus_common` existente.
+**Ramură:** `experimental/dual-radio-sx126x-sx127x`. SX126x nativ funcționează pe Heltec (T1/C1) cu filtrare ID DLL/TPL; SX127x T1 și C1-A/B sunt implementate experimental în cod și încă nevalidate pe RF. `wmbus_radio` folosește `sx126x_id` **sau** `sx127x_id`, niciodată ambele. Ambele folosesc `wmbus_meter` și `wmbus_common` existente.
 
-SX127x are componentă locală `components/sx127x` (derivată din ESPHome 2026.10.1), citire FIFO prin DIO1, lungime T1 determinată prin 3-of-6, task pentru captură, coadă pentru procesare în loop și verificarea finală a cadrului prin CRC comun. Fixture-ul `tests/sx127x-wmbus-lab.yaml` este **build-only**. C1 pe SX127x este **nesuportat** și respins de schema YAML. Nu instala pe hardware până când recepția T1 este validată.
+SX127x are componentă locală `components/sx127x` (derivată din ESPHome 2026.10.1), citire FIFO prin DIO1, lungime T1 determinată prin 3-of-6, task pentru captură, coadă pentru procesare în loop și verificarea finală a cadrului prin CRC comun. Fixture-urile `tests/sx127x-wmbus-lab.yaml` (T1) și `tests/sx127x-wmbus-c1-lab.yaml` (T1+C1/A+B) sunt **build-only**. În modul combinat sync hardware este numai `54`; al doilea octet (`3D` sau `CD`) rămâne în FIFO. T1 și C1/B cu `54 3D` sunt păstrate ca potențiali candidați până la verificarea strictă a CRC de către pipeline-ul comun. Nu instala pe hardware până când recepția T1 și C1 este validată.
 
-Menține intactă implementarea SX126x și evită introducerea de date private/chei în fixture-uri. Testul C++ `tests/test_sx127x_t1_length.cpp` verifică lungimile fizice codate (84/89 octeți), filtrele pentru simboluri 3-of-6 invalide și limitele de memorie. CI compilează ambele backenduri.
+Menține intactă implementarea SX126x și evită introducerea de date private/chei în fixture-uri. Testul C++ `tests/test_sx127x_t1_length.cpp` verifică T1 (84/89 octeți), C1/A, C1/B, prefixurile comune `54 3D`, simbolurile 3-of-6 invalide și limitele de memorie. CI compilează ambele backenduri.
 
 ---
 
