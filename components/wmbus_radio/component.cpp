@@ -34,8 +34,9 @@ void Radio::setup() {
       this->mark_failed();
       return;
     }
-    this->native_sx127x_->register_listener(this);
-    ESP_LOGW(TAG, "SX127x FSK packet backend is experimental: ESPHome FIFO is limited to 64 bytes; full T1/C1 PHY reception is not validated");
+    this->native_sx127x_->set_wmbus_stream_callback(
+        &Radio::sx127x_stream_callback_, this);
+    ESP_LOGW(TAG, "SX127x T1 FIFO streaming backend enabled (experimental; hardware RF unverified)");
     return;
   }
 #endif
@@ -122,6 +123,15 @@ void Radio::dispatch_frame_(Frame &frame) {
             frame.as_hex()).c_str());
 }
 
+void Radio::sx127x_stream_callback_(void *context, const uint8_t *data,
+                                       size_t length, float rssi) {
+  if (context == nullptr || data == nullptr || length == 0) return;
+  auto *radio = static_cast<Radio *>(context);
+  radio->native_stream_(nullptr, 0, true, false, rssi);
+  radio->native_stream_(data, length, false, false, rssi);
+  radio->native_stream_(nullptr, 0, false, true, rssi);
+}
+
 void Radio::native_stream_callback_(void *context, const uint8_t *data,
                                     size_t length, bool start, bool end,
                                     float rssi) {
@@ -144,7 +154,7 @@ void Radio::native_stream_(const uint8_t *data, size_t length,
   if (!this->native_phy_active_) return;
   if (length != 0) {
     if (data == nullptr || length > MAX_NATIVE_PHY_SIZE - this->native_phy_size_) {
-      ESP_LOGW(TAG, "Native SX126x PHY overflow or null fragment; discarded");
+      ESP_LOGW(TAG, "Native radio PHY overflow or null fragment; discarded");
       this->native_phy_active_ = false;
       return;
     }
@@ -262,7 +272,8 @@ void Radio::decode_native_stream_(float rssi) {
   const float bounded = std::max(-128.0f, std::min(0.0f, rssi));
   const int8_t signal = static_cast<int8_t>(std::lround(bounded));
   Frame frame(std::move(telegram), mode, signal, format);
-  ESP_LOGI(TAG, "Native SX126x verified %s/%s (%zu bytes, RSSI %d dBm)",
+  ESP_LOGI(TAG, "Native %s verified %s/%s (%zu bytes, RSSI %d dBm)",
+           this->native_sx127x_ ? "SX127x" : "SX126x",
            toString(mode), format, frame.data().size(), signal);
   this->dispatch_frame_(frame);
 }
