@@ -47,8 +47,26 @@ void Radio::loop() {
 }
 
 void Radio::dispatch_frame_(Frame &frame) {
+  // Parse the validated frame header once for all meter subscriptions.
+  // Preserve the original generic on_frame callbacks for every frame.
+  Telegram header;
+  const bool parsed = header.parseHeader(frame.data());
   for (auto &handler : this->handlers_)
     handler(&frame);
+
+  if (parsed && !header.addresses.empty()) {
+    for (auto &entry : this->meter_handlers_) {
+      bool wildcard = false;
+      if (doesTelegramMatchExpressions(header.addresses, entry.addresses, &wildcard))
+        entry.callback(&frame);
+    }
+  } else {
+    // Preserve previous meter behavior for a CRC-valid frame whose header
+    // cannot be parsed by the lightweight prefilter. Individual handlers
+    // still enforce their own mode and address checks.
+    for (auto &entry : this->meter_handlers_)
+      entry.callback(&frame);
+  }
 
   if (frame.handlers_count()) {
     ESP_LOGI(TAG, "Telegram handled by %u handlers",
@@ -57,12 +75,10 @@ void Radio::dispatch_frame_(Frame &frame) {
   }
 
   ESP_LOGW(TAG, "Telegram not handled by any handler");
-  Telegram t;
-  const bool parsed = t.parseHeader(frame.data());
-  if (!parsed || t.addresses.empty()) {
+  if (!parsed || header.addresses.empty()) {
     ESP_LOGW(TAG, "No valid meter address in unhandled frame");
   } else {
-    ESP_LOGW(TAG, "Unhandled meter address: %s", t.addresses.back().id.c_str());
+    ESP_LOGW(TAG, "Unhandled meter address: %s", header.addresses.back().id.c_str());
   }
   ESP_LOGW(TAG, "%s",
            (std::string{"https://wmbusmeters.org/analyze/"} +
@@ -216,6 +232,11 @@ void Radio::decode_native_stream_(float rssi) {
 
 void Radio::add_frame_handler(std::function<void(Frame *)> &&callback) {
   this->handlers_.push_back(std::move(callback));
+}
+
+void Radio::add_meter_frame_handler(std::vector<AddressExpression> addresses,
+                                    std::function<void(Frame *)> &&callback) {
+  this->meter_handlers_.push_back({std::move(addresses), std::move(callback)});
 }
 
 } // namespace wmbus_radio
