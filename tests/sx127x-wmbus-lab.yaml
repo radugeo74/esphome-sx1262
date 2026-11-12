@@ -40,6 +40,10 @@ sx127x:
   shaping: NONE
   packet_mode: true
   bitsync: true
+  preamble_polarity: 0x55
+  preamble_size: 4
+  preamble_detect: 1
+  preamble_errors: 10
   payload_length: 0
   crc_enable: false
   sync_value: [0x54, 0x3D]
