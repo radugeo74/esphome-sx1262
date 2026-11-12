@@ -27,7 +27,7 @@ spi:
 
 sx127x:
   id: sx127x_receiver
-  cs_pin: GPIO5
+  cs_pin: GPIO25
   rst_pin: GPIO14
   dio0_pin: GPIO26
   dio1_pin: GPIO27
