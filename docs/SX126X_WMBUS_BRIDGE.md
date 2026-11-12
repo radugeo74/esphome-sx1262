@@ -1,6 +1,6 @@
 # Native SX126x → legacy wmbusmeters bridge
 
-**Status (11 November 2026): native-only source cleanup committed; new commit requires CI and RF regression. Previous native T1/A bridge was hardware-validated with 12/12 configured meters; C1-B and sustained/negative tests remain unvalidated.** This is still an experimental bridge, not a claim of universal C1 or dynamic XMQ support.
+**Status (12 November 2026): T1/A native-only hardware functional; C1-A and long C1-B CRC/length support implemented in source, pending CI and actual C1 RF validation.** This is still an experimental bridge, not a claim of universal C1 or dynamic XMQ support.
 
 This branch starts from `native-espidf`. Instead of replacing `wmbus_common`,
 `wmbus_meter`, and all existing sensor definitions, the bridge feeds the
@@ -24,13 +24,7 @@ Here `native_radio` must be the ID of an appropriately configured
 **only there**. Do not add `radio_type`, `cs_pin`, `reset_pin` or
 `irq_pin` under `wmbus_radio` in native mode. The old schema and legacy `RadioTransceiver` implementation were removed from this branch. Only SX126x owns SPI/IRQ; no additional radio task or queue exists.
 
-`native_stream_mode: T1_C1_B` opt-in uses the experimental combined
-sync-word stream. It recognizes T1 format A and C1 format B **up to 128 raw bytes**.
-The legacy wmbusmeters Format-B helper has an unsafe two-block CRC-length
-calculation for longer inputs, so the new bridge rejects them until that
-case is repaired and regression-tested. **C1 format A is not yet supported**
-by this path. The combined option has not been RF
-validated in this branch.
+`native_stream_mode: T1_C1` opt-in uses the experimental combined sync-word stream. It classifies C1 Format A (`54 CD`) and C1 Format B (`54 3D`), checks exact on-air length and validates every DLL CRC before dispatch. `T1_C1_B` remains a backwards-compatible YAML alias for this combined mode. Format B's second CRC now covers **only** the bytes between the first and final CRC, fixing a potential out-of-bounds read. The radio stream remains bounded by the SX126x 255-byte receive target (including the C1 prefix); this is **not** unbounded frame support. The C1 combined mode has **not** yet been RF validated on Heltec.
 
 ## Data path and security
 
@@ -38,8 +32,7 @@ validated in this branch.
    through `set_t1_stream_callback`.
 2. The adapter assembles a maximum of **384 bytes**, aborting on
    overflow, null fragments, incomplete transfers and invalid framing.
-3. T1 raw data is 3-of-6 decoded; C1-B retains the required `54 3D`
-   mode prefix. Framing must match exactly.
+3. T1 raw data is 3-of-6 decoded. C1-A (`54 CD`) and C1-B (`54 3D`) are classified by the two-byte PHY prefix, which is stripped before CRC checking. Framing must match exactly.
 4. The existing wmbusmeters `trimCRCsFrameFormatA/B` routines verify
    *all* DLL CRC blocks. Invalid CRCs are discarded before any meter
    receives an event.
@@ -61,7 +54,7 @@ one SX126x, one wmbus_radio adapter, one configured mkradio4 meter and
 the original numeric/RSSI HA sensors. The CI workflow compiles both
 this integrated fixture and an isolated radio fixture.
 
-The legacy radio files `transceiver.cpp/.h` and `transceiver_sx1262.cpp/.h` have been removed from this branch. The earlier branch commit and saved working firmware remain rollback options; the legacy YAML is intentionally rejected by CI. This removal does not eliminate the **application** decoding dependency on `wmbus_common`. New firmware still needs ESPHome compile and a controlled RF regression before deployment. C1-B, long-duration uptime, corruption/recovery and any encrypted modes require separate evidence. No OTA is authorized by this documentation change.
+The legacy radio files `transceiver.cpp/.h` and `transceiver_sx1262.cpp/.h` have been removed from this branch. The earlier branch commit and saved working firmware remain rollback options; the legacy YAML is intentionally rejected by CI. This removal does not eliminate the **application** decoding dependency on `wmbus_common`. New firmware still needs ESPHome compile and a controlled RF regression before deployment. C1-A/B RF, long-duration uptime, corruption/recovery and encrypted modes require separate evidence. The Format A/B CRC trimmers are exercised in a dedicated ASan/UBSan synthetic test; that is not hardware validation. No OTA is authorized by this documentation change.
 
 For the separate goal of updating XMQ rules without firmware recompilation,
 see `docs/XMQ_RUNTIME_ARCHITECTURE.md`. This bridge is one prerequisite,
