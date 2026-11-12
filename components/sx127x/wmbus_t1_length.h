@@ -53,5 +53,41 @@ inline size_t t1_expected_raw_bytes(const uint8_t *prefix, size_t prefix_size, s
   return raw_bytes >= 3 && raw_bytes <= max_size ? raw_bytes : 0;
 }
 
+// C1/A carries CRCs outside its L-field; C1/B includes CRCs in L.
+// The returned length excludes the 54 CD / 54 3D mode bytes, which
+// are already consumed by the SX127x hardware sync/classification.
+inline size_t c1_expected_raw_bytes(uint8_t l, bool format_b, size_t max_size) {
+  if (l < 10)
+    return 0;
+  const size_t blocks = 1 + (static_cast<size_t>(l) - 9 + 15) / 16;
+  const size_t length = static_cast<size_t>(l) + 1 + (format_b ? 0 : 2 * blocks);
+  return length >= 3 && length <= max_size ? length : 0;
+}
+
+struct WmbusRawCandidates {
+  size_t t1{0};
+  size_t c1{0};
+};
+
+// For combined mode the SX127x sync detector consumes just 0x54.
+// Its first FIFO byte is 0x3D (T1 or C1/B) or 0xCD (C1/A).
+// T1 and C1/B must be tested as *independent* candidates. Both may look
+// plausible on an initial prefix. Neither is dispatched before full CRC.
+inline WmbusRawCandidates wmbus_raw_candidates(uint8_t marker, bool combined,
+                                               const uint8_t *prefix, size_t length,
+                                               size_t max_size) {
+  WmbusRawCandidates candidates;
+  if (prefix == nullptr || length < 3 || max_size < 5)
+    return candidates;
+  if (marker == 0x3D) {
+    candidates.t1 = t1_expected_raw_bytes(prefix, length, max_size);
+    if (combined)
+      candidates.c1 = c1_expected_raw_bytes(prefix[0], true, max_size - 2);
+  } else if (marker == 0xCD && combined) {
+    candidates.c1 = c1_expected_raw_bytes(prefix[0], false, max_size - 2);
+  }
+  return candidates;
+}
+
 } // namespace sx127x
 } // namespace esphome
