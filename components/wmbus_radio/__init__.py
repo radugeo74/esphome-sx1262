@@ -2,7 +2,7 @@ from contextlib import suppress
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation
-from esphome.components import sx126x
+from esphome.components import sx126x, sx127x
 from esphome.cpp_generator import LambdaExpression
 from esphome.const import (
     CONF_ID,
@@ -13,13 +13,14 @@ from esphome.const import (
 
 CODEOWNERS = ["@SzczepanLeon", "@kubasaw"]
 
-DEPENDENCIES = ["esp32", "sx126x"]
+DEPENDENCIES = ["esp32"]
 
 AUTO_LOAD = ["wmbus_common"]
 
 MULTI_CONF = True
 
 CONF_SX126X_ID = "sx126x_id"
+CONF_SX127X_ID = "sx127x_id"
 CONF_NATIVE_STREAM_MODE = "native_stream_mode"
 CONF_NATIVE_PHY_DIAGNOSTICS = "native_phy_diagnostics"
 CONF_ON_FRAME = "on_frame"
@@ -47,7 +48,8 @@ NATIVE_SCHEMA = (
     cv.Schema(
         {
             **COMMON_SCHEMA,
-            cv.Required(CONF_SX126X_ID): cv.use_id(sx126x.SX126x),
+            cv.Optional(CONF_SX126X_ID): cv.use_id(sx126x.SX126x),
+            cv.Optional(CONF_SX127X_ID): cv.use_id(sx127x.SX127x),
             cv.Optional(CONF_NATIVE_PHY_DIAGNOSTICS, default=False): cv.boolean,
             cv.Optional(CONF_NATIVE_STREAM_MODE, default="T1"): cv.one_of(
                 "T1", "T1_C1", "T1_C1_B", upper=True
@@ -57,15 +59,25 @@ NATIVE_SCHEMA = (
     .extend(cv.COMPONENT_SCHEMA)
 )
 
-CONFIG_SCHEMA = NATIVE_SCHEMA
+def validate_radio_source(config):
+    if (CONF_SX126X_ID in config) == (CONF_SX127X_ID in config):
+        raise cv.Invalid("Configure exactly one of sx126x_id or sx127x_id")
+    return config
+
+
+CONFIG_SCHEMA = cv.All(NATIVE_SCHEMA, validate_radio_source)
 
 
 
 async def to_code(config):
     # Only patched SX126x owns the SPI bus and IRQ.
     var = cg.new_Pvariable(config[CONF_ID])
-    radio = await cg.get_variable(config[CONF_SX126X_ID])
-    cg.add(var.set_native_sx126x(radio))
+    if CONF_SX126X_ID in config:
+        radio = await cg.get_variable(config[CONF_SX126X_ID])
+        cg.add(var.set_native_sx126x(radio))
+    else:
+        radio = await cg.get_variable(config[CONF_SX127X_ID])
+        cg.add(var.set_native_sx127x(radio))
     cg.add(var.set_native_t1_c1_b(
         config[CONF_NATIVE_STREAM_MODE] != "T1"
     ))
