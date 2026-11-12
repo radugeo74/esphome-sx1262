@@ -1,0 +1,78 @@
+# Build-only LILYGO T3-S3 SX1276 868 MHz ESP32-S3 fixture.
+# Synthetic meter ID, no keys. DO NOT FLASH until hardware validation.
+# Patched ESPHome SX127x drains FIFO via DIO1 during the packet.
+# T1 physical frames can exceed 64-byte FIFO, so ISR-driven streaming is required.
+# Combined T1+C1/A+B, SX1276 crystal (NO TCXO GPIO).
+# Verify the board revision before any physical deployment.
+esphome:
+  name: lilygo-t3s3-sx1276-ci
+
+esp32:
+  board: lilygo-t3-s3
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [sx127x, wmbus_common, wmbus_radio, wmbus_meter]
+
+spi:
+  clk_pin: GPIO5
+  mosi_pin: GPIO6
+  miso_pin: GPIO3
+
+sx127x:
+  id: sx127x_receiver
+  cs_pin: GPIO7
+  rst_pin: GPIO8
+  dio0_pin: GPIO9
+  dio1_pin: GPIO33
+  wmbus_t1_mode: true
+  modulation: FSK
+  frequency: 868950000
+  bitrate: 100000
+  deviation: 50000
+  bandwidth: 250_0kHz
+  shaping: NONE
+  packet_mode: true
+  bitsync: true
+  preamble_polarity: 0x55
+  preamble_size: 4
+  preamble_detect: 1
+  preamble_errors: 10
+  payload_length: 0
+  crc_enable: false
+  sync_value: [0x54]
+  rx_start: true
+
+wmbus_common:
+  drivers:
+    - fhkvdataiii
+    - mkradio4
+    - mkradio4a
+
+wmbus_radio:
+  id: wmbus_receiver
+  sx127x_id: sx127x_receiver
+  native_stream_mode: T1_C1
+  native_phy_diagnostics: true
+
+wmbus_meter:
+  - id: lab_water
+    radio_id: wmbus_receiver
+    meter_id: 0x12345678
+    type: mkradio4
+    mode: [T1, C1]
+
+sensor:
+  - platform: wmbus_meter
+    parent_id: lab_water
+    name: Lab SX127x Water Volume
+    field: total_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1

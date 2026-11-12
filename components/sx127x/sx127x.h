@@ -7,6 +7,7 @@
 #include "esphome/core/hal.h"
 #include <vector>
 #include <array>
+#include <atomic>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -41,6 +42,10 @@ enum SX127xBw : uint8_t {
 };
 
 enum class SX127xError { NONE = 0, TIMEOUT, INVALID_PARAMS };
+enum class WmbusDecodeResult : uint8_t {
+  T1_VERIFIED, C1A_VERIFIED, C1B_VERIFIED,
+  BAD_SYMBOL, BAD_CRC, BAD_LENGTH
+};
 
 class SX127xListener {
  public:
@@ -97,6 +102,8 @@ class SX127x final : public Component,
   using WmbusStreamCallback = void (*)(void *, const uint8_t *, size_t, float);
   void set_wmbus_t1_mode(bool value) { this->wmbus_t1_mode_ = value; }
   void set_wmbus_c1_mode(bool value) { this->wmbus_c1_mode_ = value; }
+  void set_wmbus_diagnostics(bool enabled) { this->wmbus_phy_diagnostics_ = enabled; }
+  void note_wmbus_decode_result(WmbusDecodeResult event);
   void set_dio1_pin(InternalGPIOPin *pin) { this->dio1_pin_ = pin; }
   void set_wmbus_stream_callback(WmbusStreamCallback callback, void *context) {
     this->wmbus_stream_callback_ = callback;
@@ -113,6 +120,7 @@ class SX127x final : public Component,
   WmbusReadStatus wmbus_read_fifo_(uint8_t *buffer, size_t length,
                                    int64_t deadline_us);
   void wmbus_restart_rx_();
+  void wmbus_log_statistics_();
   void configure_fsk_ook_();
   void configure_lora_();
   void set_mode_(uint8_t modulation, uint8_t mode);
@@ -140,6 +148,33 @@ class SX127x final : public Component,
   TaskHandle_t wmbus_task_handle_{nullptr};
   bool wmbus_t1_mode_{false};
   bool wmbus_c1_mode_{false};
+  bool wmbus_phy_diagnostics_{false};
+  uint32_t wmbus_last_log_ms_{0};
+  // Atomic since the FIFO task and ESPHome main loop run independently.
+  // No meter addresses, payloads or keys are stored in these statistics.
+  struct WmbusPhyCounters {
+    std::atomic<uint32_t> rx_starts{0};
+    std::atomic<uint32_t> t1_candidates{0};
+    std::atomic<uint32_t> c1a_candidates{0};
+    std::atomic<uint32_t> c1b_candidates{0};
+    std::atomic<uint32_t> frames_queued{0};
+    std::atomic<uint32_t> t1_verified{0};
+    std::atomic<uint32_t> c1a_verified{0};
+    std::atomic<uint32_t> c1b_verified{0};
+    std::atomic<uint32_t> bad_symbols{0};
+    std::atomic<uint32_t> bad_crc{0};
+    std::atomic<uint32_t> bad_length{0};
+    std::atomic<uint32_t> bad_marker{0};
+    std::atomic<uint32_t> bad_prefix{0};
+    std::atomic<uint32_t> fifo_overruns{0};
+    std::atomic<uint32_t> frame_timeouts{0};
+    std::atomic<uint32_t> modem_timeouts{0};
+    std::atomic<uint32_t> rx_state_recoveries{0};
+    std::atomic<uint32_t> missed_irq_wakeups{0};
+    std::atomic<uint32_t> queue_drops{0};
+    std::atomic<uint32_t> rx_rearms{0};
+  } wmbus_stats_{};
+
   SX127xBw bandwidth_;
   uint32_t bitrate_;
   uint32_t deviation_;

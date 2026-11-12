@@ -1,5 +1,9 @@
 # Context curent — dual radio SX126x + SX127x
 
+## Etapa SX127x 3/4/5 — diagnostic PHY, regresii reale și LILYGO T3-S3 (software, 12 noiembrie 2026)
+
+Pentru SX127x s-au adăugat contoare atomice pe taskul FIFO și pe callbackul decodorului: starturi RX, candidați și telegrame valide T1/C1-A/C1-B, invalidări 3-of-6/CRC/length, FIFO overrun, timeout frame/modem, IRQ ratat, marker/prefix invalid, pierdere în coadă și RX rearm. `native_phy_diagnostics: true` afișează agregatele o dată pe minut, fără chei, ID-uri de contor sau payloaduri. Testul `tests/test_c1_crc_safety.py` folosește decodorul 3-of-6 și rutinele CRC reale din proiect, cu cadre T1/C1 complete, corupte, trunchiate și consecutive, inclusiv limita C1/B de 128 octeți. `tests/lilygo-t3s3-sx1276-ci.yaml` validează/compilează ESP32-S3 cu placa `lilygo-t3-s3` și pinii SX1276 (SPI 5/6/3, CS7, RST8, DIO0=9, DIO1=33). Toate sunt build/test-only. RF real pe placă rămâne nevalidat; SX126x nu a fost modificat.
+
 ## SX127x FIFO + auto-recovery (software, 12 noiembrie 2026)
 
 Pe backendul SX127x am înlocuit citirile individuale per octet cu SPI în rafale de 16 octeți atunci când bitul FSK `FifoLevel` confirmă pragul de 15. Coada finală de sub 16 octeți se citește numai cât timp DIO1/FifoEmpty indică date disponibile; `FifoOverrun` respinge cadrul. Recepția completă T1/C1-A/C1-B are termen-limită de 120ms, watchdog la 1s pentru întreruperi ratate, `RX timeout`/modem ieșit din RX și rearmare după 60s de inactivitate. Recuperarea resetează FIFO-ul și starea RX fără publicarea cadrelor parțiale.

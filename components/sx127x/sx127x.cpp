@@ -379,6 +379,11 @@ void SX127x::loop() {
                                      frame.bytes.data(), frame.size,
                                      static_cast<float>(frame.rssi_half_dbm) / 2.0f);
     }
+    if (this->wmbus_phy_diagnostics_ &&
+        static_cast<uint32_t>(millis() - this->wmbus_last_log_ms_) >= 60000U) {
+      this->wmbus_last_log_ms_ = millis();
+      this->wmbus_log_statistics_();
+    }
     return;
   }
   this->disable_loop();
@@ -478,6 +483,49 @@ void SX127x::set_mode_standby() { this->set_mode_(this->modulation_, MODE_STDBY)
 void SX127x::set_mode_sleep() { this->set_mode_(this->modulation_, MODE_SLEEP); }
 
 
+void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
+  auto &s = this->wmbus_stats_;
+  switch (event) {
+    case WmbusDecodeResult::T1_VERIFIED: ++s.t1_verified; break;
+    case WmbusDecodeResult::C1A_VERIFIED: ++s.c1a_verified; break;
+    case WmbusDecodeResult::C1B_VERIFIED: ++s.c1b_verified; break;
+    case WmbusDecodeResult::BAD_SYMBOL: ++s.bad_symbols; break;
+    case WmbusDecodeResult::BAD_CRC: ++s.bad_crc; break;
+    case WmbusDecodeResult::BAD_LENGTH: ++s.bad_length; break;
+  }
+}
+
+void SX127x::wmbus_log_statistics_() {
+  const auto &s = this->wmbus_stats_;
+  // Periodic aggregated counters only; never dump meter IDs or payloads.
+  ESP_LOGI(TAG,
+           "SX127x PHY rx_start=%u candidate T1=%u C1A=%u C1B=%u queued=%u",
+           static_cast<unsigned>(s.rx_starts.load()),
+           static_cast<unsigned>(s.t1_candidates.load()),
+           static_cast<unsigned>(s.c1a_candidates.load()),
+           static_cast<unsigned>(s.c1b_candidates.load()),
+           static_cast<unsigned>(s.frames_queued.load()));
+  ESP_LOGI(TAG,
+           "SX127x PHY verified T1=%u C1A=%u C1B=%u bad_symbol=%u bad_crc=%u bad_length=%u",
+           static_cast<unsigned>(s.t1_verified.load()),
+           static_cast<unsigned>(s.c1a_verified.load()),
+           static_cast<unsigned>(s.c1b_verified.load()),
+           static_cast<unsigned>(s.bad_symbols.load()),
+           static_cast<unsigned>(s.bad_crc.load()),
+           static_cast<unsigned>(s.bad_length.load()));
+  ESP_LOGI(TAG,
+           "SX127x PHY errors marker=%u prefix=%u overrun=%u frame_timeout=%u modem_timeout=%u rx_state=%u missed_irq=%u queue_drop=%u rearm=%u",
+           static_cast<unsigned>(s.bad_marker.load()),
+           static_cast<unsigned>(s.bad_prefix.load()),
+           static_cast<unsigned>(s.fifo_overruns.load()),
+           static_cast<unsigned>(s.frame_timeouts.load()),
+           static_cast<unsigned>(s.modem_timeouts.load()),
+           static_cast<unsigned>(s.rx_state_recoveries.load()),
+           static_cast<unsigned>(s.missed_irq_wakeups.load()),
+           static_cast<unsigned>(s.queue_drops.load()),
+           static_cast<unsigned>(s.rx_rearms.load()));
+}
+
 void IRAM_ATTR SX127x::wmbus_fifo_intr_(SX127x *arg) {
   if (arg->wmbus_task_handle_ == nullptr)
     return;
@@ -544,6 +592,7 @@ SX127x::WmbusReadStatus SX127x::wmbus_read_fifo_(
 void SX127x::wmbus_restart_rx_() {
   if (this->is_failed())
     return;
+  ++this->wmbus_stats_.rx_rearms;
   // Switching to Standby, clearing FIFO/overrun, then entering RX
   // re-arms the sync detector even after a truncated/overflowed frame.
   this->set_mode_standby();
@@ -579,6 +628,12 @@ void SX127x::wmbus_task_() {
     const uint8_t mode = this->read_register_(REG_OP_MODE);
     const auto health = wmbus_rx_health(mode, flags1, flags2);
     if (health != WmbusRxHealth::OK) {
+      if (health == WmbusRxHealth::FIFO_OVERRUN)
+        ++this->wmbus_stats_.fifo_overruns;
+      else if (health == WmbusRxHealth::RX_TIMEOUT)
+        ++this->wmbus_stats_.modem_timeouts;
+      else
+        ++this->wmbus_stats_.rx_state_recoveries;
       const char *reason = health == WmbusRxHealth::FIFO_OVERRUN ? "FIFO overrun" :
                            health == WmbusRxHealth::RX_TIMEOUT ? "modem timeout" :
                            "unexpected RX mode";
@@ -599,6 +654,9 @@ void SX127x::wmbus_task_() {
     }
     if (flags2 & WmbusFifoGuard::FIFO_EMPTY)
       continue;  // stale notification; do not read an empty FIFO
+    if (!notified)
+      ++this->wmbus_stats_.missed_irq_wakeups;
+    ++this->wmbus_stats_.rx_starts;
     last_activity_ms = millis();
 
     // At 100kbps a full 384-byte stream takes <31ms on-air. Every
@@ -611,6 +669,7 @@ void SX127x::wmbus_task_() {
       status = this->wmbus_read_fifo_(&marker, 1, deadline_us);
     std::array<uint8_t, WMBUS_MAX_RAW_SIZE> body{};
     if (status == WmbusReadStatus::COMPLETE && marker != 0x3D && marker != 0xCD) {
+      ++this->wmbus_stats_.bad_marker;
       this->wmbus_restart_rx_();
       continue;
     }
@@ -622,7 +681,14 @@ void SX127x::wmbus_task_() {
           marker, this->wmbus_c1_mode_, body.data(), 3,
           WMBUS_MAX_RAW_SIZE);
       const size_t target = std::max(candidates.t1, candidates.c1);
-      if (target != 0) {
+      if (target == 0)
+        ++this->wmbus_stats_.bad_prefix;
+      else {
+        if (candidates.t1 != 0) ++this->wmbus_stats_.t1_candidates;
+        if (candidates.c1 != 0) {
+          if (marker == 0xCD) ++this->wmbus_stats_.c1a_candidates;
+          else ++this->wmbus_stats_.c1b_candidates;
+        }
         // Capture live signal RSSI, not the noise floor after restart.
         const int16_t rssi = -static_cast<int16_t>(this->read_register_(0x11));
         size_t received = 3;
@@ -657,14 +723,23 @@ void SX127x::wmbus_task_() {
                         frame.bytes.begin() + (c1 ? 2 : 0));
             // Only the existing wmbus_radio CRC/length checks can dispatch
             // these candidates to configured meter subscriptions.
-            if (this->wmbus_rx_queue_ != nullptr &&
-                xQueueSend(this->wmbus_rx_queue_, &frame, 0) != pdTRUE)
-              ESP_LOGW(TAG, "SX127x wM-Bus queue full; candidate discarded");
+            if (this->wmbus_rx_queue_ != nullptr) {
+              if (xQueueSend(this->wmbus_rx_queue_, &frame, 0) == pdTRUE)
+                ++this->wmbus_stats_.frames_queued;
+              else {
+                ++this->wmbus_stats_.queue_drops;
+                ESP_LOGW(TAG, "SX127x wM-Bus queue full; candidate discarded");
+              }
+            }
           }
         }
       }
     }
     if (status != WmbusReadStatus::COMPLETE) {
+      if (status == WmbusReadStatus::OVERRUN)
+        ++this->wmbus_stats_.fifo_overruns;
+      else
+        ++this->wmbus_stats_.frame_timeouts;
       ESP_LOGW(TAG, "SX127x wM-Bus %s before frame completion; restarting RX",
                status == WmbusReadStatus::OVERRUN ? "FIFO overrun" : "frame timeout");
     }

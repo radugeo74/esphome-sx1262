@@ -34,6 +34,7 @@ void Radio::setup() {
       this->mark_failed();
       return;
     }
+    this->native_sx127x_->set_wmbus_diagnostics(this->native_phy_diagnostics_);
     this->native_sx127x_->set_wmbus_stream_callback(
         &Radio::sx127x_stream_callback_, this);
     ESP_LOGW(TAG, "SX127x T1 FIFO streaming backend enabled (experimental; hardware RF unverified)");
@@ -171,6 +172,12 @@ void Radio::native_stream_(const uint8_t *data, size_t length,
 }
 
 void Radio::decode_native_stream_(float rssi) {
+#ifdef WMBUS_RADIO_HAS_SX127X
+  auto record_sx127x = [this](sx127x::WmbusDecodeResult event) {
+    if (this->native_sx127x_ != nullptr)
+      this->native_sx127x_->note_wmbus_decode_result(event);
+  };
+#endif
   const size_t n = this->native_phy_size_;
   if (n < 3 || n > MAX_NATIVE_PHY_SIZE || !std::isfinite(rssi)) return;
 
@@ -202,6 +209,9 @@ void Radio::decode_native_stream_(float rssi) {
     const size_t expected = format_b ? l + 1 : l + 1 + 2 * blocks;
     if (telegram.size() != expected) {
       ++this->c1_length_rejected_;
+#ifdef WMBUS_RADIO_HAS_SX127X
+      record_sx127x(sx127x::WmbusDecodeResult::BAD_LENGTH);
+#endif
       if (this->native_phy_diagnostics_ &&
           (this->c1_length_rejected_ <= 12 ||
            this->c1_length_rejected_ % 100 == 0)) {
@@ -216,6 +226,9 @@ void Radio::decode_native_stream_(float rssi) {
     if (!(format_b ? trimCRCsFrameFormatB(telegram)
                    : trimCRCsFrameFormatA(telegram))) {
       ++this->c1_crc_rejected_;
+#ifdef WMBUS_RADIO_HAS_SX127X
+      record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
+#endif
       if (this->native_phy_diagnostics_ &&
           (this->c1_crc_rejected_ <= 12 ||
            this->c1_crc_rejected_ % 100 == 0)) {
@@ -239,6 +252,9 @@ void Radio::decode_native_stream_(float rssi) {
     const auto decoded = decode3of6(raw);
     if (!decoded || decoded->empty()) {
       ESP_LOGD(TAG, "T1 3-of-6 symbol rejected");
+#ifdef WMBUS_RADIO_HAS_SX127X
+      record_sx127x(sx127x::WmbusDecodeResult::BAD_SYMBOL);
+#endif
       return;
     }
     telegram = std::move(*decoded);
@@ -246,9 +262,18 @@ void Radio::decode_native_stream_(float rssi) {
     if (l < 10) return;
     const size_t blocks = 1 + (static_cast<size_t>(l) - 9 + 15) / 16;
     const size_t expected_decoded = static_cast<size_t>(l) + 1 + 2 * blocks;
-    if (telegram.size() != expected_decoded ||
-        !trimCRCsFrameFormatA(telegram)) {
-      ESP_LOGD(TAG, "T1 format A DLL CRC/length rejected");
+    if (telegram.size() != expected_decoded) {
+#ifdef WMBUS_RADIO_HAS_SX127X
+      record_sx127x(sx127x::WmbusDecodeResult::BAD_LENGTH);
+#endif
+      ESP_LOGD(TAG, "T1 format A DLL length rejected");
+      return;
+    }
+    if (!trimCRCsFrameFormatA(telegram)) {
+#ifdef WMBUS_RADIO_HAS_SX127X
+      record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
+#endif
+      ESP_LOGD(TAG, "T1 format A DLL CRC rejected");
       return;
     }
   }
@@ -271,6 +296,14 @@ void Radio::decode_native_stream_(float rssi) {
   // premature average RSSI for Semtech's sync RSSI.
   const float bounded = std::max(-128.0f, std::min(0.0f, rssi));
   const int8_t signal = static_cast<int8_t>(std::lround(bounded));
+#ifdef WMBUS_RADIO_HAS_SX127X
+  if (c1)
+    record_sx127x(format[0] == 'B'
+                      ? sx127x::WmbusDecodeResult::C1B_VERIFIED
+                      : sx127x::WmbusDecodeResult::C1A_VERIFIED);
+  else
+    record_sx127x(sx127x::WmbusDecodeResult::T1_VERIFIED);
+#endif
   Frame frame(std::move(telegram), mode, signal, format);
   ESP_LOGI(TAG, "Native %s verified %s/%s (%zu bytes, RSSI %d dBm)",
            this->native_sx127x_ ? "SX127x" : "SX126x",
