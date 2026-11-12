@@ -4,7 +4,10 @@
 #include <cmath>
 #include <limits>
 #include <string>
+#if __has_include("esphome/components/sx126x/sx126x.h")
 #include "esphome/components/sx126x/sx126x.h"
+#define WMBUS_RADIO_HAS_SX126X 1
+#endif
 #include "decode3of6.h"
 
 #define ASSERT(expr, expected, before_exit)                                    \
@@ -24,6 +27,7 @@ namespace wmbus_radio {
 static const char *TAG = "wmbus";
 
 void Radio::setup() {
+#ifdef WMBUS_RADIO_HAS_SX127X
   if (this->native_sx127x_ != nullptr) {
     if (this->native_sx127x_->is_failed()) {
       ESP_LOGE(TAG, "Native SX127x unavailable; refusing to start wM-Bus receiver");
@@ -34,6 +38,8 @@ void Radio::setup() {
     ESP_LOGW(TAG, "SX127x FSK packet backend is experimental: ESPHome FIFO is limited to 64 bytes; full T1/C1 PHY reception is not validated");
     return;
   }
+#endif
+#ifdef WMBUS_RADIO_HAS_SX126X
   if (this->native_sx126x_ == nullptr || this->native_sx126x_->is_failed()) {
     ESP_LOGE(TAG, "Native SX126x unavailable; refusing to start wM-Bus receiver");
     this->mark_failed();
@@ -50,12 +56,17 @@ void Radio::setup() {
   ESP_LOGI(TAG, "Using native SX126x stream (T1%s), diagnostics=%s; no legacy receiver",
            this->native_t1_c1_b_ ? "+C1 A/B (experimental)" : "",
            this->native_phy_diagnostics_ ? "enabled" : "disabled");
+#else
+  ESP_LOGE(TAG, "No supported radio source included in this build");
+  this->mark_failed();
+#endif
 }
 
 void Radio::loop() {
   // Native SX126x invokes frame callbacks from its own ESPHome loop.
 }
 
+#ifdef WMBUS_RADIO_HAS_SX127X
 void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) {
   // SX127x official packet mode supplies a bounded FIFO payload.
   // Feed it to the same strict T1/C1 PHY decoder as SX126x. No frame is
@@ -70,6 +81,7 @@ void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr)
   this->decode_native_stream_(rssi);
   this->native_phy_size_ = 0;
 }
+#endif
 
 void Radio::dispatch_frame_(Frame &frame) {
   // Parse the validated frame header once for all meter subscriptions.
