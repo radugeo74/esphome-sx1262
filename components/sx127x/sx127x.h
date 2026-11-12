@@ -96,6 +96,7 @@ class SX127x final : public Component,
   // is reached. The callback runs on the ESPHome main loop, not the ISR.
   using WmbusStreamCallback = void (*)(void *, const uint8_t *, size_t, float);
   void set_wmbus_t1_mode(bool value) { this->wmbus_t1_mode_ = value; }
+  void set_wmbus_c1_mode(bool value) { this->wmbus_c1_mode_ = value; }
   void set_dio1_pin(InternalGPIOPin *pin) { this->dio1_pin_ = pin; }
   void set_wmbus_stream_callback(WmbusStreamCallback callback, void *context) {
     this->wmbus_stream_callback_ = callback;
@@ -136,6 +137,7 @@ class SX127x final : public Component,
   QueueHandle_t wmbus_rx_queue_{nullptr};
   TaskHandle_t wmbus_task_handle_{nullptr};
   bool wmbus_t1_mode_{false};
+  bool wmbus_c1_mode_{false};
   SX127xBw bandwidth_;
   uint32_t bitrate_;
   uint32_t deviation_;
