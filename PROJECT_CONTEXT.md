@@ -76,3 +76,10 @@ Citește `README.md`, `AGENTS.md`, `docs/SX126X_NATIVE_BASELINE.md` și `docs/XM
 **IMPLEMENTAT ÎN COD, ÎNCĂ NEVALIDAT CI/RF PENTRU ACEST COMMIT:** `wmbus_radio` acceptă C1 Format A (`54 CD`) și Format B (`54 3D`) în `native_stream_mode: T1_C1`; vechiul `T1_C1_B` rămâne alias compatibil. Pentru C1-A se verifică lungimea fizică cu toate blocurile CRC și se folosește `trimCRCsFrameFormatA`. Pentru C1-B se verifică lungimea fizică și `trimCRCsFrameFormatB`; în `wmbus_common/wmbus.cc`, lungimea CRC2 a fost corectată la `crc2_pos - (crc1_pos + 2)`, cu limite explicite, eliminând citirea în afara vectorului. Nu se mai respinge arbitrar orice B peste 128 octeți. Limita actuală de recepție PHY SX126x pentru fluxul combinat rămâne 255 octeți cu prefix inclus.
 
 CI: `tests/test_c1_crc_safety.py` extrage funcțiile reale Format A/B din `wmbus.cc` și le verifică pe date sintetice sub ASan/UBSan; se validează schema YAML combinată. **Aceasta NU este validare RF C1**. Nu modificăm calea T1/A, `wmbus_meter`, catalogul driverelor sau configurația reală de pe Heltec până la testul C1 controlat.
+
+
+## Etapa 2 — diagnostic și protecții PHY T1/C1 (12 noiembrie 2026)
+
+În `components/sx126x/sx126x.cpp` sunt adăugate contoare de prefixe C1/A (`54 CD`) și C1/B (`54 3D`), C1 FIFO întârziat și lungime fizică invalidă. În modul combinat se afișează sumarul `COMBINED PHY health` la 30 s. Mesajele detaliate de prefix FIFO se activează numai prin `native_phy_diagnostics: true` din `wmbus_radio`. În `component.cpp` se numără distinct C1/A și C1/B validate CRC, precum și respingerile CRC/lungime. Toate sunt diagnostice; nu publică telegrame fără CRC valid.
+
+Protecție suplimentară: T1 este respins înainte de FIFO dacă lungimea finală 3-of-6 este peste 255 octeți. `wmbus_common` și driverele rămân nemodificate în această etapă. CI verifică schema YAML de diagnostic. **Hardware C1 nevalidat**: logul Heltec (76) dovedește T1/A dar niciun C1 valid. Sync-word-ul hardware `0x543d` singur nu dovedește recepție simultană T1 și C1/A+B. Configurația T1 funcțională rămâne implicită.
