@@ -175,8 +175,17 @@ void SX127x::configure() {
 }
 
 void SX127x::configure_fsk_ook_() {
-  // set the channel bw
+  // Keep the user-selected RX bandwidth (250 kHz on the LilyGO RF baseline).
   this->write_register_(REG_RX_BW, BW_FSK_OOK[this->bandwidth_]);
+
+  if (this->wmbus_t1_mode_) {
+    // SX1276 defaults RegAfcBw to 0x0B (50 kHz). That narrow AFC
+    // acquisition filter may miss offset wM-Bus transmitters at 100 kb/s.
+    // Adopt the 333.3-kHz AFC bandwidth used by SzczepanLeon's SX1276.
+    // Only the native wM-Bus FSK backend changes; LoRa and generic FSK
+    // retain their original register configuration.
+    this->write_register_(REG_AFC_BW, AFC_BW_333_3);
+  }
 
   // set fdev
   uint32_t fdev = std::min((this->deviation_ * 4096) / 250000, (uint32_t) 0x3FFF);
@@ -256,6 +265,49 @@ void SX127x::configure_fsk_ook_() {
   // set rx floor
   this->write_register_(REG_OOK_FIX, 256 + int(this->rx_floor_ * 2.0f));
   this->write_register_(REG_RSSI_THRESH, std::abs(int(this->rx_floor_ * 2.0f)));
+
+  if (this->wmbus_t1_mode_) {
+    // Read back in setup, BEFORE creating the FIFO task, so register
+    // inspection cannot contend with 100-kb/s streaming SPI transactions.
+    const uint8_t rx_bw = this->read_register_(REG_RX_BW);
+    const uint8_t afc_bw = this->read_register_(REG_AFC_BW);
+    const uint8_t rx_config = this->read_register_(REG_RX_CONFIG);
+    const uint8_t afc_fei = this->read_register_(REG_AFC_FEI);
+    const uint8_t preamble = this->read_register_(REG_PREAMBLE_DETECT);
+    const uint8_t sync_config = this->read_register_(REG_SYNC_CONFIG);
+    const uint8_t rssi_thresh = this->read_register_(REG_RSSI_THRESH);
+    ESP_LOGI(TAG,
+             "SX127x FSK readback: RegRxBw[12]=0x%02X RegAfcBw[13]=0x%02X RegRxConfig[0D]=0x%02X RegAfcFei[1A]=0x%02X",
+             static_cast<unsigned>(rx_bw), static_cast<unsigned>(afc_bw),
+             static_cast<unsigned>(rx_config), static_cast<unsigned>(afc_fei));
+    ESP_LOGI(TAG,
+             "SX127x FSK readback: RegPreambleDetect[1F]=0x%02X RegSyncConfig[27]=0x%02X RegRssiThresh[10]=0x%02X",
+             static_cast<unsigned>(preamble), static_cast<unsigned>(sync_config),
+             static_cast<unsigned>(rssi_thresh));
+
+    const uint8_t expected_rx_config = AFC_AUTO_ON | AGC_AUTO_ON |
+        (this->preamble_detect_ > 0 ? TRIGGER_PREAMBLE : TRIGGER_RSSI);
+    const uint8_t expected_preamble = this->preamble_detect_ > 0
+        ? PREAMBLE_DETECTOR_ON |
+              ((this->preamble_detect_ - 1) << PREAMBLE_DETECTOR_SIZE_SHIFT) |
+              (this->preamble_errors_ << PREAMBLE_DETECTOR_TOL_SHIFT)
+        : PREAMBLE_DETECTOR_OFF;
+    const uint8_t expected_sync = this->sync_value_.empty()
+        ? static_cast<uint8_t>(AUTO_RESTART_PLL_LOCK |
+                               (this->preamble_polarity_ == 0xAA ? PREAMBLE_AA : PREAMBLE_55))
+        : static_cast<uint8_t>(AUTO_RESTART_PLL_LOCK |
+                               (this->preamble_polarity_ == 0xAA ? PREAMBLE_AA : PREAMBLE_55) |
+                               SYNC_ON | (this->sync_value_.size() - 1));
+    if (rx_bw != BW_FSK_OOK[this->bandwidth_] ||
+        afc_bw != AFC_BW_333_3 ||
+        rx_config != expected_rx_config ||
+        (afc_fei & AFC_AUTO_CLEAR_ON) == 0 ||
+        preamble != expected_preamble || sync_config != expected_sync ||
+        rssi_thresh != static_cast<uint8_t>(std::abs(int(this->rx_floor_ * 2.0f)))) {
+      // Report but do not silently modify modem settings or disturb SX126x.
+      ESP_LOGW(TAG, "SX127x FSK readback differs from YAML/expected AFC profile");
+    }
+  }
 }
 
 void SX127x::configure_lora_() {

@@ -56,6 +56,13 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. tests/test_sx127x_fifo_guard.cpp -o "$RUNNER_TEMP/sx127x-fifo-guard"
           "$RUNNER_TEMP/sx127x-fifo-guard"
+      - name: Check SX127x AFC and RX register encodings (host)
+        run: |
+          mkdir -p "$RUNNER_TEMP/sx127x_rf_stubs/esphome/core"
+          printf '#pragma once\n#include <cstdint>\n' > "$RUNNER_TEMP/sx127x_rf_stubs/esphome/core/hal.h"
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I"$RUNNER_TEMP/sx127x_rf_stubs" -I. \
+            tests/test_sx127x_rf_profile.cpp -o "$RUNNER_TEMP/sx127x-rf-profile"
+          "$RUNNER_TEMP/sx127x-rf-profile"
       - name: Install pinned ESPHome for native ESP-IDF smoke
         run: |
           python -m pip install --disable-pip-version-check "esphome==2026.10.1"

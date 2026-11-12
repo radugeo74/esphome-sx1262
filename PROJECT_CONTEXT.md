@@ -1,5 +1,12 @@
 # Context curent — dual radio SX126x + SX127x
 
+## AFC + registru read-back SX1276 (12 noiembrie 2026)
+
+Comparație simultană Heltec SX1262 vs LILYGO T3-S3 SX1276: în fereastra comună de ~138 s, Heltec a validat 66 T1 și 28 C1/A, LILYGO doar 21 T1 și 0 C1/A. Cauza nu este demonstrată. Am comparat `SzczepanLeon/esphome-components` și am preluat exclusiv reglajul AFC util: în configurația SX127x **native wM-Bus FSK** se scrie `RegAfcBw 0x13=0x10` (333,3 kHz), în loc de reset `0x0B` (50 kHz). `RegAfcFei=0x01` (AfcAutoClearOn, bit 0) rămâne corect; nu copiem eroarea din upstream `0x10` (AgcStart). La configurare se citesc din hardware `RegRxBw`, `RegAfcBw`, `RegRxConfig`, `RegAfcFei`, `RegPreambleDetect`, `RegSyncConfig`, `RegRssiThresh`, logate înainte de pornirea taskului FIFO; divergențele sunt avertizate.
+
+În fixture-ul ESP-IDF LILYGO: `bandwidth: 250_0kHz`, `rx_floor: -94` (opțiuni YAML deja existente), `preamble_detect: 2`, `preamble_errors: 10`. Nu modificăm Rx bandwidth la 200 kHz, task/core/FIFO sau componentele SX126x. Următorul pas este un nou test simultan pentru cuantificarea efectului AFC, mai ales T1 slab și C1/A. Testele host validează codificarea registrelor, CI verifică compilarea, dar **efectul RF nu este încă confirmat**.
+
+
 ## Etapa SX127x 3/4/5 — diagnostic PHY, regresii reale și LILYGO T3-S3 (software, 12 noiembrie 2026)
 
 Pentru SX127x s-au adăugat contoare atomice pe taskul FIFO și pe callbackul decodorului: starturi RX, candidați și telegrame valide T1/C1-A/C1-B, invalidări 3-of-6/CRC/length, FIFO overrun, timeout frame/modem, IRQ ratat, marker/prefix invalid, pierdere în coadă și RX rearm. `native_phy_diagnostics: true` afișează agregatele o dată pe minut, fără chei, ID-uri de contor sau payloaduri. Testul `tests/test_c1_crc_safety.py` folosește decodorul 3-of-6 și rutinele CRC reale din proiect, cu cadre T1/C1 complete, corupte, trunchiate și consecutive, inclusiv limita C1/B de 128 octeți. `tests/lilygo-t3s3-sx1276-ci.yaml` validează/compilează ESP32-S3 cu placa `lilygo-t3-s3` și pinii SX1276 (SPI 5/6/3, CS7, RST8, DIO0=9, DIO1=33). Toate sunt build/test-only. RF real pe placă rămâne nevalidat; SX126x nu a fost modificat.

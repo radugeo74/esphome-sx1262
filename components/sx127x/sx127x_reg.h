@@ -24,6 +24,7 @@ enum SX127xReg : uint8_t {
   REG_RX_CONFIG = 0x0D,
   REG_RSSI_THRESH = 0x10,
   REG_RX_BW = 0x12,
+  REG_AFC_BW = 0x13,
   REG_OOK_PEAK = 0x14,
   REG_OOK_FIX = 0x15,
   REG_OOK_AVG = 0x16,
@@ -167,6 +168,12 @@ enum SX127xRxBw : uint8_t {
   RX_BW_166_7 = 0x11,
   RX_BW_200_0 = 0x09,
   RX_BW_250_0 = 0x01,
+};
+
+// SX1276 RegAfcBw (0x13): mantissa 24, exponent 0, FXOSC = 32 MHz
+// AFC channel filter bandwidth = 32 MHz / (24 * 2^(0+2)) = 333.3 kHz.
+enum SX127xAfcBw : uint8_t {
+  AFC_BW_333_3 = 0x10,
 };
 
 enum SX127xOokPeak : uint8_t {

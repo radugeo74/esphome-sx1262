@@ -4,6 +4,8 @@
 # T1 physical frames can exceed 64-byte FIFO, so ISR-driven streaming is required.
 # Combined T1+C1/A+B, SX1276 crystal (NO TCXO GPIO).
 # Verify the board revision before any physical deployment.
+# SX127x firmware now sets RegAfcBw[0x13]=0x10 (333.3 kHz) for wM-Bus FSK.
+# Compare frame counts against Heltec with identical time windows.
 esphome:
   name: lilygo-t3s3-sx1276-ci
 
@@ -37,13 +39,14 @@ sx127x:
   frequency: 868950000
   bitrate: 100000
   deviation: 50000
-  bandwidth: 250_0kHz
+  bandwidth: 250_0kHz  # Keep the established RX test baseline (RegRxBw=0x01).
+  rx_floor: -94       # Existing SX127x option, RSSI threshold RegRssiThresh=0xBC.
   shaping: NONE
   packet_mode: true
   bitsync: true
   preamble_polarity: 0x55
   preamble_size: 4
-  preamble_detect: 1
+  preamble_detect: 2  # Reduced false syncs on actual LILYGO SX1276.
   preamble_errors: 10
   payload_length: 0
   crc_enable: false
