@@ -412,6 +412,10 @@ void SX126x::t1_stream_loop_() {
   static uint32_t prefix_invalid = 0;
   static uint32_t length_invalid = 0;
   static uint32_t length_oversize = 0;
+  static uint32_t c1_a_prefix = 0;
+  static uint32_t c1_b_prefix = 0;
+  static uint32_t c1_late = 0;
+  static uint32_t c1_invalid_length = 0;
   const uint32_t now_ms = millis();
   if (now_ms - last_report_ms >= 30000) {
     ESP_LOGI(TAG, "T1 PHY health sync=%" PRIu32 " other_irq=%" PRIu32
@@ -422,6 +426,12 @@ void SX126x::t1_stream_loop_() {
              static_cast<unsigned>(this->busy_pin_->digital_read()),
              static_cast<unsigned>(this->dio1_pin_->digital_read()),
              static_cast<unsigned>(this->t1_stream_receiving_));
+    if (this->combined_t1_c1_stream_) {
+      ESP_LOGI(TAG, "COMBINED PHY health c1_a_prefix=%" PRIu32
+                    " c1_b_prefix=%" PRIu32 " c1_late=%" PRIu32
+                    " c1_bad_length=%" PRIu32,
+               c1_a_prefix, c1_b_prefix, c1_late, c1_invalid_length);
+    }
     last_report_ms = now_ms;
   }
   if (!this->t1_stream_receiving_) {
@@ -514,7 +524,13 @@ void SX126x::t1_stream_loop_() {
       this->t1_stream_prefix_[0] == 0x54 &&
       (this->t1_stream_prefix_[1] == 0xCD || this->t1_stream_prefix_[1] == 0x3D)) {
     static uint32_t c1_fifo_probe_count = 0;
-    if (c1_fifo_probe_count++ < 12) {
+    if (this->t1_stream_prefix_[1] == 0xCD)
+      ++c1_a_prefix;
+    else
+      ++c1_b_prefix;
+    if (this->t1_stream_diagnostics_ &&
+        (c1_fifo_probe_count++ < 24 ||
+         (c1_a_prefix + c1_b_prefix) % 100 == 0)) {
       uint8_t check_ptr = 0;
       this->read_register_(0x0803, &check_ptr, 1);
       ESP_LOGD(TAG, "COMBINED C1 FIFO start marker=%02X%02X L=%02X rx_ptr=%u read_ptr=%u age_ms=%u",
@@ -545,6 +561,7 @@ void SX126x::t1_stream_loop_() {
       const size_t l = combined_c1 ? this->t1_stream_prefix_[2] : this->t1_stream_prefix_[0];
       if (l < 10) {
         ++length_invalid;
+        if (combined_c1) ++c1_invalid_length;
         if (this->t1_stream_diagnostics_ && length_invalid <= 10)
           ESP_LOGW(TAG, "C1 PHY invalid L=%u", static_cast<unsigned>(l));
         this->t1_stream_reset_();
@@ -556,6 +573,7 @@ void SX126x::t1_stream_loop_() {
       const size_t target = (format_b ? l + 1 : l + 1 + 2 * blocks) + (combined_c1 ? 2 : 0);
       if (target > 255) {
         ++length_oversize;
+        if (combined_c1) ++c1_invalid_length;
         this->t1_stream_reset_();
         return;
       }
@@ -565,14 +583,13 @@ void SX126x::t1_stream_loop_() {
       // The first bytes can be genuine, but the RX stream is no longer
       // bounded by the expected frame. Fail closed, never publish.
       if (combined_c1 && write_ptr > target) {
-        static uint32_t c1_late_count = 0;
-        ++c1_late_count;
-        if (c1_late_count <= 20 || c1_late_count % 100 == 0) {
+        ++c1_late;
+        if (c1_late <= 20 || c1_late % 100 == 0) {
           ESP_LOGW(TAG, "COMBINED C1 late FIFO L=%u target=%u ptr=%u age_ms=%u count=%u; discarded",
                    static_cast<unsigned>(l), static_cast<unsigned>(target),
                    static_cast<unsigned>(write_ptr),
                    static_cast<unsigned>(millis() - this->t1_stream_started_),
-                   static_cast<unsigned>(c1_late_count));
+                   static_cast<unsigned>(c1_late));
         }
         this->t1_stream_reset_();
         return;
@@ -609,7 +626,16 @@ void SX126x::t1_stream_loop_() {
       this->t1_stream_reset_();
       return;
     }
-    this->t1_stream_target_ = (decoded * 12 + 7) / 8;
+    const size_t encoded_target = (decoded * 12 + 7) / 8;
+    // SX126x FIFO is 256 bytes. A mathematically valid decoded frame can
+    // still require >255 on-air bytes after T1 3-of-6 encoding. Never let
+    // the 8-bit FIFO pointer wrap masquerade as a complete frame.
+    if (encoded_target > 255) {
+      ++length_oversize;
+      this->t1_stream_reset_();
+      return;
+    }
+    this->t1_stream_target_ = encoded_target;
     }
   }
   if (this->t1_stream_target_ && this->t1_stream_received_ == this->t1_stream_target_) {
