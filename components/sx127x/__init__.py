@@ -154,6 +154,8 @@ def validate_config(config: ConfigType) -> ConfigType:
             raise cv.Invalid("wmbus_t1_mode requires sync_value: [0x54, 0x3D]")
         if config[CONF_BITRATE] != 100000 or config[CONF_CRC_ENABLE]:
             raise cv.Invalid("wmbus_t1_mode requires bitrate: 100000 and crc_enable: false")
+        if config[CONF_PREAMBLE_POLARITY] != 0x55:
+            raise cv.Invalid("wmbus_t1_mode requires preamble_polarity: 0x55")
         if config[CONF_PAYLOAD_LENGTH] != 0:
             raise cv.Invalid("wmbus_t1_mode requires payload_length: 0 (unlimited FIFO stream)")
         if not config[CONF_RX_START]:
