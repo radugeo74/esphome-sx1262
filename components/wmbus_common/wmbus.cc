@@ -4946,6 +4946,9 @@ bool trimCRCsFrameFormatBInternal(std::vector<uchar> &payload,
     crc2_pos = len - 2;
   }
 
+  if (crc2_pos != 0 && crc2_pos <= crc1_pos + 2)
+    return false;
+
   uint16_t calc_crc = crc16_EN13757(safeButUnsafeVectorPtr(payload), crc1_pos);
   uint16_t check_crc = payload[crc1_pos] << 8 | payload[crc1_pos + 1];
 
@@ -4964,7 +4967,14 @@ bool trimCRCsFrameFormatBInternal(std::vector<uchar> &payload,
   }
 
   if (crc2_pos > 0) {
-    calc_crc = crc16_EN13757(&payload[crc1_pos + 2], crc2_pos);
+    // CRC2 covers only the bytes between CRC1 and CRC2. The previous
+    // implementation passed the absolute CRC2 offset as a byte count,
+    // which read beyond the buffer for every two-block Format-B frame.
+    const size_t second_start = crc1_pos + 2;
+    if (crc2_pos <= second_start || crc2_pos + 2 != len)
+      return false;
+    const size_t second_length = crc2_pos - second_start;
+    calc_crc = crc16_EN13757(&payload[second_start], second_length);
     check_crc = payload[crc2_pos] << 8 | payload[crc2_pos + 1];
 
     if (calc_crc != check_crc && !FUZZING) {
