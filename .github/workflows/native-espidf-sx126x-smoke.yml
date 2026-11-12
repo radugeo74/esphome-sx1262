@@ -48,7 +48,7 @@ jobs:
           "$RUNNER_TEMP/wmbus-3of6"
       - name: Test C1 Format A and two-block Format B under ASan and UBSan
         run: python tests/test_c1_crc_safety.py
-      - name: Unit-test SX127x T1 physical length gate
+      - name: Unit-test SX127x T1/C1 physical lengths and collision candidates
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I. tests/test_sx127x_t1_length.cpp -o "$RUNNER_TEMP/sx127x-t1-length"
           "$RUNNER_TEMP/sx127x-t1-length"
@@ -63,21 +63,25 @@ jobs:
         run: esphome config tests/sx126x-wmbus-bridge.yaml
       - name: Validate SX127x selectable backend (experimental build-only)
         run: esphome config tests/sx127x-wmbus-lab.yaml
-      - name: Reject SX127x C1 and missing DIO1 (negative schema)
+      - name: Validate SX127x combined T1 + C1 A/B schema (build-only)
+        run: esphome config tests/sx127x-wmbus-c1-lab.yaml
+      - name: Reject unsafe SX127x C1 sync and missing DIO1
         run: |
-          sed 's/native_stream_mode: T1/native_stream_mode: T1_C1/' tests/sx127x-wmbus-lab.yaml > tests/sx127x-invalid-mode-ci.yaml
-          if esphome config tests/sx127x-invalid-mode-ci.yaml; then
-            echo "FAIL: SX127x C1 was incorrectly accepted"
+          sed 's/sync_value: \[0x54\]/sync_value: [0x54, 0xCD]/' tests/sx127x-wmbus-c1-lab.yaml > tests/sx127x-invalid-sync-ci.yaml
+          if esphome config tests/sx127x-invalid-sync-ci.yaml; then
+            echo "FAIL: unsupported SX127x sync accepted"
             exit 1
           fi
-          sed '/dio1_pin:/d' tests/sx127x-wmbus-lab.yaml > tests/sx127x-missing-dio1-ci.yaml
+          sed '/dio1_pin:/d' tests/sx127x-wmbus-c1-lab.yaml > tests/sx127x-missing-dio1-ci.yaml
           if esphome config tests/sx127x-missing-dio1-ci.yaml; then
-            echo "FAIL: SX127x streaming without DIO1 was incorrectly accepted"
+            echo "FAIL: SX127x streaming without DIO1 accepted"
             exit 1
           fi
-          echo "PASS: SX127x rejects unsupported modes and missing FIFO interrupt"
-      - name: Compile SX127x experimental backend (build-only)
+          echo "PASS: unsupported sync and missing FIFO interrupt rejected"
+      - name: Compile SX127x T1 backend (build-only)
         run: esphome compile tests/sx127x-wmbus-lab.yaml
+      - name: Compile SX127x combined T1+C1 backend (build-only)
+        run: esphome compile tests/sx127x-wmbus-c1-lab.yaml
       - name: Reject removed legacy SX1262 radio schema
         run: |
           if esphome config tests/sx1262-legacy-rollback.yaml; then
