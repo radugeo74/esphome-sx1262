@@ -10,7 +10,12 @@
 #include "esphome/core/component.h"
 
 #include "esphome/components/wmbus_common/wmbus.h"
+// ESPHome only copies selected radio components into the generated build.
+// Keep the opposite radio header optional in single-radio configurations.
+#if __has_include("esphome/components/sx127x/sx127x.h")
 #include "esphome/components/sx127x/sx127x.h"
+#define WMBUS_RADIO_HAS_SX127X 1
+#endif
 #include "esphome/components/wmbus_common/address.h"
 
 #include "packet.h"
@@ -20,13 +25,19 @@ namespace sx126x { class SX126x; }
 namespace sx127x { class SX127x; class SX127xListener; }
 namespace wmbus_radio {
 
-class Radio : public Component, public sx127x::SX127xListener {
+class Radio : public Component
+#ifdef WMBUS_RADIO_HAS_SX127X
+            , public sx127x::SX127xListener
+#endif
+{
 public:
   // The patched SX126x is the ONLY SPI/IRQ owner in the native path.
   // No legacy radio transceiver is created for this configuration.
   void set_native_sx126x(sx126x::SX126x *radio) { this->native_sx126x_ = radio; }
   void set_native_sx127x(sx127x::SX127x *radio) { this->native_sx127x_ = radio; }
+#ifdef WMBUS_RADIO_HAS_SX127X
   void on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) override;
+#endif
   void set_native_t1_c1_b(bool enabled) { this->native_t1_c1_b_ = enabled; }
   void set_native_phy_diagnostics(bool enabled) { this->native_phy_diagnostics_ = enabled; }
 
