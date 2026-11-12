@@ -1,7 +1,7 @@
 # Build-only SX127x radio backend smoke test. NOT RF-validated; DO NOT FLASH.
-# Official ESPHome SX127x FSK packet-mode FIFO is limited to 64 bytes.
-# Typical wM-Bus T1/C1 physical frames can exceed this; full reception
-# requires a dedicated SX127x continuous/streaming PHY implementation.
+# Patched ESPHome SX127x drains FIFO via DIO1 during the packet.
+# T1 physical frames can exceed 64-byte FIFO, so ISR-driven streaming is required.
+# NOT yet RF-validated; C1 reception is NOT supported by this backend.
 # All IDs below are synthetic; pins are placeholders for an ESP32 dev board.
 esphome:
   name: sx127x-wmbus-lab
@@ -18,7 +18,7 @@ external_components:
   - source:
       type: local
       path: ../components
-    components: [wmbus_common, wmbus_radio, wmbus_meter]
+    components: [sx127x, wmbus_common, wmbus_radio, wmbus_meter]
 
 spi:
   clk_pin: GPIO18
@@ -30,6 +30,8 @@ sx127x:
   cs_pin: GPIO5
   rst_pin: GPIO14
   dio0_pin: GPIO26
+  dio1_pin: GPIO27
+  wmbus_t1_mode: true
   modulation: FSK
   frequency: 868950000
   bitrate: 100000
@@ -38,6 +40,7 @@ sx127x:
   shaping: NONE
   packet_mode: true
   bitsync: true
+  payload_length: 0
   crc_enable: false
   sync_value: [0x54, 0x3D]
   rx_start: true
