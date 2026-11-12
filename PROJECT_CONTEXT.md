@@ -69,3 +69,10 @@ Citește `README.md`, `AGENTS.md`, `docs/SX126X_NATIVE_BASELINE.md` și `docs/XM
 **PĂSTRAT FĂRĂ ÎNLOCUIRE:** `wmbus_common` și driverele `fhkvdataiii` / `mkradio4`, identificarea contoarelor, verificarea CRC, RSSI, senzorii HA. Mesajele de aplicație `wmbusmeters` rămân corecte. Nu există încă interpret XMQ dinamic.
 
 **Rollback:** în această ramură schema legacy nu mai este validă; recuperarea cere commit Git anterior / firmware salvat. Testul CI `sx1262-legacy-rollback.yaml` verifică acum **respingerea** vechii scheme. Captura hardware cu 12/12 contoare validează baza de dinaintea curățării, nu dovedește încă noul commit. Nu face OTA până la CI verde și verificarea YAML-ului privat.
+
+
+## C1 Format A/B — etapă software (12 noiembrie 2026)
+
+**IMPLEMENTAT ÎN COD, ÎNCĂ NEVALIDAT CI/RF PENTRU ACEST COMMIT:** `wmbus_radio` acceptă C1 Format A (`54 CD`) și Format B (`54 3D`) în `native_stream_mode: T1_C1`; vechiul `T1_C1_B` rămâne alias compatibil. Pentru C1-A se verifică lungimea fizică cu toate blocurile CRC și se folosește `trimCRCsFrameFormatA`. Pentru C1-B se verifică lungimea fizică și `trimCRCsFrameFormatB`; în `wmbus_common/wmbus.cc`, lungimea CRC2 a fost corectată la `crc2_pos - (crc1_pos + 2)`, cu limite explicite, eliminând citirea în afara vectorului. Nu se mai respinge arbitrar orice B peste 128 octeți. Limita actuală de recepție PHY SX126x pentru fluxul combinat rămâne 255 octeți cu prefix inclus.
+
+CI: `tests/test_c1_crc_safety.py` extrage funcțiile reale Format A/B din `wmbus.cc` și le verifică pe date sintetice sub ASan/UBSan; se validează schema YAML combinată. **Aceasta NU este validare RF C1**. Nu modificăm calea T1/A, `wmbus_meter`, catalogul driverelor sau configurația reală de pe Heltec până la testul C1 controlat.
