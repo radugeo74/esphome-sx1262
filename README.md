@@ -76,3 +76,10 @@ Fără chei AES, ID-uri private sau configurări personale în Git. Nu se ignor�
 The working default remains `native_stream_mode: T1`. The opt-in `native_stream_mode: T1_C1` adds experimental C1 Format A (`54 CD`) and C1 Format B (`54 3D`) parsing, exact physical length checks, complete DLL CRC checking and a corrected bounded second CRC in the existing `wmbus_common` Format-B routine. The previous experimental name `T1_C1_B` is still accepted as an alias for the same combined mode. PHY length remains limited to 255 bytes including the C1 mode prefix.
 
 **Status:** implemented in code, pending CI and real C1 RF validation. The known-good Heltec T1/A configuration does not need to change. Do not mistake CRC unit tests or an ESPHome compile for confirmation of simultaneous T1/C1 reception.
+
+
+### Native T1/C1 PHY diagnostics (12 November 2026)
+
+The native-only `wmbus_radio` now exposes an opt-in `native_phy_diagnostics: true` (default false). Combine it with `native_stream_mode: T1_C1` **only for a controlled RF test**. It logs classified C1-A/C1-B PHY prefixes and late FIFO drops in the SX126x layer, plus C1 CRC/length rejections and validated A/B counts in the radio adapter. Counters do not log meter IDs, AES keys or frame payloads. A T1 encoded length exceeding the 255-byte FIFO cap is rejected, protecting against FIFO wrap ambiguity. This was added after the real Heltec log (76), which confirmed many T1/A frames but no verified C1 frames.
+
+**Known limitation:** the combined mode still uses the hardware sync configuration. Seeing `Sync Value: 0x543d` alone does not prove simultaneous T1, C1-A and C1-B capture. Until live C1 reception is verified, do not claim universal dual-mode reception; keep the known-good Heltec firmware and its T1 configuration.
