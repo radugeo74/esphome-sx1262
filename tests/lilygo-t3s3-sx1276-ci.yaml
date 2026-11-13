@@ -35,19 +35,20 @@ sx127x:
   dio0_pin: GPIO9
   dio1_pin: GPIO33
   wmbus_t1_mode: true
-  wmbus_dual_sync: true  # Experimental hybrid hardware sync; 280ms T1 / 120ms C1/A
+  wmbus_dual_sync: false
+  wmbus_continuous_dual: true  # Common 54 sync; no periodic HW sync switching
   modulation: FSK
   frequency: 868950000
   bitrate: 100000
   deviation: 50000
   bandwidth: 250_0kHz  # Keep the established RX test baseline (RegRxBw=0x01).
-  rx_floor: -94       # Existing SX127x option, RSSI threshold RegRssiThresh=0xBC.
+  rx_floor: -110       # Existing SX127x option, RSSI threshold RegRssiThresh=0xBC.
   shaping: NONE
   packet_mode: true
   bitsync: true
   preamble_polarity: 0x55
   preamble_size: 4
-  preamble_detect: 2  # Reduced false syncs on actual LILYGO SX1276.
+  preamble_detect: 0  # Experiment: RSSI-triggered AFC/AGC instead of preamble gate.
   preamble_errors: 10
   payload_length: 0
   crc_enable: false
