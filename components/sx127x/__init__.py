@@ -26,6 +26,7 @@ CONF_DIO0_PIN = "dio0_pin"
 CONF_DIO1_PIN = "dio1_pin"
 CONF_WMBUS_T1_MODE = "wmbus_t1_mode"
 CONF_WMBUS_C1A_ONLY = "wmbus_c1a_only"
+CONF_WMBUS_DUAL_SYNC = "wmbus_dual_sync"
 CONF_WMBUS_LNA_BOOST_HF = "wmbus_lna_boost_hf"
 CONF_MODULATION = "modulation"
 CONF_PA_PIN = "pa_pin"
@@ -152,6 +153,9 @@ def validate_config(config: ConfigType) -> ConfigType:
             raise cv.Invalid("wmbus_t1_mode requires packet_mode: true")
         if CONF_DIO1_PIN not in config:
             raise cv.Invalid("wmbus_t1_mode requires dio1_pin (FIFO empty IRQ)")
+        if config[CONF_WMBUS_DUAL_SYNC]:
+            if config[CONF_WMBUS_C1A_ONLY] or config[CONF_SYNC_VALUE] != [0x54]:
+                raise cv.Invalid("wmbus_dual_sync requires wmbus_c1a_only: false and sync_value: [0x54]")
         if config[CONF_WMBUS_C1A_ONLY]:
             if config[CONF_SYNC_VALUE] != [0x54, 0xCD]:
                 raise cv.Invalid("wmbus_c1a_only requires sync_value: [0x54, 0xCD]")
@@ -168,6 +172,8 @@ def validate_config(config: ConfigType) -> ConfigType:
             raise cv.Invalid("wmbus_t1_mode requires payload_length: 0 (unlimited FIFO stream)")
         if not config[CONF_RX_START]:
             raise cv.Invalid("wmbus_t1_mode requires rx_start: true")
+    if config[CONF_WMBUS_DUAL_SYNC] and not config[CONF_WMBUS_T1_MODE]:
+        raise cv.Invalid("wmbus_dual_sync requires wmbus_t1_mode: true")
     if config[CONF_WMBUS_C1A_ONLY] and not config[CONF_WMBUS_T1_MODE]:
         raise cv.Invalid("wmbus_c1a_only requires wmbus_t1_mode: true")
     if config[CONF_WMBUS_LNA_BOOST_HF] and not config[CONF_WMBUS_T1_MODE]:
@@ -228,6 +234,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_DIO1_PIN): pins.internal_gpio_input_pin_schema,
             cv.Optional(CONF_WMBUS_T1_MODE, default=False): cv.boolean,
             cv.Optional(CONF_WMBUS_C1A_ONLY, default=False): cv.boolean,
+            cv.Optional(CONF_WMBUS_DUAL_SYNC, default=False): cv.boolean,
             cv.Optional(CONF_WMBUS_LNA_BOOST_HF, default=False): cv.boolean,
             cv.Required(CONF_FREQUENCY): cv.All(
                 cv.frequency, cv.int_range(min=int(137e6), max=int(1020e6))
@@ -277,6 +284,7 @@ async def to_code(config: ConfigType) -> None:
         )
     cg.add(var.set_wmbus_t1_mode(config[CONF_WMBUS_T1_MODE]))
     cg.add(var.set_wmbus_c1a_only(config[CONF_WMBUS_C1A_ONLY]))
+    cg.add(var.set_wmbus_dual_sync(config[CONF_WMBUS_DUAL_SYNC]))
     cg.add(var.set_wmbus_lna_boost_hf(config[CONF_WMBUS_LNA_BOOST_HF]))
     if CONF_DIO1_PIN in config:
         dio1_pin = await cg.gpio_pin_expression(config[CONF_DIO1_PIN])
