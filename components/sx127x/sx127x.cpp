@@ -783,7 +783,6 @@ void SX127x::wmbus_task_() {
       continue;
     }
     if (this->wmbus_dual_sync_ && (flags2 & WmbusFifoGuard::FIFO_EMPTY) &&
-        !(flags1 & WmbusFifoGuard::IRQ1_PREAMBLE_DETECTED) &&
         !(flags1 & WmbusFifoGuard::IRQ1_SYNC_ADDRESS_MATCH)) {
       // 70% T1, 30% C1/A. Switch only between frames, never mid-FIFO.
       // This is an RF experiment, not simultaneous demodulation.
@@ -835,7 +834,9 @@ void SX127x::wmbus_task_() {
     if (hw_c1a) {
       if (this->wmbus_phy_diagnostics_)
         ++this->wmbus_stats_.c1a_hw_sync_fifo;
-    } else if (this->wmbus_c1_mode_) {
+    } else if (this->wmbus_c1_mode_ && !this->wmbus_dual_sync_) {
+      // Single-byte common sync leaves marker in FIFO; the hybrid full
+      // two-byte hardware sync consumes 3D or CD before FIFO starts.
       status = this->wmbus_read_fifo_(&marker, 1, deadline_us);
       if (this->wmbus_phy_diagnostics_) {
         if (status != WmbusReadStatus::COMPLETE) {
