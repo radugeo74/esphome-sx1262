@@ -1,3 +1,25 @@
+## SX1276: recepție continuă 54 cu detector de preambul (13 noiembrie 2026)
+
+**Branch:** `experimental/sx127x-continuous-preamble`. Rezultat al testului precedent: `54` + `preamble_detect: 0` + `rx_floor: -110` a produs aproximativ 97.000 sincronizări, dintre care peste 96.000 marcaje nevalide, iar C1/A aproape a dispărut. Această încercare păstrează recepția comună continuă `54`, dar reface declanșarea AFC/AGC prin detectorul de preambul și pragul RSSI al configurației anterioare. **Nu afirmăm încă recepție performantă T1+C1/A: necesită test hardware simultan cu Heltec.**
+
+În YAML LILYGO, `external_components` trebuie să indice branch-ul de mai sus. În secțiunea `sx127x:` păstrează restul pinilor și al parametrilor FSK existenți, schimbând doar:
+
+```yaml
+wmbus_t1_mode: true
+wmbus_dual_sync: false
+wmbus_continuous_dual: true
+wmbus_c1a_only: false
+sync_value: [0x54]
+preamble_detect: 2
+rx_floor: -94
+```
+
+Păstrează `wmbus_radio.native_stream_mode: T1_C1`, driverele XMQ și cele 12 contoare; nu adăuga senzori. Opțiunea `wmbus_continuous_dual` rămâne opt-in și este acum validată pentru `preamble_detect >= 1`, nu pentru valoarea 0. Cu `preamble_detect: 2`, receptorul folosește triggerul de preambul existent, nu triggerul pe RSSI. Recuperarea FIFO și verificările CRC sunt neschimbate. Fixture-ul `tests/lilygo-t3s3-sx1276-ci.yaml` este doar pentru compilare, nu instalare.
+
+**Test recomandat:** loguri simultane Heltec/LILYGO 10–15 minute și comparație a cadrelor CRC-valide T1/A, C1/A, a marcajelor `3D/CD/other`, a `rearm` și a contoarelor configurate procesate. **Rollback:** revino la `experimental/sx127x-hybrid-dual-sync` cu `wmbus_dual_sync: true`, `wmbus_continuous_dual: false`, `preamble_detect: 2`, `rx_floor: -94`.
+
+---
+
 ## SX1276: experiment recepție continuă T1 + C1/A (13 noiembrie 2026)
 
 Branch izolat: `experimental/sx127x-continuous-t1-c1`, derivat din experimentul de alternare hardware. **Nevalidat RF și fără CI confirmat**. Nu modifica firmware-ul Heltec.
