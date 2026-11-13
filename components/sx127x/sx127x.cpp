@@ -61,7 +61,10 @@ void SX127x::setup() {
   // Fail closed if the radio hardware sync width and selected link modes
   // disagree. The C1 path must keep the byte following 0x54 in FIFO.
   if (this->wmbus_t1_mode_) {
-    const bool sync_ok = this->wmbus_c1a_only_
+    const bool sync_ok = this->wmbus_dual_sync_
+        ? this->wmbus_c1_mode_ && !this->wmbus_c1a_only_ &&
+              this->sync_value_.size() == 1 && this->sync_value_[0] == 0x54
+        : this->wmbus_c1a_only_
         ? this->wmbus_c1_mode_ && this->sync_value_.size() == 2 &&
               this->sync_value_[0] == 0x54 && this->sync_value_[1] == 0xCD
         : this->wmbus_c1_mode_
@@ -75,6 +78,10 @@ void SX127x::setup() {
       return;
     }
   }
+  // Start hybrid mode in the T1 window with a full two-byte hardware sync.
+  // A one-byte 54 sync was observed to lose most C1/A on LILYGO SX1276.
+  if (this->wmbus_dual_sync_)
+    this->sync_value_.push_back(0x3D);
   // setup reset
   this->rst_pin_->setup();
   if (this->wmbus_t1_mode_) {
@@ -113,6 +120,7 @@ void SX127x::setup() {
     if (!this->dio1_pin_->digital_read())
       xTaskNotifyGive(this->wmbus_task_handle_);
     ESP_LOGW(TAG, "SX127x wM-Bus %s FIFO stream enabled (experimental RF)",
+             this->wmbus_dual_sync_ ? "hybrid T1/C1/A (HW sync windows 54 3D / 54 CD)" :
              this->wmbus_c1a_only_ ? "C1/A-only (HW sync 54 CD)" :
              this->wmbus_c1_mode_ ? "T1+C1/A+B" : "T1");
   }
@@ -721,6 +729,15 @@ void SX127x::wmbus_restart_rx_() {
     return;
   this->write_register_(WmbusFifoGuard::IRQ2_REGISTER,
                         WmbusFifoGuard::FIFO_OVERRUN);
+  if (this->wmbus_dual_sync_) {
+    // Only the dedicated FIFO task writes these registers, in STANDBY.
+    // Full hardware sync avoids the C1/A capture regression with sync=54.
+    this->write_register_(REG_SYNC_CONFIG,
+                          AUTO_RESTART_PLL_LOCK | PREAMBLE_55 | SYNC_ON | 1);
+    this->write_register_(REG_SYNC_VALUE1, 0x54);
+    this->write_register_(REG_SYNC_VALUE1 + 1,
+                          this->wmbus_dual_c1_window_ ? 0xCD : 0x3D);
+  }
   this->set_mode_rx();
   if (this->is_failed())
     return;
@@ -736,9 +753,11 @@ void SX127x::wmbus_restart_rx_() {
 
 void SX127x::wmbus_task_() {
   uint32_t last_activity_ms = millis();
+  this->wmbus_dual_window_started_ms_ = last_activity_ms;
   while (true) {
     const uint32_t notified = ulTaskNotifyTake(
-        pdTRUE, pdMS_TO_TICKS(WmbusFifoGuard::RX_WATCHDOG_INTERVAL_MS));
+        pdTRUE, pdMS_TO_TICKS(this->wmbus_dual_sync_ ? 20 :
+                             WmbusFifoGuard::RX_WATCHDOG_INTERVAL_MS));
     if (this->is_failed())
       continue;
 
@@ -762,6 +781,21 @@ void SX127x::wmbus_task_() {
       this->wmbus_restart_rx_();
       last_activity_ms = millis();
       continue;
+    }
+    if (this->wmbus_dual_sync_ && (flags2 & WmbusFifoGuard::FIFO_EMPTY) &&
+        !(flags1 & WmbusFifoGuard::IRQ1_PREAMBLE_DETECTED) &&
+        !(flags1 & WmbusFifoGuard::IRQ1_SYNC_ADDRESS_MATCH)) {
+      // 70% T1, 30% C1/A. Switch only between frames, never mid-FIFO.
+      // This is an RF experiment, not simultaneous demodulation.
+      const uint32_t dwell_ms = this->wmbus_dual_c1_window_ ? 120 : 280;
+      if (millis() - this->wmbus_dual_window_started_ms_ >= dwell_ms) {
+        this->wmbus_dual_c1_window_ = !this->wmbus_dual_c1_window_;
+        this->wmbus_dual_window_started_ms_ = millis();
+        ++this->wmbus_stats_.dual_sync_switches;
+        this->wmbus_restart_rx_();
+        last_activity_ms = millis();
+        continue;
+      }
     }
     if (!notified && (flags2 & WmbusFifoGuard::FIFO_EMPTY)) {
       // A prolonged quiet period may be a stuck RX/sync state. Re-arm
@@ -795,8 +829,10 @@ void SX127x::wmbus_task_() {
     WmbusReadStatus status = WmbusReadStatus::COMPLETE;
     // After full HW sync=54 CD, FIFO starts with L: do NOT read a
     // marker byte. Use synthetic 0xCD only for length/CRC reconstruction.
-    uint8_t marker = this->wmbus_c1a_only_ ? 0xCD : 0x3D;
-    if (this->wmbus_c1a_only_) {
+    const bool hw_c1a = this->wmbus_c1a_only_ ||
+                        (this->wmbus_dual_sync_ && this->wmbus_dual_c1_window_);
+    uint8_t marker = hw_c1a ? 0xCD : 0x3D;
+    if (hw_c1a) {
       if (this->wmbus_phy_diagnostics_)
         ++this->wmbus_stats_.c1a_hw_sync_fifo;
     } else if (this->wmbus_c1_mode_) {
@@ -1005,7 +1041,9 @@ void SX127x::dump_config() {
     }
   }
   if (this->wmbus_t1_mode_) {
-    ESP_LOGCONFIG(TAG, "  C1/A-only hardware sync 54 CD: %s",
+    ESP_LOGCONFIG(TAG, "  Hybrid T1/C1/A hardware sync windows: %s",
+                TRUEFALSE(this->wmbus_dual_sync_));
+  ESP_LOGCONFIG(TAG, "  C1/A-only hardware sync 54 CD: %s",
                   TRUEFALSE(this->wmbus_c1a_only_));
     ESP_LOGCONFIG(TAG, "  LNA HF boost opt-in: %s", TRUEFALSE(this->wmbus_lna_boost_hf_));
     // Only cached boot values. dump_config() can run after Wi-Fi/API connects,
