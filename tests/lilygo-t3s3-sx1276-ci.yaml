@@ -42,7 +42,7 @@ sx127x:
   bitrate: 100000
   deviation: 50000
   bandwidth: 250_0kHz  # Keep the established RX test baseline (RegRxBw=0x01).
-  rx_floor: -110       # Existing SX127x option, RSSI threshold RegRssiThresh=0xBC.
+  rx_floor: -110       # Experimental RSSI threshold RegRssiThresh=0xDC (-110 dBm).
   shaping: NONE
   packet_mode: true
   bitsync: true
