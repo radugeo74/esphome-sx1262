@@ -108,6 +108,9 @@ class SX127x final : public Component,
   // Opt-in hybrid hardware-sync windows for SX1276; do not use the unreliable
   // common one-byte 54 sync for C1/A in this mode.
   void set_wmbus_dual_sync(bool value) { this->wmbus_dual_sync_ = value; }
+  // Opt-in continuous common 54 sync with RSSI-triggered AFC/AGC.
+  // Both 3D (T1/C1B) and CD (C1A) markers remain in FIFO.
+  void set_wmbus_continuous_dual(bool value) { this->wmbus_continuous_dual_ = value; }
   void set_wmbus_lna_boost_hf(bool value) { this->wmbus_lna_boost_hf_ = value; }
   void set_wmbus_diagnostics(bool enabled) { this->wmbus_phy_diagnostics_ = enabled; }
   void note_wmbus_decode_result(WmbusDecodeResult event);
@@ -157,6 +160,7 @@ class SX127x final : public Component,
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
+  bool wmbus_continuous_dual_{false};
   bool wmbus_dual_c1_window_{false};  // FIFO task only
   uint32_t wmbus_dual_window_started_ms_{0};  // FIFO task only
   bool wmbus_lna_boost_hf_{false};
