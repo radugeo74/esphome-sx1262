@@ -1,3 +1,15 @@
+## Experiment SX1276: sincronizare hardware hibridă T1/C1/A (13 noiembrie 2026)
+
+**Branch izolat:** `experimental/sx127x-hybrid-dual-sync` (derivat din `experimental/dual-radio-sx126x-sx127x`). **Cod încă nevalidat prin CI sau RF real**; nu se afirmă că recepția combinată este rezolvată.
+
+În logurile simultane LILYGO cu `sync_value: [0x54]` a decodat multe T1, dar doar foarte puține C1/A; profilul anterior `[0x54, 0xCD]` primea C1/A, însă excludea T1. Am introdus `sx127x.wmbus_dual_sync: true` (implicit `false`) pentru un **experiment de recepție prin ferestre alternante**, nu demodulare simultană: 280 ms cu sincronizare completă `54 3D` (T1 sau C1/B), apoi 120 ms cu `54 CD` (C1/A). Schimbarea se face în taskul FIFO numai când FIFO este gol și receptorul nu indică sync în desfășurare; se trece prin STANDBY și se re-armează RX. În ambele ferestre, hardware-ul consumă marcajul din FIFO și software-ul reconstruiește `54 CD` numai pentru validarea C1/A; verificările CRC și dispatch-ul contoarelor rămân nemodificate. Prin natura acestei soluții sunt posibile pierderi T1 și C1 în fereastra opusă.
+
+**În YAML-ul LILYGO real**, păstrează `wmbus_t1_mode: true`, `wmbus_c1a_only: false`, `sync_value: [0x54]`, `bandwidth: 200_0kHz`, `wmbus_radio.native_stream_mode: T1_C1`, `wmbus_radio.native_phy_diagnostics: true`, și adaugă **doar** `wmbus_dual_sync: true` sub `sx127x:`. La `external_components`, folosește acest branch pentru componentele `sx127x, wmbus_common, wmbus_radio, wmbus_meter`. Fără schimbări de radio Heltec, XMQ, chei sau senzori.
+
+**Criteriu de test:** 10–15 minute loguri simultane; urmărește `Native SX127x verified T1/A`, `Native SX127x verified C1/A`, `Telegram handled by 1 handlers`, `SX127x PHY verified T1=... C1A=...` și diferența față de Heltec. Configurația de CI cu ID sintetic este `tests/lilygo-t3s3-sx1276-ci.yaml`, **nu se instalează** pe placa reală. Dacă C1/A nu crește sau T1 pierde prea multe contoare, revenire: scoate `wmbus_dual_sync: true` (modul combinat precedent), ori revino la `wmbus_c1a_only: true` și `sync_value: [0x54, 0xCD]` pentru C1/A-only.
+
+---
+
 # ESPHome wM-Bus — două radiouri: SX126x + SX127x
 
 **Ramură activă:** `experimental/dual-radio-sx126x-sx127x`, derivată din `experimental/xmq-runtime-engine` (12 noiembrie 2026).
