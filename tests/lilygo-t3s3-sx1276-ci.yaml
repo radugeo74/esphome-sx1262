@@ -35,6 +35,7 @@ sx127x:
   dio0_pin: GPIO9
   dio1_pin: GPIO33
   wmbus_t1_mode: true
+  wmbus_dual_sync: true  # Experimental hybrid hardware sync; 280ms T1 / 120ms C1/A
   modulation: FSK
   frequency: 868950000
   bitrate: 100000
