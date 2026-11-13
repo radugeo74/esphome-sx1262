@@ -42,13 +42,13 @@ sx127x:
   bitrate: 100000
   deviation: 50000
   bandwidth: 250_0kHz  # Keep the established RX test baseline (RegRxBw=0x01).
-  rx_floor: -110       # Experimental RSSI threshold RegRssiThresh=0xDC (-110 dBm).
+  rx_floor: -94        # Restore established RF baseline (-94 dBm).
   shaping: NONE
   packet_mode: true
   bitsync: true
   preamble_polarity: 0x55
   preamble_size: 4
-  preamble_detect: 0  # Experiment: RSSI-triggered AFC/AGC instead of preamble gate.
+  preamble_detect: 2  # Restore preamble-triggered AFC/AGC.
   preamble_errors: 10
   payload_length: 0
   crc_enable: false
