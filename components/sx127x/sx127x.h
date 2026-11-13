@@ -102,6 +102,9 @@ class SX127x final : public Component,
   using WmbusStreamCallback = void (*)(void *, const uint8_t *, size_t, float);
   void set_wmbus_t1_mode(bool value) { this->wmbus_t1_mode_ = value; }
   void set_wmbus_c1_mode(bool value) { this->wmbus_c1_mode_ = value; }
+  // Standalone experimental RX: hardware detects both 0x54 and 0xCD.
+  // With this flag the first FIFO byte is C1/A L, not the 0xCD marker.
+  void set_wmbus_c1a_only(bool value) { this->wmbus_c1a_only_ = value; }
   void set_wmbus_diagnostics(bool enabled) { this->wmbus_phy_diagnostics_ = enabled; }
   void note_wmbus_decode_result(WmbusDecodeResult event);
   void set_dio1_pin(InternalGPIOPin *pin) { this->dio1_pin_ = pin; }
@@ -148,6 +151,7 @@ class SX127x final : public Component,
   TaskHandle_t wmbus_task_handle_{nullptr};
   bool wmbus_t1_mode_{false};
   bool wmbus_c1_mode_{false};
+  bool wmbus_c1a_only_{false};
   bool wmbus_phy_diagnostics_{false};
   uint32_t wmbus_last_log_ms_{0};
 
@@ -195,6 +199,8 @@ class SX127x final : public Component,
     std::atomic<uint32_t> fifo_marker_cd{0};
     std::atomic<uint32_t> fifo_marker_other{0};
     std::atomic<uint32_t> fifo_marker_unreadable{0};
+    // Counts FIFO-active wakes after hardware 0x54CD sync (no marker in FIFO).
+    std::atomic<uint32_t> c1a_hw_sync_fifo{0};
     std::atomic<uint32_t> c1a_bad_prefix{0};
     std::atomic<uint32_t> c1a_body_complete{0};
     std::atomic<uint32_t> c1a_queued{0};

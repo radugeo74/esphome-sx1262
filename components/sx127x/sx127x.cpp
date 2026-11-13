@@ -61,12 +61,16 @@ void SX127x::setup() {
   // Fail closed if the radio hardware sync width and selected link modes
   // disagree. The C1 path must keep the byte following 0x54 in FIFO.
   if (this->wmbus_t1_mode_) {
-    const bool sync_ok = this->wmbus_c1_mode_
-        ? this->sync_value_.size() == 1 && this->sync_value_[0] == 0x54
-        : this->sync_value_.size() == 2 && this->sync_value_[0] == 0x54 &&
-          this->sync_value_[1] == 0x3D;
+    const bool sync_ok = this->wmbus_c1a_only_
+        ? this->wmbus_c1_mode_ && this->sync_value_.size() == 2 &&
+              this->sync_value_[0] == 0x54 && this->sync_value_[1] == 0xCD
+        : this->wmbus_c1_mode_
+            ? this->sync_value_.size() == 1 && this->sync_value_[0] == 0x54
+            : this->sync_value_.size() == 2 && this->sync_value_[0] == 0x54 &&
+                  this->sync_value_[1] == 0x3D;
     if (!sync_ok) {
-      ESP_LOGE(TAG, "SX127x wM-Bus sync mismatch: T1 expects 54 3D, T1+C1 expects 54");
+      ESP_LOGE(TAG,
+               "SX127x wM-Bus sync mismatch: T1=54 3D, T1+C1=54, C1/A-only=54 CD (requires C1 bridge)");
       this->mark_failed();
       return;
     }
@@ -108,7 +112,8 @@ void SX127x::setup() {
                                       gpio::INTERRUPT_FALLING_EDGE);
     if (!this->dio1_pin_->digital_read())
       xTaskNotifyGive(this->wmbus_task_handle_);
-    ESP_LOGW(TAG, "SX127x wM-Bus %s FIFO stream enabled (experimental RF)" ,
+    ESP_LOGW(TAG, "SX127x wM-Bus %s FIFO stream enabled (experimental RF)",
+             this->wmbus_c1a_only_ ? "C1/A-only (HW sync 54 CD)" :
              this->wmbus_c1_mode_ ? "T1+C1/A+B" : "T1");
   }
 }
@@ -584,17 +589,20 @@ void SX127x::wmbus_log_statistics_() {
            static_cast<unsigned>(s.queue_drops.load()),
            static_cast<unsigned>(s.rx_rearms.load()));
   if (this->wmbus_c1_mode_) {
+    // HW sync 54CD consumes CD, so marker_CD remains zero for C1/A-only.
     ESP_LOGI(TAG,
-             "SX127x SYNC54 probe irq_at_fifo preamble=%u sync=%u marker_3D=%u marker_CD=%u other=%u unreadable=%u",
+             "SX127x SYNC54 probe irq_at_fifo preamble=%u sync=%u marker_3D=%u marker_CD=%u other=%u unreadable=%u hw_sync54CD_fifo=%u",
              static_cast<unsigned>(s.irq1_preamble_at_fifo.load()),
              static_cast<unsigned>(s.irq1_sync_at_fifo.load()),
              static_cast<unsigned>(s.fifo_marker_3d.load()),
              static_cast<unsigned>(s.fifo_marker_cd.load()),
              static_cast<unsigned>(s.fifo_marker_other.load()),
-             static_cast<unsigned>(s.fifo_marker_unreadable.load()));
+             static_cast<unsigned>(s.fifo_marker_unreadable.load()),
+             static_cast<unsigned>(s.c1a_hw_sync_fifo.load()));
     ESP_LOGI(TAG,
-             "SX127x C1A stages marker_CD=%u header_ok=%u header_bad=%u body_complete=%u queued=%u queue_drop=%u read_abort=%u crc_verified=%u",
+             "SX127x C1A stages marker_CD=%u hw_sync54CD_fifo=%u header_ok=%u header_bad=%u body_complete=%u queued=%u queue_drop=%u read_abort=%u crc_verified=%u",
              static_cast<unsigned>(s.fifo_marker_cd.load()),
+             static_cast<unsigned>(s.c1a_hw_sync_fifo.load()),
              static_cast<unsigned>(s.c1a_candidates.load()),
              static_cast<unsigned>(s.c1a_bad_prefix.load()),
              static_cast<unsigned>(s.c1a_body_complete.load()),
@@ -751,8 +759,13 @@ void SX127x::wmbus_task_() {
     const int64_t deadline_us = esp_timer_get_time() +
                                 WmbusFifoGuard::FRAME_DEADLINE_US;
     WmbusReadStatus status = WmbusReadStatus::COMPLETE;
-    uint8_t marker = 0x3D;
-    if (this->wmbus_c1_mode_) {
+    // After full HW sync=54 CD, FIFO starts with L: do NOT read a
+    // marker byte. Use synthetic 0xCD only for length/CRC reconstruction.
+    uint8_t marker = this->wmbus_c1a_only_ ? 0xCD : 0x3D;
+    if (this->wmbus_c1a_only_) {
+      if (this->wmbus_phy_diagnostics_)
+        ++this->wmbus_stats_.c1a_hw_sync_fifo;
+    } else if (this->wmbus_c1_mode_) {
       status = this->wmbus_read_fifo_(&marker, 1, deadline_us);
       if (this->wmbus_phy_diagnostics_) {
         if (status != WmbusReadStatus::COMPLETE) {
@@ -958,6 +971,8 @@ void SX127x::dump_config() {
     }
   }
   if (this->wmbus_t1_mode_) {
+    ESP_LOGCONFIG(TAG, "  C1/A-only hardware sync 54 CD: %s",
+                  TRUEFALSE(this->wmbus_c1a_only_));
     // Only cached boot values. dump_config() can run after Wi-Fi/API connects,
     // while another task is actively draining the 100-kb/s radio FIFO.
     const auto &regs = this->wmbus_fsk_registers_;

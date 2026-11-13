@@ -1,0 +1,76 @@
+# Build-only LILYGO SX1276 C1/A-only FULL hardware sync=0x54 0xCD.
+# Synthetic meter ID, no keys. DO NOT FLASH until hardware validation.
+# Patched ESPHome SX127x drains FIFO via DIO1 during the packet.
+# T1 physical frames can exceed 64-byte FIFO, so ISR-driven streaming is required.
+# Experimental C1/A ONLY (T1 deliberately unavailable); SX1276 crystal, no TCXO GPIO.
+# Verify the board revision before any physical deployment.
+# SX127x firmware now sets RegAfcBw[0x13]=0x10 (333.3 kHz) for wM-Bus FSK.
+# Compare C1/A against the working Heltec on identical time windows.
+# No real meter IDs, AES keys, or Home Assistant sensor entities.
+esphome:
+  name: lilygo-t3s3-c1a-ci
+
+esp32:
+  board: lilygo-t3-s3
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [sx127x, wmbus_common, wmbus_radio, wmbus_meter]
+
+spi:
+  clk_pin: GPIO5
+  mosi_pin: GPIO6
+  miso_pin: GPIO3
+
+sx127x:
+  id: sx127x_receiver
+  cs_pin: GPIO7
+  rst_pin: GPIO8
+  dio0_pin: GPIO9
+  dio1_pin: GPIO33
+  wmbus_t1_mode: true
+  wmbus_c1a_only: true  # Opt-in PHY profile; FIFO starts at C1/A L, not 0xCD.
+  modulation: FSK
+  frequency: 868950000
+  bitrate: 100000
+  deviation: 50000
+  bandwidth: 250_0kHz  # Keep the established RX test baseline (RegRxBw=0x01).
+  rx_floor: -94       # Existing SX127x option, RSSI threshold RegRssiThresh=0xBC.
+  shaping: NONE
+  packet_mode: true
+  bitsync: true
+  preamble_polarity: 0x55
+  preamble_size: 4
+  preamble_detect: 2  # Reduced false syncs on actual LILYGO SX1276.
+  preamble_errors: 10
+  payload_length: 0
+  crc_enable: false
+  sync_value: [0x54, 0xCD]  # Two-byte SX1276 HW sync; T1 will not be received.
+  rx_start: true
+
+wmbus_common:
+  drivers:
+    - fhkvdataiii
+    - mkradio4
+    - mkradio4a
+
+wmbus_radio:
+  id: wmbus_receiver
+  sx127x_id: sx127x_receiver
+  native_stream_mode: T1_C1  # Shared CRC decoder enabled; RF is C1/A-only above.
+  native_phy_diagnostics: true
+
+wmbus_meter:
+  - id: lab_water
+    radio_id: wmbus_receiver
+    meter_id: 0x12345678
+    type: mkradio4
+    mode: [C1]
+

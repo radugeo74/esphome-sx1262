@@ -25,6 +25,7 @@ CONF_DEVIATION = "deviation"
 CONF_DIO0_PIN = "dio0_pin"
 CONF_DIO1_PIN = "dio1_pin"
 CONF_WMBUS_T1_MODE = "wmbus_t1_mode"
+CONF_WMBUS_C1A_ONLY = "wmbus_c1a_only"
 CONF_MODULATION = "modulation"
 CONF_PA_PIN = "pa_pin"
 CONF_PA_POWER = "pa_power"
@@ -150,10 +151,13 @@ def validate_config(config: ConfigType) -> ConfigType:
             raise cv.Invalid("wmbus_t1_mode requires packet_mode: true")
         if CONF_DIO1_PIN not in config:
             raise cv.Invalid("wmbus_t1_mode requires dio1_pin (FIFO empty IRQ)")
-        if config[CONF_SYNC_VALUE] not in ([0x54, 0x3D], [0x54]):
+        if config[CONF_WMBUS_C1A_ONLY]:
+            if config[CONF_SYNC_VALUE] != [0x54, 0xCD]:
+                raise cv.Invalid("wmbus_c1a_only requires sync_value: [0x54, 0xCD]")
+        elif config[CONF_SYNC_VALUE] not in ([0x54, 0x3D], [0x54]):
             raise cv.Invalid(
                 "wmbus_t1_mode requires sync_value: [0x54, 0x3D] for T1 "
-                "or [0x54] for combined T1/C1"
+                "or [0x54] for combined T1/C1; for 54 CD use wmbus_c1a_only: true"
             )
         if config[CONF_BITRATE] != 100000 or config[CONF_CRC_ENABLE]:
             raise cv.Invalid("wmbus_t1_mode requires bitrate: 100000 and crc_enable: false")
@@ -163,6 +167,8 @@ def validate_config(config: ConfigType) -> ConfigType:
             raise cv.Invalid("wmbus_t1_mode requires payload_length: 0 (unlimited FIFO stream)")
         if not config[CONF_RX_START]:
             raise cv.Invalid("wmbus_t1_mode requires rx_start: true")
+    if config[CONF_WMBUS_C1A_ONLY] and not config[CONF_WMBUS_T1_MODE]:
+        raise cv.Invalid("wmbus_c1a_only requires wmbus_t1_mode: true")
     if config[CONF_MODULATION] == "LORA":
         bws = [
             "7_8kHz",
@@ -218,6 +224,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_DIO0_PIN): pins.internal_gpio_input_pin_schema,
             cv.Optional(CONF_DIO1_PIN): pins.internal_gpio_input_pin_schema,
             cv.Optional(CONF_WMBUS_T1_MODE, default=False): cv.boolean,
+            cv.Optional(CONF_WMBUS_C1A_ONLY, default=False): cv.boolean,
             cv.Required(CONF_FREQUENCY): cv.All(
                 cv.frequency, cv.int_range(min=int(137e6), max=int(1020e6))
             ),
@@ -265,6 +272,7 @@ async def to_code(config: ConfigType) -> None:
             config[CONF_ON_PACKET],
         )
     cg.add(var.set_wmbus_t1_mode(config[CONF_WMBUS_T1_MODE]))
+    cg.add(var.set_wmbus_c1a_only(config[CONF_WMBUS_C1A_ONLY]))
     if CONF_DIO1_PIN in config:
         dio1_pin = await cg.gpio_pin_expression(config[CONF_DIO1_PIN])
         cg.add(var.set_dio1_pin(dio1_pin))
