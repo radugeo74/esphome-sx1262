@@ -105,6 +105,9 @@ class SX127x final : public Component,
   // Standalone experimental RX: hardware detects both 0x54 and 0xCD.
   // With this flag the first FIFO byte is C1/A L, not the 0xCD marker.
   void set_wmbus_c1a_only(bool value) { this->wmbus_c1a_only_ = value; }
+  // Opt-in hybrid hardware-sync windows for SX1276; do not use the unreliable
+  // common one-byte 54 sync for C1/A in this mode.
+  void set_wmbus_dual_sync(bool value) { this->wmbus_dual_sync_ = value; }
   void set_wmbus_lna_boost_hf(bool value) { this->wmbus_lna_boost_hf_ = value; }
   void set_wmbus_diagnostics(bool enabled) { this->wmbus_phy_diagnostics_ = enabled; }
   void note_wmbus_decode_result(WmbusDecodeResult event);
@@ -153,6 +156,9 @@ class SX127x final : public Component,
   bool wmbus_t1_mode_{false};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
+  bool wmbus_dual_sync_{false};
+  bool wmbus_dual_c1_window_{false};  // FIFO task only
+  uint32_t wmbus_dual_window_started_ms_{0};  // FIFO task only
   bool wmbus_lna_boost_hf_{false};
   bool wmbus_phy_diagnostics_{false};
   uint32_t wmbus_last_log_ms_{0};
@@ -211,6 +217,7 @@ class SX127x final : public Component,
     std::atomic<uint32_t> fifo_marker_unreadable{0};
     // Counts FIFO-active wakes after hardware 0x54CD sync (no marker in FIFO).
     std::atomic<uint32_t> c1a_hw_sync_fifo{0};
+    std::atomic<uint32_t> dual_sync_switches{0};
     std::atomic<uint32_t> c1a_bad_prefix{0};
     std::atomic<uint32_t> c1a_body_complete{0};
     std::atomic<uint32_t> c1a_queued{0};
