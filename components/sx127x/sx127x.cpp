@@ -782,9 +782,9 @@ void SX127x::wmbus_task_() {
       last_activity_ms = millis();
       continue;
     }
-    if (this->wmbus_dual_sync_ && (flags2 & WmbusFifoGuard::FIFO_EMPTY) &&
-        !(flags1 & WmbusFifoGuard::IRQ1_SYNC_ADDRESS_MATCH)) {
-      // 70% T1, 30% C1/A. Switch only between frames, never mid-FIFO.
+    if (this->wmbus_dual_sync_ && (flags2 & WmbusFifoGuard::FIFO_EMPTY)) {
+      // 70% T1, 30% C1/A. Switch only when the FIFO is empty.
+      // IRQ1 sync can remain latched, so it is not a reliable idle guard.
       // This is an RF experiment, not simultaneous demodulation.
       const uint32_t dwell_ms = this->wmbus_dual_c1_window_ ? 120 : 280;
       if (millis() - this->wmbus_dual_window_started_ms_ >= dwell_ms) {
