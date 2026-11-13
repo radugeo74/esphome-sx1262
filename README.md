@@ -1,3 +1,29 @@
+## SX1276: experiment recepție continuă T1 + C1/A (13 noiembrie 2026)
+
+Branch izolat: `experimental/sx127x-continuous-t1-c1`, derivat din experimentul de alternare hardware. **Nevalidat RF și fără CI confirmat**. Nu modifica firmware-ul Heltec.
+
+Scop: eliminarea ferestrelor de 280/120 ms și păstrarea permanentă a unei singure sincronizări hardware `54` (1 octet). Primul octet FIFO după sync trebuie să fie `3D` (T1 sau C1/B) sau `CD` (C1/A). Nu se modifică interpretarea datelor, cheile AES, filtrele configurate ori verificarea CRC. Noua opțiune `sx127x.wmbus_continuous_dual` este implicit `false`; când este `true`, validează că `wmbus_dual_sync: false`, `wmbus_c1a_only: false`, `sync_value: [0x54]` și `preamble_detect: 0`. Acesta este un test al achiziției radio cu AFC/AGC declanșate pe RSSI, fără detectorul de preambul ca poartă. Detecția de sync rămâne activă.
+
+În **YAML-ul real LILYGO**, schimbă URL-ul `external_components` pe branch-ul de mai sus și setează în secțiunea `sx127x:`:
+
+```yaml
+wmbus_t1_mode: true
+wmbus_dual_sync: false
+wmbus_continuous_dual: true
+wmbus_c1a_only: false
+sync_value: [0x54]
+preamble_detect: 0
+rx_floor: -110
+```
+
+Păstrează `native_stream_mode: T1_C1`, `native_phy_diagnostics: true`, ceilalți parametri FSK și cele 12 contoare. Nu crea senzori noi. `tests/lilygo-t3s3-sx1276-ci.yaml` este un fixture sintetic **build-only**, nu un YAML de instalat pe placa reală.
+
+**Criteriul de succes:** captură simultană cu Heltec de minimum 10–15 minute; verifică T1 valide, C1/A valide, `marker_3D`/`marker_CD`, `bad_crc`, `overrun`, `frame_timeout` și câte contoare configurate sunt procesate. Acest experiment poate crește recepția C1/A, dar poate produce și mai multe false candidate sau pierde cadre slabe din cauza pragului RSSI. Nu afirma recepție combinată rezolvată înainte de rezultate RF.
+
+**Rollback sigur:** pe același branch setează `wmbus_continuous_dual: false`, `wmbus_dual_sync: true`, `preamble_detect: 2`, `rx_floor: -94`, păstrând `sync_value: [0x54]` pentru revenirea la ferestrele hibride; sau revino la branch-ul anterior.
+
+---
+
 ## Experiment SX1276: sincronizare hardware hibridă T1/C1/A (13 noiembrie 2026)
 
 **Branch izolat:** `experimental/sx127x-hybrid-dual-sync` (derivat din `experimental/dual-radio-sx126x-sx127x`). **Cod încă nevalidat prin CI sau RF real**; nu se afirmă că recepția combinată este rezolvată.
