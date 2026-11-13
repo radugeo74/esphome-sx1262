@@ -21,7 +21,9 @@ enum SX127xReg : uint8_t {
   REG_DIO_MAPPING2 = 0x41,
   REG_VERSION = 0x42,
   // FSK/OOK registers
+  REG_LNA = 0x0C,
   REG_RX_CONFIG = 0x0D,
+  REG_RSSI_CONFIG = 0x0E,
   REG_RSSI_THRESH = 0x10,
   REG_RX_BW = 0x12,
   REG_AFC_BW = 0x13,

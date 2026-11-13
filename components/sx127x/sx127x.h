@@ -167,6 +167,9 @@ class SX127x final : public Component,
     uint8_t rssi_thresh{0};
     bool captured{false};
     bool matches_expected{false};
+    // Read once at boot; automatic gain can change the live LNA gain.
+    uint8_t lna{0};
+    uint8_t rssi_config{0};
   } wmbus_fsk_registers_{};
 
   // Atomic since the FIFO task and ESPHome main loop run independently.

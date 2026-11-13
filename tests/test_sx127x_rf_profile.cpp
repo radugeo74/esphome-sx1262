@@ -12,7 +12,9 @@ constexpr uint32_t bandwidth_hz(uint8_t reg) {
   return mant == 0 ? 0 : 32000000U / (mant * (1U << ((reg & 0x07U) + 2U)));
 }
 
+static_assert(REG_LNA == 0x0C, "RegLna address changed");
 static_assert(REG_RX_CONFIG == 0x0D, "RegRxConfig address must stay FSK/OOK");
+static_assert(REG_RSSI_CONFIG == 0x0E, "RegRssiConfig address changed");
 static_assert(REG_RSSI_THRESH == 0x10, "RegRssiThresh register address changed");
 static_assert(REG_RX_BW == 0x12, "RegRxBw register address changed");
 static_assert(REG_AFC_BW == 0x13, "RegAfcBw register address changed");
@@ -30,6 +32,9 @@ static_assert(bandwidth_hz(0x0B) == 50000, "AFC reset/default is ~50 kHz");
 static_assert((AFC_AUTO_ON | AGC_AUTO_ON | TRIGGER_PREAMBLE) == 0x1E,
               "AFC+AGC triggered from preamble changed");
 static_assert(AFC_AUTO_CLEAR_ON == 0x01, "AfcAutoClearOn is bit 0, not AGC start bit 4");
+static_assert((0x20U & 0x03U) == 0, "Default high-frequency LNA boost is off");
+static_assert((0x23U & 0x03U) == 3, "HF boost is controlled by bits 1:0");
+static_assert((1U << ((0x02U & 0x07U) + 1)) == 8, "RSSI smoothing 0x02 means 8 samples");
 
 int main() {
   std::puts("PASS SX1276: FSK RX 250k/200k, AFC 333k and AFCAutoClear register encodings");

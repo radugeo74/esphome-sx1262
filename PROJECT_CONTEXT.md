@@ -1,5 +1,10 @@
 # Context curent — dual radio SX126x + SX127x
 
+## AGC/LNA readback FSK SX1276 (13 noiembrie 2026)
+
+Audit confirmă AFC și AGC active în `RegRxConfig=0x1E`, `RegAfcBw=0x10` (333.3 kHz), `RegRxBw=0x01` (250 kHz), `RegAfcFei=0x01`. `RegLna` nu era setat explicit. În această etapă se adaugă exclusiv citiri boot-only `RegLna[0C]` și `RegRssiConfig[0E]` în structura FSK snapshot, afișate și decodate în `dump_config()` prin Wi-Fi API. Cu AGC activ, câștigul LNA se schimbă în RX; snapshotul nu este gain live. FEI trebuie măsurat în preambul, nu la sfârșitul cadrului. Nu modificăm parametrii RF, ISR, FIFO, decodor, SX126x sau YAML. Test de contract și host RF extinse. Pas următor: log real pentru HF boost și smoothing.
+
+
 ## Test C1/A-only pe SX1276 cu hardware sync complet 54 CD (13 noiembrie 2026)
 
 Logurile simultane Heltec/LILYGO confirmă `marker_CD=0`, iar Heltec recepționează repetat C1/A; ca experiment izolat se activează opt-in `sx127x.wmbus_c1a_only: true` + `sync_value: [0x54, 0xCD]`, păstrând `wmbus_radio.native_stream_mode: T1_C1` pentru validatorul CRC comun. Hardware-ul SX1276 consumă ambii octeți 54 CD, deci în FIFO primul octet este `L`; codul nu mai încearcă să citească un fals marcaj, iar fiecare candidat C1/A este reconstruit cu prefix `54 CD` înainte de CRC. Diagnostic nou `hw_sync54CD_fifo` distinct de `marker_CD` (care rămâne 0 în acest profil). Așteptare RegSyncConfig `0xB1` în `dump_config()`; T1 este deliberat indisponibil. Compatibilitatea strictă a configului este verificată (fără flag + full sync -> reject, flag + sync incomplet -> reject). Test host de lungime/reconstituire, contract, YAML/compilare pe LILYGO. Nicio modificare la path SX126x, modul normal T1_C1, FIFO/watchdog, prioritatea taskului, parametrii AFC sau decoderul `wmbus_radio`. După test revenire la sync `[0x54]` și eliminare flag.

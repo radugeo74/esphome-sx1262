@@ -278,6 +278,9 @@ void SX127x::configure_fsk_ook_() {
     const uint8_t afc_bw = this->read_register_(REG_AFC_BW);
     const uint8_t rx_config = this->read_register_(REG_RX_CONFIG);
     const uint8_t afc_fei = this->read_register_(REG_AFC_FEI);
+    // Boot-only radio diagnostic; never perform extra SPI from FIFO RX.
+    const uint8_t lna = this->read_register_(REG_LNA);
+    const uint8_t rssi_config = this->read_register_(REG_RSSI_CONFIG);
     const uint8_t preamble = this->read_register_(REG_PREAMBLE_DETECT);
     const uint8_t sync_config = this->read_register_(REG_SYNC_CONFIG);
     const uint8_t rssi_thresh = this->read_register_(REG_RSSI_THRESH);
@@ -315,7 +318,7 @@ void SX127x::configure_fsk_ook_() {
     // subsequent dump_config() calls must not access SPI.
     this->wmbus_fsk_registers_ = {rx_bw, afc_bw, rx_config, afc_fei,
                                   preamble, sync_config, rssi_thresh,
-                                  true, matches_expected};
+                                  true, matches_expected, lna, rssi_config};
     if (!matches_expected) {
       ESP_LOGW(TAG, "SX127x FSK readback differs from YAML/expected AFC profile");
     }
@@ -986,6 +989,15 @@ void SX127x::dump_config() {
                     "    RegPreambleDetect[1F]=0x%02X RegSyncConfig[27]=0x%02X RegRssiThresh[10]=0x%02X",
                     static_cast<unsigned>(regs.preamble_detect), static_cast<unsigned>(regs.sync_config),
                     static_cast<unsigned>(regs.rssi_thresh));
+      ESP_LOGCONFIG(TAG,
+                    "    RegLna[0C]=0x%02X RegRssiConfig[0E]=0x%02X (setup snapshot, not live gain)",
+                    static_cast<unsigned>(regs.lna), static_cast<unsigned>(regs.rssi_config));
+      ESP_LOGCONFIG(TAG,
+                    "    FSK AGC auto: %s; AFC auto: %s; LNA HF boost: %s; RSSI smoothing: %u samples",
+                    TRUEFALSE((regs.rx_config & AGC_AUTO_ON) != 0),
+                    TRUEFALSE((regs.rx_config & AFC_AUTO_ON) != 0),
+                    TRUEFALSE((regs.lna & 0x03) == 0x03),
+                    static_cast<unsigned>(1U << ((regs.rssi_config & 0x07) + 1)));
       ESP_LOGCONFIG(TAG, "    FSK profile matches expected: %s", TRUEFALSE(regs.matches_expected));
     } else {
       ESP_LOGW(TAG, "  SX127x FSK register snapshot unavailable (configuration incomplete)");
