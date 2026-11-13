@@ -78,14 +78,14 @@ void SX127x::setup() {
       return;
     }
   }
-  // Continuous experiment: use common one-byte HW sync 54 with RSSI
-  // trigger instead of preamble-triggered AFC/AGC. The second byte remains
-  // in FIFO for software marker classification; CRC is always mandatory.
+  // Continuous experiment: one-byte HW sync 54, with the normal preamble
+  // detector triggering AFC/AGC. The next FIFO byte distinguishes 3D (T1/C1B)
+  // from CD (C1A). No timed radio profile switching; CRC remains mandatory.
   if (this->wmbus_continuous_dual_) {
     if (!this->wmbus_c1_mode_ || this->wmbus_dual_sync_ ||
         this->wmbus_c1a_only_ || this->sync_value_.size() != 1 ||
-        this->sync_value_[0] != 0x54 || this->preamble_detect_ != 0) {
-      ESP_LOGE(TAG, "SX127x continuous dual requires T1_C1, 54 sync and no preamble gate");
+        this->sync_value_[0] != 0x54 || this->preamble_detect_ == 0) {
+      ESP_LOGE(TAG, "SX127x continuous dual requires T1_C1, common 54 sync and hardware preamble detect");
       this->mark_failed();
       return;
     }
@@ -132,7 +132,7 @@ void SX127x::setup() {
     if (!this->dio1_pin_->digital_read())
       xTaskNotifyGive(this->wmbus_task_handle_);
     ESP_LOGW(TAG, "SX127x wM-Bus %s FIFO stream enabled (experimental RF)",
-             this->wmbus_continuous_dual_ ? "continuous T1/C1/A (HW sync 54, RSSI trigger)" :
+             this->wmbus_continuous_dual_ ? "continuous T1/C1/A (HW sync 54, preamble trigger)" :
              this->wmbus_dual_sync_ ? "hybrid T1/C1/A (HW sync windows 54 3D / 54 CD)" :
              this->wmbus_c1a_only_ ? "C1/A-only (HW sync 54 CD)" :
              this->wmbus_c1_mode_ ? "T1+C1/A+B" : "T1");
@@ -1055,7 +1055,7 @@ void SX127x::dump_config() {
     }
   }
   if (this->wmbus_t1_mode_) {
-    ESP_LOGCONFIG(TAG, "  Continuous T1/C1/A common 54 sync (RSSI gate): %s",
+    ESP_LOGCONFIG(TAG, "  Continuous T1/C1/A common 54 sync (preamble gate): %s",
                 TRUEFALSE(this->wmbus_continuous_dual_));
   ESP_LOGCONFIG(TAG, "  Hybrid T1/C1/A hardware sync windows: %s",
                 TRUEFALSE(this->wmbus_dual_sync_));
