@@ -136,6 +136,12 @@ jobs:
         run: esphome config tests/lilygo-t3s3-sx1276-c1a-lna-boost-ci.yaml
       - name: Compile LILYGO T3-S3 C1/A-only + HF boost ESP-IDF (build-only)
         run: esphome compile tests/lilygo-t3s3-sx1276-c1a-lna-boost-ci.yaml
+      - name: Validate isolated SX1276 C1/A-only RX bandwidth 200 kHz experiment
+        run: |
+          python tests/test_sx127x_rxbw200_contract.py
+          esphome config tests/lilygo-t3s3-sx1276-c1a-rxbw200-ci.yaml
+      - name: Compile LILYGO T3-S3 C1/A-only RX 200 kHz ESP-IDF (build-only)
+        run: esphome compile tests/lilygo-t3s3-sx1276-c1a-rxbw200-ci.yaml
       - name: Reject removed legacy SX1262 radio schema
         run: |
           if esphome config tests/sx1262-legacy-rollback.yaml; then
