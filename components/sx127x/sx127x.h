@@ -105,6 +105,7 @@ class SX127x final : public Component,
   // Standalone experimental RX: hardware detects both 0x54 and 0xCD.
   // With this flag the first FIFO byte is C1/A L, not the 0xCD marker.
   void set_wmbus_c1a_only(bool value) { this->wmbus_c1a_only_ = value; }
+  void set_wmbus_lna_boost_hf(bool value) { this->wmbus_lna_boost_hf_ = value; }
   void set_wmbus_diagnostics(bool enabled) { this->wmbus_phy_diagnostics_ = enabled; }
   void note_wmbus_decode_result(WmbusDecodeResult event);
   void set_dio1_pin(InternalGPIOPin *pin) { this->dio1_pin_ = pin; }
@@ -152,6 +153,7 @@ class SX127x final : public Component,
   bool wmbus_t1_mode_{false};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
+  bool wmbus_lna_boost_hf_{false};
   bool wmbus_phy_diagnostics_{false};
   uint32_t wmbus_last_log_ms_{0};
 
@@ -170,6 +172,11 @@ class SX127x final : public Component,
     // Read once at boot; automatic gain can change the live LNA gain.
     uint8_t lna{0};
     uint8_t rssi_config{0};
+    // Boot STANDBY, captured immediately before RX (not live packet gain).
+    uint8_t lna_standby_before{0};
+    uint8_t lna_standby_after{0};
+    bool lna_standby_captured{false};
+    bool lna_boost_readback_ok{false};
   } wmbus_fsk_registers_{};
 
   // Atomic since the FIFO task and ESPHome main loop run independently.

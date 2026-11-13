@@ -1,5 +1,9 @@
 # Context curent — dual radio SX126x + SX127x
 
+## Experiment LNA HF boost SX1276 FSK, opt-in (13 noiembrie 2026)
+
+Observație reală LILYGO: boot snapshot `RegLna[0C]=0x00`, boost OFF, AGC/AFC active, `RegRssiConfig[0E]=0x02` smoothing 8, C1/A valide dar rată CRC mai slabă decât Heltec. Datasheet Semtech: `RegLna[1:0]=00` default HF current; `11` boost 150%. Implementare `sx127x.wmbus_lna_boost_hf: true` opt-in (implicit false, numai wmbus_t1_mode / FSK), în `SX127x::configure()` după `configure_fsk_ook_()` și înainte de `set_mode_rx()`: trece în STANDBY, citește `RegLna`; cu opt-in scrie doar `(before & ~0x03) | 0x03`, readback verifică biții [1:0]; mismatch => fail/nu pornește RX. Fără opt-in nu scrie RegLna. Cache `lna_standby_before/after` și `lna_boost_readback_ok` afișate prin `dump_config()` Wi-Fi, fără citiri SPI în RX sau dump. Câștig AGC nu se deduce din citirea la inițializare. Teste `test_sx127x_lna_boost.cpp` și `test_sx127x_lna_boost_contract.py`, plus fixture-uri C1/A-only OFF/ON build-only, aceeași frecvență/250kHz/AFC/preambul, fără senzori, fără date reale. Nu schimba SX126x, T1_C1 ori pipeline XMQ. După test comparați simultan valid C1/A și CRC reject rate în același interval; dacă mai rău, rollback prin scoaterea opțiunii.
+
 ## AGC/LNA readback FSK SX1276 (13 noiembrie 2026)
 
 Audit confirmă AFC și AGC active în `RegRxConfig=0x1E`, `RegAfcBw=0x10` (333.3 kHz), `RegRxBw=0x01` (250 kHz), `RegAfcFei=0x01`. `RegLna` nu era setat explicit. În această etapă se adaugă exclusiv citiri boot-only `RegLna[0C]` și `RegRssiConfig[0E]` în structura FSK snapshot, afișate și decodate în `dump_config()` prin Wi-Fi API. Cu AGC activ, câștigul LNA se schimbă în RX; snapshotul nu este gain live. FEI trebuie măsurat în preambul, nu la sfârșitul cadrului. Nu modificăm parametrii RF, ISR, FIFO, decodor, SX126x sau YAML. Test de contract și host RF extinse. Pas următor: log real pentru HF boost și smoothing.

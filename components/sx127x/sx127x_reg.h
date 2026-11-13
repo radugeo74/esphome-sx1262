@@ -136,6 +136,14 @@ enum SX127xDioMapping1 : uint8_t {
   DIO0_MAPPING_11 = 0xC0,
 };
 
+// RegLna[0x0C] bits [1:0]: default=00, HF current boost=11.
+// Only use read-modify-write in native wM-Bus, never touch AGC gain bits.
+static constexpr uint8_t LNA_BOOST_HF_MASK = 0x03;
+static constexpr uint8_t LNA_BOOST_HF_ON = 0x03;
+constexpr uint8_t sx127x_lna_with_hf_boost(uint8_t original) {
+  return static_cast<uint8_t>((original & static_cast<uint8_t>(~LNA_BOOST_HF_MASK)) | LNA_BOOST_HF_ON);
+}
+
 enum SX127xRxConfig : uint8_t {
   RESTART_ON_COLLISION = 0x80,
   RESTART_NO_LOCK = 0x40,

@@ -75,6 +75,12 @@ jobs:
           "$RUNNER_TEMP/sx127x-rf-profile"
       - name: Guard SX127x FSK register snapshot against runtime SPI access
         run: python tests/test_sx127x_snapshot_contract.py
+      - name: Test SX127x opt-in LNA HF boost register mask and STANDBY contract
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic -I"$RUNNER_TEMP/sx127x_rf_stubs" -I. \
+            tests/test_sx127x_lna_boost.cpp -o "$RUNNER_TEMP/sx127x-lna-boost"
+          "$RUNNER_TEMP/sx127x-lna-boost"
+          python tests/test_sx127x_lna_boost_contract.py
       - name: Install pinned ESPHome for native ESP-IDF smoke
         run: |
           python -m pip install --disable-pip-version-check "esphome==2026.10.1"
@@ -126,6 +132,10 @@ jobs:
           echo "PASS: isolated C1/A mode and sync are strictly opt-in"
       - name: Compile LILYGO T3-S3 C1/A-only ESP-IDF (build-only)
         run: esphome compile tests/lilygo-t3s3-sx1276-c1a-only-ci.yaml
+      - name: Validate SX1276 C1/A-only opt-in LNA HF boost schema (build-only)
+        run: esphome config tests/lilygo-t3s3-sx1276-c1a-lna-boost-ci.yaml
+      - name: Compile LILYGO T3-S3 C1/A-only + HF boost ESP-IDF (build-only)
+        run: esphome compile tests/lilygo-t3s3-sx1276-c1a-lna-boost-ci.yaml
       - name: Reject removed legacy SX1262 radio schema
         run: |
           if esphome config tests/sx1262-legacy-rollback.yaml; then

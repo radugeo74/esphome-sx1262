@@ -171,6 +171,37 @@ void SX127x::configure() {
     this->configure_lora_();
   }
 
+  // Native wM-Bus FSK only: capture LNA in STANDBY immediately before
+  // RX and before FIFO ISR/task creation. The default/OFF path never writes
+  // RegLna, preserving the current RF baseline.
+  if (this->wmbus_t1_mode_ && this->modulation_ == MOD_FSK && this->rx_start_) {
+    this->set_mode_standby();
+    if (this->is_failed())
+      return;
+    const uint8_t before = this->read_register_(REG_LNA);
+    uint8_t after = before;
+    if (this->wmbus_lna_boost_hf_) {
+      this->write_register_(REG_LNA, sx127x_lna_with_hf_boost(before));
+      after = this->read_register_(REG_LNA);
+    }
+    // Compare only boost bits; AGC may change gain fields [7:5].
+    const bool boost_ok = !this->wmbus_lna_boost_hf_ ||
+                          (after & LNA_BOOST_HF_MASK) == LNA_BOOST_HF_ON;
+    auto &snapshot = this->wmbus_fsk_registers_;
+    snapshot.lna_standby_before = before;
+    snapshot.lna_standby_after = after;
+    snapshot.lna_standby_captured = true;
+    snapshot.lna_boost_readback_ok = boost_ok;
+    ESP_LOGI(TAG, "SX127x STANDBY LNA before=0x%02X after=0x%02X boost_requested=%s readback=%s",
+             static_cast<unsigned>(before), static_cast<unsigned>(after),
+             TRUEFALSE(this->wmbus_lna_boost_hf_), boost_ok ? "OK" : "MISMATCH");
+    if (!boost_ok) {
+      ESP_LOGE(TAG, "SX127x LNA HF boost readback failed; RX not started");
+      this->mark_failed();
+      return;
+    }
+  }
+
   // switch to rx or sleep
   if (this->rx_start_) {
     this->set_mode_rx();
@@ -976,6 +1007,7 @@ void SX127x::dump_config() {
   if (this->wmbus_t1_mode_) {
     ESP_LOGCONFIG(TAG, "  C1/A-only hardware sync 54 CD: %s",
                   TRUEFALSE(this->wmbus_c1a_only_));
+    ESP_LOGCONFIG(TAG, "  LNA HF boost opt-in: %s", TRUEFALSE(this->wmbus_lna_boost_hf_));
     // Only cached boot values. dump_config() can run after Wi-Fi/API connects,
     // while another task is actively draining the 100-kb/s radio FIFO.
     const auto &regs = this->wmbus_fsk_registers_;
@@ -992,11 +1024,18 @@ void SX127x::dump_config() {
       ESP_LOGCONFIG(TAG,
                     "    RegLna[0C]=0x%02X RegRssiConfig[0E]=0x%02X (setup snapshot, not live gain)",
                     static_cast<unsigned>(regs.lna), static_cast<unsigned>(regs.rssi_config));
+      if (regs.lna_standby_captured) {
+        ESP_LOGCONFIG(TAG,
+                      "    STANDBY pre-RX RegLna[0C] before=0x%02X after=0x%02X boost_readback=%s",
+                      static_cast<unsigned>(regs.lna_standby_before),
+                      static_cast<unsigned>(regs.lna_standby_after),
+                      regs.lna_boost_readback_ok ? "OK" : "MISMATCH");
+      }
       ESP_LOGCONFIG(TAG,
                     "    FSK AGC auto: %s; AFC auto: %s; LNA HF boost: %s; RSSI smoothing: %u samples",
                     TRUEFALSE((regs.rx_config & AGC_AUTO_ON) != 0),
                     TRUEFALSE((regs.rx_config & AFC_AUTO_ON) != 0),
-                    TRUEFALSE((regs.lna & 0x03) == 0x03),
+                    TRUEFALSE((regs.lna_standby_after & LNA_BOOST_HF_MASK) == LNA_BOOST_HF_ON),
                     static_cast<unsigned>(1U << ((regs.rssi_config & 0x07) + 1)));
       ESP_LOGCONFIG(TAG, "    FSK profile matches expected: %s", TRUEFALSE(regs.matches_expected));
     } else {
