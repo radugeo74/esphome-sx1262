@@ -1,3 +1,18 @@
+## SX1276 RAW DATA/DCLK v3: diagnostic C1/A pe etape (14 noiembrie 2026)
+
+Branch `experimental/sx127x-raw-dclk-v3`, derivat din v2. **Experimental: compilarea, CI și RF nu sunt încă validate.** Nu modifică Heltec, FIFO, parametrii RF sau regula CRC obligatorie.
+
+* `SX127x RAW DCLK preamble`: numără separat T1 și C1/A sincronizările cu **16 biți anteriori** de preambul perfect alternativ (exact), cu cel mult două erori (near2), sau cu mai multe erori (absent). Clasificarea este diagnostică, nu o condiție de respingere. `absent` nu dovedește că transmisia nu a avut preambul: sincronizarea se poate produce accidental în date/zgomot.
+* `SX127x RAW C1A stages`: `header_ok`, `header_bad`, `body_complete`, `queued`, `queue_drop`, `verified`. Acestea cuantifică pașii de la marker 54CD până la validarea CRC, fără a publica payload-uri. **Erorile CRC pe format C1/A nu pot fi deduse prin scăderea `queued - verified`**: cadrele se verifică asincron, iar contorul comun `bad_crc` include și alte moduri; nu există încă un contor exclusiv de CRC C1/A.
+* `clock windows_256` afișează atât `min_cycles` cât și `max_cycles` (plus `long_windows`). Fără o referință hardware independentă, nu se poate determina exact câte fronturi DCLK sunt pierdute. Nu este implementat periferic DMA/RMT.
+* `sync_without_preamble` reprezintă acum orice sincronizare cu **preambulul de 16 biți imperfect**, nu aceeași măsurătoare pe un octet ca în v2. Nu compara direct valorile absolute v2/v3.
+
+În YAML LILYGO păstrează setările v2 și schimbă **doar** ref-ul din `external_components` în `github://radugeo74/esphome-sx1262@experimental/sx127x-raw-dclk-v3`. Nu crea senzori suplimentari.
+
+Test: loguri simultane Heltec/LILYGO 10–15 minute; urmărește dacă sincronizările C1/A **exact/near2** cresc și câte ajung la `verified C1A`. `ring_overflow=0` nu exclude întreruperi GPIO pierdute. Rollback: ref înapoi la v2; nu schimba celelalte proprietăți YAML.
+
+---
+
 ## SX1276 RAW DATA/DCLK v2 — hardware-sync OFF + diagnostic ceas (14 noiembrie 2026)
 
 Branch experimental: `experimental/sx127x-raw-dclk-v2`, derivat din `experimental/sx127x-raw-dclk`. Nu schimbă FIFO, Heltec, driverele sau validarea CRC.
