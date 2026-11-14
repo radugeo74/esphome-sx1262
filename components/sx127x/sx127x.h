@@ -178,6 +178,15 @@ class SX127x final : public Component,
   std::atomic<uint32_t> raw_clock_max_window_cycles_{0};
   std::atomic<uint32_t> raw_clock_long_windows_{0};
   std::atomic<uint32_t> raw_sync_without_preamble_{0};
+  // Sync quality and C1/A RX stages; never contains payload or meter IDs.
+  std::atomic<uint32_t> raw_t1_preamble_exact_{0}, raw_t1_preamble_near_{0},
+                        raw_t1_preamble_absent_{0};
+  std::atomic<uint32_t> raw_c1_preamble_exact_{0}, raw_c1_preamble_near_{0},
+                        raw_c1_preamble_absent_{0};
+  std::atomic<uint32_t> raw_c1_header_ok_{0}, raw_c1_header_bad_{0},
+                        raw_c1_body_complete_{0}, raw_c1_queued_{0},
+                        raw_c1_queue_dropped_{0};
+  std::atomic<uint32_t> raw_clock_min_window_cycles_{UINT32_MAX};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
