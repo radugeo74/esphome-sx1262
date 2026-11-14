@@ -1,3 +1,19 @@
+## SX1276 RAW DATA/DCLK v2 — hardware-sync OFF + diagnostic ceas (14 noiembrie 2026)
+
+Branch experimental: `experimental/sx127x-raw-dclk-v2`, derivat din `experimental/sx127x-raw-dclk`. Nu schimbă FIFO, Heltec, driverele sau validarea CRC.
+
+Schimbări:
+- `RegSyncConfig`: în RAW devine `AUTO_RESTART_PLL_LOCK | polarity` (fără `SYNC_ON`), astfel filtrul hardware nu mai poate reține date înainte de detectorul software. Readback `FSK profile matches expected` ține seama de acest registru.
+- Detectorul software continuă să caute `54 3D` și `54 CD` în fluxul bit-aliniat, dar **nu mai cere** octet precedent exact `55`/`AA`. Contor nou `sync_without_preamble` arată candidații cu octet precedent diferit. **Toți candidații rămân supuși CRC înainte de publicare**; această relaxare poate genera mai mulți candidați falși și încărcare CPU.
+- `SX127x RAW DCLK clock`: `windows_256`, `long_windows`, `max_cycles`. Eșantionează contorul de cicluri CPU doar o dată la 256 impulsuri; pragul de 921600 cicluri presupune ESP32-S3 la 240 MHz și ceas DCLK de 100 kb/s. Ferestrele lungi pot proveni din oprirea ceasului radio când nu există date, nu demonstrează pierderi de IRQ. Nici `ring_overflow=0` nu poate exclude asemenea pierderi.
+- Nu se schimbă viteza de 100 kb/s și nici ISR-ul GPIO în hardware DMA; **captura hardware prin periferic nu este implementată**. Rămâne un experiment care poate avea efect asupra Wi-Fi/CPU.
+
+Actualizează doar `external_components.source` din YAML-ul anterior la `github://radugeo74/esphome-sx1262@experimental/sx127x-raw-dclk-v2`. Păstrează `wmbus_raw_dclk: true`, `packet_mode: false`, DIO1 GPIO33, DIO2 GPIO34, `sync_value: [0x54]`, `native_stream_mode: T1_C1`, diagnosticul și contorii neschimbați.
+
+Validare necesară: întâi compilare, apoi comparație simultană cu Heltec a `verified T1` și `verified C1/A` pe 10–15 minute; urmărește `ring_overflow`, `long_windows`, `sync_without_preamble`, restarturi și impact Wi-Fi. **Nu este validat încă prin CI, compilare sau RF.** Pentru rollback schimbă ref-ul înapoi la `experimental/sx127x-raw-dclk` sau la branch-ul stabil FIFO `experimental/sx127x-rx-stage-diagnostics` (în ultimul caz și setările YAML aferente).
+
+---
+
 ## SX1276: recepție DATA/DCLK cu sincronizare software (experimental, 2026-11-14)
 
 Branch: `experimental/sx127x-raw-dclk` (bazat pe `experimental/sx127x-rx-stage-diagnostics`). Acest mod este **opt-in, exclusiv experimental și încă nevalidat RF sau CI**. Heltec SX126x și vechiul mod FIFO nu sunt modificate.
