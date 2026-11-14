@@ -1,3 +1,14 @@
+## SX1276: diagnostic RX fără schimbări RF (14 noiembrie 2026)
+
+Branch experimental `experimental/sx127x-rx-stage-diagnostics`, derivat din `experimental/sx127x-continuous-preamble`. Cu `native_phy_diagnostics: true`, logurile periodice includ:
+
+- `SX127x RX stages idle_samples`: eșantioane din valorile IRQ1 deja citite de watchdog când FIFO e gol. **Nu reprezintă un număr de telegrame/preambule pierdute**; sunt posibile flaguri persistente și evenimente nedetectate între eșantioane.
+- `SX127x RX rearm`: durata comenzilor STDBY–RX în microsecunde (total/medie/maxim), plus rearmările peste 1 ms. Nu măsoară perioada de stabilizare RF după comandă.
+
+Nicio schimbare de registre RF, de algoritm FIFO, de sincronizare, decodare T1/C1, CRC, XMQ ori senzori. În YAML, doar URL-ul `external_components` trebuie schimbat către branch-ul de diagnostic; păstrează `wmbus_continuous_dual: true`, `preamble_detect: 2`, `rx_floor: -94`, `native_stream_mode: T1_C1` și `native_phy_diagnostics: true`. Testul RF trebuie făcut cu loguri simultane LILYGO–Heltec. Nu e implementată încă o captură FSK brută DATA/DCLK; aceasta necesită un experiment ulterior separat.
+
+---
+
 ## SX1276: recepție continuă 54 cu detector de preambul (13 noiembrie 2026)
 
 **Branch:** `experimental/sx127x-continuous-preamble`. Rezultat al testului precedent: `54` + `preamble_detect: 0` + `rx_floor: -110` a produs aproximativ 97.000 sincronizări, dintre care peste 96.000 marcaje nevalide, iar C1/A aproape a dispărut. Această încercare păstrează recepția comună continuă `54`, dar reface declanșarea AFC/AGC prin detectorul de preambul și pragul RSSI al configurației anterioare. **Nu afirmăm încă recepție performantă T1+C1/A: necesită test hardware simultan cu Heltec.**
