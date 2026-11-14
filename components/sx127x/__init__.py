@@ -24,6 +24,8 @@ CONF_CODING_RATE = "coding_rate"
 CONF_DEVIATION = "deviation"
 CONF_DIO0_PIN = "dio0_pin"
 CONF_DIO1_PIN = "dio1_pin"
+CONF_DIO2_PIN = "dio2_pin"
+CONF_WMBUS_RAW_DCLK = "wmbus_raw_dclk"
 CONF_WMBUS_T1_MODE = "wmbus_t1_mode"
 CONF_WMBUS_C1A_ONLY = "wmbus_c1a_only"
 CONF_WMBUS_DUAL_SYNC = "wmbus_dual_sync"
@@ -147,10 +149,23 @@ validate_packet_data = cv.All(validate_raw_data, cv.Length(min=1, max=MAX_PACKET
 
 
 def validate_config(config: ConfigType) -> ConfigType:
+    if config[CONF_WMBUS_RAW_DCLK]:
+        if not config[CONF_WMBUS_T1_MODE] or config[CONF_MODULATION] != "FSK":
+            raise cv.Invalid("wmbus_raw_dclk requires FSK and wmbus_t1_mode")
+        if config.get(CONF_PACKET_MODE, True):
+            raise cv.Invalid("wmbus_raw_dclk requires packet_mode: false")
+        if CONF_DIO1_PIN not in config or CONF_DIO2_PIN not in config:
+            raise cv.Invalid("wmbus_raw_dclk requires DIO1 clock and DIO2 data")
+        if config[CONF_WMBUS_DUAL_SYNC] or config[CONF_WMBUS_CONTINUOUS_DUAL] or config[CONF_WMBUS_C1A_ONLY]:
+            raise cv.Invalid("wmbus_raw_dclk is exclusive with FIFO sync modes")
+        if not config[CONF_BITSYNC]:
+            raise cv.Invalid("wmbus_raw_dclk requires bitsync: true")
+        if config[CONF_SYNC_VALUE] != [0x54]:
+            raise cv.Invalid("wmbus_raw_dclk requires sync_value: [0x54]")
     if config[CONF_WMBUS_T1_MODE]:
         if config[CONF_MODULATION] != "FSK":
             raise cv.Invalid("wmbus_t1_mode requires modulation: FSK")
-        if not config.get(CONF_PACKET_MODE, False):
+        if not config[CONF_WMBUS_RAW_DCLK] and not config.get(CONF_PACKET_MODE, False):
             raise cv.Invalid("wmbus_t1_mode requires packet_mode: true")
         if CONF_DIO1_PIN not in config:
             raise cv.Invalid("wmbus_t1_mode requires dio1_pin (FIFO empty IRQ)")
@@ -256,6 +271,8 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_PA_POWER, default=17): cv.int_range(min=0, max=17),
             cv.Optional(CONF_PA_RAMP, default="40us"): cv.enum(RAMP),
             cv.Optional(CONF_PACKET_MODE): cv.boolean,
+            cv.Optional(CONF_WMBUS_RAW_DCLK, default=False): cv.boolean,
+            cv.Optional(CONF_DIO2_PIN): pins.internal_gpio_input_pin_schema,
             cv.Optional(CONF_PAYLOAD_LENGTH, default=0): cv.int_range(
                 min=0, max=MAX_PACKET_SIZE
             ),
@@ -294,10 +311,14 @@ async def to_code(config: ConfigType) -> None:
             config[CONF_ON_PACKET],
         )
     cg.add(var.set_wmbus_t1_mode(config[CONF_WMBUS_T1_MODE]))
+    cg.add(var.set_wmbus_raw_dclk(config[CONF_WMBUS_RAW_DCLK]))
     cg.add(var.set_wmbus_c1a_only(config[CONF_WMBUS_C1A_ONLY]))
     cg.add(var.set_wmbus_dual_sync(config[CONF_WMBUS_DUAL_SYNC]))
     cg.add(var.set_wmbus_continuous_dual(config[CONF_WMBUS_CONTINUOUS_DUAL]))
     cg.add(var.set_wmbus_lna_boost_hf(config[CONF_WMBUS_LNA_BOOST_HF]))
+    if CONF_DIO2_PIN in config:
+        dio2_pin = await cg.gpio_pin_expression(config[CONF_DIO2_PIN])
+        cg.add(var.set_dio2_pin(dio2_pin))
     if CONF_DIO1_PIN in config:
         dio1_pin = await cg.gpio_pin_expression(config[CONF_DIO1_PIN])
         cg.add(var.set_dio1_pin(dio1_pin))
