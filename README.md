@@ -1,3 +1,43 @@
+## SX1276: recepție DATA/DCLK cu sincronizare software (experimental, 2026-11-14)
+
+Branch: `experimental/sx127x-raw-dclk` (bazat pe `experimental/sx127x-rx-stage-diagnostics`). Acest mod este **opt-in, exclusiv experimental și încă nevalidat RF sau CI**. Heltec SX126x și vechiul mod FIFO nu sunt modificate.
+
+LILYGO T3-S3 cu SX1276: DIO1/DCLK = **GPIO33**, DIO2/DATA = **GPIO34** (documentația oficială LILYGO). În FSK Continuous Mode, Semtech specifică DATA pe DIO2, DCLK pe DIO1, eșantionare pe front crescător; FIFO și packet handler sunt inactive.
+
+În configurația existentă a dispozitivului:
+
+```yaml
+external_components:
+  - source: github://radugeo74/esphome-sx1262@experimental/sx127x-raw-dclk
+    components: [sx127x, wmbus_common, wmbus_radio, wmbus_meter]
+
+sx127x:
+  # păstrează toate celelalte setări RF, SPI, CS, reset, frecvență, FSK etc.
+  dio1_pin: GPIO33
+  dio2_pin: GPIO34
+  packet_mode: false
+  bitsync: true
+  wmbus_t1_mode: true
+  wmbus_raw_dclk: true
+  wmbus_continuous_dual: false
+  wmbus_dual_sync: false
+  wmbus_c1a_only: false
+  sync_value: [0x54]
+
+wmbus_radio:
+  # păstrează id, radio_id și restul configurației existente
+  native_stream_mode: T1_C1
+  native_phy_diagnostics: true
+```
+
+**Nu copia blocurile duplicate `sx127x:` sau `wmbus_radio:` dacă există deja:** actualizează proprietățile din YAML-ul curent. Nu crea senzori noi; păstrează contoarele și cheile actuale.
+
+Recepție: ISR pe 100 kHz DCLK împachetează biți DATA într-un ring SPSC de 4096 octeți, iar taskul reconstruiește independent faza și caută un octet de preambul alternativ 55/AA urmat de sincronizările brute `54 3D` sau `54 CD`. Sunt reconstruite candidatele pentru T1 și C1/A (și C1/B pentru marker 3D), folosind gate-ul existent; doar validatorul CRC din `wmbus_radio` le poate publica. Logul `SX127x RAW DCLK sync` indică sincronizările candidate și depășirile ring-ului. Verifică explicit `verified T1` și `verified C1/A`: **numărătorile de sincronizare nu reprezintă telegrame valide**.
+
+**Avertismente:** 100.000 întreruperi/s pot supraîncărca ESP32-S3 sau afecta Wi-Fi, iar filtrul de preambul este euristic. Nu folosi acest branch în producție până la verificare. Dacă apar resetări, ring overflow ori nu se recepționează cadre validate, revino la `experimental/sx127x-rx-stage-diagnostics`, pune `packet_mode: true`, elimină `wmbus_raw_dclk` și `dio2_pin`, setează `wmbus_continuous_dual: true`.
+
+---
+
 ## SX1276: diagnostic RX fără schimbări RF (14 noiembrie 2026)
 
 Branch experimental `experimental/sx127x-rx-stage-diagnostics`, derivat din `experimental/sx127x-continuous-preamble`. Cu `native_phy_diagnostics: true`, logurile periodice includ:
