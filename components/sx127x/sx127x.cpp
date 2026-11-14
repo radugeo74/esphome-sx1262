@@ -4,6 +4,7 @@
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 #include "esp_timer.h"
+#include "driver/gpio.h"
 
 namespace esphome::sx127x {
 
@@ -94,6 +95,15 @@ void SX127x::setup() {
   // A one-byte 54 sync was observed to lose most C1/A on LILYGO SX1276.
   if (this->wmbus_dual_sync_)
     this->sync_value_.push_back(0x3D);
+  if (this->wmbus_raw_dclk_ &&
+      (!this->wmbus_c1_mode_ || this->dio1_pin_ == nullptr ||
+       this->dio2_pin_ == nullptr || this->wmbus_continuous_dual_ ||
+       this->wmbus_dual_sync_ || this->wmbus_c1a_only_ ||
+       this->sync_value_.size() != 1 || this->sync_value_[0] != 0x54)) {
+    ESP_LOGE(TAG, "SX127x RAW DATA/DCLK requires T1_C1, DIO1 DIO2 and sync 54");
+    this->mark_failed();
+    return;
+  }
   // setup reset
   this->rst_pin_->setup();
   if (this->wmbus_t1_mode_) {
@@ -103,6 +113,10 @@ void SX127x::setup() {
       return;
     }
     this->dio1_pin_->setup();
+    if (this->wmbus_raw_dclk_) {
+      this->dio2_pin_->setup();
+      this->raw_data_gpio_ = static_cast<gpio_num_t>(this->dio2_pin_->get_pin());
+    }
   }
 
   // setup dio0
@@ -124,6 +138,12 @@ void SX127x::setup() {
                     &this->wmbus_task_handle_) != pdPASS) {
       ESP_LOGE(TAG, "Cannot allocate SX127x FIFO receiver task/queue");
       this->mark_failed();
+      return;
+    }
+    if (this->wmbus_raw_dclk_) {
+      this->dio1_pin_->attach_interrupt(&SX127x::wmbus_raw_dclk_intr_, this,
+                                        gpio::INTERRUPT_RISING_EDGE);
+      ESP_LOGW(TAG, "SX127x experimental raw DATA/DCLK active (100k IRQ/s)");
       return;
     }
     // DIO1=FifoEmpty is active-low; interrupt when the first byte arrives.
@@ -267,7 +287,7 @@ void SX127x::configure_fsk_ook_() {
   // packet format lets software drain long packets through DIO1 before
   // the 64-byte hardware FIFO fills. The radio does not generate CRC
   // acceptance: native wM-Bus PHY validation remains mandatory.
-  if (this->wmbus_t1_mode_) {
+  if (this->wmbus_t1_mode_ && !this->wmbus_raw_dclk_) {
     // FIFO_LEVEL after 16 bytes. Drain 16-byte bursts with one SPI
     // transaction each; DIO1/FifoEmpty is used only for the last <16 bytes.
     this->write_register_(REG_FIFO_THRESH,
@@ -289,7 +309,10 @@ void SX127x::configure_fsk_ook_() {
   } else {
     this->write_register_(REG_PACKET_CONFIG_2, CONTINUOUS_MODE);
   }
-  this->write_register_(REG_DIO_MAPPING1, this->wmbus_t1_mode_ ? 0x10 : DIO0_MAPPING_00);
+  // Continuous FSK mapping: DIO1=00 (DCLK), DIO2=00 (DATA).
+  this->write_register_(REG_DIO_MAPPING1,
+                        this->wmbus_raw_dclk_ ? 0x00 :
+                        (this->wmbus_t1_mode_ ? 0x10 : DIO0_MAPPING_00));
 
   // config bit synchronizer
   uint8_t polarity = (this->preamble_polarity_ == 0xAA) ? PREAMBLE_AA : PREAMBLE_55;
@@ -643,6 +666,13 @@ void SX127x::wmbus_log_statistics_() {
            static_cast<unsigned>(s.missed_irq_wakeups.load()),
            static_cast<unsigned>(s.queue_drops.load()),
            static_cast<unsigned>(s.rx_rearms.load()));
+  if (this->wmbus_raw_dclk_) {
+    ESP_LOGI(TAG, "SX127x RAW DCLK sync T1=%u C1A=%u ring_overflow=%u prefix_reject=%u",
+             static_cast<unsigned>(this->raw_sync_t1_.load()),
+             static_cast<unsigned>(this->raw_sync_c1_.load()),
+             static_cast<unsigned>(this->raw_overflows_.load()),
+             static_cast<unsigned>(this->raw_prefix_rejects_.load()));
+  }
   if (this->wmbus_phy_diagnostics_) {
     const uint32_t n = s.rx_rearms.load();
     ESP_LOGI(TAG, "SX127x RX stages idle_samples preamble=%u sync=%u preamble_only=%u (NOT RF frame counts)",
@@ -690,7 +720,9 @@ void IRAM_ATTR SX127x::wmbus_fifo_intr_(SX127x *arg) {
 }
 
 void SX127x::wmbus_task_entry_(void *ctx) {
-  static_cast<SX127x *>(ctx)->wmbus_task_();
+  auto *self = static_cast<SX127x *>(ctx);
+  if (self->wmbus_raw_dclk_) self->wmbus_raw_task_();
+  else self->wmbus_task_();
 }
 
 SX127x::WmbusReadStatus SX127x::wmbus_read_fifo_(
@@ -997,6 +1029,11 @@ void SX127x::dump_config() {
   LOG_PIN("  CS Pin: ", this->cs_);
   LOG_PIN("  RST Pin: ", this->rst_pin_);
   LOG_PIN("  DIO0 Pin: ", this->dio0_pin_);
+  if (this->wmbus_raw_dclk_) {
+    LOG_PIN("  RAW DCLK DIO1: ", this->dio1_pin_);
+    LOG_PIN("  RAW DATA DIO2: ", this->dio2_pin_);
+    ESP_LOGCONFIG(TAG, "  RAW DATA/DCLK 100 kb/s experimental: TRUE; FIFO disabled");
+  }
   const char *pa_pin = "RFO";
   if (this->pa_pin_ == PA_PIN_BOOST) {
     pa_pin = "BOOST";
