@@ -8,6 +8,7 @@
 #include <vector>
 #include <array>
 #include <atomic>
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -101,6 +102,8 @@ class SX127x final : public Component,
   // is reached. The callback runs on the ESPHome main loop, not the ISR.
   using WmbusStreamCallback = void (*)(void *, const uint8_t *, size_t, float);
   void set_wmbus_t1_mode(bool value) { this->wmbus_t1_mode_ = value; }
+  void set_wmbus_raw_dclk(bool value) { this->wmbus_raw_dclk_ = value; }
+  void set_dio2_pin(InternalGPIOPin *pin) { this->dio2_pin_ = pin; }
   void set_wmbus_c1_mode(bool value) { this->wmbus_c1_mode_ = value; }
   // Standalone experimental RX: hardware detects both 0x54 and 0xCD.
   // With this flag the first FIFO byte is C1/A L, not the 0xCD marker.
@@ -124,6 +127,8 @@ class SX127x final : public Component,
  protected:
   static void IRAM_ATTR gpio_intr(SX127x *arg);
   static void IRAM_ATTR wmbus_fifo_intr_(SX127x *arg);
+  static void IRAM_ATTR wmbus_raw_dclk_intr_(SX127x *arg);
+  void wmbus_raw_task_();
   static void wmbus_task_entry_(void *ctx);
   void wmbus_task_();
   enum class WmbusReadStatus : uint8_t { COMPLETE, TIMEOUT, OVERRUN };
@@ -146,6 +151,7 @@ class SX127x final : public Component,
   InternalGPIOPin *dio0_pin_{nullptr};
   InternalGPIOPin *rst_pin_{nullptr};
   InternalGPIOPin *dio1_pin_{nullptr};
+  InternalGPIOPin *dio2_pin_{nullptr};
   static constexpr size_t WMBUS_MAX_RAW_SIZE = 384;
   struct WmbusRxPacket {
     uint16_t size{0};
@@ -157,6 +163,14 @@ class SX127x final : public Component,
   QueueHandle_t wmbus_rx_queue_{nullptr};
   TaskHandle_t wmbus_task_handle_{nullptr};
   bool wmbus_t1_mode_{false};
+  bool wmbus_raw_dclk_{false};
+  static constexpr uint32_t RAW_RING_SIZE = 4096;
+  std::array<uint8_t, RAW_RING_SIZE> raw_ring_{};
+  std::atomic<uint32_t> raw_head_{0}, raw_tail_{0};
+  uint8_t raw_bit_accum_{0}, raw_bit_count_{0};  // ISR only
+  gpio_num_t raw_data_gpio_{GPIO_NUM_NC};
+  std::atomic<uint32_t> raw_overflows_{0}, raw_sync_t1_{0},
+                        raw_sync_c1_{0}, raw_prefix_rejects_{0};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
