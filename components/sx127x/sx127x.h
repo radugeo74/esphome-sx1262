@@ -191,6 +191,8 @@ class SX127x final : public Component,
   std::atomic<uint32_t> raw_common_sync_{0}, raw_c1a_second_marker_{0},
                         raw_c1b_second_marker_{0}, raw_t1_fallback_{0},
                         raw_stray_54cd_{0};
+  // T-only noise gate, after C-mode secondary marker was excluded.
+  std::atomic<uint32_t> raw_t1_weak_preamble_drop_{0};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
