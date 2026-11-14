@@ -187,6 +187,10 @@ class SX127x final : public Component,
                         raw_c1_body_complete_{0}, raw_c1_queued_{0},
                         raw_c1_queue_dropped_{0};
   std::atomic<uint32_t> raw_clock_min_window_cycles_{UINT32_MAX};
+  // C-mode is identified only after common 543D followed by 54CD/543D.
+  std::atomic<uint32_t> raw_common_sync_{0}, raw_c1a_second_marker_{0},
+                        raw_c1b_second_marker_{0}, raw_t1_fallback_{0},
+                        raw_stray_54cd_{0};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
