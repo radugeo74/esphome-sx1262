@@ -1,3 +1,17 @@
+## SX1276 RAW DATA/DCLK v5 — T1 preamble gate (14 noiembrie 2026)
+
+Branch: `experimental/sx127x-raw-dclk-v5-t1-gate`, derivat strict din v4. Modificare **doar pentru LILYGO SX1276 în RAW DATA/DCLK**. Nu au fost schimbate SX126x Heltec, drivere XMQ, setările radio, ISR sau CRC.
+
+În v4 au existat multe `543D` candidate fără un preambul alternating de 16 biți recognoscibil (statistici cumulative T1: 158 absent din 219). Acestea pot consuma întregi cadre candidate false și masca recepții reale. În v5, după verificarea celor doi octeți care diferențiază C1, doar pentru fallback **T1**, se respinge candidatul dacă preambulul de 16 biți anteriori are peste două erori față de `5555` sau `AAAA`. Se păstrează T1 cu preambul perfect sau cel mult două erori; C1/A și C1/B continuă nefiltrate pe acest criteriu, fiind identificate mai întâi după markerul secundar.
+
+Statistică nouă: `SX127x RAW T1 gate weak_preamble_drop=N`. Contează candidați eliminați, **nu telegrame pierdute**. În scenariul în care o telegramă T1 reală are preambul deteriorat peste prag, aceasta poate fi respinsă: acesta este un experiment, nu o garanție de creștere a recepției.
+
+Test A/B: pe LILYGO schimbă numai URL-ul `external_components.source` în `github://radugeo74/esphome-sx1262@experimental/sx127x-raw-dclk-v5-t1-gate`, restul YAML neschimbat. Compară cu Heltec în același interval de cel puțin câteva minute și cu logurile v4: T1/A CRC valid/minut, C1/A CRC valid/minut, T1 `bad_symbol`, T1 `raw_t1_weak_preamble_drop`, overflows. Nu compara contori cumulativi între boot-uri. Dacă T1 sau C1 scade, rollback instant la `experimental/sx127x-raw-dclk-v4`.
+
+**Stare:** modificările de cod au fost publicate și recitite prin GitHub; nu s-a rulat CI, build ESPHome sau RF.
+
+---
+
 ## SX1276 RAW DATA/DCLK v4 — sincronizare comună T1/C1 (14 noiembrie 2026)
 
 Branch: `experimental/sx127x-raw-dclk-v4` (bazat pe v3). **Numai LILYGO experimental. Nu am rulat compilare, CI sau test RF.** Heltec, recepția FIFO, driverele XMQ și validatorul CRC nu sunt modificate.
