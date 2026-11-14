@@ -214,6 +214,17 @@ class SX127x final : public Component,
                         raw_t1_edge_outlier_invalid_symbols_{0},
                         raw_c1_edge_clean_{0}, raw_c1_edge_outlier_{0};
   std::atomic<uint32_t> raw_edge_fast_total_{0}, raw_edge_slow_total_{0};
+  // v8 worker-side correlation: first timing anomaly vs first invalid
+  // 3-of-6 symbol. Never store per-meter IDs or payloads.
+  std::atomic<uint32_t> raw_t1_position_both_none_{0},
+                        raw_t1_position_bad_without_edge_{0},
+                        raw_t1_position_edge_without_bad_{0},
+                        raw_t1_position_edge_before_bad_{0},
+                        raw_t1_position_edge_same_symbol_{0},
+                        raw_t1_position_edge_after_bad_{0};
+  std::atomic<uint32_t> raw_c1_first_edge_marker_{0},
+                        raw_c1_first_edge_early_{0},
+                        raw_c1_first_edge_late_{0};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
