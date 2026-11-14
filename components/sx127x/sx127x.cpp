@@ -692,6 +692,12 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_stray_54cd_.load()));
     ESP_LOGI(TAG, "SX127x RAW T1 gate weak_preamble_drop=%u (more than 2 bit errors in 16 preamble bits, C1 unchanged)",
              static_cast<unsigned>(this->raw_t1_weak_preamble_drop_.load()));
+    ESP_LOGI(TAG, "SX127x RAW T1 first-invalid 3of6 none=%u first_0_3=%u first_4_15=%u first_16_63=%u first_64plus=%u (completed T1 candidates, BEFORE CRC)",
+             static_cast<unsigned>(this->raw_t1_symbols_all_valid_.load()),
+             static_cast<unsigned>(this->raw_t1_invalid_first_0_3_.load()),
+             static_cast<unsigned>(this->raw_t1_invalid_first_4_15_.load()),
+             static_cast<unsigned>(this->raw_t1_invalid_first_16_63_.load()),
+             static_cast<unsigned>(this->raw_t1_invalid_first_64_plus_.load()));
     ESP_LOGI(TAG, "SX127x RAW C1A stages header_ok=%u header_bad=%u body_complete=%u queued=%u queue_drop=%u verified=%u (CRC failures remain in shared PHY totals)",
              static_cast<unsigned>(this->raw_c1_header_ok_.load()),
              static_cast<unsigned>(this->raw_c1_header_bad_.load()),
@@ -704,6 +710,9 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_clock_long_windows_.load()),
              static_cast<unsigned>(this->raw_clock_min_window_cycles_.load() == UINT32_MAX ? 0 : this->raw_clock_min_window_cycles_.load()),
              static_cast<unsigned>(this->raw_clock_max_window_cycles_.load()));
+    ESP_LOGI(TAG, "SX127x RAW DCLK timing windows_fast20=%u windows_slow20=%u (256-edge windows; 240MHz nominal, NOT proof of dropped IRQs)",
+             static_cast<unsigned>(this->raw_clock_window_fast_20pct_.load()),
+             static_cast<unsigned>(this->raw_clock_window_slow_20pct_.load()));
   }
   if (this->wmbus_phy_diagnostics_) {
     const uint32_t n = s.rx_rearms.load();
@@ -776,6 +785,8 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
       // 256 clocks should take 2.56 ms at 100kb/s, 614400 CPU
       // cycles at 240MHz. >1.5x can mean quiet RF/clock pauses.
       if (elapsed > 921600U) ++arg->raw_clock_long_windows_;
+      if (elapsed < 491520U) ++arg->raw_clock_window_fast_20pct_;
+      if (elapsed > 737280U) ++arg->raw_clock_window_slow_20pct_;
     }
   }
   arg->raw_bit_accum_ = static_cast<uint8_t>((arg->raw_bit_accum_ << 1) | bit);
@@ -928,6 +939,29 @@ void SX127x::wmbus_raw_task_() {
         if (received != (c1 ? lengths.c1 : lengths.t1)) continue;
         const size_t frame_size = received + (c1 ? 2 : 0);
         if (frame_size > WMBUS_MAX_RAW_SIZE) continue;
+        // Inspect full T1 3-of-6 candidate without altering CRC or dispatch.
+        if (!c1) {
+          const size_t symbol_count = received * 8U / 6U;
+          size_t first_invalid = symbol_count;
+          for (size_t symbol = 0; symbol < symbol_count; ++symbol) {
+            const size_t start_bit = symbol * 6U;
+            uint8_t code = 0;
+            for (unsigned b = 0; b < 6; ++b) {
+              const size_t pos = start_bit + b;
+              code = static_cast<uint8_t>(
+                  (code << 1) | ((body[pos / 8U] >> (7U - (pos % 8U))) & 1U));
+            }
+            if (t1_symbol_to_nibble(code) < 0) {
+              first_invalid = symbol;
+              break;
+            }
+          }
+          if (first_invalid == symbol_count) ++this->raw_t1_symbols_all_valid_;
+          else if (first_invalid < 4U) ++this->raw_t1_invalid_first_0_3_;
+          else if (first_invalid < 16U) ++this->raw_t1_invalid_first_4_15_;
+          else if (first_invalid < 64U) ++this->raw_t1_invalid_first_16_63_;
+          else ++this->raw_t1_invalid_first_64_plus_;
+        }
         WmbusRxPacket frame;
         frame.size = static_cast<uint16_t>(frame_size);
         frame.rssi_half_dbm = frame_rssi;
