@@ -684,6 +684,12 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_c1_preamble_exact_.load()),
              static_cast<unsigned>(this->raw_c1_preamble_near_.load()),
              static_cast<unsigned>(this->raw_c1_preamble_absent_.load()));
+    ESP_LOGI(TAG, "SX127x RAW sync common_543D=%u second_C1A_54CD=%u second_C1B_543D=%u fallback_T1=%u stray_54CD=%u",
+             static_cast<unsigned>(this->raw_common_sync_.load()),
+             static_cast<unsigned>(this->raw_c1a_second_marker_.load()),
+             static_cast<unsigned>(this->raw_c1b_second_marker_.load()),
+             static_cast<unsigned>(this->raw_t1_fallback_.load()),
+             static_cast<unsigned>(this->raw_stray_54cd_.load()));
     ESP_LOGI(TAG, "SX127x RAW C1A stages header_ok=%u header_bad=%u body_complete=%u queued=%u queue_drop=%u verified=%u (CRC failures remain in shared PHY totals)",
              static_cast<unsigned>(this->raw_c1_header_ok_.load()),
              static_cast<unsigned>(this->raw_c1_header_bad_.load()),
@@ -790,11 +796,16 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
 
 void SX127x::wmbus_raw_task_() {
   // Bit-aligned software sync: accepts arbitrary byte phase from ISR packing.
-  // Classify 16 preceding bits as exact/near/absent alternating preamble.
-  // Do not reject solely on a damaged preamble; CRC remains mandatory.
+  // C-mode on air: preamble + 543D + 54CD (A) or 543D (B).
+  // The first 543D is shared with T. Inspect the NEXT 16 bits without
+  // losing them: fall back to T with the same two bytes if not a C marker.
+  // CRC remains mandatory for all candidate frames.
   uint32_t history = 0;
   bool collecting = false;
+  bool awaiting_second_marker = false;
+  bool c1_secondary_marker = false;
   uint8_t marker = 0, assembled = 0, bits = 0;
+  uint8_t sync_preamble_quality = 2; // 0 exact, 1 near2, 2 absent
   std::array<uint8_t, WMBUS_MAX_RAW_SIZE> body{};
   size_t received = 0, target = 0;
   WmbusRawCandidates lengths{};
@@ -814,33 +825,27 @@ void SX127x::wmbus_raw_task_() {
         history = (history << 1) | bit;
         const uint16_t sync = static_cast<uint16_t>(history);
         const uint16_t preceding = static_cast<uint16_t>(history >> 16);
-        if (sync == 0x543D || sync == 0x54CD) {
+        if (sync == 0x54CD) {
+          // A bare 54CD is not C1/A: the 543D common sync must precede it.
+          ++this->raw_stray_54cd_;
+        } else if (sync == 0x543D) {
           const unsigned errors_55 = static_cast<unsigned>(__builtin_popcount(
               static_cast<unsigned>(preceding ^ 0x5555U)));
           const unsigned errors_aa = static_cast<unsigned>(__builtin_popcount(
               static_cast<unsigned>(preceding ^ 0xAAAAU)));
           const unsigned errors = std::min(errors_55, errors_aa);
-          const bool c1_marker = sync == 0x54CD;
-          if (errors == 0) {
-            if (c1_marker) ++this->raw_c1_preamble_exact_;
-            else ++this->raw_t1_preamble_exact_;
-          } else if (errors <= 2) {
-            if (c1_marker) ++this->raw_c1_preamble_near_;
-            else ++this->raw_t1_preamble_near_;
-          } else {
-            if (c1_marker) ++this->raw_c1_preamble_absent_;
-            else ++this->raw_t1_preamble_absent_;
-          }
+          sync_preamble_quality = errors == 0 ? 0 : (errors <= 2 ? 1 : 2);
           if (errors != 0) ++this->raw_sync_without_preamble_;
-          marker = c1_marker ? 0xCD : 0x3D;
-          if (marker == 0xCD) ++this->raw_sync_c1_;
-          else ++this->raw_sync_t1_;
+          ++this->raw_common_sync_;
           ++this->wmbus_stats_.rx_starts;
           collecting = true;
+          awaiting_second_marker = true;
+          c1_secondary_marker = false;
+          marker = 0x3D; // default T-mode if next two bytes are not C marker
           assembled = bits = 0;
           received = target = 0;
           lengths = {};
-          // Read RSSI once per candidate from the worker, never inside ISR.
+          // Worker-only SPI; never read RSSI from GPIO ISR.
           frame_rssi = -static_cast<int16_t>(this->read_register_(0x11));
         }
         continue;
@@ -856,8 +861,38 @@ void SX127x::wmbus_raw_task_() {
       }
       body[received++] = assembled;
       assembled = 0;
+      if (awaiting_second_marker && received == 2) {
+        awaiting_second_marker = false;
+        if (body[0] == 0x54 && (body[1] == 0xCD || body[1] == 0x3D)) {
+          marker = body[1];
+          c1_secondary_marker = true;
+          if (marker == 0xCD) {
+            ++this->raw_c1a_second_marker_;
+            ++this->raw_sync_c1_;
+            if (sync_preamble_quality == 0) ++this->raw_c1_preamble_exact_;
+            else if (sync_preamble_quality == 1) ++this->raw_c1_preamble_near_;
+            else ++this->raw_c1_preamble_absent_;
+          } else {
+            ++this->raw_c1b_second_marker_;
+          }
+          // The 54CD/543D secondary marker is not part of the L-field.
+          // Keep the common-sync preamble quality; the C frame starts next.
+          received = 0;
+        } else {
+          c1_secondary_marker = false;
+          ++this->raw_t1_fallback_;
+          ++this->raw_sync_t1_;
+          if (sync_preamble_quality == 0) ++this->raw_t1_preamble_exact_;
+          else if (sync_preamble_quality == 1) ++this->raw_t1_preamble_near_;
+          else ++this->raw_t1_preamble_absent_;
+          // Preserve the two original bytes verbatim for T-mode 3-of-6.
+        }
+      }
       if (received == 3) {
         lengths = wmbus_raw_candidates(marker, true, body.data(), received, body.size());
+        // Distinguish T from C1/B even though they share 543D marker.
+        if (marker == 0x3D && !c1_secondary_marker) lengths.c1 = 0;
+        if (marker == 0x3D && c1_secondary_marker) lengths.t1 = 0;
         target = std::max(lengths.t1, lengths.c1);
         if (!target) {
           ++this->raw_prefix_rejects_;
