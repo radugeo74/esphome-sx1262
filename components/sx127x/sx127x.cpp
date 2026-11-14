@@ -8,7 +8,6 @@
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
 #include "soc/gpio_struct.h"
 #endif
-#include "esp_cpu.h"
 
 namespace esphome::sx127x {
 
@@ -702,11 +701,7 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_c1_queued_.load()),
              static_cast<unsigned>(this->raw_c1_queue_dropped_.load()),
              static_cast<unsigned>(s.c1a_verified.load()));
-    ESP_LOGI(TAG, "SX127x RAW DCLK clock windows_256=%u long_windows=%u min_cycles=%u max_cycles=%u (NOT proof of missed IRQs)",
-             static_cast<unsigned>(this->raw_clock_windows_.load()),
-             static_cast<unsigned>(this->raw_clock_long_windows_.load()),
-             static_cast<unsigned>(this->raw_clock_min_window_cycles_.load() == UINT32_MAX ? 0 : this->raw_clock_min_window_cycles_.load()),
-             static_cast<unsigned>(this->raw_clock_max_window_cycles_.load()));
+    ESP_LOGI(TAG, "SX127x RAW DCLK clock-window timing: DISABLED (lite ISR A/B test)");
   }
   if (this->wmbus_phy_diagnostics_) {
     const uint32_t n = s.rx_rearms.load();
@@ -767,29 +762,8 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
 #else
   const uint8_t bit = gpio_get_level(arg->raw_data_gpio_) ? 1U : 0U;
 #endif
-  // Observe the time for 256 rising clocks with only one cycle-counter
-  // read per window; a long window is a hint, NOT proof of lost IRQs.
-  if (++arg->raw_clock_window_count_ == 256U) {
-    arg->raw_clock_window_count_ = 0;
-    const uint32_t now = esp_cpu_get_cycle_count();
-    const uint32_t previous = arg->raw_clock_previous_cycles_;
-    arg->raw_clock_previous_cycles_ = now;
-    if (previous != 0U) {
-      ++arg->raw_clock_windows_;
-      const uint32_t elapsed = now - previous;
-      auto &minimum = arg->raw_clock_min_window_cycles_;
-      uint32_t min_old = minimum.load(std::memory_order_relaxed);
-      while (elapsed < min_old && !minimum.compare_exchange_weak(
-          min_old, elapsed, std::memory_order_relaxed)) {}
-      auto &maximum = arg->raw_clock_max_window_cycles_;
-      uint32_t old = maximum.load(std::memory_order_relaxed);
-      while (elapsed > old && !maximum.compare_exchange_weak(
-          old, elapsed, std::memory_order_relaxed)) {}
-      // 256 clocks should take 2.56 ms at 100kb/s, 614400 CPU
-      // cycles at 240MHz. >1.5x can mean quiet RF/clock pauses.
-      if (elapsed > 921600U) ++arg->raw_clock_long_windows_;
-    }
-  }
+  // A/B experiment: skip 256-clock timing telemetry in the 100-kHz ISR.
+  // Sampling, buffering, queue notification, and validation are unchanged.
   arg->raw_bit_accum_ = static_cast<uint8_t>((arg->raw_bit_accum_ << 1) | bit);
   if (++arg->raw_bit_count_ != 8) return;
   arg->raw_bit_count_ = 0;
