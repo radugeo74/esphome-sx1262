@@ -31,6 +31,7 @@ CONF_WMBUS_C1A_ONLY = "wmbus_c1a_only"
 CONF_WMBUS_DUAL_SYNC = "wmbus_dual_sync"
 CONF_WMBUS_CONTINUOUS_DUAL = "wmbus_continuous_dual"
 CONF_WMBUS_LNA_BOOST_HF = "wmbus_lna_boost_hf"
+CONF_WMBUS_AFC_AUTO = "wmbus_afc_auto"
 CONF_MODULATION = "modulation"
 CONF_PA_PIN = "pa_pin"
 CONF_PA_POWER = "pa_power"
@@ -262,6 +263,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_WMBUS_DUAL_SYNC, default=False): cv.boolean,
             cv.Optional(CONF_WMBUS_CONTINUOUS_DUAL, default=False): cv.boolean,
             cv.Optional(CONF_WMBUS_LNA_BOOST_HF, default=False): cv.boolean,
+            cv.Optional(CONF_WMBUS_AFC_AUTO, default=True): cv.boolean,
             cv.Required(CONF_FREQUENCY): cv.All(
                 cv.frequency, cv.int_range(min=int(137e6), max=int(1020e6))
             ),
@@ -316,6 +318,7 @@ async def to_code(config: ConfigType) -> None:
     cg.add(var.set_wmbus_dual_sync(config[CONF_WMBUS_DUAL_SYNC]))
     cg.add(var.set_wmbus_continuous_dual(config[CONF_WMBUS_CONTINUOUS_DUAL]))
     cg.add(var.set_wmbus_lna_boost_hf(config[CONF_WMBUS_LNA_BOOST_HF]))
+    cg.add(var.set_wmbus_afc_auto(config[CONF_WMBUS_AFC_AUTO]))
     if CONF_DIO2_PIN in config:
         dio2_pin = await cg.gpio_pin_expression(config[CONF_DIO2_PIN])
         cg.add(var.set_dio2_pin(dio2_pin))
