@@ -171,12 +171,6 @@ class SX127x final : public Component,
   gpio_num_t raw_data_gpio_{GPIO_NUM_NC};
   std::atomic<uint32_t> raw_overflows_{0}, raw_sync_t1_{0},
                         raw_sync_c1_{0}, raw_prefix_rejects_{0};
-  // Observability for sample-clock IRQs; these do not prove IRQ loss.
-  uint32_t raw_clock_window_count_{0};   // ISR only
-  uint32_t raw_clock_previous_cycles_{0}; // ISR only
-  std::atomic<uint32_t> raw_clock_windows_{0};
-  std::atomic<uint32_t> raw_clock_max_window_cycles_{0};
-  std::atomic<uint32_t> raw_clock_long_windows_{0};
   std::atomic<uint32_t> raw_sync_without_preamble_{0};
   // Sync quality and C1/A RX stages; never contains payload or meter IDs.
   std::atomic<uint32_t> raw_t1_preamble_exact_{0}, raw_t1_preamble_near_{0},
@@ -186,7 +180,6 @@ class SX127x final : public Component,
   std::atomic<uint32_t> raw_c1_header_ok_{0}, raw_c1_header_bad_{0},
                         raw_c1_body_complete_{0}, raw_c1_queued_{0},
                         raw_c1_queue_dropped_{0};
-  std::atomic<uint32_t> raw_clock_min_window_cycles_{UINT32_MAX};
   // C-mode is identified only after common 543D followed by 54CD/543D.
   std::atomic<uint32_t> raw_common_sync_{0}, raw_c1a_second_marker_{0},
                         raw_c1b_second_marker_{0}, raw_t1_fallback_{0},
