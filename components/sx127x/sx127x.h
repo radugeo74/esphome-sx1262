@@ -212,6 +212,13 @@ class SX127x final : public Component,
     std::atomic<uint32_t> missed_irq_wakeups{0};
     std::atomic<uint32_t> queue_drops{0};
     std::atomic<uint32_t> rx_rearms{0};
+    // Watchdog samples, not all RF events.
+    std::atomic<uint32_t> idle_preamble_samples{0};
+    std::atomic<uint32_t> idle_sync_samples{0};
+    std::atomic<uint32_t> idle_preamble_only_samples{0};
+    std::atomic<uint32_t> rearm_total_us{0};
+    std::atomic<uint32_t> rearm_max_us{0};
+    std::atomic<uint32_t> rearm_above_1ms{0};
     // Pre-CRC receive-stage statistics; atomic across FIFO task and main loop.
     std::atomic<uint32_t> irq1_preamble_at_fifo{0};
     std::atomic<uint32_t> irq1_sync_at_fifo{0};
