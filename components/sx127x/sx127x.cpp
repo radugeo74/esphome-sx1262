@@ -5,6 +5,7 @@
 #include "esphome/core/log.h"
 #include "esp_timer.h"
 #include "driver/gpio.h"
+#include "esp_cpu.h"
 
 namespace esphome::sx127x {
 
@@ -316,7 +317,10 @@ void SX127x::configure_fsk_ook_() {
 
   // config bit synchronizer
   uint8_t polarity = (this->preamble_polarity_ == 0xAA) ? PREAMBLE_AA : PREAMBLE_55;
-  if (!this->sync_value_.empty()) {
+  if (this->wmbus_raw_dclk_) {
+    // No hardware sync gate in FSK Continuous; software searches raw DATA.
+    this->write_register_(REG_SYNC_CONFIG, AUTO_RESTART_PLL_LOCK | polarity);
+  } else if (!this->sync_value_.empty()) {
     uint8_t size = this->sync_value_.size() - 1;
     this->write_register_(REG_SYNC_CONFIG, AUTO_RESTART_PLL_LOCK | polarity | SYNC_ON | size);
     for (uint32_t i = 0; i < this->sync_value_.size(); i++) {
@@ -375,7 +379,7 @@ void SX127x::configure_fsk_ook_() {
               ((this->preamble_detect_ - 1) << PREAMBLE_DETECTOR_SIZE_SHIFT) |
               (this->preamble_errors_ << PREAMBLE_DETECTOR_TOL_SHIFT)
         : PREAMBLE_DETECTOR_OFF;
-    const uint8_t expected_sync = this->sync_value_.empty()
+    const uint8_t expected_sync = (this->wmbus_raw_dclk_ || this->sync_value_.empty())
         ? static_cast<uint8_t>(AUTO_RESTART_PLL_LOCK |
                                (this->preamble_polarity_ == 0xAA ? PREAMBLE_AA : PREAMBLE_55))
         : static_cast<uint8_t>(AUTO_RESTART_PLL_LOCK |
@@ -667,11 +671,16 @@ void SX127x::wmbus_log_statistics_() {
            static_cast<unsigned>(s.queue_drops.load()),
            static_cast<unsigned>(s.rx_rearms.load()));
   if (this->wmbus_raw_dclk_) {
-    ESP_LOGI(TAG, "SX127x RAW DCLK sync T1=%u C1A=%u ring_overflow=%u prefix_reject=%u",
+    ESP_LOGI(TAG, "SX127x RAW DCLK sync T1=%u C1A=%u ring_overflow=%u prefix_reject=%u sync_without_preamble=%u",
              static_cast<unsigned>(this->raw_sync_t1_.load()),
              static_cast<unsigned>(this->raw_sync_c1_.load()),
              static_cast<unsigned>(this->raw_overflows_.load()),
-             static_cast<unsigned>(this->raw_prefix_rejects_.load()));
+             static_cast<unsigned>(this->raw_prefix_rejects_.load()),
+             static_cast<unsigned>(this->raw_sync_without_preamble_.load()));
+    ESP_LOGI(TAG, "SX127x RAW DCLK clock windows_256=%u long_windows=%u max_cycles=%u (CPU cycle counts, NOT lost IRQ proof)",
+             static_cast<unsigned>(this->raw_clock_windows_.load()),
+             static_cast<unsigned>(this->raw_clock_long_windows_.load()),
+             static_cast<unsigned>(this->raw_clock_max_window_cycles_.load()));
   }
   if (this->wmbus_phy_diagnostics_) {
     const uint32_t n = s.rx_rearms.load();
@@ -723,6 +732,25 @@ void IRAM_ATTR SX127x::wmbus_fifo_intr_(SX127x *arg) {
 void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
   // Sample DIO2 on rising DIO1/DCLK. Constant-time ISR: no SPI or decoding.
   const uint8_t bit = gpio_get_level(arg->raw_data_gpio_) ? 1U : 0U;
+  // Observe the time for 256 rising clocks with only one cycle-counter
+  // read per window; a long window is a hint, NOT proof of lost IRQs.
+  if (++arg->raw_clock_window_count_ == 256U) {
+    arg->raw_clock_window_count_ = 0;
+    const uint32_t now = esp_cpu_get_cycle_count();
+    const uint32_t previous = arg->raw_clock_previous_cycles_;
+    arg->raw_clock_previous_cycles_ = now;
+    if (previous != 0U) {
+      ++arg->raw_clock_windows_;
+      const uint32_t elapsed = now - previous;
+      auto &maximum = arg->raw_clock_max_window_cycles_;
+      uint32_t old = maximum.load(std::memory_order_relaxed);
+      while (elapsed > old && !maximum.compare_exchange_weak(
+          old, elapsed, std::memory_order_relaxed)) {}
+      // 256 clocks should take 2.56 ms at 100kb/s, 614400 CPU
+      // cycles at 240MHz. >1.5x can mean quiet RF/clock pauses.
+      if (elapsed > 921600U) ++arg->raw_clock_long_windows_;
+    }
+  }
   arg->raw_bit_accum_ = static_cast<uint8_t>((arg->raw_bit_accum_ << 1) | bit);
   if (++arg->raw_bit_count_ != 8) return;
   arg->raw_bit_count_ = 0;
@@ -743,8 +771,8 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
 
 void SX127x::wmbus_raw_task_() {
   // Bit-aligned software sync: accepts arbitrary byte phase from ISR packing.
-  // The preceding 0x55/0xAA byte prevents most random false sync matches.
-  // This is an experimental RF implementation; all candidates still need CRC.
+  // Accept sync even with a damaged preceding preamble byte. Full
+  // frame validation still requires DLL CRC; no auto meter dispatch.
   uint32_t history = 0;
   bool collecting = false;
   uint8_t marker = 0, assembled = 0, bits = 0;
@@ -767,8 +795,9 @@ void SX127x::wmbus_raw_task_() {
         history = (history << 1) | bit;
         const uint16_t sync = static_cast<uint16_t>(history);
         const uint8_t preceding = static_cast<uint8_t>(history >> 16);
-        if ((sync == 0x543D || sync == 0x54CD) &&
-            (preceding == 0x55 || preceding == 0xAA)) {
+        if (sync == 0x543D || sync == 0x54CD) {
+          if (preceding != 0x55 && preceding != 0xAA)
+            ++this->raw_sync_without_preamble_;
           marker = sync == 0x543D ? 0x3D : 0xCD;
           if (marker == 0xCD) ++this->raw_sync_c1_;
           else ++this->raw_sync_t1_;
