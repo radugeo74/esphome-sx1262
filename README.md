@@ -1,3 +1,19 @@
+## SX1276 RAW DATA/DCLK v8 — first-edge vs first-3-of-6-error (14 noiembrie 2026)
+
+Branch: `experimental/sx127x-raw-dclk-v8-edge-position` (din v7). **Diagnostic exclusiv**: nu schimbă bitstream-ul, filtrul T1, markerul C1, decoderul 3-of-6, CRC, radio, YAML, sau firmware Heltec. Nu au fost rulate build, CI sau test RF.
+
+La recepția fiecărui candidat complet, worker-ul urmărește primul bit care avea indicator de interval DCLK anormal deja calculat de v7 și îl compară cu poziția primei erori de simbol 3-of-6. Indexarea începe după primul marcaj comun `54 3D`; la T1 începe direct corpul, iar la C1 cei 16 biți ai celui de-al doilea marcaj sunt incluși. Nu se salvează payload-uri, adrese sau chei și nu există loguri pe telegramă.
+
+Noua statistică `SX127x RAW T1 first-edge vs first-bad3of6` are categoriile `neither` (nici interval anormal, nici simbol invalid), `bad_only`, `edge_only`, `edge_before`, `same_symbol`, `edge_after`. Poziția primei anomalii se împarte la șase pentru a obține simbolul T1 corespunzător; `edge_before` **nu demonstrează cauzalitatea**, deoarece anomalia poate apărea înainte de coruperea RF, în prezența altor perturbări. `C1 first-edge marker / body_first64 / body_later` grupează prima anomalie în cei 16 biți ai markerului secundar, primii 64 biți din corp sau mai târziu. Toate contoarele sunt cumulative de la boot și **anterioare CRC**.
+
+**Cost ISR**: folosește aceleași perechi RAW-bit/timing-bit ca v7, fără alte operații per front. La contorizarea ferestrelor de 256 impulsuri, timestamp-ul deja citit este reutilizat în locul unei citiri suplimentare. Totuși, suprasarcina v7 de temporizare a fiecărui front rămâne prezentă; se verifică recepția față de Heltec și se revine la v5 dacă performanța scade.
+
+Instalare: schimbă numai `external_components.source` în `github://radugeo74/esphome-sx1262@experimental/sx127x-raw-dclk-v8-edge-position`. Păstrează configurația LILYGO fără senzori suplimentari. Compară logurile Heltec/LILYGO pe aceeași perioadă: T1/C1 CRC validate, ring overflow, queue drops, distribuția T1 first-bad și categoriile de corelare. Dacă `edge_before`/ `same_symbol` predomină, investigația cu logic analyzer pe DIO1/DIO2 ar fi justificată. Dacă `bad_only` predomină, prioritatea devine RF/demodulare.
+
+Rollback: `experimental/sx127x-raw-dclk-v7-edge-timing` (diagnostic), `experimental/sx127x-raw-dclk-v5-t1-gate` (referință funcțională).
+
+---
+
 ## SX1276 RAW DATA/DCLK v7 — per-edge timing (14 noiembrie 2026)
 
 Branch: `experimental/sx127x-raw-dclk-v7-edge-timing`, bazat pe v6. **Diagnostic experimental, nu firmware validat; nu am rulat CI/compilare/recepție RF.** Heltec, driverele XMQ, codificarea 3-of-6, filtrele T1/C1, parametrii RF și validarea CRC sunt neschimbate.
