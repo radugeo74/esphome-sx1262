@@ -723,6 +723,17 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_t1_edge_outlier_invalid_symbols_.load()),
              static_cast<unsigned>(this->raw_c1_edge_clean_.load()),
              static_cast<unsigned>(this->raw_c1_edge_outlier_.load()));
+    ESP_LOGI(TAG, "SX127x RAW T1 first-edge vs first-bad3of6 neither=%u bad_only=%u edge_only=%u edge_before=%u same_symbol=%u edge_after=%u (candidate-relative, before CRC)",
+             static_cast<unsigned>(this->raw_t1_position_both_none_.load()),
+             static_cast<unsigned>(this->raw_t1_position_bad_without_edge_.load()),
+             static_cast<unsigned>(this->raw_t1_position_edge_without_bad_.load()),
+             static_cast<unsigned>(this->raw_t1_position_edge_before_bad_.load()),
+             static_cast<unsigned>(this->raw_t1_position_edge_same_symbol_.load()),
+             static_cast<unsigned>(this->raw_t1_position_edge_after_bad_.load()));
+    ESP_LOGI(TAG, "SX127x RAW C1 first-edge marker=%u body_first64=%u body_later=%u (candidate-relative, before CRC)",
+             static_cast<unsigned>(this->raw_c1_first_edge_marker_.load()),
+             static_cast<unsigned>(this->raw_c1_first_edge_early_.load()),
+             static_cast<unsigned>(this->raw_c1_first_edge_late_.load()));
   }
   if (this->wmbus_phy_diagnostics_) {
     const uint32_t n = s.rx_rearms.load();
@@ -798,7 +809,8 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
   // read per window; a long window is a hint, NOT proof of lost IRQs.
   if (++arg->raw_clock_window_count_ == 256U) {
     arg->raw_clock_window_count_ = 0;
-    const uint32_t now = esp_cpu_get_cycle_count();
+    // Reuse the v7 per-edge timestamp instead of rereading CPU cycles.
+    const uint32_t now = edge_now;
     const uint32_t previous = arg->raw_clock_previous_cycles_;
     arg->raw_clock_previous_cycles_ = now;
     if (previous != 0U) {
@@ -857,6 +869,10 @@ void SX127x::wmbus_raw_task_() {
   WmbusRawCandidates lengths{};
   int16_t frame_rssi = -180;
   uint32_t candidate_edge_outliers = 0;
+  // Bit index 0 starts directly after the common 0x543D marker.
+  // No ISR changes: inspect existing v7 aligned timing bytes in worker.
+  size_t candidate_bit_index = 0;
+  size_t candidate_first_edge_bit = SIZE_MAX;
   while (true) {
     const uint32_t head = this->raw_head_.load(std::memory_order_acquire);
     const uint32_t tail = this->raw_tail_.load(std::memory_order_relaxed);
@@ -894,12 +910,20 @@ void SX127x::wmbus_raw_task_() {
           received = target = 0;
           lengths = {};
           candidate_edge_outliers = 0;
+          candidate_bit_index = 0;
+          candidate_first_edge_bit = SIZE_MAX;
           // Worker-only SPI; never read RSSI from GPIO ISR.
           frame_rssi = -static_cast<int16_t>(this->read_register_(0x11));
         }
         continue;
       }
-      candidate_edge_outliers += static_cast<uint32_t>((timing >> i) & 1U);
+      const bool edge_outlier = ((timing >> i) & 1U) != 0;
+      if (edge_outlier) {
+        ++candidate_edge_outliers;
+        if (candidate_first_edge_bit == SIZE_MAX)
+          candidate_first_edge_bit = candidate_bit_index;
+      }
+      ++candidate_bit_index;
       assembled = static_cast<uint8_t>((assembled << 1) | bit);
       if (++bits != 8) continue;
       bits = 0;
@@ -979,8 +1003,12 @@ void SX127x::wmbus_raw_task_() {
         // Candidate-scoped outliers align to the same raw bits as frame.
         // The first two C-mode marker bytes are included in its timing.
         if (c1) {
-          if (candidate_edge_outliers) ++this->raw_c1_edge_outlier_;
-          else ++this->raw_c1_edge_clean_;
+          if (candidate_edge_outliers) {
+            ++this->raw_c1_edge_outlier_;
+            if (candidate_first_edge_bit < 16U) ++this->raw_c1_first_edge_marker_;
+            else if (candidate_first_edge_bit < 80U) ++this->raw_c1_first_edge_early_;
+            else ++this->raw_c1_first_edge_late_;
+          } else ++this->raw_c1_edge_clean_;
         }
         // Inspect full T1 3-of-6 candidate without altering CRC or dispatch.
         if (!c1) {
@@ -1006,6 +1034,17 @@ void SX127x::wmbus_raw_task_() {
           } else {
             if (candidate_edge_outliers) ++this->raw_t1_edge_outlier_invalid_symbols_;
             else ++this->raw_t1_edge_clean_invalid_symbols_;
+          }
+          if (first_invalid == symbol_count) {
+            if (candidate_first_edge_bit == SIZE_MAX) ++this->raw_t1_position_both_none_;
+            else ++this->raw_t1_position_edge_without_bad_;
+          } else if (candidate_first_edge_bit == SIZE_MAX) {
+            ++this->raw_t1_position_bad_without_edge_;
+          } else {
+            const size_t edge_symbol = candidate_first_edge_bit / 6U;
+            if (edge_symbol < first_invalid) ++this->raw_t1_position_edge_before_bad_;
+            else if (edge_symbol == first_invalid) ++this->raw_t1_position_edge_same_symbol_;
+            else ++this->raw_t1_position_edge_after_bad_;
           }
           if (first_invalid != symbol_count) {
             if (first_invalid < 4U) ++this->raw_t1_invalid_first_0_3_;
