@@ -719,6 +719,123 @@ void IRAM_ATTR SX127x::wmbus_fifo_intr_(SX127x *arg) {
     portYIELD_FROM_ISR();
 }
 
+
+void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
+  // Sample DIO2 on rising DIO1/DCLK. Constant-time ISR: no SPI or decoding.
+  const uint8_t bit = gpio_get_level(arg->raw_data_gpio_) ? 1U : 0U;
+  arg->raw_bit_accum_ = static_cast<uint8_t>((arg->raw_bit_accum_ << 1) | bit);
+  if (++arg->raw_bit_count_ != 8) return;
+  arg->raw_bit_count_ = 0;
+  const uint32_t head = arg->raw_head_.load(std::memory_order_relaxed);
+  const uint32_t tail = arg->raw_tail_.load(std::memory_order_acquire);
+  if (head - tail >= RAW_RING_SIZE) {
+    arg->raw_overflows_.fetch_add(1, std::memory_order_relaxed);
+    return;
+  }
+  arg->raw_ring_[head % RAW_RING_SIZE] = arg->raw_bit_accum_;
+  arg->raw_head_.store(head + 1, std::memory_order_release);
+  if (((head + 1) & 31U) == 0U && arg->wmbus_task_handle_ != nullptr) {
+    BaseType_t woken = pdFALSE;
+    vTaskNotifyGiveFromISR(arg->wmbus_task_handle_, &woken);
+    if (woken == pdTRUE) portYIELD_FROM_ISR();
+  }
+}
+
+void SX127x::wmbus_raw_task_() {
+  // Bit-aligned software sync: accepts arbitrary byte phase from ISR packing.
+  // The preceding 0x55/0xAA byte prevents most random false sync matches.
+  // This is an experimental RF implementation; all candidates still need CRC.
+  uint32_t history = 0;
+  bool collecting = false;
+  uint8_t marker = 0, assembled = 0, bits = 0;
+  std::array<uint8_t, WMBUS_MAX_RAW_SIZE> body{};
+  size_t received = 0, target = 0;
+  WmbusRawCandidates lengths{};
+  int16_t frame_rssi = -180;
+  while (true) {
+    const uint32_t head = this->raw_head_.load(std::memory_order_acquire);
+    const uint32_t tail = this->raw_tail_.load(std::memory_order_relaxed);
+    if (tail == head) {
+      ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(2));
+      continue;
+    }
+    const uint8_t octet = this->raw_ring_[tail % RAW_RING_SIZE];
+    this->raw_tail_.store(tail + 1, std::memory_order_release);
+    for (int i = 7; i >= 0; --i) {
+      const uint8_t bit = static_cast<uint8_t>((octet >> i) & 1U);
+      if (!collecting) {
+        history = (history << 1) | bit;
+        const uint16_t sync = static_cast<uint16_t>(history);
+        const uint8_t preceding = static_cast<uint8_t>(history >> 16);
+        if ((sync == 0x543D || sync == 0x54CD) &&
+            (preceding == 0x55 || preceding == 0xAA)) {
+          marker = sync == 0x543D ? 0x3D : 0xCD;
+          if (marker == 0xCD) ++this->raw_sync_c1_;
+          else ++this->raw_sync_t1_;
+          ++this->wmbus_stats_.rx_starts;
+          collecting = true;
+          assembled = bits = 0;
+          received = target = 0;
+          lengths = {};
+          // Read RSSI once per candidate from the worker, never inside ISR.
+          frame_rssi = -static_cast<int16_t>(this->read_register_(0x11));
+        }
+        continue;
+      }
+      assembled = static_cast<uint8_t>((assembled << 1) | bit);
+      if (++bits != 8) continue;
+      bits = 0;
+      if (received >= body.size()) {
+        collecting = false;
+        ++this->raw_prefix_rejects_;
+        history = 0;
+        continue;
+      }
+      body[received++] = assembled;
+      assembled = 0;
+      if (received == 3) {
+        lengths = wmbus_raw_candidates(marker, true, body.data(), received, body.size());
+        target = std::max(lengths.t1, lengths.c1);
+        if (!target) {
+          ++this->raw_prefix_rejects_;
+          collecting = false;
+          history = 0;
+          continue;
+        }
+        if (lengths.t1) ++this->wmbus_stats_.t1_candidates;
+        if (lengths.c1) {
+          if (marker == 0xCD) ++this->wmbus_stats_.c1a_candidates;
+          else ++this->wmbus_stats_.c1b_candidates;
+        }
+      }
+      if (!target) continue;
+      for (unsigned choice = 0; choice < 2; ++choice) {
+        const bool c1 = choice == 1;
+        if (received != (c1 ? lengths.c1 : lengths.t1)) continue;
+        const size_t frame_size = received + (c1 ? 2 : 0);
+        if (frame_size > WMBUS_MAX_RAW_SIZE) continue;
+        WmbusRxPacket frame;
+        frame.size = static_cast<uint16_t>(frame_size);
+        frame.rssi_half_dbm = frame_rssi;
+        if (c1) {
+          frame.bytes[0] = 0x54;
+          frame.bytes[1] = marker;
+        }
+        std::copy_n(body.begin(), received, frame.bytes.begin() + (c1 ? 2 : 0));
+        // Standard wmbus_radio main loop validates CRC before meter dispatch.
+        if (xQueueSend(this->wmbus_rx_queue_, &frame, 0) == pdTRUE)
+          ++this->wmbus_stats_.frames_queued;
+        else
+          ++this->wmbus_stats_.queue_drops;
+      }
+      if (received >= target) {
+        collecting = false;
+        history = 0;
+      }
+    }
+  }
+}
+
 void SX127x::wmbus_task_entry_(void *ctx) {
   auto *self = static_cast<SX127x *>(ctx);
   if (self->wmbus_raw_dclk_) self->wmbus_raw_task_();
