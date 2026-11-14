@@ -826,6 +826,7 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
   const uint32_t tail = arg->raw_tail_.load(std::memory_order_acquire);
   if (head - tail >= RAW_RING_SIZE) {
     arg->raw_overflows_.fetch_add(1, std::memory_order_relaxed);
+    arg->raw_timing_bit_accum_ = 0;
     return;
   }
   arg->raw_ring_[head % RAW_RING_SIZE] = arg->raw_bit_accum_;
@@ -1006,10 +1007,12 @@ void SX127x::wmbus_raw_task_() {
             if (candidate_edge_outliers) ++this->raw_t1_edge_outlier_invalid_symbols_;
             else ++this->raw_t1_edge_clean_invalid_symbols_;
           }
-          if (first_invalid != symbol_count && first_invalid < 4U) ++this->raw_t1_invalid_first_0_3_;
-          else if (first_invalid < 16U) ++this->raw_t1_invalid_first_4_15_;
-          else if (first_invalid < 64U) ++this->raw_t1_invalid_first_16_63_;
-          else ++this->raw_t1_invalid_first_64_plus_;
+          if (first_invalid != symbol_count) {
+            if (first_invalid < 4U) ++this->raw_t1_invalid_first_0_3_;
+            else if (first_invalid < 16U) ++this->raw_t1_invalid_first_4_15_;
+            else if (first_invalid < 64U) ++this->raw_t1_invalid_first_16_63_;
+            else ++this->raw_t1_invalid_first_64_plus_;
+          }
         }
         WmbusRxPacket frame;
         frame.size = static_cast<uint16_t>(frame_size);
