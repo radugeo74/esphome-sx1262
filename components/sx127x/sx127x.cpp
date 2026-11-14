@@ -677,9 +677,24 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_overflows_.load()),
              static_cast<unsigned>(this->raw_prefix_rejects_.load()),
              static_cast<unsigned>(this->raw_sync_without_preamble_.load()));
-    ESP_LOGI(TAG, "SX127x RAW DCLK clock windows_256=%u long_windows=%u max_cycles=%u (CPU cycle counts, NOT lost IRQ proof)",
+    ESP_LOGI(TAG, "SX127x RAW DCLK preamble T1 exact=%u near2=%u absent=%u C1A exact=%u near2=%u absent=%u",
+             static_cast<unsigned>(this->raw_t1_preamble_exact_.load()),
+             static_cast<unsigned>(this->raw_t1_preamble_near_.load()),
+             static_cast<unsigned>(this->raw_t1_preamble_absent_.load()),
+             static_cast<unsigned>(this->raw_c1_preamble_exact_.load()),
+             static_cast<unsigned>(this->raw_c1_preamble_near_.load()),
+             static_cast<unsigned>(this->raw_c1_preamble_absent_.load()));
+    ESP_LOGI(TAG, "SX127x RAW C1A stages header_ok=%u header_bad=%u body_complete=%u queued=%u queue_drop=%u verified=%u (CRC failures remain in shared PHY totals)",
+             static_cast<unsigned>(this->raw_c1_header_ok_.load()),
+             static_cast<unsigned>(this->raw_c1_header_bad_.load()),
+             static_cast<unsigned>(this->raw_c1_body_complete_.load()),
+             static_cast<unsigned>(this->raw_c1_queued_.load()),
+             static_cast<unsigned>(this->raw_c1_queue_dropped_.load()),
+             static_cast<unsigned>(s.c1a_verified.load()));
+    ESP_LOGI(TAG, "SX127x RAW DCLK clock windows_256=%u long_windows=%u min_cycles=%u max_cycles=%u (NOT proof of missed IRQs)",
              static_cast<unsigned>(this->raw_clock_windows_.load()),
              static_cast<unsigned>(this->raw_clock_long_windows_.load()),
+             static_cast<unsigned>(this->raw_clock_min_window_cycles_.load() == UINT32_MAX ? 0 : this->raw_clock_min_window_cycles_.load()),
              static_cast<unsigned>(this->raw_clock_max_window_cycles_.load()));
   }
   if (this->wmbus_phy_diagnostics_) {
@@ -742,6 +757,10 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
     if (previous != 0U) {
       ++arg->raw_clock_windows_;
       const uint32_t elapsed = now - previous;
+      auto &minimum = arg->raw_clock_min_window_cycles_;
+      uint32_t min_old = minimum.load(std::memory_order_relaxed);
+      while (elapsed < min_old && !minimum.compare_exchange_weak(
+          min_old, elapsed, std::memory_order_relaxed)) {}
       auto &maximum = arg->raw_clock_max_window_cycles_;
       uint32_t old = maximum.load(std::memory_order_relaxed);
       while (elapsed > old && !maximum.compare_exchange_weak(
@@ -771,8 +790,8 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
 
 void SX127x::wmbus_raw_task_() {
   // Bit-aligned software sync: accepts arbitrary byte phase from ISR packing.
-  // Accept sync even with a damaged preceding preamble byte. Full
-  // frame validation still requires DLL CRC; no auto meter dispatch.
+  // Classify 16 preceding bits as exact/near/absent alternating preamble.
+  // Do not reject solely on a damaged preamble; CRC remains mandatory.
   uint32_t history = 0;
   bool collecting = false;
   uint8_t marker = 0, assembled = 0, bits = 0;
@@ -794,11 +813,26 @@ void SX127x::wmbus_raw_task_() {
       if (!collecting) {
         history = (history << 1) | bit;
         const uint16_t sync = static_cast<uint16_t>(history);
-        const uint8_t preceding = static_cast<uint8_t>(history >> 16);
+        const uint16_t preceding = static_cast<uint16_t>(history >> 16);
         if (sync == 0x543D || sync == 0x54CD) {
-          if (preceding != 0x55 && preceding != 0xAA)
-            ++this->raw_sync_without_preamble_;
-          marker = sync == 0x543D ? 0x3D : 0xCD;
+          const unsigned errors_55 = static_cast<unsigned>(__builtin_popcount(
+              static_cast<unsigned>(preceding ^ 0x5555U)));
+          const unsigned errors_aa = static_cast<unsigned>(__builtin_popcount(
+              static_cast<unsigned>(preceding ^ 0xAAAAU)));
+          const unsigned errors = std::min(errors_55, errors_aa);
+          const bool c1_marker = sync == 0x54CD;
+          if (errors == 0) {
+            if (c1_marker) ++this->raw_c1_preamble_exact_;
+            else ++this->raw_t1_preamble_exact_;
+          } else if (errors <= 2) {
+            if (c1_marker) ++this->raw_c1_preamble_near_;
+            else ++this->raw_t1_preamble_near_;
+          } else {
+            if (c1_marker) ++this->raw_c1_preamble_absent_;
+            else ++this->raw_t1_preamble_absent_;
+          }
+          if (errors != 0) ++this->raw_sync_without_preamble_;
+          marker = c1_marker ? 0xCD : 0x3D;
           if (marker == 0xCD) ++this->raw_sync_c1_;
           else ++this->raw_sync_t1_;
           ++this->wmbus_stats_.rx_starts;
@@ -827,14 +861,17 @@ void SX127x::wmbus_raw_task_() {
         target = std::max(lengths.t1, lengths.c1);
         if (!target) {
           ++this->raw_prefix_rejects_;
+          if (marker == 0xCD) ++this->raw_c1_header_bad_;
           collecting = false;
           history = 0;
           continue;
         }
         if (lengths.t1) ++this->wmbus_stats_.t1_candidates;
         if (lengths.c1) {
-          if (marker == 0xCD) ++this->wmbus_stats_.c1a_candidates;
-          else ++this->wmbus_stats_.c1b_candidates;
+          if (marker == 0xCD) {
+            ++this->wmbus_stats_.c1a_candidates;
+            ++this->raw_c1_header_ok_;
+          } else ++this->wmbus_stats_.c1b_candidates;
         }
       }
       if (!target) continue;
@@ -852,10 +889,14 @@ void SX127x::wmbus_raw_task_() {
         }
         std::copy_n(body.begin(), received, frame.bytes.begin() + (c1 ? 2 : 0));
         // Standard wmbus_radio main loop validates CRC before meter dispatch.
-        if (xQueueSend(this->wmbus_rx_queue_, &frame, 0) == pdTRUE)
+        if (c1 && marker == 0xCD) ++this->raw_c1_body_complete_;
+        if (xQueueSend(this->wmbus_rx_queue_, &frame, 0) == pdTRUE) {
           ++this->wmbus_stats_.frames_queued;
-        else
+          if (c1 && marker == 0xCD) ++this->raw_c1_queued_;
+        } else {
           ++this->wmbus_stats_.queue_drops;
+          if (c1 && marker == 0xCD) ++this->raw_c1_queue_dropped_;
+        }
       }
       if (received >= target) {
         collecting = false;
