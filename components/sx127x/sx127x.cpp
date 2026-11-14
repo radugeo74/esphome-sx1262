@@ -690,6 +690,8 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_c1b_second_marker_.load()),
              static_cast<unsigned>(this->raw_t1_fallback_.load()),
              static_cast<unsigned>(this->raw_stray_54cd_.load()));
+    ESP_LOGI(TAG, "SX127x RAW T1 gate weak_preamble_drop=%u (more than 2 bit errors in 16 preamble bits, C1 unchanged)",
+             static_cast<unsigned>(this->raw_t1_weak_preamble_drop_.load()));
     ESP_LOGI(TAG, "SX127x RAW C1A stages header_ok=%u header_bad=%u body_complete=%u queued=%u queue_drop=%u verified=%u (CRC failures remain in shared PHY totals)",
              static_cast<unsigned>(this->raw_c1_header_ok_.load()),
              static_cast<unsigned>(this->raw_c1_header_bad_.load()),
@@ -885,7 +887,18 @@ void SX127x::wmbus_raw_task_() {
           if (sync_preamble_quality == 0) ++this->raw_t1_preamble_exact_;
           else if (sync_preamble_quality == 1) ++this->raw_t1_preamble_near_;
           else ++this->raw_t1_preamble_absent_;
-          // Preserve the two original bytes verbatim for T-mode 3-of-6.
+          // Preserve the two original bytes verbatim for T-mode 3-of-6
+          // only if the preceding preamble is credible. The v4 capture
+          // had many spurious 543D markers without an alternating preamble
+          // which could reserve the decoder for an entire false frame.
+          // Never gate C1/A or C1/B here: their secondary marker is already
+          // handled above.
+          if (sync_preamble_quality == 2) {
+            ++this->raw_t1_weak_preamble_drop_;
+            collecting = false;
+            history = 0;
+            continue;
+          }
         }
       }
       if (received == 3) {
