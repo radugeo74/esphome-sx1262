@@ -171,6 +171,13 @@ class SX127x final : public Component,
   gpio_num_t raw_data_gpio_{GPIO_NUM_NC};
   std::atomic<uint32_t> raw_overflows_{0}, raw_sync_t1_{0},
                         raw_sync_c1_{0}, raw_prefix_rejects_{0};
+  // Observability for sample-clock IRQs; these do not prove IRQ loss.
+  uint32_t raw_clock_window_count_{0};   // ISR only
+  uint32_t raw_clock_previous_cycles_{0}; // ISR only
+  std::atomic<uint32_t> raw_clock_windows_{0};
+  std::atomic<uint32_t> raw_clock_max_window_cycles_{0};
+  std::atomic<uint32_t> raw_clock_long_windows_{0};
+  std::atomic<uint32_t> raw_sync_without_preamble_{0};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
