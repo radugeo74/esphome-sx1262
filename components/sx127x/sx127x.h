@@ -166,6 +166,11 @@ class SX127x final : public Component,
   bool wmbus_raw_dclk_{false};
   static constexpr uint32_t RAW_RING_SIZE = 4096;
   std::array<uint8_t, RAW_RING_SIZE> raw_ring_{};
+  // Parallel 1-byte/8-bit per-edge timing flags, aligned with raw_ring_.
+  // bit=1 means interval <1200 or >4200 CPU cycles; no payload stored.
+  std::array<uint8_t, RAW_RING_SIZE> raw_timing_ring_{};
+  uint8_t raw_timing_bit_accum_{0};  // ISR only
+  uint32_t raw_previous_edge_cycles_{0};  // ISR only
   std::atomic<uint32_t> raw_head_{0}, raw_tail_{0};
   uint8_t raw_bit_accum_{0}, raw_bit_count_{0};  // ISR only
   gpio_num_t raw_data_gpio_{GPIO_NUM_NC};
@@ -201,6 +206,14 @@ class SX127x final : public Component,
   // 256 DCLK edges nominally take 614400 cycles at CPU 240MHz/100kbps.
   std::atomic<uint32_t> raw_clock_window_fast_20pct_{0},
                         raw_clock_window_slow_20pct_{0};
+  // Candidate-scoped timing, accumulated in worker from aligned flag ring.
+  // A timing outlier is an ISR-observed gap, not proof of an RF/IRQ defect.
+  std::atomic<uint32_t> raw_t1_edge_clean_valid_symbols_{0},
+                        raw_t1_edge_outlier_valid_symbols_{0},
+                        raw_t1_edge_clean_invalid_symbols_{0},
+                        raw_t1_edge_outlier_invalid_symbols_{0},
+                        raw_c1_edge_clean_{0}, raw_c1_edge_outlier_{0};
+  std::atomic<uint32_t> raw_edge_fast_total_{0}, raw_edge_slow_total_{0};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
