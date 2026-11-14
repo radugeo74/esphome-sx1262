@@ -193,6 +193,14 @@ class SX127x final : public Component,
                         raw_stray_54cd_{0};
   // T-only noise gate, after C-mode secondary marker was excluded.
   std::atomic<uint32_t> raw_t1_weak_preamble_drop_{0};
+  // Diagnostics only: location of the first malformed 3-of-6 symbol in
+  // full-length T1 RAW candidate, independent of the shared DLL CRC.
+  std::atomic<uint32_t> raw_t1_symbols_all_valid_{0}, raw_t1_invalid_first_0_3_{0},
+                        raw_t1_invalid_first_4_15_{0}, raw_t1_invalid_first_16_63_{0},
+                        raw_t1_invalid_first_64_plus_{0};
+  // 256 DCLK edges nominally take 614400 cycles at CPU 240MHz/100kbps.
+  std::atomic<uint32_t> raw_clock_window_fast_20pct_{0},
+                        raw_clock_window_slow_20pct_{0};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
