@@ -1,3 +1,15 @@
+## SX1276 RAW DATA/DCLK v6 — T1 3-of-6 + DCLK diagnostic (14 noiembrie 2026)
+
+Branch: `experimental/sx127x-raw-dclk-v6-t1-diagnostics`, bazat pe v5. Modificări de **observabilitate**, fără schimbarea filtrului T1, a markerelor C1, RF, GPIO, cozii de RX, validării CRC, Heltec sau XMQ. Nu s-a rulat CI / compilare ESPHome / test RF.
+
+`SX127x RAW T1 first-invalid 3of6` inspectează, pe task-ul worker și **doar la terminarea unui candidat T1 de lungime plauzibilă**, toate simbolurile 3-of-6 ale fluxului brut. `none` înseamnă că toate simbolurile au cod 3-of-6 valid, **nu neapărat CRC valid**. `first_0_3` înseamnă prima eroare în simbolurile 0..3 (L/C), `first_4_15` în 4..15, `first_16_63` în 16..63, `first_64plus` în 64 și ulterior. Nu se înregistrează date de contor. Contorii nu includ sincronizările respinse de gate sau prefix înainte de completarea cadrului.
+
+`SX127x RAW DCLK timing windows_fast20 / windows_slow20` numără doar ferestrele consecutive de **256 impulsuri** care durează sub 491520 sau peste 737280 cicluri CPU, pornind de la 614400 cicluri/256 impulsuri la 240 MHz CPU și 100 kb/s. Statistica presupune CPU 240 MHz; liniile sunt orientative și **nu demonstrează** erori individuale de GPIO/IRQ, iar pauzele naturale DCLK pot influența rezultatul. Ferestrele sunt cumulative după boot.
+
+Test: modifică doar `external_components.source` în `github://radugeo74/esphome-sx1262@experimental/sx127x-raw-dclk-v6-t1-diagnostics`, păstrând YAML LILYGO fără noi senzori. Compară simultan cu Heltec pe aceeași fereastră: T1 și C1/A CRC valide, `first-invalid 3of6`, `weak_preamble_drop`, `windows_fast20`/`windows_slow20`, `ring_overflow`. Nu compara contoare cumulative cu durate diferite. Rollback: `experimental/sx127x-raw-dclk-v5-t1-gate`.
+
+---
+
 ## SX1276 RAW DATA/DCLK v5 — T1 preamble gate (14 noiembrie 2026)
 
 Branch: `experimental/sx127x-raw-dclk-v5-t1-gate`, derivat strict din v4. Modificare **doar pentru LILYGO SX1276 în RAW DATA/DCLK**. Nu au fost schimbate SX126x Heltec, drivere XMQ, setările radio, ISR sau CRC.
