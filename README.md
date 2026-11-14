@@ -1,3 +1,22 @@
+## SX1276 RAW DATA/DCLK v4 — sincronizare comună T1/C1 (14 noiembrie 2026)
+
+Branch: `experimental/sx127x-raw-dclk-v4` (bazat pe v3). **Numai LILYGO experimental. Nu am rulat compilare, CI sau test RF.** Heltec, recepția FIFO, driverele XMQ și validatorul CRC nu sunt modificate.
+
+Corecție PHY: în aer, T1 începe după `54 3D`, iar C1/A și C1/B folosesc `54 3D 54 CD`, respectiv `54 3D 54 3D`. Detectorul RAW v3 bloca căutarea la prima secvență comună. În v4 acesta:
+- urmărește `54 3D` ca sincronizare comună;
+- citește **fără pierdere** următorii doi octeți;
+- dacă sunt `54 CD`, classify C1/A; dacă `54 3D`, classify C1/B;
+- altfel continuă ca T1 și **reutilizează exact acei doi octeți** drept prefix 3-of-6;
+- nu mai tratează un `54 CD` izolat ca început de C1/A.
+
+Statistici noi: `common_543D`, `second_C1A_54CD`, `second_C1B_543D`, `fallback_T1`, `stray_54CD`. `RAW DCLK sync C1A` și `RAW C1A stages` se referă acum la markerul secundar real. Preambulul C1/A este calculat înainte de sincronizarea comună, nu înainte de `54 CD`. `stray_54CD` numără potriviri izolate și nu este număr de transmisii.
+
+Pentru test schimbă numai `external_components.source` la `github://radugeo74/esphome-sx1262@experimental/sx127x-raw-dclk-v4`; păstrează setările RAW, contoarele și senzorii existenți. Așteptat: C1/A exact/near2 > 0 și, dacă recepția este stabilă, `Native SX127x verified C1/A`. Verifică în paralel și T1/A față de Heltec. Nu interpreta `second_C1A` ca telegramă validă fără CRC. Rollback: revino la v3.
+
+Sursa pentru structura on-air: Texas Instruments, *CC13xx Combined wM-Bus C-Mode and T-Mode Application Note*, Figure 1, https://www.ti.com/lit/an/swra522e/swra522e.pdf.
+
+---
+
 ## SX1276 RAW DATA/DCLK v3: diagnostic C1/A pe etape (14 noiembrie 2026)
 
 Branch `experimental/sx127x-raw-dclk-v3`, derivat din v2. **Experimental: compilarea, CI și RF nu sunt încă validate.** Nu modifică Heltec, FIFO, parametrii RF sau regula CRC obligatorie.
