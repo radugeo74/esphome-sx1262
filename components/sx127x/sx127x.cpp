@@ -5,6 +5,9 @@
 #include "esphome/core/log.h"
 #include "esp_timer.h"
 #include "driver/gpio.h"
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#include "soc/gpio_struct.h"
+#endif
 #include "esp_cpu.h"
 
 namespace esphome::sx127x {
@@ -754,7 +757,16 @@ void IRAM_ATTR SX127x::wmbus_fifo_intr_(SX127x *arg) {
 
 void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
   // Sample DIO2 on rising DIO1/DCLK. Constant-time ISR: no SPI or decoding.
+  // For ESP32-S3 GPIO32..GPIO48, read the hardware input latch directly.
+  // This avoids an API call at every 100-kb/s DCLK edge without changing
+  // sampling polarity, byte packing, ring buffer, or CRC verification.
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  const uint32_t pin = static_cast<uint32_t>(arg->raw_data_gpio_);
+  const uint8_t bit = pin >= 32U ? static_cast<uint8_t>((GPIO.in1.data >> (pin - 32U)) & 1U)
+                               : static_cast<uint8_t>(gpio_get_level(arg->raw_data_gpio_) != 0);
+#else
   const uint8_t bit = gpio_get_level(arg->raw_data_gpio_) ? 1U : 0U;
+#endif
   // Observe the time for 256 rising clocks with only one cycle-counter
   // read per window; a long window is a hint, NOT proof of lost IRQs.
   if (++arg->raw_clock_window_count_ == 256U) {
