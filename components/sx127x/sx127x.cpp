@@ -643,6 +643,18 @@ void SX127x::wmbus_log_statistics_() {
            static_cast<unsigned>(s.missed_irq_wakeups.load()),
            static_cast<unsigned>(s.queue_drops.load()),
            static_cast<unsigned>(s.rx_rearms.load()));
+  if (this->wmbus_phy_diagnostics_) {
+    const uint32_t n = s.rx_rearms.load();
+    ESP_LOGI(TAG, "SX127x RX stages idle_samples preamble=%u sync=%u preamble_only=%u (NOT RF frame counts)",
+             static_cast<unsigned>(s.idle_preamble_samples.load()),
+             static_cast<unsigned>(s.idle_sync_samples.load()),
+             static_cast<unsigned>(s.idle_preamble_only_samples.load()));
+    ESP_LOGI(TAG, "SX127x RX rearm n=%u total_us=%u avg_us=%u max_us=%u above_1ms=%u (command duration, NOT RF settle)",
+             static_cast<unsigned>(n), static_cast<unsigned>(s.rearm_total_us.load()),
+             static_cast<unsigned>(n ? s.rearm_total_us.load() / n : 0),
+             static_cast<unsigned>(s.rearm_max_us.load()),
+             static_cast<unsigned>(s.rearm_above_1ms.load()));
+  }
   if (this->wmbus_c1_mode_) {
     // HW sync 54CD consumes CD, so marker_CD remains zero for C1/A-only.
     ESP_LOGI(TAG,
@@ -735,6 +747,7 @@ void SX127x::wmbus_restart_rx_() {
   if (this->is_failed())
     return;
   ++this->wmbus_stats_.rx_rearms;
+  const int64_t rearm_started_us = this->wmbus_phy_diagnostics_ ? esp_timer_get_time() : 0;
   // Switching to Standby, clearing FIFO/overrun, then entering RX
   // re-arms the sync detector even after a truncated/overflowed frame.
   this->set_mode_standby();
@@ -754,6 +767,14 @@ void SX127x::wmbus_restart_rx_() {
   this->set_mode_rx();
   if (this->is_failed())
     return;
+  if (this->wmbus_phy_diagnostics_) {
+    const uint32_t us = static_cast<uint32_t>(esp_timer_get_time() - rearm_started_us);
+    this->wmbus_stats_.rearm_total_us.fetch_add(us);
+    if (us > 1000) ++this->wmbus_stats_.rearm_above_1ms;
+    auto &maximum = this->wmbus_stats_.rearm_max_us;
+    uint32_t old = maximum.load();
+    while (us > old && !maximum.compare_exchange_weak(old, us)) {}
+  }
 
   // Clear stale DIO1 notifications from the prior frame. If a fresh
   // byte has already arrived, schedule a new read instead of losing it.
@@ -779,6 +800,14 @@ void SX127x::wmbus_task_() {
     const uint8_t flags2 = this->read_register_(WmbusFifoGuard::IRQ2_REGISTER);
     const uint8_t flags1 = this->read_register_(WmbusFifoGuard::IRQ1_REGISTER);
     const uint8_t mode = this->read_register_(REG_OP_MODE);
+    if (this->wmbus_phy_diagnostics_ && (flags2 & WmbusFifoGuard::FIFO_EMPTY)) {
+      // Sample already-read watchdog flags. Not a full event count.
+      const bool preamble = (flags1 & WmbusFifoGuard::IRQ1_PREAMBLE_DETECTED) != 0;
+      const bool sync = (flags1 & WmbusFifoGuard::IRQ1_SYNC_ADDRESS_MATCH) != 0;
+      if (preamble) ++this->wmbus_stats_.idle_preamble_samples;
+      if (sync) ++this->wmbus_stats_.idle_sync_samples;
+      if (preamble && !sync) ++this->wmbus_stats_.idle_preamble_only_samples;
+    }
     const auto health = wmbus_rx_health(mode, flags1, flags2);
     if (health != WmbusRxHealth::OK) {
       if (health == WmbusRxHealth::FIFO_OVERRUN)
