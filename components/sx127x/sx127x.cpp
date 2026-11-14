@@ -713,6 +713,16 @@ void SX127x::wmbus_log_statistics_() {
     ESP_LOGI(TAG, "SX127x RAW DCLK timing windows_fast20=%u windows_slow20=%u (256-edge windows; 240MHz nominal, NOT proof of dropped IRQs)",
              static_cast<unsigned>(this->raw_clock_window_fast_20pct_.load()),
              static_cast<unsigned>(this->raw_clock_window_slow_20pct_.load()));
+    ESP_LOGI(TAG, "SX127x RAW DCLK per-edge fast_total=%u slow_total=%u (threshold <1200 or >4200 cycles, 240MHz CPU; observational)",
+             static_cast<unsigned>(this->raw_edge_fast_total_.load()),
+             static_cast<unsigned>(this->raw_edge_slow_total_.load()));
+    ESP_LOGI(TAG, "SX127x RAW candidate timing T1 clean_valid3of6=%u outlier_valid3of6=%u clean_invalid3of6=%u outlier_invalid3of6=%u C1_clean=%u C1_outlier=%u (BEFORE CRC)",
+             static_cast<unsigned>(this->raw_t1_edge_clean_valid_symbols_.load()),
+             static_cast<unsigned>(this->raw_t1_edge_outlier_valid_symbols_.load()),
+             static_cast<unsigned>(this->raw_t1_edge_clean_invalid_symbols_.load()),
+             static_cast<unsigned>(this->raw_t1_edge_outlier_invalid_symbols_.load()),
+             static_cast<unsigned>(this->raw_c1_edge_clean_.load()),
+             static_cast<unsigned>(this->raw_c1_edge_outlier_.load()));
   }
   if (this->wmbus_phy_diagnostics_) {
     const uint32_t n = s.rx_rearms.load();
@@ -764,6 +774,26 @@ void IRAM_ATTR SX127x::wmbus_fifo_intr_(SX127x *arg) {
 void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
   // Sample DIO2 on rising DIO1/DCLK. Constant-time ISR: no SPI or decoding.
   const uint8_t bit = gpio_get_level(arg->raw_data_gpio_) ? 1U : 0U;
+  // v7: one cycle-counter read per IRQ, and one packed timing flag per bit.
+  // This adds ISR overhead: evaluate RF performance before keeping v7.
+  // At 240MHz, nominal 100kb/s spacing is 2400 cycles. Do not treat a
+  // long interval across quiet RF as proof of a missing interrupt.
+  const uint32_t edge_now = esp_cpu_get_cycle_count();
+  const uint32_t edge_previous = arg->raw_previous_edge_cycles_;
+  arg->raw_previous_edge_cycles_ = edge_now;
+  bool edge_outlier = false;
+  if (edge_previous != 0U) {
+    const uint32_t edge_delta = edge_now - edge_previous;
+    if (edge_delta < 1200U) {
+      ++arg->raw_edge_fast_total_;
+      edge_outlier = true;
+    } else if (edge_delta > 4200U) {
+      ++arg->raw_edge_slow_total_;
+      edge_outlier = true;
+    }
+  }
+  arg->raw_timing_bit_accum_ =
+      static_cast<uint8_t>((arg->raw_timing_bit_accum_ << 1) | (edge_outlier ? 1U : 0U));
   // Observe the time for 256 rising clocks with only one cycle-counter
   // read per window; a long window is a hint, NOT proof of lost IRQs.
   if (++arg->raw_clock_window_count_ == 256U) {
@@ -799,6 +829,8 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
     return;
   }
   arg->raw_ring_[head % RAW_RING_SIZE] = arg->raw_bit_accum_;
+  arg->raw_timing_ring_[head % RAW_RING_SIZE] = arg->raw_timing_bit_accum_;
+  arg->raw_timing_bit_accum_ = 0;
   arg->raw_head_.store(head + 1, std::memory_order_release);
   if (((head + 1) & 31U) == 0U && arg->wmbus_task_handle_ != nullptr) {
     BaseType_t woken = pdFALSE;
@@ -823,6 +855,7 @@ void SX127x::wmbus_raw_task_() {
   size_t received = 0, target = 0;
   WmbusRawCandidates lengths{};
   int16_t frame_rssi = -180;
+  uint32_t candidate_edge_outliers = 0;
   while (true) {
     const uint32_t head = this->raw_head_.load(std::memory_order_acquire);
     const uint32_t tail = this->raw_tail_.load(std::memory_order_relaxed);
@@ -831,6 +864,7 @@ void SX127x::wmbus_raw_task_() {
       continue;
     }
     const uint8_t octet = this->raw_ring_[tail % RAW_RING_SIZE];
+    const uint8_t timing = this->raw_timing_ring_[tail % RAW_RING_SIZE];
     this->raw_tail_.store(tail + 1, std::memory_order_release);
     for (int i = 7; i >= 0; --i) {
       const uint8_t bit = static_cast<uint8_t>((octet >> i) & 1U);
@@ -858,11 +892,13 @@ void SX127x::wmbus_raw_task_() {
           assembled = bits = 0;
           received = target = 0;
           lengths = {};
+          candidate_edge_outliers = 0;
           // Worker-only SPI; never read RSSI from GPIO ISR.
           frame_rssi = -static_cast<int16_t>(this->read_register_(0x11));
         }
         continue;
       }
+      candidate_edge_outliers += static_cast<uint32_t>((timing >> i) & 1U);
       assembled = static_cast<uint8_t>((assembled << 1) | bit);
       if (++bits != 8) continue;
       bits = 0;
@@ -939,6 +975,12 @@ void SX127x::wmbus_raw_task_() {
         if (received != (c1 ? lengths.c1 : lengths.t1)) continue;
         const size_t frame_size = received + (c1 ? 2 : 0);
         if (frame_size > WMBUS_MAX_RAW_SIZE) continue;
+        // Candidate-scoped outliers align to the same raw bits as frame.
+        // The first two C-mode marker bytes are included in its timing.
+        if (c1) {
+          if (candidate_edge_outliers) ++this->raw_c1_edge_outlier_;
+          else ++this->raw_c1_edge_clean_;
+        }
         // Inspect full T1 3-of-6 candidate without altering CRC or dispatch.
         if (!c1) {
           const size_t symbol_count = received * 8U / 6U;
@@ -956,8 +998,15 @@ void SX127x::wmbus_raw_task_() {
               break;
             }
           }
-          if (first_invalid == symbol_count) ++this->raw_t1_symbols_all_valid_;
-          else if (first_invalid < 4U) ++this->raw_t1_invalid_first_0_3_;
+          if (first_invalid == symbol_count) {
+            ++this->raw_t1_symbols_all_valid_;
+            if (candidate_edge_outliers) ++this->raw_t1_edge_outlier_valid_symbols_;
+            else ++this->raw_t1_edge_clean_valid_symbols_;
+          } else {
+            if (candidate_edge_outliers) ++this->raw_t1_edge_outlier_invalid_symbols_;
+            else ++this->raw_t1_edge_clean_invalid_symbols_;
+          }
+          if (first_invalid != symbol_count && first_invalid < 4U) ++this->raw_t1_invalid_first_0_3_;
           else if (first_invalid < 16U) ++this->raw_t1_invalid_first_4_15_;
           else if (first_invalid < 64U) ++this->raw_t1_invalid_first_16_63_;
           else ++this->raw_t1_invalid_first_64_plus_;
