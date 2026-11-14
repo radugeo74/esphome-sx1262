@@ -1,3 +1,19 @@
+## SX1276 RAW DATA/DCLK v7 — per-edge timing (14 noiembrie 2026)
+
+Branch: `experimental/sx127x-raw-dclk-v7-edge-timing`, bazat pe v6. **Diagnostic experimental, nu firmware validat; nu am rulat CI/compilare/recepție RF.** Heltec, driverele XMQ, codificarea 3-of-6, filtrele T1/C1, parametrii RF și validarea CRC sunt neschimbate.
+
+În ISR-ul SX1276, fiecare front DCLK este temporizat cu `esp_cpu_get_cycle_count()` și marcat numai dacă distanța față de frontul precedent este sub **1200** cicluri (<5 µs) sau peste **4200** cicluri (>17,5 µs), presupunând CPU la 240 MHz (nominal ~2400 cicluri / 10 µs). Octeții de indicatori (câte un bit per front) sunt stocați într-un **ring paralel** celui de date RAW, pentru aliniere precisă. Indicatorii nu conțin biți de payload. Citirea ceasului la fiecare IRQ este un cost nou și ar putea reduce performanța RF; verificați raportul de telegrame cu Heltec și faceți rollback dacă scade.
+
+Statistici periodice noi:
+- `RAW DCLK per-edge fast_total / slow_total`: intervale scurte/lungi la toate fronturile; pauzele de DCLK în liniște pot produce valori `slow_total` fără a semnala o eroare reală.
+- `RAW candidate timing T1 clean_valid3of6 / outlier_valid3of6 / clean_invalid3of6 / outlier_invalid3of6`: candidați T1 compleți, grupați după prezența oricărui interval ieșit din prag în cadrul colectat și validitatea simbolurilor 3-of-6 **înainte de CRC**.
+- `C1_clean / C1_outlier`: candidați C1 compleți fără/cu indicatori de timing; **nu** exprimă CRC valid. Două octeți ai markerului C1 sunt incluși în timing.
+- Contorii v6 `first-invalid 3of6`, `windows_fast20`, `windows_slow20` rămân activi. Erorile dintr-un interval individual nu sunt identificate exact după bit/poziție, doar corelate cu candidatul; `outlier` nu demonstrează pierderea sau dublarea fronturilor.
+
+Modifică exclusiv URL-ul `external_components.source` în `github://radugeo74/esphome-sx1262@experimental/sx127x-raw-dclk-v7-edge-timing`; păstrează YAML fără senzori suplimentari. Compară logurile Heltec/LILYGO pe același interval de timp și raportează câte telegrame CRC valide au T1 și C1/A. Rollback: `experimental/sx127x-raw-dclk-v6-t1-diagnostics` sau `experimental/sx127x-raw-dclk-v5-t1-gate`.
+
+---
+
 ## SX1276 RAW DATA/DCLK v6 — T1 3-of-6 + DCLK diagnostic (14 noiembrie 2026)
 
 Branch: `experimental/sx127x-raw-dclk-v6-t1-diagnostics`, bazat pe v5. Modificări de **observabilitate**, fără schimbarea filtrului T1, a markerelor C1, RF, GPIO, cozii de RX, validării CRC, Heltec sau XMQ. Nu s-a rulat CI / compilare ESPHome / test RF.
