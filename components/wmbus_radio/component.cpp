@@ -34,6 +34,11 @@ void Radio::setup() {
       this->mark_failed();
       return;
     }
+    // Ensure exact ID subscriptions are registered even if codegen called
+    // add_meter_frame_handler before set_native_sx127x.
+    for (const auto &handler : this->meter_handlers_)
+      for (const auto &address : handler.addresses)
+        this->native_sx127x_->register_recovery_meter_id(address.id);
     this->native_sx127x_->set_wmbus_diagnostics(this->native_phy_diagnostics_);
     this->native_sx127x_->set_wmbus_stream_callback(
         &Radio::sx127x_stream_callback_, this);
