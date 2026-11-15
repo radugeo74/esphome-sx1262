@@ -1,5 +1,6 @@
 #include "sx127x.h"
 #include "wmbus_t1_length.h"
+#include "wmbus_t1_recovery_diag.h"
 #include "wmbus_fifo_guard.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
@@ -172,6 +173,21 @@ void SX127x::setup() {
   this->configure();
 
   if (this->wmbus_t1_mode_ && !this->is_failed()) {
+    // Low-priority, best-effort CRC diagnostic. Worker sees only copies.
+    // Fail-open to normal RX if optional diagnostic resources are unavailable.
+    if (this->wmbus_t1_recovery_diag_ && this->wmbus_raw_dclk_) {
+      this->t1_recovery_queue_ = xQueueCreate(2, sizeof(T1RecoveryJob));
+      if (this->t1_recovery_queue_ == nullptr ||
+          xTaskCreate(&SX127x::wmbus_recovery_task_entry_, "sx127x_t1_diag",
+                      4096, this, 1, &this->t1_recovery_task_handle_) != pdPASS) {
+        ESP_LOGW(TAG, "T1 recovery diagnostic unavailable; normal RX unaffected");
+        if (this->t1_recovery_queue_ != nullptr) {
+          vQueueDelete(this->t1_recovery_queue_);
+          this->t1_recovery_queue_ = nullptr;
+        }
+        this->wmbus_t1_recovery_diag_ = false;
+      }
+    }
     this->wmbus_rx_queue_ = xQueueCreate(3, sizeof(WmbusRxPacket));
     if (this->wmbus_rx_queue_ == nullptr ||
         xTaskCreate(&SX127x::wmbus_task_entry_, "sx127x_wmbus", 6144, this, 19,
@@ -709,6 +725,19 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
       if (exact) ++this->raw_diag_t1_exact_bad_symbol_;
       else ++this->raw_diag_t1_near_bad_symbol_;
       const size_t bad_index = t1_first_bad_symbol_index(sample->bytes.data(), sample->size);
+      if (this->wmbus_t1_recovery_diag_ && this->t1_recovery_queue_ != nullptr) {
+        if (sample->size <= 128U && sample->size >= 3U) {
+          T1RecoveryJob job{};
+          job.size = static_cast<uint16_t>(sample->size);
+          std::copy_n(sample->bytes.begin(), job.size, job.raw.begin());
+          if (xQueueSend(this->t1_recovery_queue_, &job, 0) == pdTRUE)
+            ++this->t1_recovery_submitted_;
+          else
+            ++this->t1_recovery_dropped_;
+        } else {
+          ++this->t1_recovery_skipped_;
+        }
+      }
       if (this->wmbus_raw_diag_capture_ &&
           this->raw_diag_samples_logged_ < RAW_DIAG_MAX_SAMPLES) {
         // Store first, so reconnecting the ESPHome logger can replay all six.
@@ -880,6 +909,15 @@ void SX127x::wmbus_log_statistics_() {
                static_cast<unsigned>(this->raw_diag_nested_sync_credible_.load()),
                static_cast<unsigned>(this->raw_diag_samples_logged_),
                static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES));
+    }
+    if (this->wmbus_t1_recovery_diag_) {
+      ESP_LOGI(TAG, "SX127x T1 recovery diagnostic submitted=%u queue_dropped=%u crc_valid=%u crc_fail=%u skipped=%u time_budget=%u (NO DISPATCH)",
+               static_cast<unsigned>(this->t1_recovery_submitted_.load()),
+               static_cast<unsigned>(this->t1_recovery_dropped_.load()),
+               static_cast<unsigned>(this->t1_recovery_crc_valid_.load()),
+               static_cast<unsigned>(this->t1_recovery_crc_fail_.load()),
+               static_cast<unsigned>(this->t1_recovery_skipped_.load()),
+               static_cast<unsigned>(this->t1_recovery_time_budget_.load()));
     }
     ESP_LOGI(TAG, "SX127x RAW T1 gate weak_preamble_drop=%u (more than 2 bit errors in 16 preamble bits, C1 unchanged)",
              static_cast<unsigned>(this->raw_t1_weak_preamble_drop_.load()));
@@ -1542,6 +1580,42 @@ void SX127x::wmbus_task_() {
   }
 }
 
+void SX127x::wmbus_recovery_task_entry_(void *ctx) {
+  static_cast<SX127x *>(ctx)->wmbus_recovery_task_();
+}
+
+void SX127x::wmbus_recovery_task_() {
+  T1RecoveryJob job{};
+  for (;;) {
+    if (xQueueReceive(this->t1_recovery_queue_, &job, portMAX_DELAY) != pdTRUE) continue;
+    const int64_t start_us = esp_timer_get_time();
+    // Max 25 ms per frame, 5 invalid symbols, 1024 candidates.
+    // Yield to avoid monopolizing CPU; this never touches receiver state.
+    const auto result = t1_diag_try_recover(
+        job.raw.data(), job.size,
+        [start_us](unsigned trial) -> bool {
+          if ((trial & 15U) == 0U) vTaskDelay(1);
+          return esp_timer_get_time() - start_us <= 25000LL;
+        }, 5U, 1024U);
+    if (result.status == T1RecoveryStatus::CRC_VALID)
+      ++this->t1_recovery_crc_valid_;
+    else if (result.status == T1RecoveryStatus::CRC_FAIL)
+      ++this->t1_recovery_crc_fail_;
+    else if (result.status == T1RecoveryStatus::TIME_BUDGET)
+      ++this->t1_recovery_time_budget_;
+    else
+      ++this->t1_recovery_skipped_;
+    // Numeric summary only: never print recovered telegrams, IDs or payloads.
+    ESP_LOGI(TAG, "SX127x T1 recovery diagnostic result=%u invalid=%u combinations=%u tried=%u crc_valid=%u elapsed_ms=%u (NO DISPATCH)",
+             static_cast<unsigned>(result.status),
+             static_cast<unsigned>(result.bad_symbols),
+             static_cast<unsigned>(result.combinations),
+             static_cast<unsigned>(result.attempts),
+             static_cast<unsigned>(result.crc_valid_candidates),
+             static_cast<unsigned>((esp_timer_get_time() - start_us) / 1000LL));
+  }
+}
+
 void SX127x::log_raw_diag_captures_() {
   if (!this->wmbus_raw_diag_capture_) return;
   // Replay on dump_config() during later ESPHome logger/API reconnections.
@@ -1594,6 +1668,8 @@ void SX127x::dump_config() {
     LOG_PIN("  RAW DCLK DIO1: ", this->dio1_pin_);
     LOG_PIN("  RAW DATA DIO2: ", this->dio2_pin_);
     ESP_LOGCONFIG(TAG, "  RAW DATA/DCLK 100 kb/s experimental: TRUE; FIFO disabled");
+    ESP_LOGCONFIG(TAG, "  RAW T1 CRC recovery diagnostic: %s (low-priority task; max 5 errors, 1024 attempts, 25 ms, NO DISPATCH)",
+                  TRUEFALSE(this->wmbus_t1_recovery_diag_));
     ESP_LOGCONFIG(TAG, "  RAW T1 diagnostic capture: %s (max %u samples, first 128 encoded bytes; RAM replay)",
                   TRUEFALSE(this->wmbus_raw_diag_capture_),
                   static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES));
