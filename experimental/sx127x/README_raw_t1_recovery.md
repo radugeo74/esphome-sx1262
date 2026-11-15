@@ -127,3 +127,31 @@ g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Icomponents/sx127x \
 
 To revert the experiment without changing branches, set
 `wmbus_t1_recovery_diag: false` and reflash.
+
+## Validation of recovered headers against configured meters
+
+The recovery diagnostic now performs two additional checks, **still without
+forwarding recovered data**:
+
+1. A unique CRC-valid candidate must also have a coherent T1 Format A link
+   header: `C=0x44` (SND_NR), valid manufacturer code (three letters A-Z),
+   and an 8-digit packed BCD meter ID in the primary address.
+2. The recovered ID is compared against exact configured meter subscriptions
+   already registered through `wmbus_radio` / `wmbus_meter`.
+   Wildcards and range subscriptions are intentionally not treated as exact
+   matches. The diagnostic stores up to 32 exact IDs in atomic slots and
+   accepts late registration; no YAML list of IDs is needed.
+
+Each per-candidate summary now includes `header=coherent` or
+`header=ambiguous_or_bad_header` plus `configured=yes/no`. These labels
+refer strictly to *diagnostic classification*, not automatic acceptance.
+The 60-second counters include `coherent`, `configured`,
+`unconfigured`, `ambiguous_or_bad`, and `registered_exact`.
+
+The diagnostic does not reveal meter IDs or frame contents in these summaries.
+The existing RAW hex capture mode, if enabled, **does** show frame material;
+continue treating exported logs as potentially sensitive.
+
+A CRC-valid candidate is never dispatched; AES decryption, application-layer
+driver recognition and meter link-mode policy are untouched. A configured ID
+match alone is not proof that a recovered telegram can be safely published.
