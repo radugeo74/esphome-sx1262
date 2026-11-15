@@ -1523,6 +1523,14 @@ void SX127x::log_raw_diag_captures_() {
              static_cast<unsigned>(capture.first_bad),
              capture.preamble_quality == 0 ? "exact" : "near2",
              static_cast<double>(capture.rssi_half_dbm) / 2.0, hex);
+    uint8_t normal[6]{}, inverted[6]{};
+    for (unsigned shift = 0; shift < 6U; ++shift) {
+      normal[shift] = t1_diag_valid_prefix(capture.data.data(), capture.size, shift, false);
+      inverted[shift] = t1_diag_valid_prefix(capture.data.data(), capture.size, shift, true);
+    }
+    ESP_LOGI(TAG, "SX127x T1 RAW hypothesis stored %u valid_prefix_symbols shifts0..5 normal=%u,%u,%u,%u,%u,%u inverted=%u,%u,%u,%u,%u,%u (not CRC)",
+             i + 1U, normal[0], normal[1], normal[2], normal[3], normal[4], normal[5],
+             inverted[0], inverted[1], inverted[2], inverted[3], inverted[4], inverted[5]);
     ESP_LOGI(TAG, "SX127x T1 RAW Hamming stored %u symbols=%u invalid=%u min_distance_1=%u min_distance_2=%u min_distance_3plus=%u (diagnostic only)",
              i + 1U, static_cast<unsigned>(capture.symbols_total),
              static_cast<unsigned>(capture.symbols_invalid),
