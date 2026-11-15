@@ -185,7 +185,7 @@ def validate_config(config: ConfigType) -> ConfigType:
             CONF_PAYLOAD_LENGTH: 0,
             CONF_PREAMBLE_POLARITY: 0x55,
             CONF_PREAMBLE_SIZE: 4,
-            CONF_PREAMBLE_DETECT: 2,
+            CONF_PREAMBLE_DETECT: 0,
             CONF_PREAMBLE_ERRORS: 10,
             CONF_RX_START: True,
             CONF_WMBUS_RAW_DIAG_CAPTURE: False,
@@ -261,8 +261,8 @@ def validate_config(config: ConfigType) -> ConfigType:
                 raise cv.Invalid("wmbus_continuous_dual is exclusive with dual_sync and c1a_only")
             if config[CONF_SYNC_VALUE] != [0x54]:
                 raise cv.Invalid("wmbus_continuous_dual requires sync_value: [0x54]")
-            if config[CONF_PREAMBLE_DETECT] == 0:
-                raise cv.Invalid("wmbus_continuous_dual requires preamble_detect >= 1 (preamble trigger)")
+            if config[CONF_PREAMBLE_DETECT] == 0 and not config[CONF_WMBUS_FIFO_DUAL_PROBE]:
+                raise cv.Invalid("wmbus_continuous_dual without preamble detector is only allowed by the guarded RSSI-trigger experiment")
         if config[CONF_WMBUS_DUAL_SYNC]:
             if config[CONF_WMBUS_C1A_ONLY] or config[CONF_SYNC_VALUE] != [0x54]:
                 raise cv.Invalid("wmbus_dual_sync requires wmbus_c1a_only: false and sync_value: [0x54]")
