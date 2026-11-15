@@ -174,7 +174,7 @@ class SX127x final : public Component,
   bool wmbus_raw_diag_capture_{false};
   static constexpr uint8_t RAW_DIAG_MAX_SAMPLES = 6;
   struct RawDiagCapture {
-    std::array<uint8_t, 64> data{};
+    std::array<uint8_t, 128> data{};
     uint8_t size{0};
     uint16_t first_bad{0};
     int16_t rssi_half_dbm{0};
