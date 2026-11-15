@@ -18,6 +18,8 @@ CONF_SX127X_ID = "sx127x_id"
 
 CONF_AUTO_CAL = "auto_cal"
 CONF_AFC_AUTO = "afc_auto"
+CONF_AGC_AUTO = "agc_auto"
+CONF_LNA_GAIN = "lna_gain"
 CONF_BANDWIDTH = "bandwidth"
 CONF_BITRATE = "bitrate"
 CONF_BITSYNC = "bitsync"
@@ -249,6 +251,8 @@ CONFIG_SCHEMA = (
             cv.GenerateID(): cv.declare_id(SX127x),
             cv.Optional(CONF_AUTO_CAL, default=True): cv.boolean,
             cv.Optional(CONF_AFC_AUTO, default=True): cv.boolean,
+            cv.Optional(CONF_AGC_AUTO, default=True): cv.boolean,
+            cv.Optional(CONF_LNA_GAIN, default=1): cv.int_range(min=1, max=6),
             cv.Optional(CONF_BANDWIDTH, default="125_0kHz"): cv.enum(BW),
             cv.Optional(CONF_BITRATE, default=4800): cv.int_range(min=500, max=300000),
             cv.Optional(CONF_BITSYNC): cv.boolean,
@@ -331,6 +335,8 @@ async def to_code(config: ConfigType) -> None:
     cg.add(var.set_rst_pin(rst_pin))
     cg.add(var.set_auto_cal(config[CONF_AUTO_CAL]))
     cg.add(var.set_afc_auto(config[CONF_AFC_AUTO]))
+    cg.add(var.set_agc_auto(config[CONF_AGC_AUTO]))
+    cg.add(var.set_lna_gain(config[CONF_LNA_GAIN]))
     cg.add(var.set_bandwidth(config[CONF_BANDWIDTH]))
     cg.add(var.set_frequency(config[CONF_FREQUENCY]))
     cg.add(var.set_deviation(config[CONF_DEVIATION]))
