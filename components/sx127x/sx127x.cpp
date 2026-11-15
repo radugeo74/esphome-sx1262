@@ -911,6 +911,12 @@ void SX127x::wmbus_log_statistics_() {
                static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES));
     }
     if (this->wmbus_t1_recovery_diag_) {
+      ESP_LOGI(TAG, "SX127x T1 recovery header coherent=%u configured=%u unconfigured=%u ambiguous_or_bad=%u registered_exact=%u (NO DISPATCH)",
+               static_cast<unsigned>(this->t1_recovery_coherent_.load()),
+               static_cast<unsigned>(this->t1_recovery_configured_.load()),
+               static_cast<unsigned>(this->t1_recovery_unconfigured_.load()),
+               static_cast<unsigned>(this->t1_recovery_ambiguous_.load()),
+               static_cast<unsigned>(this->t1_recovery_meter_count_.load()));
       ESP_LOGI(TAG, "SX127x T1 recovery diagnostic submitted=%u queue_dropped=%u crc_valid=%u crc_fail=%u skipped=%u time_budget=%u (NO DISPATCH)",
                static_cast<unsigned>(this->t1_recovery_submitted_.load()),
                static_cast<unsigned>(this->t1_recovery_dropped_.load()),
@@ -1580,6 +1586,25 @@ void SX127x::wmbus_task_() {
   }
 }
 
+void SX127x::register_recovery_meter_id(const std::string &id) {
+  // Called by wmbus_radio when a configured meter subscribes.
+  // Reject wildcard/range expressions; only exact 8-digit BCD addresses
+  // are used by this *diagnostic*. Registration publishes an atomic count.
+  if (id.size() != 8U) return;
+  uint32_t value = 0;
+  for (char c : id) {
+    if (c < '0' || c > '9') return;
+    value = static_cast<uint32_t>((value << 4U) | (c - '0'));
+  }
+  if (value == 0U) return;
+  const unsigned n = this->t1_recovery_meter_count_.load(std::memory_order_acquire);
+  for (unsigned i = 0; i < n; ++i)
+    if (this->t1_recovery_meter_ids_[i].load(std::memory_order_relaxed) == value) return;
+  if (n >= this->t1_recovery_meter_ids_.size()) return;
+  this->t1_recovery_meter_ids_[n].store(value, std::memory_order_relaxed);
+  this->t1_recovery_meter_count_.store(n + 1U, std::memory_order_release);
+}
+
 void SX127x::wmbus_recovery_task_entry_(void *ctx) {
   static_cast<SX127x *>(ctx)->wmbus_recovery_task_();
 }
@@ -1597,8 +1622,23 @@ void SX127x::wmbus_recovery_task_() {
           if ((trial & 15U) == 0U) vTaskDelay(1);
           return esp_timer_get_time() - start_us <= 25000LL;
         }, 5U, 1024U);
-    if (result.status == T1RecoveryStatus::CRC_VALID)
+    if (result.status == T1RecoveryStatus::CRC_VALID) {
       ++this->t1_recovery_crc_valid_;
+      if (result.crc_valid_candidates != 1U || result.coherent_candidates != 1U ||
+          result.unique_meter_id == 0U) {
+        ++this->t1_recovery_ambiguous_;
+      } else {
+        ++this->t1_recovery_coherent_;
+        bool configured = false;
+        const unsigned n = this->t1_recovery_meter_count_.load(std::memory_order_acquire);
+        for (unsigned i = 0; i < n; ++i) {
+          if (this->t1_recovery_meter_ids_[i].load(std::memory_order_relaxed) ==
+              result.unique_meter_id) { configured = true; break; }
+        }
+        if (configured) ++this->t1_recovery_configured_;
+        else ++this->t1_recovery_unconfigured_;
+      }
+    }
     else if (result.status == T1RecoveryStatus::CRC_FAIL)
       ++this->t1_recovery_crc_fail_;
     else if (result.status == T1RecoveryStatus::TIME_BUDGET)
@@ -1606,12 +1646,25 @@ void SX127x::wmbus_recovery_task_() {
     else
       ++this->t1_recovery_skipped_;
     // Numeric summary only: never print recovered telegrams, IDs or payloads.
-    ESP_LOGI(TAG, "SX127x T1 recovery diagnostic result=%u invalid=%u combinations=%u tried=%u crc_valid=%u elapsed_ms=%u (NO DISPATCH)",
+    const char *classification = result.status != T1RecoveryStatus::CRC_VALID ? "not_recovered" :
+        (result.crc_valid_candidates != 1U || result.coherent_candidates != 1U ||
+         result.unique_meter_id == 0U) ? "ambiguous_or_bad_header" : "coherent";
+    ESP_LOGI(TAG, "SX127x T1 recovery diagnostic result=%u invalid=%u combinations=%u tried=%u crc_valid=%u header=%s configured=%s elapsed_ms=%u (NO DISPATCH)",
              static_cast<unsigned>(result.status),
              static_cast<unsigned>(result.bad_symbols),
              static_cast<unsigned>(result.combinations),
              static_cast<unsigned>(result.attempts),
              static_cast<unsigned>(result.crc_valid_candidates),
+             classification,
+             result.status == T1RecoveryStatus::CRC_VALID && result.unique_meter_id != 0U &&
+             result.crc_valid_candidates == 1U && result.coherent_candidates == 1U &&
+             [&]() {
+               const unsigned n = this->t1_recovery_meter_count_.load(std::memory_order_acquire);
+               for (unsigned i = 0; i < n; ++i)
+                 if (this->t1_recovery_meter_ids_[i].load(std::memory_order_relaxed) ==
+                     result.unique_meter_id) return true;
+               return false;
+             }() ? "yes" : "no",
              static_cast<unsigned>((esp_timer_get_time() - start_us) / 1000LL));
   }
 }
