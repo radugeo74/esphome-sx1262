@@ -41,11 +41,11 @@ static size_t t1_first_bad_symbol_index(const uint8_t *raw, size_t bytes) {
   }
   return SIZE_MAX;
 }
-// Independent, diagnostic-only 3-of-6 hypothesis check for the first 128
+// Independent, diagnostic-only 3-of-6 hypothesis check for the first 512
 // captured bits. It cannot prove a correct frame without full DLL CRC.
 static uint8_t t1_diag_valid_prefix(const uint8_t *raw, size_t bytes,
                                      unsigned bit_shift, bool invert) {
-  const size_t available_bits = std::min<size_t>(bytes * 8U, 128U);
+  const size_t available_bits = std::min<size_t>(bytes * 8U, 512U);
   uint8_t valid = 0;
   for (size_t start = bit_shift; start + 6U <= available_bits; start += 6U) {
     uint8_t symbol = 0;
@@ -712,10 +712,10 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
       if (this->wmbus_raw_diag_capture_ &&
           this->raw_diag_samples_logged_ < RAW_DIAG_MAX_SAMPLES) {
         ++this->raw_diag_samples_logged_;
-        // Print only 16 RAW bytes (~128 bits), never the whole telegram.
+        // Print up to 64 RAW bytes (~512 bits), never the whole telegram.
         // These bytes are encoded radio data and may include meter identifiers.
-        const size_t capture_bytes = std::min<size_t>(sample->size, 16U);
-        char hex[16U * 2U + 1U]{};
+        const size_t capture_bytes = std::min<size_t>(sample->size, 64U);
+        char hex[64U * 2U + 1U]{};
         static const char digits[] = "0123456789ABCDEF";
         for (size_t i = 0; i < capture_bytes; ++i) {
           hex[2U * i] = digits[sample->bytes[i] >> 4];
@@ -726,11 +726,11 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
           normal[shift] = t1_diag_valid_prefix(sample->bytes.data(), capture_bytes, shift, false);
           inverted[shift] = t1_diag_valid_prefix(sample->bytes.data(), capture_bytes, shift, true);
         }
-        ESP_LOGI(TAG, "SX127x T1 RAW sample %u/%u first_bad=%u preamble=%s rssi=%d raw16=%s",
+        ESP_LOGI(TAG, "SX127x T1 RAW sample %u/%u first_bad=%u preamble=%s rssi_dbm=%.1f raw64=%s",
                  static_cast<unsigned>(this->raw_diag_samples_logged_),
                  static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES),
                  bad_index == SIZE_MAX ? 0U : static_cast<unsigned>(bad_index + 1U),
-                 exact ? "exact" : "near2", static_cast<int>(sample->rssi_half_dbm), hex);
+                 exact ? "exact" : "near2", static_cast<double>(sample->rssi_half_dbm) / 2.0, hex);
         ESP_LOGI(TAG, "SX127x T1 RAW hypothesis valid_prefix_symbols shifts0..5 normal=%u,%u,%u,%u,%u,%u inverted=%u,%u,%u,%u,%u,%u (not CRC)",
                  normal[0], normal[1], normal[2], normal[3], normal[4], normal[5],
                  inverted[0], inverted[1], inverted[2], inverted[3], inverted[4], inverted[5]);
@@ -1501,7 +1501,7 @@ void SX127x::dump_config() {
     LOG_PIN("  RAW DCLK DIO1: ", this->dio1_pin_);
     LOG_PIN("  RAW DATA DIO2: ", this->dio2_pin_);
     ESP_LOGCONFIG(TAG, "  RAW DATA/DCLK 100 kb/s experimental: TRUE; FIFO disabled");
-    ESP_LOGCONFIG(TAG, "  RAW T1 diagnostic capture: %s (max %u samples, first 16 encoded bytes)",
+    ESP_LOGCONFIG(TAG, "  RAW T1 diagnostic capture: %s (max %u samples, first 64 encoded bytes)",
                   TRUEFALSE(this->wmbus_raw_diag_capture_),
                   static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES));
   }
