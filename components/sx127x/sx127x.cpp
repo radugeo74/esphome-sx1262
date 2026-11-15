@@ -877,6 +877,7 @@ void SX127x::wmbus_raw_task_() {
   bool c1_secondary_marker = false;
   uint8_t marker = 0, assembled = 0, bits = 0;
   uint8_t sync_preamble_quality = 2; // 0 exact, 1 near2, 2 absent
+  unsigned sync_preamble_errors = 0; // Hamming distance retained for T1 gate diagnostics
   std::array<uint8_t, WMBUS_MAX_RAW_SIZE> body{};
   size_t received = 0, target = 0;
   WmbusRawCandidates lengths{};
@@ -905,6 +906,7 @@ void SX127x::wmbus_raw_task_() {
           const unsigned errors_aa = static_cast<unsigned>(__builtin_popcount(
               static_cast<unsigned>(preceding ^ 0xAAAAU)));
           const unsigned errors = std::min(errors_55, errors_aa);
+          sync_preamble_errors = errors;
           sync_preamble_quality = errors == 0 ? 0 : (errors <= 2 ? 1 : 2);
           if (errors != 0) ++this->raw_sync_without_preamble_;
           ++this->raw_common_sync_;
@@ -963,8 +965,8 @@ void SX127x::wmbus_raw_task_() {
           // Never gate C1/A or C1/B here: their secondary marker is already
           // handled above.
           if (sync_preamble_quality == 2) {
-            if (errors <= 5) ++this->raw_diag_drop_hamming_3_5_;
-            else if (errors <= 9) ++this->raw_diag_drop_hamming_6_9_;
+            if (sync_preamble_errors <= 5) ++this->raw_diag_drop_hamming_3_5_;
+            else if (sync_preamble_errors <= 9) ++this->raw_diag_drop_hamming_6_9_;
             else ++this->raw_diag_drop_hamming_10_16_;
             ++this->raw_t1_weak_preamble_drop_;
             collecting = false;
