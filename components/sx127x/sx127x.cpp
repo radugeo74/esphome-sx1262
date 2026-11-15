@@ -918,6 +918,111 @@ void IRAM_ATTR SX127x::wmbus_fifo_intr_(SX127x *arg) {
 }
 
 
+#ifdef SX127X_RMT_DIAG
+bool IRAM_ATTR SX127x::rmt_dclk_done_(rmt_channel_handle_t channel,
+                                      const rmt_rx_done_event_data_t *edata,
+                                      void *userdata) {
+  (void) channel;
+  auto *self = static_cast<SX127x *>(userdata);
+  if (self == nullptr || edata == nullptr) return false;
+  // Exactly one callback per buffered batch, never one per DCLK edge.
+  // The 1-MHz resolution makes one RMT duration tick equal to 1 us.
+  uint32_t periods = 0, over12 = 0, over15 = 0, over20 = 0;
+  for (size_t i = 0; i < edata->num_symbols; ++i) {
+    const auto &v = edata->received_symbols[i];
+    if (v.duration0 == 0 || v.duration1 == 0) continue;
+    const uint32_t ticks = static_cast<uint32_t>(v.duration0) + v.duration1;
+    ++periods;
+    if (ticks > 12U) ++over12;
+    if (ticks > 15U) ++over15;
+    if (ticks > 20U) ++over20;
+  }
+  self->rmt_dclk_periods_.fetch_add(periods, std::memory_order_relaxed);
+  self->rmt_dclk_over12_.fetch_add(over12, std::memory_order_relaxed);
+  self->rmt_dclk_over15_.fetch_add(over15, std::memory_order_relaxed);
+  self->rmt_dclk_over20_.fetch_add(over20, std::memory_order_relaxed);
+  self->rmt_dclk_chunks_.fetch_add(1, std::memory_order_relaxed);
+  return false;
+}
+
+void SX127x::rmt_dclk_setup_() {
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  rmt_rx_channel_config_t cfg{};
+  cfg.gpio_num = static_cast<gpio_num_t>(this->dio1_pin_->get_pin());
+  cfg.clk_src = RMT_CLK_SRC_DEFAULT;
+  cfg.resolution_hz = 1000000U;
+  cfg.mem_block_symbols = 64U;
+  const esp_err_t created = rmt_new_rx_channel(&cfg, &this->rmt_dclk_channel_);
+  if (created != ESP_OK) {
+    ++this->rmt_dclk_errors_;
+    ESP_LOGW(TAG, "SX127x RMT DCLK probe unavailable (new channel failed: %d); RAW unchanged",
+             static_cast<int>(created));
+    return;
+  }
+  rmt_rx_event_callbacks_t callbacks{};
+  callbacks.on_recv_done = &SX127x::rmt_dclk_done_;
+  if (rmt_rx_register_event_callbacks(this->rmt_dclk_channel_, &callbacks, this) != ESP_OK) {
+    ++this->rmt_dclk_errors_;
+    rmt_del_channel(this->rmt_dclk_channel_);
+    this->rmt_dclk_channel_ = nullptr;
+    ESP_LOGW(TAG, "SX127x RMT callback registration failed; RAW unchanged");
+    return;
+  }
+  this->rmt_dclk_ready_ = true;
+  ESP_LOGI(TAG, "SX127x RMT DCLK probe ready: GPIO%u resolution=1us 128-symbol batches; T1 triggered <=12ms every >=15s",
+           static_cast<unsigned>(this->dio1_pin_->get_pin()));
+#else
+  ESP_LOGW(TAG, "SX127x RMT DCLK probe supported only on ESP32-S3");
+#endif
+}
+
+void SX127x::rmt_dclk_begin_() {
+  if (!this->rmt_dclk_ready_ || this->rmt_dclk_active_) return;
+  const uint32_t now = millis();
+  if (this->rmt_dclk_last_probe_ms_ != 0U &&
+      static_cast<uint32_t>(now - this->rmt_dclk_last_probe_ms_) < 15000U) return;
+  this->rmt_dclk_last_probe_ms_ = now;
+  this->rmt_dclk_periods_.store(0);
+  this->rmt_dclk_over12_.store(0);
+  this->rmt_dclk_over15_.store(0);
+  this->rmt_dclk_over20_.store(0);
+  this->rmt_dclk_chunks_.store(0);
+  const esp_err_t enabled = rmt_enable(this->rmt_dclk_channel_);
+  if (enabled != ESP_OK) {
+    ++this->rmt_dclk_errors_;
+    return;
+  }
+  rmt_receive_config_t rx{};
+  rx.signal_range_min_ns = 200U;
+  rx.signal_range_max_ns = 60000U;
+  rx.flags.en_partial_rx = 1;
+  const esp_err_t err = rmt_receive(this->rmt_dclk_channel_,
+                                    this->rmt_dclk_symbols_.data(),
+                                    sizeof(this->rmt_dclk_symbols_), &rx);
+  if (err != ESP_OK) {
+    ++this->rmt_dclk_errors_;
+    rmt_disable(this->rmt_dclk_channel_);
+    return;
+  }
+  this->rmt_dclk_enabled_ = true;
+  this->rmt_dclk_active_ = true;
+  this->rmt_dclk_started_ms_ = now;
+  ++this->rmt_dclk_started_;
+}
+
+void SX127x::rmt_dclk_end_(bool timed_out) {
+  if (!this->rmt_dclk_active_) return;
+  this->rmt_dclk_active_ = false;
+  if (this->rmt_dclk_enabled_) {
+    if (rmt_disable(this->rmt_dclk_channel_) != ESP_OK) ++this->rmt_dclk_errors_;
+    this->rmt_dclk_enabled_ = false;
+  }
+  if (timed_out) ++this->rmt_dclk_timed_out_;
+  else ++this->rmt_dclk_completed_;
+  if (this->rmt_dclk_periods_.load() < 32U) ++this->rmt_dclk_short_;
+}
+#endif  // SX127X_RMT_DIAG
+
 void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
   // Sample DIO2 on rising DIO1/DCLK. Constant-time ISR: no SPI or decoding.
   // For ESP32-S3 GPIO32..GPIO48, read the hardware input latch directly.
