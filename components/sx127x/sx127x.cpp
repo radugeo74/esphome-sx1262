@@ -24,6 +24,23 @@ static const uint8_t BW_FSK_OOK[22] = {RX_BW_2_6,   RX_BW_3_1,   RX_BW_3_9,   RX
                                        RX_BW_10_4,  RX_BW_12_5,  RX_BW_15_6,  RX_BW_20_8, RX_BW_25_0,  RX_BW_31_3,
                                        RX_BW_41_7,  RX_BW_50_0,  RX_BW_62_5,  RX_BW_83_3, RX_BW_100_0, RX_BW_125_0,
                                        RX_BW_166_7, RX_BW_200_0, RX_BW_250_0, RX_BW_250_0};
+// Diagnostic-only scan: first invalid encoded T1 3-of-6 symbol.
+// Called on main-loop BAD_SYMBOL result; never runs in GPIO ISR.
+static uint8_t t1_bad_symbol_region(const uint8_t *raw, size_t bytes) {
+  if (raw == nullptr || bytes == 0) return 3;
+  const size_t total_symbols = bytes * 8U / 6U;
+  for (size_t pos = 0; pos < total_symbols; ++pos) {
+    uint8_t symbol = 0;
+    for (unsigned bit = 0; bit < 6U; ++bit) {
+      const size_t absolute = pos * 6U + bit;
+      symbol = static_cast<uint8_t>(
+          (symbol << 1U) | ((raw[absolute / 8U] >> (7U - (absolute % 8U))) & 1U));
+    }
+    if (t1_symbol_to_nibble(symbol) < 0)
+      return static_cast<uint8_t>(std::min<size_t>(2U, pos * 3U / total_symbols));
+  }
+  return 3;
+}
 static const int32_t RSSI_OFFSET_HF = 157;
 static const int32_t RSSI_OFFSET_LF = 164;
 
@@ -523,10 +540,13 @@ void SX127x::loop() {
     // Keep decoding in the ESPHome main loop, never in the high-priority
     // FIFO reader or GPIO ISR.
     while (xQueueReceive(this->wmbus_rx_queue_, &frame, 0) == pdTRUE) {
+      this->raw_t1_callback_frame_ =
+          (this->wmbus_raw_dclk_ && frame.t1_preamble_quality <= 1) ? &frame : nullptr;
       if (this->wmbus_stream_callback_ != nullptr)
         this->wmbus_stream_callback_(this->wmbus_stream_context_,
                                      frame.bytes.data(), frame.size,
                                      static_cast<float>(frame.rssi_half_dbm) / 2.0f);
+      this->raw_t1_callback_frame_ = nullptr;
     }
     if (this->wmbus_phy_diagnostics_ &&
         static_cast<uint32_t>(millis() - this->wmbus_last_log_ms_) >= 60000U) {
@@ -633,6 +653,27 @@ void SX127x::set_mode_sleep() { this->set_mode_(this->modulation_, MODE_SLEEP); 
 
 
 void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
+  // Diagnostic correlation only; all existing PHY acceptance stays intact.
+  const auto *sample = this->raw_t1_callback_frame_;
+  if (sample != nullptr) {
+    const bool exact = sample->t1_preamble_quality == 0;
+    if (event == WmbusDecodeResult::T1_VERIFIED) {
+      if (exact) ++this->raw_diag_t1_exact_verified_;
+      else ++this->raw_diag_t1_near_verified_;
+    } else if (event == WmbusDecodeResult::BAD_SYMBOL) {
+      if (exact) ++this->raw_diag_t1_exact_bad_symbol_;
+      else ++this->raw_diag_t1_near_bad_symbol_;
+      switch (t1_bad_symbol_region(sample->bytes.data(), sample->size)) {
+        case 0: ++this->raw_diag_bad_symbol_early_; break;
+        case 1: ++this->raw_diag_bad_symbol_middle_; break;
+        case 2: ++this->raw_diag_bad_symbol_late_; break;
+        default: ++this->raw_diag_bad_symbol_no_invalid_; break;
+      }
+    } else {
+      if (exact) ++this->raw_diag_t1_exact_other_;
+      else ++this->raw_diag_t1_near_other_;
+    }
+  }
   auto &s = this->wmbus_stats_;
   switch (event) {
     case WmbusDecodeResult::T1_VERIFIED: ++s.t1_verified; break;
@@ -695,6 +736,22 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_stray_54cd_.load()));
     ESP_LOGI(TAG, "SX127x RAW T1 gate weak_preamble_drop=%u (more than 2 bit errors in 16 preamble bits, C1 unchanged)",
              static_cast<unsigned>(this->raw_t1_weak_preamble_drop_.load()));
+    ESP_LOGI(TAG, "SX127x T1 diagnostic exact verified=%u bad_symbol=%u other=%u near2 verified=%u bad_symbol=%u other=%u",
+             static_cast<unsigned>(this->raw_diag_t1_exact_verified_.load()),
+             static_cast<unsigned>(this->raw_diag_t1_exact_bad_symbol_.load()),
+             static_cast<unsigned>(this->raw_diag_t1_exact_other_.load()),
+             static_cast<unsigned>(this->raw_diag_t1_near_verified_.load()),
+             static_cast<unsigned>(this->raw_diag_t1_near_bad_symbol_.load()),
+             static_cast<unsigned>(this->raw_diag_t1_near_other_.load()));
+    ESP_LOGI(TAG, "SX127x T1 diagnostic first invalid 3of6 early=%u middle=%u late=%u none=%u (thirds of raw candidate)",
+             static_cast<unsigned>(this->raw_diag_bad_symbol_early_.load()),
+             static_cast<unsigned>(this->raw_diag_bad_symbol_middle_.load()),
+             static_cast<unsigned>(this->raw_diag_bad_symbol_late_.load()),
+             static_cast<unsigned>(this->raw_diag_bad_symbol_no_invalid_.load()));
+    ESP_LOGI(TAG, "SX127x T1 diagnostic dropped preamble Hamming 3-5=%u 6-9=%u 10-16=%u (no payload logged)",
+             static_cast<unsigned>(this->raw_diag_drop_hamming_3_5_.load()),
+             static_cast<unsigned>(this->raw_diag_drop_hamming_6_9_.load()),
+             static_cast<unsigned>(this->raw_diag_drop_hamming_10_16_.load()));
     ESP_LOGI(TAG, "SX127x RAW C1A stages header_ok=%u header_bad=%u body_complete=%u queued=%u queue_drop=%u verified=%u (CRC failures remain in shared PHY totals)",
              static_cast<unsigned>(this->raw_c1_header_ok_.load()),
              static_cast<unsigned>(this->raw_c1_header_bad_.load()),
@@ -906,6 +963,9 @@ void SX127x::wmbus_raw_task_() {
           // Never gate C1/A or C1/B here: their secondary marker is already
           // handled above.
           if (sync_preamble_quality == 2) {
+            if (errors <= 5) ++this->raw_diag_drop_hamming_3_5_;
+            else if (errors <= 9) ++this->raw_diag_drop_hamming_6_9_;
+            else ++this->raw_diag_drop_hamming_10_16_;
             ++this->raw_t1_weak_preamble_drop_;
             collecting = false;
             history = 0;
@@ -943,6 +1003,7 @@ void SX127x::wmbus_raw_task_() {
         WmbusRxPacket frame;
         frame.size = static_cast<uint16_t>(frame_size);
         frame.rssi_half_dbm = frame_rssi;
+        frame.t1_preamble_quality = c1 ? 2 : sync_preamble_quality;
         if (c1) {
           frame.bytes[0] = 0x54;
           frame.bytes[1] = marker;
