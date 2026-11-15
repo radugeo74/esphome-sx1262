@@ -35,18 +35,30 @@ int main() {
   assert(r1.status == T1RecoveryStatus::CRC_VALID);
   assert(r1.bad_symbols == 1 && r1.crc_valid_candidates == 1);
   assert(r1.combinations == 2 && r1.attempts == 2);
+  assert(r1.coherent_candidates == 1);
+  assert(r1.unique_meter_id == 0x22413825U);
   auto raw2 = hex_decode(
       "2CE71C6AC65658E66539939C6A5B1666CD1A99634D6F22D93B134DA5635A966596D265A539A5B42CB59635CCB458E59659659659659659659659659659659664DB26B234E59A92D6959B0B95C9538CB966723596596C5AD32B");
   const auto r2 = t1_diag_try_recover(raw2.data(), raw2.size(), keep_running, 5, 1024);
   assert(r2.status == T1RecoveryStatus::CRC_VALID);
   assert(r2.bad_symbols == 1 && r2.crc_valid_candidates == 1);
   assert(r2.combinations == 4 && r2.attempts == 4);
+  assert(r2.coherent_candidates == 1);
+  assert(r2.unique_meter_id == 0x24255902U);
   auto raw5 = hex_decode(
       "3A971C6EC65665358B95338E9590CEB25B1A98E59A2F22D991C5ACA5635A70D59659659635C35324B5B25A94E634D36636135A36335336635335934B35A35C35934E35C34DA4E4EC35334B35C36C5B134E596966");
   const auto r5 = t1_diag_try_recover(raw5.data(), raw5.size(), keep_running, 5, 1024);
   assert(r5.status == T1RecoveryStatus::CRC_VALID);
   assert(r5.bad_symbols == 5 && r5.combinations == 768);
-  assert(r5.crc_valid_candidates == 1);
+  assert(r5.crc_valid_candidates == 1 && r5.coherent_candidates == 1);
+  // Strict header validation: malformed C/manufacturer/BCD address rejected.
+  uint8_t header[] = {0x2F, 0x44, 0x68, 0x50, 0x25, 0x38, 0x41, 0x22, 0x95, 0x72, 0, 0};
+  assert(t1_diag_coherent_meter_id(header, sizeof(header)) == 0x22413825U);
+  header[4] = 0xFA;
+  assert(t1_diag_coherent_meter_id(header, sizeof(header)) == 0U);
+  header[4] = 0x25;
+  header[1] = 0x00;
+  assert(t1_diag_coherent_meter_id(header, sizeof(header)) == 0U);
   auto raw16 = hex_decode(
       "3A971C6AC67668B2EC70D38E9594CEC65A6598E59A2F22D98D6599A5635A71659651659634B3593533592F1D1C35C35936938E34B3593533535A95A934E34E5A35929356C9C96C2CD2D6D16B16C8D2CD5ACD269A");
   const auto too_many = t1_diag_try_recover(raw16.data(), raw16.size(), keep_running, 5, 1024);
