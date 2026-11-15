@@ -181,6 +181,10 @@ class SX127x final : public Component,
     uint8_t preamble_quality{2};
     uint16_t symbols_total{0}, symbols_invalid{0};
     uint16_t min_distance_1{0}, min_distance_2{0}, min_distance_3plus{0};
+    // Post-first-error, fixed 24-symbol window. Scores never affect RX.
+    uint8_t post_symbols{0};
+    std::array<uint8_t, 6> post_valid{};
+    std::array<uint8_t, 6> post_longest_run{};
   };
   // Stored in RAM until reboot; no flash writes or RX behavior changes.
   std::array<RawDiagCapture, RAW_DIAG_MAX_SAMPLES> raw_diag_captures_{};
