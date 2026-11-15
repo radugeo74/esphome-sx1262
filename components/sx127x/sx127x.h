@@ -140,6 +140,7 @@ class SX127x final : public Component,
                                    int64_t deadline_us);
   void wmbus_restart_rx_();
   void wmbus_log_statistics_();
+  void log_raw_diag_captures_();
   void configure_fsk_ook_();
   void configure_lora_();
   void set_mode_(uint8_t modulation, uint8_t mode);
@@ -172,6 +173,17 @@ class SX127x final : public Component,
   bool wmbus_raw_dclk_{false};
   bool wmbus_raw_diag_capture_{false};
   static constexpr uint8_t RAW_DIAG_MAX_SAMPLES = 6;
+  struct RawDiagCapture {
+    std::array<uint8_t, 64> data{};
+    uint8_t size{0};
+    uint16_t first_bad{0};
+    int16_t rssi_half_dbm{0};
+    uint8_t preamble_quality{2};
+    uint16_t symbols_total{0}, symbols_invalid{0};
+    uint16_t min_distance_1{0}, min_distance_2{0}, min_distance_3plus{0};
+  };
+  // Stored in RAM until reboot; no flash writes or RX behavior changes.
+  std::array<RawDiagCapture, RAW_DIAG_MAX_SAMPLES> raw_diag_captures_{};
   uint8_t raw_diag_samples_logged_{0};  // main loop only, bounded per boot
   std::atomic<uint32_t> raw_diag_nested_sync_all_{0};
   std::atomic<uint32_t> raw_diag_nested_sync_credible_{0};
