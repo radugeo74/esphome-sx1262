@@ -1103,9 +1103,19 @@ void SX127x::wmbus_raw_task_() {
     const uint32_t head = this->raw_head_.load(std::memory_order_acquire);
     const uint32_t tail = this->raw_tail_.load(std::memory_order_relaxed);
     if (tail == head) {
+#ifdef SX127X_RMT_DIAG
+      if (this->rmt_dclk_active_ &&
+          static_cast<uint32_t>(millis() - this->rmt_dclk_started_ms_) >= 12U)
+        this->rmt_dclk_end_(true);
+#endif
       ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(2));
       continue;
     }
+#ifdef SX127X_RMT_DIAG
+    if (this->rmt_dclk_active_ &&
+        static_cast<uint32_t>(millis() - this->rmt_dclk_started_ms_) >= 12U)
+      this->rmt_dclk_end_(true);
+#endif
     const uint8_t octet = this->raw_ring_[tail % RAW_RING_SIZE];
     const uint8_t dclk_long = this->raw_ring_dclk_long_[tail % RAW_RING_SIZE];
     this->raw_tail_.store(tail + 1, std::memory_order_release);
@@ -1212,7 +1222,12 @@ void SX127x::wmbus_raw_task_() {
           history = 0;
           continue;
         }
-        if (lengths.t1) ++this->wmbus_stats_.t1_candidates;
+        if (lengths.t1) {
+          ++this->wmbus_stats_.t1_candidates;
+#ifdef SX127X_RMT_DIAG
+          if (this->wmbus_rmt_dclk_diag_) this->rmt_dclk_begin_();
+#endif
+        }
         if (lengths.c1) {
           if (marker == 0xCD) {
             ++this->wmbus_stats_.c1a_candidates;
@@ -1231,6 +1246,20 @@ void SX127x::wmbus_raw_task_() {
         frame.rssi_half_dbm = frame_rssi;
         frame.t1_preamble_quality = c1 ? 2 : sync_preamble_quality;
         frame.dclk_long_windows = candidate_long_window_count;
+#ifdef SX127X_RMT_DIAG
+        if (!c1 && this->rmt_dclk_active_) {
+          this->rmt_dclk_end_();
+          const uint32_t periods = this->rmt_dclk_periods_.load();
+          frame.rmt_probed = periods >= 32U ? 1U : 0U;
+          frame.rmt_periods = static_cast<uint16_t>(std::min<uint32_t>(periods, UINT16_MAX));
+          frame.rmt_over12 = static_cast<uint16_t>(
+              std::min<uint32_t>(this->rmt_dclk_over12_.load(), UINT16_MAX));
+          frame.rmt_over15 = static_cast<uint16_t>(
+              std::min<uint32_t>(this->rmt_dclk_over15_.load(), UINT16_MAX));
+          frame.rmt_over20 = static_cast<uint16_t>(
+              std::min<uint32_t>(this->rmt_dclk_over20_.load(), UINT16_MAX));
+        }
+#endif
         if (c1) {
           frame.bytes[0] = 0x54;
           frame.bytes[1] = marker;
@@ -1247,6 +1276,9 @@ void SX127x::wmbus_raw_task_() {
         }
       }
       if (received >= target) {
+#ifdef SX127X_RMT_DIAG
+        if (this->rmt_dclk_active_) this->rmt_dclk_end_(true);
+#endif
         collecting = false;
         history = 0;
       }
@@ -1695,6 +1727,10 @@ void SX127x::dump_config() {
       ESP_LOGCONFIG(TAG, "    BitSync RegOokPeak[14]=0x%02X enabled=%s match_config=%s (boot readback)",
                     static_cast<unsigned>(regs.ook_peak), TRUEFALSE((regs.ook_peak & BIT_SYNC_ON) != 0),
                     TRUEFALSE(regs.bitsync_readback_ok));
+#ifdef SX127X_RMT_DIAG
+      ESP_LOGCONFIG(TAG, "    RMT DCLK probe opt-in=%s ready=%s (does not supply RF data)",
+                    TRUEFALSE(this->wmbus_rmt_dclk_diag_), TRUEFALSE(this->rmt_dclk_ready_));
+#endif
       ESP_LOGCONFIG(TAG, "    FSK profile matches expected: %s", TRUEFALSE(regs.matches_expected));
     } else {
       ESP_LOGW(TAG, "  SX127x FSK register snapshot unavailable (configuration incomplete)");
