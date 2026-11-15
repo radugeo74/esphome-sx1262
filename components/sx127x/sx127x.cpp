@@ -1897,8 +1897,9 @@ void SX127x::dump_config() {
     }
   }
   if (this->wmbus_t1_mode_) {
-    ESP_LOGCONFIG(TAG, "  Continuous T1/C1/A common 54 sync (preamble gate): %s",
-                TRUEFALSE(this->wmbus_continuous_dual_));
+    ESP_LOGCONFIG(TAG, "  Continuous T1/C1/A common 54 sync: %s; RX trigger: %s",
+                  TRUEFALSE(this->wmbus_continuous_dual_),
+                  this->preamble_detect_ > 0 ? "PREAMBLE" : "RSSI (experimental)");
   ESP_LOGCONFIG(TAG, "  Hybrid T1/C1/A hardware sync windows: %s",
                 TRUEFALSE(this->wmbus_dual_sync_));
   ESP_LOGCONFIG(TAG, "  C1/A-only hardware sync 54 CD: %s",
