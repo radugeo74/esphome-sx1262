@@ -122,14 +122,15 @@ void SX127x::setup() {
       return;
     }
   }
-  // Continuous experiment: one-byte HW sync 54, with the normal preamble
-  // detector triggering AFC/AGC. The next FIFO byte distinguishes 3D (T1/C1B)
-  // from CD (C1A). No timed radio profile switching; CRC remains mandatory.
+  // Continuous FIFO uses HW sync 54; FIFO marker distinguishes T1/C1B
+  // from C1/A. For RSSI-trigger experiment, preamble detector may be OFF.
+  // YAML's strict dual probe guard restricts allowed RF configurations.
+  // No timed switching, and CRC remains mandatory.
   if (this->wmbus_continuous_dual_) {
     if (!this->wmbus_c1_mode_ || this->wmbus_dual_sync_ ||
         this->wmbus_c1a_only_ || this->sync_value_.size() != 1 ||
-        this->sync_value_[0] != 0x54 || this->preamble_detect_ == 0) {
-      ESP_LOGE(TAG, "SX127x continuous dual requires T1_C1, common 54 sync and hardware preamble detect");
+        this->sync_value_[0] != 0x54) {
+      ESP_LOGE(TAG, "SX127x continuous dual requires T1_C1 and common 54 sync");
       this->mark_failed();
       return;
     }
