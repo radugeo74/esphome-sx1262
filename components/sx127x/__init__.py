@@ -30,6 +30,7 @@ CONF_DIO1_PIN = "dio1_pin"
 CONF_DIO2_PIN = "dio2_pin"
 CONF_WMBUS_RAW_DCLK = "wmbus_raw_dclk"
 CONF_WMBUS_FIFO_T1_STABLE = "wmbus_fifo_t1_stable"
+CONF_WMBUS_FIFO_DUAL_PROBE = "wmbus_fifo_dual_probe"
 CONF_WMBUS_RAW_DIAG_CAPTURE = "wmbus_raw_diag_capture"
 CONF_WMBUS_T1_RECOVERY_DIAG = "wmbus_t1_recovery_diag"
 CONF_WMBUS_T1_MODE = "wmbus_t1_mode"
@@ -157,6 +158,45 @@ validate_packet_data = cv.All(validate_raw_data, cv.Length(min=1, max=MAX_PACKET
 def validate_config(config: ConfigType) -> ConfigType:
     # Optional lock for the measured SX1276 FIFO T1-only 125 kHz profile.
     # Reject incompatible values, without silently changing the radio setup.
+    if config[CONF_WMBUS_FIFO_T1_STABLE] and config[CONF_WMBUS_FIFO_DUAL_PROBE]:
+        raise cv.Invalid("Select only one of wmbus_fifo_t1_stable and wmbus_fifo_dual_probe")
+    if config[CONF_WMBUS_FIFO_DUAL_PROBE]:
+        # Common one-byte hardware sync; no timed RF profile switching.
+        # Lock all parameters already validated for FIFO T1 except sync width.
+        expected_dual = {
+            CONF_WMBUS_T1_MODE: True,
+            CONF_MODULATION: "FSK",
+            CONF_FREQUENCY: 868950000,
+            CONF_RX_FLOOR: -94,
+            CONF_SHAPING: "NONE",
+            CONF_BANDWIDTH: "125_0kHz",
+            CONF_BITRATE: 100000,
+            CONF_DEVIATION: 50000,
+            CONF_AFC_AUTO: False,
+            CONF_AGC_AUTO: True,
+            CONF_BITSYNC: True,
+            CONF_PACKET_MODE: True,
+            CONF_WMBUS_RAW_DCLK: False,
+            CONF_WMBUS_C1A_ONLY: False,
+            CONF_WMBUS_DUAL_SYNC: False,
+            CONF_WMBUS_CONTINUOUS_DUAL: True,
+            CONF_SYNC_VALUE: [0x54],
+            CONF_CRC_ENABLE: False,
+            CONF_PAYLOAD_LENGTH: 0,
+            CONF_PREAMBLE_POLARITY: 0x55,
+            CONF_PREAMBLE_SIZE: 4,
+            CONF_PREAMBLE_DETECT: 2,
+            CONF_PREAMBLE_ERRORS: 10,
+            CONF_RX_START: True,
+            CONF_WMBUS_RAW_DIAG_CAPTURE: False,
+            CONF_WMBUS_T1_RECOVERY_DIAG: False,
+        }
+        for key, value in expected_dual.items():
+            if config.get(key) != value:
+                raise cv.Invalid(
+                    f"wmbus_fifo_dual_probe requires {key}: {value!r}; "
+                    f"got {config.get(key)!r}. Disable probe for experiments."
+                )
     if config[CONF_WMBUS_FIFO_T1_STABLE]:
         expected = {
             CONF_WMBUS_T1_MODE: True,
@@ -323,6 +363,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_PACKET_MODE): cv.boolean,
             cv.Optional(CONF_WMBUS_RAW_DCLK, default=False): cv.boolean,
             cv.Optional(CONF_WMBUS_FIFO_T1_STABLE, default=False): cv.boolean,
+            cv.Optional(CONF_WMBUS_FIFO_DUAL_PROBE, default=False): cv.boolean,
             cv.Optional(CONF_WMBUS_RAW_DIAG_CAPTURE, default=False): cv.boolean,
             cv.Optional(CONF_WMBUS_T1_RECOVERY_DIAG, default=False): cv.boolean,
             cv.Optional(CONF_DIO2_PIN): pins.internal_gpio_input_pin_schema,
