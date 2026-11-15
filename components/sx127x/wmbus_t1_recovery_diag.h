@@ -20,6 +20,8 @@ struct T1RecoveryResult {
   uint16_t combinations{0};
   uint16_t attempts{0};
   uint8_t crc_valid_candidates{0};
+  uint8_t coherent_candidates{0};
+  uint32_t unique_meter_id{0};  // only populated for one unique CRC-valid/coherent frame
 };
 
 inline uint16_t t1_diag_crc16_en13757(const uint8_t *data, size_t size) {
@@ -54,6 +56,28 @@ inline bool t1_diag_format_a_crc(const uint8_t *frame, size_t bytes) {
     first = false;
   }
   return offset == bytes;
+}
+
+// Format A first block: L, C, M[2], A[4], version, device, CRC[2].
+// Meter ID is an 8-digit little-endian BCD address. Zero means invalid
+// here (not a supported exact meter subscription in this diagnostic).
+inline uint32_t t1_diag_coherent_meter_id(const uint8_t *frame, size_t size) {
+  if (frame == nullptr || size < 12U || frame[1] != 0x44U) return 0;
+  const uint16_t manufacturer = static_cast<uint16_t>(
+      frame[2] | (static_cast<uint16_t>(frame[3]) << 8U));
+  const unsigned letter1 = (manufacturer >> 10U) & 31U;
+  const unsigned letter2 = (manufacturer >> 5U) & 31U;
+  const unsigned letter3 = manufacturer & 31U;
+  if (letter1 < 1U || letter1 > 26U ||
+      letter2 < 1U || letter2 > 26U ||
+      letter3 < 1U || letter3 > 26U) return 0;
+  uint32_t id = 0;
+  for (int i = 7; i >= 4; --i) {
+    const uint8_t byte = frame[i];
+    if ((byte >> 4U) > 9U || (byte & 0x0FU) > 9U) return 0;
+    id = static_cast<uint32_t>((id << 8U) | byte);
+  }
+  return id;
 }
 
 inline uint8_t t1_diag_read_symbol(const uint8_t *raw, size_t symbol_index) {
@@ -135,8 +159,19 @@ T1RecoveryResult t1_diag_try_recover(const uint8_t *raw, size_t raw_bytes,
       decoded[i] = static_cast<uint8_t>((a << 4) | b);
     }
     ++result.attempts;
-    if (decode_ok && t1_diag_format_a_crc(decoded.data(), frame_bytes))
+    if (decode_ok && t1_diag_format_a_crc(decoded.data(), frame_bytes)) {
       ++result.crc_valid_candidates;
+      const uint32_t coherent_id = t1_diag_coherent_meter_id(decoded.data(), frame_bytes);
+      if (coherent_id != 0U) {
+        ++result.coherent_candidates;
+        // Never expose an ambiguous address from multiple matching candidates.
+        result.unique_meter_id = result.crc_valid_candidates == 1U ? coherent_id : 0U;
+      } else {
+        result.unique_meter_id = 0U;
+      }
+      if (result.crc_valid_candidates != 1U || result.coherent_candidates != 1U)
+        result.unique_meter_id = 0U;
+    }
     // Mixed-radix enumeration, including the no-errors/one-trial case.
     for (unsigned e = 0; e < invalid_count; ++e) {
       if (++choice[e] < option_counts[e]) break;
