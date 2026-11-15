@@ -317,6 +317,13 @@ void Radio::add_frame_handler(std::function<void(Frame *)> &&callback) {
 
 void Radio::add_meter_frame_handler(std::vector<AddressExpression> addresses,
                                     std::function<void(Frame *)> &&callback) {
+#ifdef WMBUS_RADIO_HAS_SX127X
+  // Register exact configured BCD IDs for *comparison only*. The worker
+  // never calls meter handlers and cannot dispatch reconstructed telegrams.
+  if (this->native_sx127x_ != nullptr)
+    for (const auto &entry : addresses)
+      this->native_sx127x_->register_recovery_meter_id(entry.id);
+#endif
   this->meter_handlers_.push_back({std::move(addresses), std::move(callback)});
 }
 
