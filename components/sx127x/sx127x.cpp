@@ -383,6 +383,8 @@ void SX127x::configure_fsk_ook_() {
     const uint8_t preamble = this->read_register_(REG_PREAMBLE_DETECT);
     const uint8_t sync_config = this->read_register_(REG_SYNC_CONFIG);
     const uint8_t rssi_thresh = this->read_register_(REG_RSSI_THRESH);
+    const uint8_t ook_peak = this->read_register_(REG_OOK_PEAK);
+    const bool bitsync_readback_ok = ((ook_peak & BIT_SYNC_ON) != 0) == this->bitsync_;
     ESP_LOGI(TAG,
              "SX127x FSK readback: RegRxBw[12]=0x%02X RegAfcBw[13]=0x%02X RegRxConfig[0D]=0x%02X RegAfcFei[1A]=0x%02X",
              static_cast<unsigned>(rx_bw), static_cast<unsigned>(afc_bw),
@@ -418,6 +420,12 @@ void SX127x::configure_fsk_ook_() {
     this->wmbus_fsk_registers_ = {rx_bw, afc_bw, rx_config, afc_fei,
                                   preamble, sync_config, rssi_thresh,
                                   true, matches_expected, lna, rssi_config};
+    this->wmbus_fsk_registers_.ook_peak = ook_peak;
+    this->wmbus_fsk_registers_.bitsync_readback_ok = bitsync_readback_ok;
+    ESP_LOGI(TAG, "SX127x BitSync boot readback RegOokPeak[14]=0x%02X configured=%s readback=%s match=%s",
+             static_cast<unsigned>(ook_peak), TRUEFALSE(this->bitsync_),
+             TRUEFALSE((ook_peak & BIT_SYNC_ON) != 0), TRUEFALSE(bitsync_readback_ok));
+    if (!bitsync_readback_ok) ESP_LOGW(TAG, "SX127x BitSync register readback mismatch");
     if (!matches_expected) {
       ESP_LOGW(TAG, "SX127x FSK readback differs from YAML/expected AFC profile");
     }
@@ -657,10 +665,16 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
   const auto *sample = this->raw_t1_callback_frame_;
   if (sample != nullptr) {
     const bool exact = sample->t1_preamble_quality == 0;
+    const bool long_window = sample->dclk_long_windows != 0;
+    this->raw_diag_dclk_t1_long_windows_sum_ += sample->dclk_long_windows;
     if (event == WmbusDecodeResult::T1_VERIFIED) {
+      if (long_window) ++this->raw_diag_dclk_t1_verified_long_;
+      else ++this->raw_diag_dclk_t1_verified_clean_;
       if (exact) ++this->raw_diag_t1_exact_verified_;
       else ++this->raw_diag_t1_near_verified_;
     } else if (event == WmbusDecodeResult::BAD_SYMBOL) {
+      if (long_window) ++this->raw_diag_dclk_t1_bad_symbol_long_;
+      else ++this->raw_diag_dclk_t1_bad_symbol_clean_;
       if (exact) ++this->raw_diag_t1_exact_bad_symbol_;
       else ++this->raw_diag_t1_near_bad_symbol_;
       const size_t bad_index = t1_first_bad_symbol_index(sample->bytes.data(), sample->size);
@@ -687,6 +701,8 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
         }
       }
     } else {
+      if (long_window) ++this->raw_diag_dclk_t1_other_long_;
+      else ++this->raw_diag_dclk_t1_other_clean_;
       if (exact) ++this->raw_diag_t1_exact_other_;
       else ++this->raw_diag_t1_near_other_;
     }
@@ -805,6 +821,11 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_c1_queued_.load()),
              static_cast<unsigned>(this->raw_c1_queue_dropped_.load()),
              static_cast<unsigned>(s.c1a_verified.load()));
+    ESP_LOGI(TAG, "SX127x T1 DCLK in-frame 256-clock windows (>1.5x nominal): verified clean=%u long=%u bad_symbol clean=%u long=%u other clean=%u long=%u long_sum=%u",
+             this->raw_diag_dclk_t1_verified_clean_, this->raw_diag_dclk_t1_verified_long_,
+             this->raw_diag_dclk_t1_bad_symbol_clean_, this->raw_diag_dclk_t1_bad_symbol_long_,
+             this->raw_diag_dclk_t1_other_clean_, this->raw_diag_dclk_t1_other_long_,
+             this->raw_diag_dclk_t1_long_windows_sum_);
     ESP_LOGI(TAG, "SX127x RAW DCLK clock windows_256=%u long_windows=%u min_cycles=%u max_cycles=%u (NOT proof of missed IRQs)",
              static_cast<unsigned>(this->raw_clock_windows_.load()),
              static_cast<unsigned>(this->raw_clock_long_windows_.load()),
@@ -890,7 +911,10 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
           old, elapsed, std::memory_order_relaxed)) {}
       // 256 clocks should take 2.56 ms at 100kb/s, 614400 CPU
       // cycles at 240MHz. >1.5x can mean quiet RF/clock pauses.
-      if (elapsed > 921600U) ++arg->raw_clock_long_windows_;
+      if (elapsed > 921600U) {
+        ++arg->raw_clock_long_windows_;
+        arg->raw_clock_window_long_pending_ = 1U;
+      }
     }
   }
   arg->raw_bit_accum_ = static_cast<uint8_t>((arg->raw_bit_accum_ << 1) | bit);
@@ -903,6 +927,8 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
     return;
   }
   arg->raw_ring_[head % RAW_RING_SIZE] = arg->raw_bit_accum_;
+  arg->raw_ring_dclk_long_[head % RAW_RING_SIZE] = arg->raw_clock_window_long_pending_;
+  arg->raw_clock_window_long_pending_ = 0;
   arg->raw_head_.store(head + 1, std::memory_order_release);
   if (((head + 1) & 31U) == 0U && arg->wmbus_task_handle_ != nullptr) {
     BaseType_t woken = pdFALSE;
@@ -928,6 +954,7 @@ void SX127x::wmbus_raw_task_() {
   size_t received = 0, target = 0;
   WmbusRawCandidates lengths{};
   int16_t frame_rssi = -180;
+  uint8_t candidate_long_window_count = 0;  // RAW worker only, saturating
   while (true) {
     const uint32_t head = this->raw_head_.load(std::memory_order_acquire);
     const uint32_t tail = this->raw_tail_.load(std::memory_order_relaxed);
@@ -936,7 +963,13 @@ void SX127x::wmbus_raw_task_() {
       continue;
     }
     const uint8_t octet = this->raw_ring_[tail % RAW_RING_SIZE];
+    const uint8_t dclk_long = this->raw_ring_dclk_long_[tail % RAW_RING_SIZE];
     this->raw_tail_.store(tail + 1, std::memory_order_release);
+    // 256-clock window must fall wholly after software sync. Require at
+    // least 34 completed body bytes; the first part remains unclassified.
+    if (collecting && received >= 34U && dclk_long != 0 &&
+        candidate_long_window_count < UINT8_MAX)
+      ++candidate_long_window_count;
     for (int i = 7; i >= 0; --i) {
       const uint8_t bit = static_cast<uint8_t>((octet >> i) & 1U);
       if (!collecting) {
@@ -963,6 +996,7 @@ void SX127x::wmbus_raw_task_() {
           marker = 0x3D; // default T-mode if next two bytes are not C marker
           assembled = bits = 0;
           received = target = 0;
+          candidate_long_window_count = 0;
           lengths = {};
           // Worker-only SPI; never read RSSI from GPIO ISR.
           frame_rssi = -static_cast<int16_t>(this->read_register_(0x11));
@@ -1052,6 +1086,7 @@ void SX127x::wmbus_raw_task_() {
         frame.size = static_cast<uint16_t>(frame_size);
         frame.rssi_half_dbm = frame_rssi;
         frame.t1_preamble_quality = c1 ? 2 : sync_preamble_quality;
+        frame.dclk_long_windows = candidate_long_window_count;
         if (c1) {
           frame.bytes[0] = 0x54;
           frame.bytes[1] = marker;
@@ -1513,6 +1548,9 @@ void SX127x::dump_config() {
                     TRUEFALSE((regs.rx_config & AFC_AUTO_ON) != 0),
                     TRUEFALSE((regs.lna_standby_after & LNA_BOOST_HF_MASK) == LNA_BOOST_HF_ON),
                     static_cast<unsigned>(1U << ((regs.rssi_config & 0x07) + 1)));
+      ESP_LOGCONFIG(TAG, "    BitSync RegOokPeak[14]=0x%02X enabled=%s match_config=%s (boot readback)",
+                    static_cast<unsigned>(regs.ook_peak), TRUEFALSE((regs.ook_peak & BIT_SYNC_ON) != 0),
+                    TRUEFALSE(regs.bitsync_readback_ok));
       ESP_LOGCONFIG(TAG, "    FSK profile matches expected: %s", TRUEFALSE(regs.matches_expected));
     } else {
       ESP_LOGW(TAG, "  SX127x FSK register snapshot unavailable (configuration incomplete)");
