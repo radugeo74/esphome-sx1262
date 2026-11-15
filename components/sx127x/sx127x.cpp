@@ -618,9 +618,11 @@ void SX127x::loop() {
         // One marker-3D candidate can be tried as T1 and C1/B.
         // Do not report (T1+C1)/(T1 bad symbols) as a packet success rate.
         ESP_LOGI(TAG,
-                 "SX127x FIFO dual probe hw_sync=54 T1_ok=%u C1A_ok=%u C1B_ok=%u "
+                 "SX127x FIFO %s hw_sync=%s T1_ok=%u C1A_ok=%u C1B_ok=%u "
                  "marker_3D=%u marker_CD=%u marker_other=%u prefix_reject=%u "
                  "bad_symbol=%u bad_crc=%u queue_drop=%u overrun=%u timeout=%u (cumulative, NOT packet delivery rate)",
+                 this->wmbus_c1a_only_ ? "C1A_ONLY" : (this->wmbus_continuous_dual_ ? "DUAL_PROBE" : "OTHER"),
+                 this->wmbus_c1a_only_ ? "54CD" : (this->wmbus_continuous_dual_ ? "54" : "other"),
                  t1_ok, static_cast<unsigned>(s.c1a_verified.load()),
                  static_cast<unsigned>(s.c1b_verified.load()),
                  static_cast<unsigned>(s.fifo_marker_3d.load()),
@@ -1045,6 +1047,43 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(s.fifo_marker_other.load()),
              static_cast<unsigned>(s.fifo_marker_unreadable.load()),
              static_cast<unsigned>(s.c1a_hw_sync_fifo.load()));
+    if (this->wmbus_continuous_dual_) {
+      // Only once per minute, on ESPHome main-loop context. Print eight
+      // most frequent actual FIFO bytes after single-byte HW sync 0x54.
+      // This exposes possible bit-shift/polarity patterns without logging
+      // telegram contents, timing-sensitive FIFO operations or keys.
+      uint8_t top_byte[8]{};
+      uint32_t top_count[8]{};
+      uint32_t observed = 0;
+      for (unsigned b = 0; b < 256; ++b) {
+        const uint32_t count = s.fifo_sync54_marker_histogram[b].load();
+        observed += count;
+        if (count == 0)
+          continue;
+        for (unsigned slot = 0; slot < 8; ++slot) {
+          if (count > top_count[slot]) {
+            for (unsigned j = 7; j > slot; --j) {
+              top_count[j] = top_count[j - 1];
+              top_byte[j] = top_byte[j - 1];
+            }
+            top_count[slot] = count;
+            top_byte[slot] = static_cast<uint8_t>(b);
+            break;
+          }
+        }
+      }
+      ESP_LOGI(TAG, "SX127x SYNC54 marker histogram observed=%u (cumulative; top 8, 0 count means unused)",
+               static_cast<unsigned>(observed));
+      ESP_LOGI(TAG, "  markers %02X=%u %02X=%u %02X=%u %02X=%u %02X=%u %02X=%u %02X=%u %02X=%u",
+               top_byte[0], static_cast<unsigned>(top_count[0]),
+               top_byte[1], static_cast<unsigned>(top_count[1]),
+               top_byte[2], static_cast<unsigned>(top_count[2]),
+               top_byte[3], static_cast<unsigned>(top_count[3]),
+               top_byte[4], static_cast<unsigned>(top_count[4]),
+               top_byte[5], static_cast<unsigned>(top_count[5]),
+               top_byte[6], static_cast<unsigned>(top_count[6]),
+               top_byte[7], static_cast<unsigned>(top_count[7]));
+    }
     ESP_LOGI(TAG,
              "SX127x C1A stages marker_CD=%u hw_sync54CD_fifo=%u header_ok=%u header_bad=%u body_complete=%u queued=%u queue_drop=%u read_abort=%u crc_verified=%u",
              static_cast<unsigned>(s.fifo_marker_cd.load()),
@@ -1513,6 +1552,10 @@ void SX127x::wmbus_task_() {
           ++this->wmbus_stats_.fifo_marker_unreadable;
         } else {
           // FIFO byte immediately following hardware 0x54 sync, pre-CRC.
+          // Counter update only: no per-frame logging in the high-priority
+          // SPI reader, and no changes to marker acceptance or CRC.
+          if (this->wmbus_continuous_dual_)
+            ++this->wmbus_stats_.fifo_sync54_marker_histogram[marker];
           switch (classify_wmbus_sync54_marker(marker)) {
             case WmbusSync54Marker::T1_OR_C1B:
               ++this->wmbus_stats_.fifo_marker_3d;
