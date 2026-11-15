@@ -156,6 +156,7 @@ class SX127x final : public Component,
   struct WmbusRxPacket {
     uint16_t size{0};
     int16_t rssi_half_dbm{0};
+    uint8_t t1_preamble_quality{2};  // 0 exact, 1 near2, 2 absent; RAW T1 only
     std::array<uint8_t, WMBUS_MAX_RAW_SIZE> bytes{};
   };
   WmbusStreamCallback wmbus_stream_callback_{nullptr};
@@ -193,6 +194,15 @@ class SX127x final : public Component,
                         raw_stray_54cd_{0};
   // T-only noise gate, after C-mode secondary marker was excluded.
   std::atomic<uint32_t> raw_t1_weak_preamble_drop_{0};
+  // Diagnostic correlation: only used while main-loop RX callback is active.
+  const WmbusRxPacket *raw_t1_callback_frame_{nullptr};
+  std::atomic<uint32_t> raw_diag_t1_exact_verified_{0}, raw_diag_t1_near_verified_{0};
+  std::atomic<uint32_t> raw_diag_t1_exact_bad_symbol_{0}, raw_diag_t1_near_bad_symbol_{0};
+  std::atomic<uint32_t> raw_diag_t1_exact_other_{0}, raw_diag_t1_near_other_{0};
+  std::atomic<uint32_t> raw_diag_bad_symbol_early_{0}, raw_diag_bad_symbol_middle_{0},
+                        raw_diag_bad_symbol_late_{0}, raw_diag_bad_symbol_no_invalid_{0};
+  std::atomic<uint32_t> raw_diag_drop_hamming_3_5_{0}, raw_diag_drop_hamming_6_9_{0},
+                        raw_diag_drop_hamming_10_16_{0};
   bool wmbus_c1_mode_{false};
   bool wmbus_c1a_only_{false};
   bool wmbus_dual_sync_{false};
