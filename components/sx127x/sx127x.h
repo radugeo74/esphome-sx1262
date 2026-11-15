@@ -337,6 +337,10 @@ class SX127x final : public Component,
     std::atomic<uint32_t> fifo_marker_cd{0};
     std::atomic<uint32_t> fifo_marker_other{0};
     std::atomic<uint32_t> fifo_marker_unreadable{0};
+    // Diagnostic only: 256 possible bytes following one-byte HW sync 0x54.
+    // FIFO task increments; ESPHome main loop reads once per minute.
+    // Never logs packets, keys or meter addresses.
+    std::array<std::atomic<uint32_t>, 256> fifo_sync54_marker_histogram{};
     // Counts FIFO-active wakes after hardware 0x54CD sync (no marker in FIFO).
     std::atomic<uint32_t> c1a_hw_sync_fifo{0};
     std::atomic<uint32_t> dual_sync_switches{0};
