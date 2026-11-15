@@ -163,8 +163,8 @@ void SX127x::setup() {
     }
     if (this->wmbus_raw_dclk_) {
       this->dio1_pin_->attach_interrupt(&SX127x::wmbus_raw_dclk_intr_, this,
-                                        gpio::INTERRUPT_RISING_EDGE);
-      ESP_LOGW(TAG, "SX127x experimental raw DATA/DCLK active (100k IRQ/s)");
+                                        gpio::INTERRUPT_FALLING_EDGE);
+      ESP_LOGW(TAG, "SX127x experimental raw DATA/DCLK active (100k IRQ/s; falling DCLK sample A/B)");
       return;
     }
     // DIO1=FifoEmpty is active-low; interrupt when the first byte arrives.
@@ -859,10 +859,10 @@ void IRAM_ATTR SX127x::wmbus_fifo_intr_(SX127x *arg) {
 
 
 void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
-  // Sample DIO2 on rising DIO1/DCLK. Constant-time ISR: no SPI or decoding.
+  // A/B test: sample DIO2 on falling DIO1/DCLK. Constant-time ISR: no SPI or decoding.
   // For ESP32-S3 GPIO32..GPIO48, read the hardware input latch directly.
-  // This avoids an API call at every 100-kb/s DCLK edge without changing
-  // sampling polarity, byte packing, ring buffer, or CRC verification.
+  // Direct latch sampling is unchanged; ONLY the trigger edge differs from
+  // the rising-edge control. Byte packing, ring buffer and CRC are unchanged.
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
   const uint32_t pin = static_cast<uint32_t>(arg->raw_data_gpio_);
   const uint8_t bit = pin >= 32U ? static_cast<uint8_t>((GPIO.in1.data >> (pin - 32U)) & 1U)
@@ -870,7 +870,7 @@ void IRAM_ATTR SX127x::wmbus_raw_dclk_intr_(SX127x *arg) {
 #else
   const uint8_t bit = gpio_get_level(arg->raw_data_gpio_) ? 1U : 0U;
 #endif
-  // Observe the time for 256 rising clocks with only one cycle-counter
+  // Observe the time for 256 falling clocks with only one cycle-counter
   // read per window; a long window is a hint, NOT proof of lost IRQs.
   if (++arg->raw_clock_window_count_ == 256U) {
     arg->raw_clock_window_count_ = 0;
@@ -1388,7 +1388,7 @@ void SX127x::dump_config() {
   if (this->wmbus_raw_dclk_) {
     LOG_PIN("  RAW DCLK DIO1: ", this->dio1_pin_);
     LOG_PIN("  RAW DATA DIO2: ", this->dio2_pin_);
-    ESP_LOGCONFIG(TAG, "  RAW DATA/DCLK 100 kb/s experimental: TRUE; FIFO disabled");
+    ESP_LOGCONFIG(TAG, "  RAW DATA/DCLK 100 kb/s experimental: TRUE; FIFO disabled; DCLK sample: FALLING (A/B)");
   }
   const char *pa_pin = "RFO";
   if (this->pa_pin_ == PA_PIN_BOOST) {
