@@ -89,6 +89,8 @@ class SX127x final : public Component,
   void set_rx_floor(float floor) { this->rx_floor_ = floor; }
   void set_rx_start(bool start) { this->rx_start_ = start; }
   void set_afc_auto(bool enabled) { this->afc_auto_ = enabled; }
+  void set_agc_auto(bool enabled) { this->agc_auto_ = enabled; }
+  void set_lna_gain(uint8_t gain) { this->lna_gain_ = gain; }
   void set_shaping(uint8_t shaping) { this->shaping_ = shaping; }
   void set_spreading_factor(uint8_t spreading_factor) { this->spreading_factor_ = spreading_factor; }
   void set_sync_value(const std::vector<uint8_t> &sync_value) { this->sync_value_ = sync_value; }
@@ -253,6 +255,7 @@ class SX127x final : public Component,
     uint8_t lna_standby_after{0};
     bool lna_standby_captured{false};
     bool lna_boost_readback_ok{false};
+    bool lna_gain_readback_ok{false};
   } wmbus_fsk_registers_{};
 
   // Atomic since the FIFO task and ESPHome main loop run independently.
@@ -325,6 +328,8 @@ class SX127x final : public Component,
   bool packet_mode_{false};
   bool rx_start_{false};
   bool afc_auto_{true};
+  bool agc_auto_{true};
+  uint8_t lna_gain_{1};
 };
 
 }  // namespace esphome::sx127x
