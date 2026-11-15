@@ -161,6 +161,9 @@ def validate_config(config: ConfigType) -> ConfigType:
         expected = {
             CONF_WMBUS_T1_MODE: True,
             CONF_MODULATION: "FSK",
+            CONF_FREQUENCY: 868950000,
+            CONF_RX_FLOOR: -94,
+            CONF_SHAPING: "NONE",
             CONF_BANDWIDTH: "125_0kHz",
             CONF_BITRATE: 100000,
             CONF_DEVIATION: 50000,
