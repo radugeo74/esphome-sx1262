@@ -106,6 +106,7 @@ class SX127x final : public Component,
   using WmbusStreamCallback = void (*)(void *, const uint8_t *, size_t, float);
   void set_wmbus_t1_mode(bool value) { this->wmbus_t1_mode_ = value; }
   void set_wmbus_raw_dclk(bool value) { this->wmbus_raw_dclk_ = value; }
+  void set_wmbus_raw_diag_capture(bool value) { this->wmbus_raw_diag_capture_ = value; }
   void set_dio2_pin(InternalGPIOPin *pin) { this->dio2_pin_ = pin; }
   void set_wmbus_c1_mode(bool value) { this->wmbus_c1_mode_ = value; }
   // Standalone experimental RX: hardware detects both 0x54 and 0xCD.
@@ -169,6 +170,11 @@ class SX127x final : public Component,
   TaskHandle_t wmbus_task_handle_{nullptr};
   bool wmbus_t1_mode_{false};
   bool wmbus_raw_dclk_{false};
+  bool wmbus_raw_diag_capture_{false};
+  static constexpr uint8_t RAW_DIAG_MAX_SAMPLES = 6;
+  uint8_t raw_diag_samples_logged_{0};  // main loop only, bounded per boot
+  std::atomic<uint32_t> raw_diag_nested_sync_all_{0};
+  std::atomic<uint32_t> raw_diag_nested_sync_credible_{0};
   static constexpr uint32_t RAW_RING_SIZE = 4096;
   std::array<uint8_t, RAW_RING_SIZE> raw_ring_{};
   // One tag per received octet. Set only when a 256-DCLK timing window
