@@ -88,6 +88,7 @@ class SX127x final : public Component,
   void set_rst_pin(InternalGPIOPin *rst_pin) { this->rst_pin_ = rst_pin; }
   void set_rx_floor(float floor) { this->rx_floor_ = floor; }
   void set_rx_start(bool start) { this->rx_start_ = start; }
+  void set_afc_auto(bool enabled) { this->afc_auto_ = enabled; }
   void set_shaping(uint8_t shaping) { this->shaping_ = shaping; }
   void set_spreading_factor(uint8_t spreading_factor) { this->spreading_factor_ = spreading_factor; }
   void set_sync_value(const std::vector<uint8_t> &sync_value) { this->sync_value_ = sync_value; }
@@ -323,6 +324,7 @@ class SX127x final : public Component,
   bool crc_enable_{false};
   bool packet_mode_{false};
   bool rx_start_{false};
+  bool afc_auto_{true};
 };
 
 }  // namespace esphome::sx127x
