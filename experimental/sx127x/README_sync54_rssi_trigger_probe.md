@@ -55,7 +55,7 @@ configurations still require the preamble gate.
 ## Boot expectations
 
 - `RegPreambleDetect[1F]=0x00` (detector OFF).
-- `RegRxConfig[0D]=0x0D` (AGC on, AFC off, RSSI-trigger selection).
+- `RegRxConfig[0D]=0x09` (AGC on, AFC off, RSSI-trigger selection).
 - `RegSyncConfig[27]=0xB0` (one-byte sync 54, unchanged).
 - `Continuous T1/C1/A common 54 sync: TRUE; RX trigger: RSSI (experimental)`.
 - `FSK profile matches expected: TRUE`.
