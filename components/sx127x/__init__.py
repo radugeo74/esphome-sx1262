@@ -186,7 +186,7 @@ def validate_config(config: ConfigType) -> ConfigType:
             CONF_PREAMBLE_POLARITY: 0x55,
             CONF_PREAMBLE_SIZE: 4,
             CONF_PREAMBLE_DETECT: 2,
-            CONF_PREAMBLE_ERRORS: 10,
+            CONF_PREAMBLE_ERRORS: 2,
             CONF_RX_START: True,
             CONF_WMBUS_RAW_DIAG_CAPTURE: False,
             CONF_WMBUS_T1_RECOVERY_DIAG: False,
