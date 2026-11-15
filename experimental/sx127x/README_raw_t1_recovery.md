@@ -71,3 +71,59 @@ Possible statuses: `crc_valid`, `crc_fail`, `incomplete_capture`,
 Compare the valid T1/C1 counts against Heltec only over the same local
 timestamp interval. The offline tool classifies candidate recovery; it does
 not estimate RF performance or modify live reception.
+
+## Experimental on-device recovery diagnostic (opt-in, NO DISPATCH)
+
+The same branch also exposes a separate switch under the existing `sx127x:`
+section. **The switch defaults to false.** Enable it only on the LILYGO
+SX1276 RAW DATA/DCLK receiver while measuring RF performance:
+
+```yaml
+sx127x:
+  wmbus_raw_diag_capture: true
+  wmbus_t1_recovery_diag: true
+```
+
+Do not remove your other SX127x pins and FSK settings. The diagnostic
+requires `wmbus_raw_dclk: true` and is limited to T1 frames rejected by
+the existing 3-of-6 decoder. In particular:
+
+- `BAD_SYMBOL` frames are copied with nonblocking queue submission from
+  the ESPHome main loop. They never enter the normal meter callback again.
+- The recovery algorithm runs in a separate, **FreeRTOS priority 1** task
+  and never touches DIO GPIO, SPI, the high-priority radio task, or the ISR.
+- Worker queue depth: 2; raw cap: 128 bytes; max invalid symbols: 5;
+  max candidate combinations: 1024; wall-time budget: 25 ms per job.
+  It yields every 16 candidate attempts.
+- Each candidate is decoded and accepted *for statistics only* when every
+  Format A CRC-16/EN-13757 block matches, including all data and CRC bytes.
+- No reconstructed bytes, addresses, or AES keys are logged, sent to
+  `wmbus_meter`, Home Assistant, MQTT, or any other receiver.
+- Queue-full events and CPU budget cancellations are counted, not retried.
+  Normal T1/C1 packet handling is unchanged.
+
+The logs contain a per-frame diagnostic summary:
+
+```text
+SX127x T1 recovery diagnostic result=<status> invalid=<N> combinations=<N> tried=<N> crc_valid=<N> elapsed_ms=<N> (NO DISPATCH)
+```
+
+Status enum in `components/sx127x/wmbus_t1_recovery_diag.h`:
+`0=CRC_VALID, 1=CRC_FAIL, 2=INCOMPLETE, 3=BAD_PREFIX,
+4=TOO_MANY_ERRORS, 5=NO_ONE_BIT_CHOICE, 6=COMBINATION_LIMIT,
+7=TIME_BUDGET`. A valid CRC result is diagnostic evidence, **not** a
+request to publish the frame.
+
+The 60-second `SX127x T1 recovery diagnostic` line reports total
+submitted, dropped, CRC-valid, CRC-failed, skipped, and time-budget cases.
+
+Run the no-radio, standalone C++ regression from the repository root:
+
+```sh
+g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Icomponents/sx127x \
+    experimental/sx127x/test_t1_recovery_diag.cpp -o /tmp/t1_diag_test
+/tmp/t1_diag_test
+```
+
+To revert the experiment without changing branches, set
+`wmbus_t1_recovery_diag: false` and reflash.
