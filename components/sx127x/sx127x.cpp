@@ -299,7 +299,7 @@ void SX127x::configure_fsk_ook_() {
   uint8_t trigger = (this->preamble_detect_ > 0) ? TRIGGER_PREAMBLE : TRIGGER_RSSI;
   this->write_register_(REG_AFC_FEI, AFC_AUTO_CLEAR_ON);
   if (this->modulation_ == MOD_FSK) {
-    this->write_register_(REG_RX_CONFIG, AFC_AUTO_ON | AGC_AUTO_ON | trigger);
+    this->write_register_(REG_RX_CONFIG, (this->afc_auto_ ? AFC_AUTO_ON : 0) | AGC_AUTO_ON | trigger);
   } else {
     this->write_register_(REG_RX_CONFIG, AGC_AUTO_ON | trigger);
   }
@@ -394,7 +394,7 @@ void SX127x::configure_fsk_ook_() {
              static_cast<unsigned>(preamble), static_cast<unsigned>(sync_config),
              static_cast<unsigned>(rssi_thresh));
 
-    const uint8_t expected_rx_config = AFC_AUTO_ON | AGC_AUTO_ON |
+    const uint8_t expected_rx_config = (this->afc_auto_ ? AFC_AUTO_ON : 0) | AGC_AUTO_ON |
         (this->preamble_detect_ > 0 ? TRIGGER_PREAMBLE : TRIGGER_RSSI);
     const uint8_t expected_preamble = this->preamble_detect_ > 0
         ? PREAMBLE_DETECTOR_ON |
