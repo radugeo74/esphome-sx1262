@@ -679,11 +679,19 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
       if (event == WmbusDecodeResult::T1_VERIFIED) {
         ++this->rmt_dclk_t1_verified_probed_;
         this->rmt_dclk_t1_verified_periods_ += sample->rmt_periods;
+        this->rmt_dclk_t1_verified_over12_ += sample->rmt_over12;
+        this->rmt_dclk_t1_verified_over15_ += sample->rmt_over15;
+        this->rmt_dclk_t1_verified_over20_ += sample->rmt_over20;
         if (anomaly) ++this->rmt_dclk_t1_verified_anomaly_;
       } else if (event == WmbusDecodeResult::BAD_SYMBOL) {
         ++this->rmt_dclk_t1_bad_symbol_probed_;
         this->rmt_dclk_t1_bad_symbol_periods_ += sample->rmt_periods;
+        this->rmt_dclk_t1_bad_symbol_over12_ += sample->rmt_over12;
+        this->rmt_dclk_t1_bad_symbol_over15_ += sample->rmt_over15;
+        this->rmt_dclk_t1_bad_symbol_over20_ += sample->rmt_over20;
         if (anomaly) ++this->rmt_dclk_t1_bad_symbol_anomaly_;
+      } else {
+        ++this->rmt_dclk_t1_other_probed_;
       }
     }
 #endif
@@ -859,10 +867,16 @@ void SX127x::wmbus_log_statistics_() {
                static_cast<unsigned>(this->rmt_dclk_over12_.load()),
                static_cast<unsigned>(this->rmt_dclk_over15_.load()),
                static_cast<unsigned>(this->rmt_dclk_over20_.load()));
-      ESP_LOGI(TAG, "SX127x RMT T1 verified sampled=%u anomalous=%u periods=%u bad_symbol sampled=%u anomalous=%u periods=%u (sampled frames only)",
+      ESP_LOGI(TAG, "SX127x RMT selection candidates=%u skipped=%u (1 in 2, pre-decode); verified sampled=%u anomalous=%u periods=%u bad_symbol sampled=%u anomalous=%u periods=%u other sampled=%u",
+               this->rmt_dclk_candidate_serial_, this->rmt_dclk_sampling_skipped_,
                this->rmt_dclk_t1_verified_probed_, this->rmt_dclk_t1_verified_anomaly_,
                this->rmt_dclk_t1_verified_periods_, this->rmt_dclk_t1_bad_symbol_probed_,
-               this->rmt_dclk_t1_bad_symbol_anomaly_, this->rmt_dclk_t1_bad_symbol_periods_);
+               this->rmt_dclk_t1_bad_symbol_anomaly_, this->rmt_dclk_t1_bad_symbol_periods_,
+               this->rmt_dclk_t1_other_probed_);
+      ESP_LOGI(TAG, "SX127x RMT sampled timing verified >12us=%u >15us=%u >20us=%u; bad_symbol >12us=%u >15us=%u >20us=%u (cumulative periods)",
+               this->rmt_dclk_t1_verified_over12_, this->rmt_dclk_t1_verified_over15_,
+               this->rmt_dclk_t1_verified_over20_, this->rmt_dclk_t1_bad_symbol_over12_,
+               this->rmt_dclk_t1_bad_symbol_over15_, this->rmt_dclk_t1_bad_symbol_over20_);
     }
 #endif
     ESP_LOGI(TAG, "SX127x RAW DCLK clock windows_256=%u long_windows=%u min_cycles=%u max_cycles=%u (NOT proof of missed IRQs)",
@@ -969,7 +983,7 @@ void SX127x::rmt_dclk_setup_() {
     return;
   }
   this->rmt_dclk_ready_ = true;
-  ESP_LOGI(TAG, "SX127x RMT DCLK probe ready: GPIO%u resolution=1us 128-symbol batches; T1 triggered <=12ms every >=15s",
+  ESP_LOGI(TAG, "SX127x RMT DCLK probe ready: GPIO%u resolution=1us 128-symbol batches; T1 candidate 1-in-2 sampling <=12ms",
            static_cast<unsigned>(this->dio1_pin_->get_pin()));
 #else
   ESP_LOGW(TAG, "SX127x RMT DCLK probe supported only on ESP32-S3");
@@ -978,10 +992,15 @@ void SX127x::rmt_dclk_setup_() {
 
 void SX127x::rmt_dclk_begin_() {
   if (!this->rmt_dclk_ready_ || this->rmt_dclk_active_) return;
+  // Selection happens at candidate recognition, before later PHY decode.
+  // Do not use wall-clock throttling: it produced only rejected samples in
+  // the previous run. Sample every other eligible T1 candidate.
+  ++this->rmt_dclk_candidate_serial_;
+  if ((this->rmt_dclk_candidate_serial_ & 1U) == 0U) {
+    ++this->rmt_dclk_sampling_skipped_;
+    return;
+  }
   const uint32_t now = millis();
-  if (this->rmt_dclk_last_probe_ms_ != 0U &&
-      static_cast<uint32_t>(now - this->rmt_dclk_last_probe_ms_) < 15000U) return;
-  this->rmt_dclk_last_probe_ms_ = now;
   this->rmt_dclk_periods_.store(0);
   this->rmt_dclk_over12_.store(0);
   this->rmt_dclk_over15_.store(0);
