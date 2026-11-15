@@ -242,23 +242,35 @@ void SX127x::configure() {
       return;
     const uint8_t before = this->read_register_(REG_LNA);
     uint8_t after = before;
-    if (this->wmbus_lna_boost_hf_) {
-      this->write_register_(REG_LNA, sx127x_lna_with_hf_boost(before));
+    if (this->wmbus_lna_boost_hf_ || !this->agc_auto_) {
+      uint8_t requested = before;
+      if (this->wmbus_lna_boost_hf_)
+        requested = sx127x_lna_with_hf_boost(requested);
+      // Manual gain is meaningful only with AGC disabled. Bits [7:5]
+      // encode G1..G6. Preserve LF boost, reserved and HF boost bits.
+      if (!this->agc_auto_)
+        requested = static_cast<uint8_t>((requested & 0x1F) | (this->lna_gain_ << 5));
+      this->write_register_(REG_LNA, requested);
       after = this->read_register_(REG_LNA);
     }
-    // Compare only boost bits; AGC may change gain fields [7:5].
+    // In automatic mode gain bits can change; only verify them in manual mode.
     const bool boost_ok = !this->wmbus_lna_boost_hf_ ||
                           (after & LNA_BOOST_HF_MASK) == LNA_BOOST_HF_ON;
+    const bool gain_ok = this->agc_auto_ ||
+                         ((after >> 5) & 0x07) == this->lna_gain_;
     auto &snapshot = this->wmbus_fsk_registers_;
     snapshot.lna_standby_before = before;
     snapshot.lna_standby_after = after;
     snapshot.lna_standby_captured = true;
     snapshot.lna_boost_readback_ok = boost_ok;
-    ESP_LOGI(TAG, "SX127x STANDBY LNA before=0x%02X after=0x%02X boost_requested=%s readback=%s",
+    snapshot.lna_gain_readback_ok = gain_ok;
+    ESP_LOGI(TAG, "SX127x STANDBY LNA before=0x%02X after=0x%02X AGC_auto=%s manual_gain=G%u gain_readback=%s boost_requested=%s boost_readback=%s",
              static_cast<unsigned>(before), static_cast<unsigned>(after),
+             TRUEFALSE(this->agc_auto_), static_cast<unsigned>(this->lna_gain_),
+             gain_ok ? "OK" : "MISMATCH",
              TRUEFALSE(this->wmbus_lna_boost_hf_), boost_ok ? "OK" : "MISMATCH");
-    if (!boost_ok) {
-      ESP_LOGE(TAG, "SX127x LNA HF boost readback failed; RX not started");
+    if (!boost_ok || !gain_ok) {
+      ESP_LOGE(TAG, "SX127x LNA gain/boost readback failed; RX not started");
       this->mark_failed();
       return;
     }
@@ -299,7 +311,7 @@ void SX127x::configure_fsk_ook_() {
   uint8_t trigger = (this->preamble_detect_ > 0) ? TRIGGER_PREAMBLE : TRIGGER_RSSI;
   this->write_register_(REG_AFC_FEI, AFC_AUTO_CLEAR_ON);
   if (this->modulation_ == MOD_FSK) {
-    this->write_register_(REG_RX_CONFIG, (this->afc_auto_ ? AFC_AUTO_ON : 0) | AGC_AUTO_ON | trigger);
+    this->write_register_(REG_RX_CONFIG, (this->afc_auto_ ? AFC_AUTO_ON : 0) | (this->agc_auto_ ? AGC_AUTO_ON : 0) | trigger);
   } else {
     this->write_register_(REG_RX_CONFIG, AGC_AUTO_ON | trigger);
   }
@@ -394,7 +406,7 @@ void SX127x::configure_fsk_ook_() {
              static_cast<unsigned>(preamble), static_cast<unsigned>(sync_config),
              static_cast<unsigned>(rssi_thresh));
 
-    const uint8_t expected_rx_config = (this->afc_auto_ ? AFC_AUTO_ON : 0) | AGC_AUTO_ON |
+    const uint8_t expected_rx_config = (this->afc_auto_ ? AFC_AUTO_ON : 0) | (this->agc_auto_ ? AGC_AUTO_ON : 0) |
         (this->preamble_detect_ > 0 ? TRIGGER_PREAMBLE : TRIGGER_RSSI);
     const uint8_t expected_preamble = this->preamble_detect_ > 0
         ? PREAMBLE_DETECTOR_ON |
@@ -1519,6 +1531,8 @@ void SX127x::dump_config() {
   ESP_LOGCONFIG(TAG, "  C1/A-only hardware sync 54 CD: %s",
                   TRUEFALSE(this->wmbus_c1a_only_));
     ESP_LOGCONFIG(TAG, "  LNA HF boost opt-in: %s", TRUEFALSE(this->wmbus_lna_boost_hf_));
+    ESP_LOGCONFIG(TAG, "  AGC auto configured: %s; manual LNA gain (when AGC off): G%u",
+                  TRUEFALSE(this->agc_auto_), static_cast<unsigned>(this->lna_gain_));
     // Only cached boot values. dump_config() can run after Wi-Fi/API connects,
     // while another task is actively draining the 100-kb/s radio FIFO.
     const auto &regs = this->wmbus_fsk_registers_;
@@ -1537,10 +1551,11 @@ void SX127x::dump_config() {
                     static_cast<unsigned>(regs.lna), static_cast<unsigned>(regs.rssi_config));
       if (regs.lna_standby_captured) {
         ESP_LOGCONFIG(TAG,
-                      "    STANDBY pre-RX RegLna[0C] before=0x%02X after=0x%02X boost_readback=%s",
+                      "    STANDBY pre-RX RegLna[0C] before=0x%02X after=0x%02X boost_readback=%s gain_readback=%s (not live gain)",
                       static_cast<unsigned>(regs.lna_standby_before),
                       static_cast<unsigned>(regs.lna_standby_after),
-                      regs.lna_boost_readback_ok ? "OK" : "MISMATCH");
+                      regs.lna_boost_readback_ok ? "OK" : "MISMATCH",
+                      regs.lna_gain_readback_ok ? "OK" : "MISMATCH");
       }
       ESP_LOGCONFIG(TAG,
                     "    FSK AGC auto: %s; AFC auto: %s; LNA HF boost: %s; RSSI smoothing: %u samples",
