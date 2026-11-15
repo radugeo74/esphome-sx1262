@@ -614,11 +614,30 @@ void SX127x::loop() {
       const unsigned t1_ok = static_cast<unsigned>(s.t1_verified.load());
       const unsigned t1_bad = static_cast<unsigned>(s.bad_symbols.load());
       const unsigned total = t1_ok + t1_bad;
-      ESP_LOGI(TAG, "SX127x T1 A/B mode=%s t1_verified=%u t1_bad_symbol=%u success_permille=%u queue_drops=%u fifo_overruns=%u (since boot, T1-only comparison)",
-               this->wmbus_raw_dclk_ ? "RAW_DCLK" : "FIFO_SPI",
-               t1_ok, t1_bad, total ? (t1_ok * 1000U) / total : 0U,
-               static_cast<unsigned>(s.queue_drops.load()),
-               static_cast<unsigned>(s.fifo_overruns.load()));
+      if (this->wmbus_c1_mode_) {
+        // One marker-3D candidate can be tried as T1 and C1/B.
+        // Do not report (T1+C1)/(T1 bad symbols) as a packet success rate.
+        ESP_LOGI(TAG,
+                 "SX127x FIFO dual probe hw_sync=54 T1_ok=%u C1A_ok=%u C1B_ok=%u "
+                 "marker_3D=%u marker_CD=%u marker_other=%u prefix_reject=%u "
+                 "bad_symbol=%u bad_crc=%u queue_drop=%u overrun=%u timeout=%u (cumulative, NOT packet delivery rate)",
+                 t1_ok, static_cast<unsigned>(s.c1a_verified.load()),
+                 static_cast<unsigned>(s.c1b_verified.load()),
+                 static_cast<unsigned>(s.fifo_marker_3d.load()),
+                 static_cast<unsigned>(s.fifo_marker_cd.load()),
+                 static_cast<unsigned>(s.fifo_marker_other.load()),
+                 static_cast<unsigned>(s.bad_prefix.load()),
+                 t1_bad, static_cast<unsigned>(s.bad_crc.load()),
+                 static_cast<unsigned>(s.queue_drops.load()),
+                 static_cast<unsigned>(s.fifo_overruns.load()),
+                 static_cast<unsigned>(s.frame_timeouts.load()));
+      } else {
+        ESP_LOGI(TAG, "SX127x T1 A/B mode=%s t1_verified=%u t1_bad_symbol=%u success_permille=%u queue_drops=%u fifo_overruns=%u (since boot, T1-only comparison)",
+                 this->wmbus_raw_dclk_ ? "RAW_DCLK" : "FIFO_SPI",
+                 t1_ok, t1_bad, total ? (t1_ok * 1000U) / total : 0U,
+                 static_cast<unsigned>(s.queue_drops.load()),
+                 static_cast<unsigned>(s.fifo_overruns.load()));
+      }
     }
     }
     return;
@@ -1733,7 +1752,9 @@ void SX127x::dump_config() {
   LOG_PIN("  RST Pin: ", this->rst_pin_);
   LOG_PIN("  DIO0 Pin: ", this->dio0_pin_);
   if (this->wmbus_t1_mode_) {
-    ESP_LOGCONFIG(TAG, "  T1 comparison RX path: %s", this->wmbus_raw_dclk_ ? "RAW_DCLK" : "FIFO_SPI");
+    ESP_LOGCONFIG(TAG, "  RX path: %s (%s)",
+                  this->wmbus_raw_dclk_ ? "RAW_DCLK" : "FIFO_SPI",
+                  this->wmbus_c1_mode_ ? "T1+C1 experimental" : "T1 only");
   }
   if (this->wmbus_raw_dclk_) {
     LOG_PIN("  RAW DCLK DIO1: ", this->dio1_pin_);
