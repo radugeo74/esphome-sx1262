@@ -233,7 +233,10 @@ class SX127x final : public Component,
   bool rmt_dclk_ready_{false};
   bool rmt_dclk_active_{false};  // worker task only
   bool rmt_dclk_enabled_{false}; // worker task only
-  uint32_t rmt_dclk_started_ms_{0}, rmt_dclk_last_probe_ms_{0};
+  uint32_t rmt_dclk_started_ms_{0};
+  // Deterministic 1-in-2 sampling of T1 candidates, decided before CRC/3-of-6.
+  // Does not favor any decode outcome, unlike the previous 15-second throttle.
+  uint32_t rmt_dclk_candidate_serial_{0}, rmt_dclk_sampling_skipped_{0};
   std::atomic<uint32_t> rmt_dclk_periods_{0}, rmt_dclk_over12_{0},
       rmt_dclk_over15_{0}, rmt_dclk_over20_{0}, rmt_dclk_chunks_{0};
   std::atomic<uint32_t> rmt_dclk_started_{0}, rmt_dclk_completed_{0},
@@ -241,6 +244,9 @@ class SX127x final : public Component,
   uint32_t rmt_dclk_t1_verified_probed_{0}, rmt_dclk_t1_bad_symbol_probed_{0};
   uint32_t rmt_dclk_t1_verified_anomaly_{0}, rmt_dclk_t1_bad_symbol_anomaly_{0};
   uint32_t rmt_dclk_t1_verified_periods_{0}, rmt_dclk_t1_bad_symbol_periods_{0};
+  uint32_t rmt_dclk_t1_verified_over12_{0}, rmt_dclk_t1_verified_over15_{0}, rmt_dclk_t1_verified_over20_{0};
+  uint32_t rmt_dclk_t1_bad_symbol_over12_{0}, rmt_dclk_t1_bad_symbol_over15_{0}, rmt_dclk_t1_bad_symbol_over20_{0};
+  uint32_t rmt_dclk_t1_other_probed_{0}, rmt_dclk_t1_short_unmatched_{0};
 #endif
   std::atomic<uint32_t> raw_diag_t1_exact_bad_symbol_{0}, raw_diag_t1_near_bad_symbol_{0};
   std::atomic<uint32_t> raw_diag_t1_exact_other_{0}, raw_diag_t1_near_other_{0};
