@@ -41,11 +41,11 @@ static size_t t1_first_bad_symbol_index(const uint8_t *raw, size_t bytes) {
   }
   return SIZE_MAX;
 }
-// Independent, diagnostic-only 3-of-6 hypothesis check for the first 512
+// Independent, diagnostic-only 3-of-6 hypothesis check for the first 1024
 // captured bits. It cannot prove a correct frame without full DLL CRC.
 static uint8_t t1_diag_valid_prefix(const uint8_t *raw, size_t bytes,
                                      unsigned bit_shift, bool invert) {
-  const size_t available_bits = std::min<size_t>(bytes * 8U, 512U);
+  const size_t available_bits = std::min<size_t>(bytes * 8U, 1024U);
   uint8_t valid = 0;
   for (size_t start = bit_shift; start + 6U <= available_bits; start += 6U) {
     uint8_t symbol = 0;
@@ -1552,12 +1552,12 @@ void SX127x::log_raw_diag_captures_() {
   static const char digits[] = "0123456789ABCDEF";
   for (unsigned i = 0; i < this->raw_diag_samples_logged_; ++i) {
     const auto &capture = this->raw_diag_captures_[i];
-    char hex[64U * 2U + 1U]{};
+    char hex[128U * 2U + 1U]{};
     for (size_t b = 0; b < capture.size; ++b) {
       hex[b * 2U] = digits[capture.data[b] >> 4U];
       hex[b * 2U + 1U] = digits[capture.data[b] & 0x0FU];
     }
-    ESP_LOGI(TAG, "SX127x T1 RAW stored %u/%u first_bad=%u preamble=%s rssi_dbm=%.1f raw64=%s",
+    ESP_LOGI(TAG, "SX127x T1 RAW stored %u/%u first_bad=%u preamble=%s rssi_dbm=%.1f raw128=%s",
              i + 1U, static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES),
              static_cast<unsigned>(capture.first_bad),
              capture.preamble_quality == 0 ? "exact" : "near2",
@@ -1594,7 +1594,7 @@ void SX127x::dump_config() {
     LOG_PIN("  RAW DCLK DIO1: ", this->dio1_pin_);
     LOG_PIN("  RAW DATA DIO2: ", this->dio2_pin_);
     ESP_LOGCONFIG(TAG, "  RAW DATA/DCLK 100 kb/s experimental: TRUE; FIFO disabled");
-    ESP_LOGCONFIG(TAG, "  RAW T1 diagnostic capture: %s (max %u samples, first 64 encoded bytes; RAM replay)",
+    ESP_LOGCONFIG(TAG, "  RAW T1 diagnostic capture: %s (max %u samples, first 128 encoded bytes; RAM replay)",
                   TRUEFALSE(this->wmbus_raw_diag_capture_),
                   static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES));
     if (this->wmbus_raw_diag_capture_) this->log_raw_diag_captures_();
