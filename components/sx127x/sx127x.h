@@ -8,6 +8,7 @@
 #include <vector>
 #include <array>
 #include <atomic>
+#include <string>
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -108,6 +109,7 @@ class SX127x final : public Component,
   void set_wmbus_raw_dclk(bool value) { this->wmbus_raw_dclk_ = value; }
   void set_wmbus_raw_diag_capture(bool value) { this->wmbus_raw_diag_capture_ = value; }
   void set_wmbus_t1_recovery_diag(bool value) { this->wmbus_t1_recovery_diag_ = value; }
+  void register_recovery_meter_id(const std::string &id);
   void set_dio2_pin(InternalGPIOPin *pin) { this->dio2_pin_ = pin; }
   void set_wmbus_c1_mode(bool value) { this->wmbus_c1_mode_ = value; }
   // Standalone experimental RX: hardware detects both 0x54 and 0xCD.
@@ -185,6 +187,11 @@ class SX127x final : public Component,
   std::atomic<uint32_t> t1_recovery_submitted_{0}, t1_recovery_dropped_{0};
   std::atomic<uint32_t> t1_recovery_crc_valid_{0}, t1_recovery_crc_fail_{0};
   std::atomic<uint32_t> t1_recovery_skipped_{0}, t1_recovery_time_budget_{0};
+  std::atomic<uint32_t> t1_recovery_coherent_{0}, t1_recovery_configured_{0};
+  std::atomic<uint32_t> t1_recovery_unconfigured_{0}, t1_recovery_ambiguous_{0};
+  // Exact 8-digit BCD IDs only. Store values before publishing atomic count.
+  std::array<std::atomic<uint32_t>, 32> t1_recovery_meter_ids_{};
+  std::atomic<unsigned> t1_recovery_meter_count_{0};
   static constexpr uint8_t RAW_DIAG_MAX_SAMPLES = 6;
   struct RawDiagCapture {
     std::array<uint8_t, 128> data{};
