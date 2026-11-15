@@ -201,6 +201,12 @@ class SX127x final : public Component,
   std::atomic<uint32_t> raw_diag_t1_exact_other_{0}, raw_diag_t1_near_other_{0};
   std::atomic<uint32_t> raw_diag_bad_symbol_early_{0}, raw_diag_bad_symbol_middle_{0},
                         raw_diag_bad_symbol_late_{0}, raw_diag_bad_symbol_no_invalid_{0};
+  // Main-loop-only first-invalid-symbol histogram, 1-based positions 1..32.
+  // Remaining positions retain a 33+ bucket; no meter IDs or raw bytes saved.
+  std::array<uint32_t, 32> raw_diag_first_bad_pos_1_32_{};
+  uint32_t raw_diag_first_bad_pos_33_plus_{0};
+  size_t raw_diag_first_bad_late_min_{0}, raw_diag_first_bad_late_max_{0};
+  uint64_t raw_diag_valid_symbols_before_error_sum_{0};
   std::atomic<uint32_t> raw_diag_drop_hamming_3_5_{0}, raw_diag_drop_hamming_6_9_{0},
                         raw_diag_drop_hamming_10_16_{0};
   bool wmbus_c1_mode_{false};
