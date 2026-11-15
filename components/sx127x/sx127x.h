@@ -9,6 +9,9 @@
 #include <array>
 #include <atomic>
 #include "driver/gpio.h"
+#ifdef SX127X_RMT_DIAG
+#include "driver/rmt_rx.h"
+#endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -103,6 +106,7 @@ class SX127x final : public Component,
   using WmbusStreamCallback = void (*)(void *, const uint8_t *, size_t, float);
   void set_wmbus_t1_mode(bool value) { this->wmbus_t1_mode_ = value; }
   void set_wmbus_raw_dclk(bool value) { this->wmbus_raw_dclk_ = value; }
+  void set_wmbus_rmt_dclk_diag(bool value) { this->wmbus_rmt_dclk_diag_ = value; }
   void set_dio2_pin(InternalGPIOPin *pin) { this->dio2_pin_ = pin; }
   void set_wmbus_c1_mode(bool value) { this->wmbus_c1_mode_ = value; }
   // Standalone experimental RX: hardware detects both 0x54 and 0xCD.
@@ -129,6 +133,13 @@ class SX127x final : public Component,
   static void IRAM_ATTR wmbus_fifo_intr_(SX127x *arg);
   static void IRAM_ATTR wmbus_raw_dclk_intr_(SX127x *arg);
   void wmbus_raw_task_();
+#ifdef SX127X_RMT_DIAG
+  static bool IRAM_ATTR rmt_dclk_done_(rmt_channel_handle_t channel,
+                                       const rmt_rx_done_event_data_t *edata, void *userdata);
+  void rmt_dclk_setup_();
+  void rmt_dclk_begin_();
+  void rmt_dclk_end_(bool timed_out = false);
+#endif
   static void wmbus_task_entry_(void *ctx);
   void wmbus_task_();
   enum class WmbusReadStatus : uint8_t { COMPLETE, TIMEOUT, OVERRUN };
@@ -158,6 +169,11 @@ class SX127x final : public Component,
     int16_t rssi_half_dbm{0};
     uint8_t t1_preamble_quality{2};  // 0 exact, 1 near2, 2 absent; RAW T1 only
     uint8_t dclk_long_windows{0};  // windows fully inside candidate's body; saturating
+    uint8_t rmt_probed{0};
+    uint16_t rmt_periods{0};
+    uint16_t rmt_over12{0};
+    uint16_t rmt_over15{0};
+    uint16_t rmt_over20{0};
     std::array<uint8_t, WMBUS_MAX_RAW_SIZE> bytes{};
   };
   WmbusStreamCallback wmbus_stream_callback_{nullptr};
@@ -166,6 +182,7 @@ class SX127x final : public Component,
   TaskHandle_t wmbus_task_handle_{nullptr};
   bool wmbus_t1_mode_{false};
   bool wmbus_raw_dclk_{false};
+  bool wmbus_rmt_dclk_diag_{false};
   static constexpr uint32_t RAW_RING_SIZE = 4096;
   std::array<uint8_t, RAW_RING_SIZE> raw_ring_{};
   // One tag per received octet. Set only when a 256-DCLK timing window
@@ -208,6 +225,23 @@ class SX127x final : public Component,
   uint32_t raw_diag_dclk_t1_bad_symbol_clean_{0}, raw_diag_dclk_t1_bad_symbol_long_{0};
   uint32_t raw_diag_dclk_t1_other_clean_{0}, raw_diag_dclk_t1_other_long_{0};
   uint32_t raw_diag_dclk_t1_long_windows_sum_{0};
+#ifdef SX127X_RMT_DIAG
+  // RMT diagnostic is opt-in and never supplies or changes decoded RF data.
+  static constexpr size_t RMT_DCLK_SYMBOLS = 128; // 256 DCLK half-periods
+  rmt_channel_handle_t rmt_dclk_channel_{nullptr};
+  std::array<rmt_symbol_word_t, RMT_DCLK_SYMBOLS> rmt_dclk_symbols_{};
+  bool rmt_dclk_ready_{false};
+  bool rmt_dclk_active_{false};  // worker task only
+  bool rmt_dclk_enabled_{false}; // worker task only
+  uint32_t rmt_dclk_started_ms_{0}, rmt_dclk_last_probe_ms_{0};
+  std::atomic<uint32_t> rmt_dclk_periods_{0}, rmt_dclk_over12_{0},
+      rmt_dclk_over15_{0}, rmt_dclk_over20_{0}, rmt_dclk_chunks_{0};
+  std::atomic<uint32_t> rmt_dclk_started_{0}, rmt_dclk_completed_{0},
+      rmt_dclk_timed_out_{0}, rmt_dclk_short_{0}, rmt_dclk_errors_{0};
+  uint32_t rmt_dclk_t1_verified_probed_{0}, rmt_dclk_t1_bad_symbol_probed_{0};
+  uint32_t rmt_dclk_t1_verified_anomaly_{0}, rmt_dclk_t1_bad_symbol_anomaly_{0};
+  uint32_t rmt_dclk_t1_verified_periods_{0}, rmt_dclk_t1_bad_symbol_periods_{0};
+#endif
   std::atomic<uint32_t> raw_diag_t1_exact_bad_symbol_{0}, raw_diag_t1_near_bad_symbol_{0};
   std::atomic<uint32_t> raw_diag_t1_exact_other_{0}, raw_diag_t1_near_other_{0};
   std::atomic<uint32_t> raw_diag_bad_symbol_early_{0}, raw_diag_bad_symbol_middle_{0},
