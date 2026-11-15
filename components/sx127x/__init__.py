@@ -30,6 +30,7 @@ CONF_DIO1_PIN = "dio1_pin"
 CONF_DIO2_PIN = "dio2_pin"
 CONF_WMBUS_RAW_DCLK = "wmbus_raw_dclk"
 CONF_WMBUS_RAW_DIAG_CAPTURE = "wmbus_raw_diag_capture"
+CONF_WMBUS_T1_RECOVERY_DIAG = "wmbus_t1_recovery_diag"
 CONF_WMBUS_T1_MODE = "wmbus_t1_mode"
 CONF_WMBUS_C1A_ONLY = "wmbus_c1a_only"
 CONF_WMBUS_DUAL_SYNC = "wmbus_dual_sync"
@@ -153,6 +154,8 @@ validate_packet_data = cv.All(validate_raw_data, cv.Length(min=1, max=MAX_PACKET
 
 
 def validate_config(config: ConfigType) -> ConfigType:
+    if config[CONF_WMBUS_T1_RECOVERY_DIAG] and not config[CONF_WMBUS_RAW_DCLK]:
+        raise cv.Invalid("wmbus_t1_recovery_diag requires wmbus_raw_dclk: true")
     if config[CONF_WMBUS_RAW_DIAG_CAPTURE] and not config[CONF_WMBUS_RAW_DCLK]:
         raise cv.Invalid("wmbus_raw_diag_capture requires wmbus_raw_dclk: true")
     if config[CONF_WMBUS_RAW_DCLK]:
@@ -282,6 +285,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_PACKET_MODE): cv.boolean,
             cv.Optional(CONF_WMBUS_RAW_DCLK, default=False): cv.boolean,
             cv.Optional(CONF_WMBUS_RAW_DIAG_CAPTURE, default=False): cv.boolean,
+        cv.Optional(CONF_WMBUS_T1_RECOVERY_DIAG, default=False): cv.boolean,
             cv.Optional(CONF_DIO2_PIN): pins.internal_gpio_input_pin_schema,
             cv.Optional(CONF_PAYLOAD_LENGTH, default=0): cv.int_range(
                 min=0, max=MAX_PACKET_SIZE
@@ -323,6 +327,7 @@ async def to_code(config: ConfigType) -> None:
     cg.add(var.set_wmbus_t1_mode(config[CONF_WMBUS_T1_MODE]))
     cg.add(var.set_wmbus_raw_dclk(config[CONF_WMBUS_RAW_DCLK]))
     cg.add(var.set_wmbus_raw_diag_capture(config[CONF_WMBUS_RAW_DIAG_CAPTURE]))
+    cg.add(var.set_wmbus_t1_recovery_diag(config[CONF_WMBUS_T1_RECOVERY_DIAG]))
     cg.add(var.set_wmbus_c1a_only(config[CONF_WMBUS_C1A_ONLY]))
     cg.add(var.set_wmbus_dual_sync(config[CONF_WMBUS_DUAL_SYNC]))
     cg.add(var.set_wmbus_continuous_dual(config[CONF_WMBUS_CONTINUOUS_DUAL]))
