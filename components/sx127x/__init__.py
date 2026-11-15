@@ -26,6 +26,7 @@ CONF_DIO0_PIN = "dio0_pin"
 CONF_DIO1_PIN = "dio1_pin"
 CONF_DIO2_PIN = "dio2_pin"
 CONF_WMBUS_RAW_DCLK = "wmbus_raw_dclk"
+CONF_WMBUS_RMT_DCLK_DIAG = "wmbus_rmt_dclk_diag"
 CONF_WMBUS_T1_MODE = "wmbus_t1_mode"
 CONF_WMBUS_C1A_ONLY = "wmbus_c1a_only"
 CONF_WMBUS_DUAL_SYNC = "wmbus_dual_sync"
@@ -149,6 +150,12 @@ validate_packet_data = cv.All(validate_raw_data, cv.Length(min=1, max=MAX_PACKET
 
 
 def validate_config(config: ConfigType) -> ConfigType:
+    if config[CONF_WMBUS_RMT_DCLK_DIAG]:
+        if not config[CONF_WMBUS_RAW_DCLK]:
+            raise cv.Invalid("wmbus_rmt_dclk_diag requires wmbus_raw_dclk: true")
+        from esphome.core import CORE
+        if not CORE.is_esp32:
+            raise cv.Invalid("wmbus_rmt_dclk_diag requires ESP32-S3")
     if config[CONF_WMBUS_RAW_DCLK]:
         if not config[CONF_WMBUS_T1_MODE] or config[CONF_MODULATION] != "FSK":
             raise cv.Invalid("wmbus_raw_dclk requires FSK and wmbus_t1_mode")
@@ -272,6 +279,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_PA_RAMP, default="40us"): cv.enum(RAMP),
             cv.Optional(CONF_PACKET_MODE): cv.boolean,
             cv.Optional(CONF_WMBUS_RAW_DCLK, default=False): cv.boolean,
+            cv.Optional(CONF_WMBUS_RMT_DCLK_DIAG, default=False): cv.boolean,
             cv.Optional(CONF_DIO2_PIN): pins.internal_gpio_input_pin_schema,
             cv.Optional(CONF_PAYLOAD_LENGTH, default=0): cv.int_range(
                 min=0, max=MAX_PACKET_SIZE
@@ -351,6 +359,11 @@ async def to_code(config: ConfigType) -> None:
     cg.add(var.set_sync_value(config[CONF_SYNC_VALUE]))
     cg.add(var.set_rx_floor(config[CONF_RX_FLOOR]))
     cg.add(var.set_rx_start(config[CONF_RX_START]))
+    cg.add(var.set_wmbus_rmt_dclk_diag(config[CONF_WMBUS_RMT_DCLK_DIAG]))
+    if config[CONF_WMBUS_RMT_DCLK_DIAG]:
+        from esphome.components.esp32 import include_builtin_idf_component
+        include_builtin_idf_component("esp_driver_rmt")
+        cg.add_define("SX127X_RMT_DIAG")
 
 
 NO_ARGS_ACTION_SCHEMA = automation.maybe_simple_id(
