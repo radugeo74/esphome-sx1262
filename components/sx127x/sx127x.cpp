@@ -711,29 +711,40 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
       const size_t bad_index = t1_first_bad_symbol_index(sample->bytes.data(), sample->size);
       if (this->wmbus_raw_diag_capture_ &&
           this->raw_diag_samples_logged_ < RAW_DIAG_MAX_SAMPLES) {
+        // Store first, so reconnecting the ESPHome logger can replay all six.
+        // Main-loop only; no SPI, GPIO ISR work or flash writes.
+        auto &capture = this->raw_diag_captures_[this->raw_diag_samples_logged_];
+        capture.size = static_cast<uint8_t>(std::min<size_t>(sample->size, capture.data.size()));
+        capture.first_bad = bad_index == SIZE_MAX ? 0U : static_cast<uint16_t>(bad_index + 1U);
+        capture.rssi_half_dbm = sample->rssi_half_dbm;
+        capture.preamble_quality = sample->t1_preamble_quality;
+        std::copy_n(sample->bytes.begin(), capture.size, capture.data.begin());
+        // Every invalid 3-of-6 symbol is classified by minimum Hamming
+        // distance to the 16 legal codes, not just the first bad symbol.
+        const size_t total_bits = static_cast<size_t>(capture.size) * 8U;
+        for (size_t pos = 0; (pos + 1U) * 6U <= total_bits; ++pos) {
+          uint8_t symbol = 0;
+          for (unsigned bit = 0; bit < 6U; ++bit) {
+            const size_t absolute = pos * 6U + bit;
+            symbol = static_cast<uint8_t>((symbol << 1U) |
+                ((capture.data[absolute / 8U] >> (7U - (absolute % 8U))) & 1U));
+          }
+          ++capture.symbols_total;
+          if (t1_symbol_to_nibble(symbol) >= 0) continue;
+          ++capture.symbols_invalid;
+          unsigned min_distance = 6U;
+          for (unsigned legal = 0; legal < 64U; ++legal) {
+            if (t1_symbol_to_nibble(static_cast<uint8_t>(legal)) < 0) continue;
+            const unsigned distance = static_cast<unsigned>(
+                __builtin_popcount(static_cast<unsigned>(symbol ^ legal)));
+            min_distance = std::min(min_distance, distance);
+          }
+          if (min_distance == 1U) ++capture.min_distance_1;
+          else if (min_distance == 2U) ++capture.min_distance_2;
+          else ++capture.min_distance_3plus;
+        }
         ++this->raw_diag_samples_logged_;
-        // Print up to 64 RAW bytes (~512 bits), never the whole telegram.
-        // These bytes are encoded radio data and may include meter identifiers.
-        const size_t capture_bytes = std::min<size_t>(sample->size, 64U);
-        char hex[64U * 2U + 1U]{};
-        static const char digits[] = "0123456789ABCDEF";
-        for (size_t i = 0; i < capture_bytes; ++i) {
-          hex[2U * i] = digits[sample->bytes[i] >> 4];
-          hex[2U * i + 1U] = digits[sample->bytes[i] & 0x0F];
-        }
-        uint8_t normal[6]{}, inverted[6]{};
-        for (unsigned shift = 0; shift < 6U; ++shift) {
-          normal[shift] = t1_diag_valid_prefix(sample->bytes.data(), capture_bytes, shift, false);
-          inverted[shift] = t1_diag_valid_prefix(sample->bytes.data(), capture_bytes, shift, true);
-        }
-        ESP_LOGI(TAG, "SX127x T1 RAW sample %u/%u first_bad=%u preamble=%s rssi_dbm=%.1f raw64=%s",
-                 static_cast<unsigned>(this->raw_diag_samples_logged_),
-                 static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES),
-                 bad_index == SIZE_MAX ? 0U : static_cast<unsigned>(bad_index + 1U),
-                 exact ? "exact" : "near2", static_cast<double>(sample->rssi_half_dbm) / 2.0, hex);
-        ESP_LOGI(TAG, "SX127x T1 RAW hypothesis valid_prefix_symbols shifts0..5 normal=%u,%u,%u,%u,%u,%u inverted=%u,%u,%u,%u,%u,%u (not CRC)",
-                 normal[0], normal[1], normal[2], normal[3], normal[4], normal[5],
-                 inverted[0], inverted[1], inverted[2], inverted[3], inverted[4], inverted[5]);
+        this->log_raw_diag_captures_();
       }
       if (bad_index == SIZE_MAX) {
         ++this->raw_diag_bad_symbol_no_invalid_;
@@ -1492,6 +1503,35 @@ void SX127x::wmbus_task_() {
   }
 }
 
+void SX127x::log_raw_diag_captures_() {
+  if (!this->wmbus_raw_diag_capture_) return;
+  // Replay on dump_config() during later ESPHome logger/API reconnections.
+  // The count and samples are main-loop owned and never written by the ISR.
+  ESP_LOGI(TAG, "SX127x T1 RAW stored captures=%u/%u (RAM only, reset on reboot)",
+           static_cast<unsigned>(this->raw_diag_samples_logged_),
+           static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES));
+  static const char digits[] = "0123456789ABCDEF";
+  for (unsigned i = 0; i < this->raw_diag_samples_logged_; ++i) {
+    const auto &capture = this->raw_diag_captures_[i];
+    char hex[64U * 2U + 1U]{};
+    for (size_t b = 0; b < capture.size; ++b) {
+      hex[b * 2U] = digits[capture.data[b] >> 4U];
+      hex[b * 2U + 1U] = digits[capture.data[b] & 0x0FU];
+    }
+    ESP_LOGI(TAG, "SX127x T1 RAW stored %u/%u first_bad=%u preamble=%s rssi_dbm=%.1f raw64=%s",
+             i + 1U, static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES),
+             static_cast<unsigned>(capture.first_bad),
+             capture.preamble_quality == 0 ? "exact" : "near2",
+             static_cast<double>(capture.rssi_half_dbm) / 2.0, hex);
+    ESP_LOGI(TAG, "SX127x T1 RAW Hamming stored %u symbols=%u invalid=%u min_distance_1=%u min_distance_2=%u min_distance_3plus=%u (diagnostic only)",
+             i + 1U, static_cast<unsigned>(capture.symbols_total),
+             static_cast<unsigned>(capture.symbols_invalid),
+             static_cast<unsigned>(capture.min_distance_1),
+             static_cast<unsigned>(capture.min_distance_2),
+             static_cast<unsigned>(capture.min_distance_3plus));
+  }
+}
+
 void SX127x::dump_config() {
   ESP_LOGCONFIG(TAG, "SX127x:");
   LOG_PIN("  CS Pin: ", this->cs_);
@@ -1501,9 +1541,10 @@ void SX127x::dump_config() {
     LOG_PIN("  RAW DCLK DIO1: ", this->dio1_pin_);
     LOG_PIN("  RAW DATA DIO2: ", this->dio2_pin_);
     ESP_LOGCONFIG(TAG, "  RAW DATA/DCLK 100 kb/s experimental: TRUE; FIFO disabled");
-    ESP_LOGCONFIG(TAG, "  RAW T1 diagnostic capture: %s (max %u samples, first 64 encoded bytes)",
+    ESP_LOGCONFIG(TAG, "  RAW T1 diagnostic capture: %s (max %u samples, first 64 encoded bytes; RAM replay)",
                   TRUEFALSE(this->wmbus_raw_diag_capture_),
                   static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES));
+    if (this->wmbus_raw_diag_capture_) this->log_raw_diag_captures_();
   }
   const char *pa_pin = "RFO";
   if (this->pa_pin_ == PA_PIN_BOOST) {
