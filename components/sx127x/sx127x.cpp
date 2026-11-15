@@ -743,8 +743,47 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
           else if (min_distance == 2U) ++capture.min_distance_2;
           else ++capture.min_distance_3plus;
         }
+        // Compare six phases after the first invalid symbol, over the
+        // same 24-symbol time window. A phase score is not CRC evidence.
+        // No phase change is ever applied to the actual receiver.
+        if (bad_index != SIZE_MAX) {
+          const size_t first_bit = bad_index * 6U;
+          if (first_bit < total_bits) {
+            capture.post_symbols = static_cast<uint8_t>(
+                std::min<size_t>(24U, (total_bits - first_bit) / 6U));
+            for (unsigned phase = 0; phase < 6U; ++phase) {
+              unsigned run = 0;
+              for (unsigned symbol_index = 0; symbol_index < capture.post_symbols; ++symbol_index) {
+                const size_t start_bit = first_bit + symbol_index * 6U + phase;
+                if (start_bit + 6U > total_bits) { run = 0; continue; }
+                uint8_t code = 0;
+                for (unsigned bit = 0; bit < 6U; ++bit) {
+                  const size_t absolute = start_bit + bit;
+                  code = static_cast<uint8_t>((code << 1U) |
+                      ((capture.data[absolute / 8U] >> (7U - absolute % 8U)) & 1U));
+                }
+                if (t1_symbol_to_nibble(code) >= 0) {
+                  ++capture.post_valid[phase];
+                  ++run;
+                  capture.post_longest_run[phase] = std::max(
+                      capture.post_longest_run[phase], static_cast<uint8_t>(run));
+                } else {
+                  run = 0;
+                }
+              }
+            }
+          }
+        }
         ++this->raw_diag_samples_logged_;
-        this->log_raw_diag_captures_();
+        // No multi-capture replay during frame reception: this previously
+        // blocked ESPHome loop for 68-95 ms on every new sample.
+        ESP_LOGI(TAG, "SX127x T1 RAW captured %u/%u first_bad=%u rssi_dbm=%.1f invalid=%u/%u (replay via dump_config)",
+                 static_cast<unsigned>(this->raw_diag_samples_logged_),
+                 static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES),
+                 static_cast<unsigned>(capture.first_bad),
+                 static_cast<double>(capture.rssi_half_dbm) / 2.0,
+                 static_cast<unsigned>(capture.symbols_invalid),
+                 static_cast<unsigned>(capture.symbols_total));
       }
       if (bad_index == SIZE_MAX) {
         ++this->raw_diag_bad_symbol_no_invalid_;
@@ -1531,6 +1570,12 @@ void SX127x::log_raw_diag_captures_() {
     ESP_LOGI(TAG, "SX127x T1 RAW hypothesis stored %u valid_prefix_symbols shifts0..5 normal=%u,%u,%u,%u,%u,%u inverted=%u,%u,%u,%u,%u,%u (not CRC)",
              i + 1U, normal[0], normal[1], normal[2], normal[3], normal[4], normal[5],
              inverted[0], inverted[1], inverted[2], inverted[3], inverted[4], inverted[5]);
+    ESP_LOGI(TAG, "SX127x T1 RAW post-error stored %u window=%u symbols phase0..5 valid=%u,%u,%u,%u,%u,%u max_run=%u,%u,%u,%u,%u,%u (not CRC)",
+             i + 1U, static_cast<unsigned>(capture.post_symbols),
+             capture.post_valid[0], capture.post_valid[1], capture.post_valid[2],
+             capture.post_valid[3], capture.post_valid[4], capture.post_valid[5],
+             capture.post_longest_run[0], capture.post_longest_run[1], capture.post_longest_run[2],
+             capture.post_longest_run[3], capture.post_longest_run[4], capture.post_longest_run[5]);
     ESP_LOGI(TAG, "SX127x T1 RAW Hamming stored %u symbols=%u invalid=%u min_distance_1=%u min_distance_2=%u min_distance_3plus=%u (diagnostic only)",
              i + 1U, static_cast<unsigned>(capture.symbols_total),
              static_cast<unsigned>(capture.symbols_invalid),
