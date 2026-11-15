@@ -24,10 +24,11 @@ static const uint8_t BW_FSK_OOK[22] = {RX_BW_2_6,   RX_BW_3_1,   RX_BW_3_9,   RX
                                        RX_BW_10_4,  RX_BW_12_5,  RX_BW_15_6,  RX_BW_20_8, RX_BW_25_0,  RX_BW_31_3,
                                        RX_BW_41_7,  RX_BW_50_0,  RX_BW_62_5,  RX_BW_83_3, RX_BW_100_0, RX_BW_125_0,
                                        RX_BW_166_7, RX_BW_200_0, RX_BW_250_0, RX_BW_250_0};
-// Diagnostic-only scan: first invalid encoded T1 3-of-6 symbol.
-// Called on main-loop BAD_SYMBOL result; never runs in GPIO ISR.
-static uint8_t t1_bad_symbol_region(const uint8_t *raw, size_t bytes) {
-  if (raw == nullptr || bytes == 0) return 3;
+// First invalid 3-of-6 symbol (0-based), or SIZE_MAX if none found.
+// Diagnostic-only: runs on the main loop after shared PHY BAD_SYMBOL.
+// No ISR, RF gate, T1 decode or CRC behavior is altered.
+static size_t t1_first_bad_symbol_index(const uint8_t *raw, size_t bytes) {
+  if (raw == nullptr || bytes == 0) return SIZE_MAX;
   const size_t total_symbols = bytes * 8U / 6U;
   for (size_t pos = 0; pos < total_symbols; ++pos) {
     uint8_t symbol = 0;
@@ -36,10 +37,9 @@ static uint8_t t1_bad_symbol_region(const uint8_t *raw, size_t bytes) {
       symbol = static_cast<uint8_t>(
           (symbol << 1U) | ((raw[absolute / 8U] >> (7U - (absolute % 8U))) & 1U));
     }
-    if (t1_symbol_to_nibble(symbol) < 0)
-      return static_cast<uint8_t>(std::min<size_t>(2U, pos * 3U / total_symbols));
+    if (t1_symbol_to_nibble(symbol) < 0) return pos;
   }
-  return 3;
+  return SIZE_MAX;
 }
 static const int32_t RSSI_OFFSET_HF = 157;
 static const int32_t RSSI_OFFSET_LF = 164;
@@ -663,11 +663,28 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
     } else if (event == WmbusDecodeResult::BAD_SYMBOL) {
       if (exact) ++this->raw_diag_t1_exact_bad_symbol_;
       else ++this->raw_diag_t1_near_bad_symbol_;
-      switch (t1_bad_symbol_region(sample->bytes.data(), sample->size)) {
-        case 0: ++this->raw_diag_bad_symbol_early_; break;
-        case 1: ++this->raw_diag_bad_symbol_middle_; break;
-        case 2: ++this->raw_diag_bad_symbol_late_; break;
-        default: ++this->raw_diag_bad_symbol_no_invalid_; break;
+      const size_t bad_index = t1_first_bad_symbol_index(sample->bytes.data(), sample->size);
+      if (bad_index == SIZE_MAX) {
+        ++this->raw_diag_bad_symbol_no_invalid_;
+      } else {
+        const size_t total_symbols = sample->size * 8U / 6U;
+        const size_t region = bad_index * 3U / total_symbols;
+        if (region == 0) ++this->raw_diag_bad_symbol_early_;
+        else if (region == 1) ++this->raw_diag_bad_symbol_middle_;
+        else ++this->raw_diag_bad_symbol_late_;
+        // Position is 1-based in logs; bad_index is also the number
+        // of valid full 3-of-6 symbols preceding this first bad symbol.
+        this->raw_diag_valid_symbols_before_error_sum_ += bad_index;
+        if (bad_index < this->raw_diag_first_bad_pos_1_32_.size()) {
+          ++this->raw_diag_first_bad_pos_1_32_[bad_index];
+        } else {
+          ++this->raw_diag_first_bad_pos_33_plus_;
+          const size_t position = bad_index + 1U;
+          if (this->raw_diag_first_bad_late_min_ == 0 || position < this->raw_diag_first_bad_late_min_)
+            this->raw_diag_first_bad_late_min_ = position;
+          if (position > this->raw_diag_first_bad_late_max_)
+            this->raw_diag_first_bad_late_max_ = position;
+        }
       }
     } else {
       if (exact) ++this->raw_diag_t1_exact_other_;
@@ -748,6 +765,35 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_diag_bad_symbol_middle_.load()),
              static_cast<unsigned>(this->raw_diag_bad_symbol_late_.load()),
              static_cast<unsigned>(this->raw_diag_bad_symbol_no_invalid_.load()));
+    // Main-loop-only statistics. Exact position distribution for symbols
+    // 1..32, plus an aggregate bucket and min/max for later errors.
+    const auto &p = this->raw_diag_first_bad_pos_1_32_;
+    ESP_LOGI(TAG, "SX127x T1 first_bad symbol positions 01-08: %u %u %u %u %u %u %u %u",
+             p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+    ESP_LOGI(TAG, "SX127x T1 first_bad symbol positions 09-16: %u %u %u %u %u %u %u %u",
+             p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
+    ESP_LOGI(TAG, "SX127x T1 first_bad symbol positions 17-24: %u %u %u %u %u %u %u %u",
+             p[16], p[17], p[18], p[19], p[20], p[21], p[22], p[23]);
+    ESP_LOGI(TAG, "SX127x T1 first_bad symbol positions 25-32: %u %u %u %u %u %u %u %u",
+             p[24], p[25], p[26], p[27], p[28], p[29], p[30], p[31]);
+    const uint32_t first4 = p[0] + p[1] + p[2] + p[3];
+    const uint32_t first8 = first4 + p[4] + p[5] + p[6] + p[7];
+    uint32_t first16 = first8;
+    uint32_t first32 = first8;
+    for (size_t k = 8; k < 32; ++k) {
+      first32 += p[k];
+      if (k < 16) first16 += p[k];
+    }
+    const uint64_t valid_before = this->raw_diag_valid_symbols_before_error_sum_;
+    const uint32_t classified = first32 + this->raw_diag_first_bad_pos_33_plus_;
+    ESP_LOGI(TAG, "SX127x T1 first_bad cumulative <=4=%u <=8=%u <=16=%u <=32=%u >32=%u none=%u; valid_symbols_before avg_x100=%u",
+             first4, first8, first16, first32,
+             this->raw_diag_first_bad_pos_33_plus_,
+             static_cast<unsigned>(this->raw_diag_bad_symbol_no_invalid_.load()),
+             classified ? static_cast<unsigned>((valid_before * 100U) / classified) : 0U);
+    ESP_LOGI(TAG, "SX127x T1 first_bad >32 position min=%u max=%u; all counters cumulative since boot",
+             static_cast<unsigned>(this->raw_diag_first_bad_late_min_),
+             static_cast<unsigned>(this->raw_diag_first_bad_late_max_));
     ESP_LOGI(TAG, "SX127x T1 diagnostic dropped preamble Hamming 3-5=%u 6-9=%u 10-16=%u (no payload logged)",
              static_cast<unsigned>(this->raw_diag_drop_hamming_3_5_.load()),
              static_cast<unsigned>(this->raw_diag_drop_hamming_6_9_.load()),
