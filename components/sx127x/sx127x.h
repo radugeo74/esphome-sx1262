@@ -157,6 +157,7 @@ class SX127x final : public Component,
     uint16_t size{0};
     int16_t rssi_half_dbm{0};
     uint8_t t1_preamble_quality{2};  // 0 exact, 1 near2, 2 absent; RAW T1 only
+    uint8_t dclk_long_windows{0};  // windows fully inside candidate's body; saturating
     std::array<uint8_t, WMBUS_MAX_RAW_SIZE> bytes{};
   };
   WmbusStreamCallback wmbus_stream_callback_{nullptr};
@@ -167,6 +168,9 @@ class SX127x final : public Component,
   bool wmbus_raw_dclk_{false};
   static constexpr uint32_t RAW_RING_SIZE = 4096;
   std::array<uint8_t, RAW_RING_SIZE> raw_ring_{};
+  // One tag per received octet. Set only when a 256-DCLK timing window
+  // completes at this octet, and its duration exceeds the existing limit.
+  std::array<uint8_t, RAW_RING_SIZE> raw_ring_dclk_long_{};
   std::atomic<uint32_t> raw_head_{0}, raw_tail_{0};
   uint8_t raw_bit_accum_{0}, raw_bit_count_{0};  // ISR only
   gpio_num_t raw_data_gpio_{GPIO_NUM_NC};
@@ -175,6 +179,7 @@ class SX127x final : public Component,
   // Observability for sample-clock IRQs; these do not prove IRQ loss.
   uint32_t raw_clock_window_count_{0};   // ISR only
   uint32_t raw_clock_previous_cycles_{0}; // ISR only
+  uint8_t raw_clock_window_long_pending_{0};  // ISR only; exported with octet
   std::atomic<uint32_t> raw_clock_windows_{0};
   std::atomic<uint32_t> raw_clock_max_window_cycles_{0};
   std::atomic<uint32_t> raw_clock_long_windows_{0};
@@ -197,6 +202,12 @@ class SX127x final : public Component,
   // Diagnostic correlation: only used while main-loop RX callback is active.
   const WmbusRxPacket *raw_t1_callback_frame_{nullptr};
   std::atomic<uint32_t> raw_diag_t1_exact_verified_{0}, raw_diag_t1_near_verified_{0};
+  // Main-loop-only cross-tabulation of RX outcomes vs in-frame long
+  // 256-DCLK windows; a long window is not proof of IRQ loss.
+  uint32_t raw_diag_dclk_t1_verified_clean_{0}, raw_diag_dclk_t1_verified_long_{0};
+  uint32_t raw_diag_dclk_t1_bad_symbol_clean_{0}, raw_diag_dclk_t1_bad_symbol_long_{0};
+  uint32_t raw_diag_dclk_t1_other_clean_{0}, raw_diag_dclk_t1_other_long_{0};
+  uint32_t raw_diag_dclk_t1_long_windows_sum_{0};
   std::atomic<uint32_t> raw_diag_t1_exact_bad_symbol_{0}, raw_diag_t1_near_bad_symbol_{0};
   std::atomic<uint32_t> raw_diag_t1_exact_other_{0}, raw_diag_t1_near_other_{0};
   std::atomic<uint32_t> raw_diag_bad_symbol_early_{0}, raw_diag_bad_symbol_middle_{0},
@@ -234,6 +245,8 @@ class SX127x final : public Component,
     // Read once at boot; automatic gain can change the live LNA gain.
     uint8_t lna{0};
     uint8_t rssi_config{0};
+    uint8_t ook_peak{0};  // RegOokPeak[14], includes BitSyncOn bit 0x20
+    bool bitsync_readback_ok{false};
     // Boot STANDBY, captured immediately before RX (not live packet gain).
     uint8_t lna_standby_before{0};
     uint8_t lna_standby_after{0};
