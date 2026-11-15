@@ -107,6 +107,7 @@ class SX127x final : public Component,
   void set_wmbus_t1_mode(bool value) { this->wmbus_t1_mode_ = value; }
   void set_wmbus_raw_dclk(bool value) { this->wmbus_raw_dclk_ = value; }
   void set_wmbus_raw_diag_capture(bool value) { this->wmbus_raw_diag_capture_ = value; }
+  void set_wmbus_t1_recovery_diag(bool value) { this->wmbus_t1_recovery_diag_ = value; }
   void set_dio2_pin(InternalGPIOPin *pin) { this->dio2_pin_ = pin; }
   void set_wmbus_c1_mode(bool value) { this->wmbus_c1_mode_ = value; }
   // Standalone experimental RX: hardware detects both 0x54 and 0xCD.
@@ -141,6 +142,8 @@ class SX127x final : public Component,
   void wmbus_restart_rx_();
   void wmbus_log_statistics_();
   void log_raw_diag_captures_();
+  static void wmbus_recovery_task_entry_(void *ctx);
+  void wmbus_recovery_task_();
   void configure_fsk_ook_();
   void configure_lora_();
   void set_mode_(uint8_t modulation, uint8_t mode);
@@ -172,6 +175,16 @@ class SX127x final : public Component,
   bool wmbus_t1_mode_{false};
   bool wmbus_raw_dclk_{false};
   bool wmbus_raw_diag_capture_{false};
+  bool wmbus_t1_recovery_diag_{false};
+  struct T1RecoveryJob {
+    uint16_t size{0};
+    std::array<uint8_t, 128> raw{};
+  };
+  QueueHandle_t t1_recovery_queue_{nullptr};
+  TaskHandle_t t1_recovery_task_handle_{nullptr};
+  std::atomic<uint32_t> t1_recovery_submitted_{0}, t1_recovery_dropped_{0};
+  std::atomic<uint32_t> t1_recovery_crc_valid_{0}, t1_recovery_crc_fail_{0};
+  std::atomic<uint32_t> t1_recovery_skipped_{0}, t1_recovery_time_budget_{0};
   static constexpr uint8_t RAW_DIAG_MAX_SAMPLES = 6;
   struct RawDiagCapture {
     std::array<uint8_t, 128> data{};
