@@ -285,7 +285,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_PACKET_MODE): cv.boolean,
             cv.Optional(CONF_WMBUS_RAW_DCLK, default=False): cv.boolean,
             cv.Optional(CONF_WMBUS_RAW_DIAG_CAPTURE, default=False): cv.boolean,
-        cv.Optional(CONF_WMBUS_T1_RECOVERY_DIAG, default=False): cv.boolean,
+            cv.Optional(CONF_WMBUS_T1_RECOVERY_DIAG, default=False): cv.boolean,
             cv.Optional(CONF_DIO2_PIN): pins.internal_gpio_input_pin_schema,
             cv.Optional(CONF_PAYLOAD_LENGTH, default=0): cv.int_range(
                 min=0, max=MAX_PACKET_SIZE
