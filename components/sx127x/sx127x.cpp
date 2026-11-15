@@ -9,6 +9,9 @@
 #include "soc/gpio_struct.h"
 #endif
 #include "esp_cpu.h"
+#ifdef SX127X_RMT_DIAG
+#include "driver/rmt_rx.h"
+#endif
 
 namespace esphome::sx127x {
 
@@ -162,6 +165,9 @@ void SX127x::setup() {
       return;
     }
     if (this->wmbus_raw_dclk_) {
+#ifdef SX127X_RMT_DIAG
+      if (this->wmbus_rmt_dclk_diag_) this->rmt_dclk_setup_();
+#endif
       this->dio1_pin_->attach_interrupt(&SX127x::wmbus_raw_dclk_intr_, this,
                                         gpio::INTERRUPT_RISING_EDGE);
       ESP_LOGW(TAG, "SX127x experimental raw DATA/DCLK active (100k IRQ/s)");
@@ -667,6 +673,20 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
     const bool exact = sample->t1_preamble_quality == 0;
     const bool long_window = sample->dclk_long_windows != 0;
     this->raw_diag_dclk_t1_long_windows_sum_ += sample->dclk_long_windows;
+#ifdef SX127X_RMT_DIAG
+    if (sample->rmt_probed) {
+      const bool anomaly = sample->rmt_over12 != 0;
+      if (event == WmbusDecodeResult::T1_VERIFIED) {
+        ++this->rmt_dclk_t1_verified_probed_;
+        this->rmt_dclk_t1_verified_periods_ += sample->rmt_periods;
+        if (anomaly) ++this->rmt_dclk_t1_verified_anomaly_;
+      } else if (event == WmbusDecodeResult::BAD_SYMBOL) {
+        ++this->rmt_dclk_t1_bad_symbol_probed_;
+        this->rmt_dclk_t1_bad_symbol_periods_ += sample->rmt_periods;
+        if (anomaly) ++this->rmt_dclk_t1_bad_symbol_anomaly_;
+      }
+    }
+#endif
     if (event == WmbusDecodeResult::T1_VERIFIED) {
       if (long_window) ++this->raw_diag_dclk_t1_verified_long_;
       else ++this->raw_diag_dclk_t1_verified_clean_;
@@ -826,6 +846,25 @@ void SX127x::wmbus_log_statistics_() {
              this->raw_diag_dclk_t1_bad_symbol_clean_, this->raw_diag_dclk_t1_bad_symbol_long_,
              this->raw_diag_dclk_t1_other_clean_, this->raw_diag_dclk_t1_other_long_,
              this->raw_diag_dclk_t1_long_windows_sum_);
+#ifdef SX127X_RMT_DIAG
+    if (this->wmbus_rmt_dclk_diag_) {
+      ESP_LOGI(TAG, "SX127x RMT DCLK starts=%u completed=%u timeout=%u short=%u errors=%u chunks=%u periods=%u >12us=%u >15us=%u >20us=%u",
+               static_cast<unsigned>(this->rmt_dclk_started_.load()),
+               static_cast<unsigned>(this->rmt_dclk_completed_.load()),
+               static_cast<unsigned>(this->rmt_dclk_timed_out_.load()),
+               static_cast<unsigned>(this->rmt_dclk_short_.load()),
+               static_cast<unsigned>(this->rmt_dclk_errors_.load()),
+               static_cast<unsigned>(this->rmt_dclk_chunks_.load()),
+               static_cast<unsigned>(this->rmt_dclk_periods_.load()),
+               static_cast<unsigned>(this->rmt_dclk_over12_.load()),
+               static_cast<unsigned>(this->rmt_dclk_over15_.load()),
+               static_cast<unsigned>(this->rmt_dclk_over20_.load()));
+      ESP_LOGI(TAG, "SX127x RMT T1 verified sampled=%u anomalous=%u periods=%u bad_symbol sampled=%u anomalous=%u periods=%u (sampled frames only)",
+               this->rmt_dclk_t1_verified_probed_, this->rmt_dclk_t1_verified_anomaly_,
+               this->rmt_dclk_t1_verified_periods_, this->rmt_dclk_t1_bad_symbol_probed_,
+               this->rmt_dclk_t1_bad_symbol_anomaly_, this->rmt_dclk_t1_bad_symbol_periods_);
+    }
+#endif
     ESP_LOGI(TAG, "SX127x RAW DCLK clock windows_256=%u long_windows=%u min_cycles=%u max_cycles=%u (NOT proof of missed IRQs)",
              static_cast<unsigned>(this->raw_clock_windows_.load()),
              static_cast<unsigned>(this->raw_clock_long_windows_.load()),
