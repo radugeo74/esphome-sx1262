@@ -109,7 +109,9 @@ void SX127x::setup() {
         : this->wmbus_c1a_only_
         ? this->wmbus_c1_mode_ && this->sync_value_.size() == 2 &&
               this->sync_value_[0] == 0x54 && this->sync_value_[1] == 0xCD
-        : this->wmbus_c1_mode_
+        : this->wmbus_raw_dclk_
+            ? this->sync_value_.size() == 1 && this->sync_value_[0] == 0x54
+            : this->wmbus_c1_mode_
             ? this->sync_value_.size() == 1 && this->sync_value_[0] == 0x54
             : this->sync_value_.size() == 2 && this->sync_value_[0] == 0x54 &&
                   this->sync_value_[1] == 0x3D;
@@ -137,11 +139,11 @@ void SX127x::setup() {
   if (this->wmbus_dual_sync_)
     this->sync_value_.push_back(0x3D);
   if (this->wmbus_raw_dclk_ &&
-      (!this->wmbus_c1_mode_ || this->dio1_pin_ == nullptr ||
+      (this->dio1_pin_ == nullptr ||
        this->dio2_pin_ == nullptr || this->wmbus_continuous_dual_ ||
        this->wmbus_dual_sync_ || this->wmbus_c1a_only_ ||
        this->sync_value_.size() != 1 || this->sync_value_[0] != 0x54)) {
-    ESP_LOGE(TAG, "SX127x RAW DATA/DCLK requires T1_C1, DIO1 DIO2 and sync 54");
+    ESP_LOGE(TAG, "SX127x RAW DATA/DCLK requires T1 or T1_C1, DIO1 DIO2 and sync 54");
     this->mark_failed();
     return;
   }
@@ -607,6 +609,17 @@ void SX127x::loop() {
         static_cast<uint32_t>(millis() - this->wmbus_last_log_ms_) >= 60000U) {
       this->wmbus_last_log_ms_ = millis();
       this->wmbus_log_statistics_();
+    if (this->wmbus_phy_diagnostics_) {
+      const auto &s = this->wmbus_stats_;
+      const unsigned t1_ok = static_cast<unsigned>(s.t1_verified.load());
+      const unsigned t1_bad = static_cast<unsigned>(s.bad_symbols.load());
+      const unsigned total = t1_ok + t1_bad;
+      ESP_LOGI(TAG, "SX127x T1 A/B mode=%s t1_verified=%u t1_bad_symbol=%u success_permille=%u queue_drops=%u fifo_overruns=%u (since boot, T1-only comparison)",
+               this->wmbus_raw_dclk_ ? "RAW_DCLK" : "FIFO_SPI",
+               t1_ok, t1_bad, total ? (t1_ok * 1000U) / total : 0U,
+               static_cast<unsigned>(s.queue_drops.load()),
+               static_cast<unsigned>(s.fifo_overruns.load()));
+    }
     }
     return;
   }
@@ -1227,10 +1240,12 @@ void SX127x::wmbus_raw_task_() {
         }
       }
       if (received == 3) {
-        lengths = wmbus_raw_candidates(marker, true, body.data(), received, body.size());
+        lengths = wmbus_raw_candidates(marker, this->wmbus_c1_mode_, body.data(), received, body.size());
         // Distinguish T from C1/B even though they share 543D marker.
         if (marker == 0x3D && !c1_secondary_marker) lengths.c1 = 0;
         if (marker == 0x3D && c1_secondary_marker) lengths.t1 = 0;
+        // T1-only A/B comparison: never enqueue C1 candidates from RAW.
+        if (!this->wmbus_c1_mode_) lengths.c1 = 0;
         target = std::max(lengths.t1, lengths.c1);
         if (!target) {
           ++this->raw_prefix_rejects_;
@@ -1717,6 +1732,9 @@ void SX127x::dump_config() {
   LOG_PIN("  CS Pin: ", this->cs_);
   LOG_PIN("  RST Pin: ", this->rst_pin_);
   LOG_PIN("  DIO0 Pin: ", this->dio0_pin_);
+  if (this->wmbus_t1_mode_) {
+    ESP_LOGCONFIG(TAG, "  T1 comparison RX path: %s", this->wmbus_raw_dclk_ ? "RAW_DCLK" : "FIFO_SPI");
+  }
   if (this->wmbus_raw_dclk_) {
     LOG_PIN("  RAW DCLK DIO1: ", this->dio1_pin_);
     LOG_PIN("  RAW DATA DIO2: ", this->dio2_pin_);
