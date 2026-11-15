@@ -848,7 +848,7 @@ void SX127x::wmbus_log_statistics_() {
              this->raw_diag_dclk_t1_long_windows_sum_);
 #ifdef SX127X_RMT_DIAG
     if (this->wmbus_rmt_dclk_diag_) {
-      ESP_LOGI(TAG, "SX127x RMT DCLK starts=%u completed=%u timeout=%u short=%u errors=%u chunks=%u periods=%u >12us=%u >15us=%u >20us=%u",
+      ESP_LOGI(TAG, "SX127x RMT DCLK cumulative starts=%u completed=%u timeout=%u short=%u errors=%u; last_probe chunks=%u periods=%u >12us=%u >15us=%u >20us=%u",
                static_cast<unsigned>(this->rmt_dclk_started_.load()),
                static_cast<unsigned>(this->rmt_dclk_completed_.load()),
                static_cast<unsigned>(this->rmt_dclk_timed_out_.load()),
