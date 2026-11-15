@@ -41,6 +41,25 @@ static size_t t1_first_bad_symbol_index(const uint8_t *raw, size_t bytes) {
   }
   return SIZE_MAX;
 }
+// Independent, diagnostic-only 3-of-6 hypothesis check for the first 128
+// captured bits. It cannot prove a correct frame without full DLL CRC.
+static uint8_t t1_diag_valid_prefix(const uint8_t *raw, size_t bytes,
+                                     unsigned bit_shift, bool invert) {
+  const size_t available_bits = std::min<size_t>(bytes * 8U, 128U);
+  uint8_t valid = 0;
+  for (size_t start = bit_shift; start + 6U <= available_bits; start += 6U) {
+    uint8_t symbol = 0;
+    for (unsigned i = 0; i < 6U; ++i) {
+      const size_t pos = start + i;
+      const uint8_t bit = static_cast<uint8_t>(
+          ((raw[pos / 8U] >> (7U - pos % 8U)) & 1U) ^ static_cast<unsigned>(invert));
+      symbol = static_cast<uint8_t>((symbol << 1U) | bit);
+    }
+    if (t1_symbol_to_nibble(symbol) < 0) break;
+    ++valid;
+  }
+  return valid;
+}
 static const int32_t RSSI_OFFSET_HF = 157;
 static const int32_t RSSI_OFFSET_LF = 164;
 
@@ -690,6 +709,32 @@ void SX127x::note_wmbus_decode_result(WmbusDecodeResult event) {
       if (exact) ++this->raw_diag_t1_exact_bad_symbol_;
       else ++this->raw_diag_t1_near_bad_symbol_;
       const size_t bad_index = t1_first_bad_symbol_index(sample->bytes.data(), sample->size);
+      if (this->wmbus_raw_diag_capture_ &&
+          this->raw_diag_samples_logged_ < RAW_DIAG_MAX_SAMPLES) {
+        ++this->raw_diag_samples_logged_;
+        // Print only 16 RAW bytes (~128 bits), never the whole telegram.
+        // These bytes are encoded radio data and may include meter identifiers.
+        const size_t capture_bytes = std::min<size_t>(sample->size, 16U);
+        char hex[16U * 2U + 1U]{};
+        static const char digits[] = "0123456789ABCDEF";
+        for (size_t i = 0; i < capture_bytes; ++i) {
+          hex[2U * i] = digits[sample->bytes[i] >> 4];
+          hex[2U * i + 1U] = digits[sample->bytes[i] & 0x0F];
+        }
+        uint8_t normal[6]{}, inverted[6]{};
+        for (unsigned shift = 0; shift < 6U; ++shift) {
+          normal[shift] = t1_diag_valid_prefix(sample->bytes.data(), capture_bytes, shift, false);
+          inverted[shift] = t1_diag_valid_prefix(sample->bytes.data(), capture_bytes, shift, true);
+        }
+        ESP_LOGI(TAG, "SX127x T1 RAW sample %u/%u first_bad=%u preamble=%s rssi=%d raw16=%s",
+                 static_cast<unsigned>(this->raw_diag_samples_logged_),
+                 static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES),
+                 bad_index == SIZE_MAX ? 0U : static_cast<unsigned>(bad_index + 1U),
+                 exact ? "exact" : "near2", static_cast<int>(sample->rssi_half_dbm), hex);
+        ESP_LOGI(TAG, "SX127x T1 RAW hypothesis valid_prefix_symbols shifts0..5 normal=%u,%u,%u,%u,%u,%u inverted=%u,%u,%u,%u,%u,%u (not CRC)",
+                 normal[0], normal[1], normal[2], normal[3], normal[4], normal[5],
+                 inverted[0], inverted[1], inverted[2], inverted[3], inverted[4], inverted[5]);
+      }
       if (bad_index == SIZE_MAX) {
         ++this->raw_diag_bad_symbol_no_invalid_;
       } else {
@@ -779,6 +824,13 @@ void SX127x::wmbus_log_statistics_() {
              static_cast<unsigned>(this->raw_c1b_second_marker_.load()),
              static_cast<unsigned>(this->raw_t1_fallback_.load()),
              static_cast<unsigned>(this->raw_stray_54cd_.load()));
+    if (this->wmbus_raw_diag_capture_) {
+      ESP_LOGI(TAG, "SX127x RAW shadow nested_543D all=%u credible_preamble_le2=%u samples=%u/%u (diagnostic only)",
+               static_cast<unsigned>(this->raw_diag_nested_sync_all_.load()),
+               static_cast<unsigned>(this->raw_diag_nested_sync_credible_.load()),
+               static_cast<unsigned>(this->raw_diag_samples_logged_),
+               static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES));
+    }
     ESP_LOGI(TAG, "SX127x RAW T1 gate weak_preamble_drop=%u (more than 2 bit errors in 16 preamble bits, C1 unchanged)",
              static_cast<unsigned>(this->raw_t1_weak_preamble_drop_.load()));
     ESP_LOGI(TAG, "SX127x T1 diagnostic exact verified=%u bad_symbol=%u other=%u near2 verified=%u bad_symbol=%u other=%u",
@@ -984,6 +1036,19 @@ void SX127x::wmbus_raw_task_() {
       ++candidate_long_window_count;
     for (int i = 7; i >= 0; --i) {
       const uint8_t bit = static_cast<uint8_t>((octet >> i) & 1U);
+      // Shadow detector observes possible syncs while a candidate occupies
+      // the parser. It never changes parser state, acceptance or CRC rules.
+      if (this->wmbus_raw_diag_capture_ && collecting) {
+        history = (history << 1) | bit;
+        if (static_cast<uint16_t>(history) == 0x543DU) {
+          ++this->raw_diag_nested_sync_all_;
+          const uint16_t prev = static_cast<uint16_t>(history >> 16);
+          const unsigned distance = std::min(
+              static_cast<unsigned>(__builtin_popcount(static_cast<unsigned>(prev ^ 0x5555U))),
+              static_cast<unsigned>(__builtin_popcount(static_cast<unsigned>(prev ^ 0xAAAAU))));
+          if (distance <= 2U) ++this->raw_diag_nested_sync_credible_;
+        }
+      }
       if (!collecting) {
         history = (history << 1) | bit;
         const uint16_t sync = static_cast<uint16_t>(history);
@@ -1436,6 +1501,9 @@ void SX127x::dump_config() {
     LOG_PIN("  RAW DCLK DIO1: ", this->dio1_pin_);
     LOG_PIN("  RAW DATA DIO2: ", this->dio2_pin_);
     ESP_LOGCONFIG(TAG, "  RAW DATA/DCLK 100 kb/s experimental: TRUE; FIFO disabled");
+    ESP_LOGCONFIG(TAG, "  RAW T1 diagnostic capture: %s (max %u samples, first 16 encoded bytes)",
+                  TRUEFALSE(this->wmbus_raw_diag_capture_),
+                  static_cast<unsigned>(RAW_DIAG_MAX_SAMPLES));
   }
   const char *pa_pin = "RFO";
   if (this->pa_pin_ == PA_PIN_BOOST) {
