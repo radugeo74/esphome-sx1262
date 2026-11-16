@@ -157,3 +157,16 @@ done
 ```
 
 **Următorul pas Etapa A:** verificarea integrată prin build, apoi extinderea DV către HCA, temperaturi/date și expresii calendaristice, pentru paritatea `fhkvdataiii` pe fixture-urile originale.
+
+## Increment 6 — valori HCA, temperatură și componente de dată (16.11.2026)
+
+- `xmq_dv_subset.h`: suport generic, suplimentar față de Volume/VolumeFlow, pentru VIF `6E` (HeatCostAllocation), `64..67` (ExternalTemperature), `5C..5F` (ReturnTemperature) și `FD3A` (counter/dimensionless). Sunt interpretate numai înregistrările DV numerice cu tip de date suportat; restul nu devin automat câmpuri valide.
+- `xmq_expression.h`: distinge și păstrează dimensiunile `HCA` și `TemperatureC`, pe lângă `Counter` și `VolumeM3`; operațiile între dimensiuni incompatibile sunt refuzate.
+- `xmq_numeric_runtime.h`: câmpurile XMQ `HCA`, `Temperature` și `Dimensionless` pot fi extrase prin regulile `match` originale, cu tipul de unitate verificat. Formulele numerice `previous_day/month/year` și `current_day/month/year` sunt evaluate din XMQ, nu reconstruite în C++ specific driverului.
+- `test_xmq_hca_numeric.cpp`: verificare de regresie pregătită pentru payload-ul upstream `fhkvdataiii`, varianta `0F`: current=4 HCA, previous=45 HCA, temp_room=22.37 °C, temp_radiator=23.60 °C, plus componentele de dată 2021-02-05 și 2020-12-31.
+- Lista de teste a workflow-ului `xmq-stage-a-host.yml` a fost extinsă **fără a modifica trigger-ul de unică folosință** și fără a lansa un al doilea run.
+
+**De verificat înainte de flash / integrare:** compilare și execuție efectivă a testelor C++ (încă neconfirmate), corectitudinea pentru celelalte versiuni proprietare `01`/`11`, calculul datelor ISO complete din formulele calendaristice XMQ, comportamentul cu câmpuri lipsă și câmpuri duplicate, și paritate integrală cu fixture-urile upstream. Nu este permisă publicarea rezultatelor unui decodor experimental în Home Assistant până la paritate confirmată. Acest cod nu este încă conectat la ESPHome.
+
+**Regulă de menținere:** pentru driverele upstream se copiază numai fișierele `.xmq` nemodificate; se dezvoltă o singură implementare generică pentru limbaj, fără implementări pe nume de contor.
+
