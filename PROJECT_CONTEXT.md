@@ -1,3 +1,30 @@
+# PROJECT_CONTEXT — starea activă (16 noiembrie 2026)
+
+**Branch comun curent:** `experimental/dual-radio-sx126x-sx127x-sync54`. Creat din `experimental/sx127x-sync54-marker-hist` (b33a51c5), descendent din `experimental/dual-radio-sx126x-sx127x`. Fișierele `components/sx126x` nu au diferit între cele două branch-uri-sursă. Nu a fost necesar merge-ul.
+
+## Arhitectură și rezultate curente
+
+- **Heltec / SX126x:** receptor FIFO T1/A și C1/A verificat prin loguri hardware la 16.11.2026. Codul provine din baza `dual-radio-sx126x-sx127x`.
+- **LILYGO T3-S3 / SX1276:** receptor FIFO T1/A și C1/A verificat prin loguri hardware; codul și diagnosticul histogramă marker provin din `sx127x-sync54-marker-hist`. Varianta `sync54` folosește prefix hardware `0x54` și clasificare marker; nu o confunda cu ferestrele hibride T1/C1/A sau cu RAW/DCLK.
+- **Comun:** `wmbus_radio` primește exact unul dintre `sx126x_id` și `sx127x_id`, validează cadrele, apoi folosește `wmbus_common` și `wmbus_meter`. `native_stream_mode: T1_C1` activează calea combinată. C1/B valid nu a fost demonstrat în ultimele loguri.
+- **XMQ:** decodoarele de aplicație C++ existente (inclusiv `fhkvdataiii`, `mkradio4`, `mkradio4a`) continuă să asigure interpretarea; **motorul XMQ dinamic și hot-reload-ul fișierelor `.xmq` fără recompilare nu sunt implementate**. Nu le declara finalizate.
+- **Validare:** branch-ul nou a fost verificat identic cu sursa SX1276 înainte de actualizarea documentației; nu a fost compilat sau instalat separat. Nu confunda recepția validată în logurile firmware-urilor anterioare cu testarea noului ref.
+
+## Instrucțiuni pentru continuare
+
+1. Referința unică ESPHome: `github://radugeo74/esphome-sx1262@experimental/dual-radio-sx126x-sx127x-sync54`.
+2. Heltec importă `[sx126x, wmbus_common, wmbus_radio, wmbus_meter]`; LILYGO importă `[sx127x, wmbus_common, wmbus_radio, wmbus_meter]`. Fiecare dispozitiv păstrează pinii, radio ID-ul, contoarele și cheile proprii. Nu introduce senzori noi în YAML LILYGO.
+3. Păstrează cele două drivere radio independente și stabile. Nu continua optimizări marginale SX1276 fără o problemă concretă demonstrată.
+4. Prioritizează stabilitatea SX126x și proiectarea/implementarea *reală* a motorului XMQ comun, separat de partea radio.
+5. Compară RF folosind telegrame CRC valide în intervale simultane, pe aceleași ID-uri când este posibil; nu compara direct contoare cumulative de la booturi diferite.
+6. Nu porni workflow-uri GitHub repetate doar pentru documentație. Testele CI și YAML-urile sintetice nu sunt configurații pentru flash.
+
+## Istoric
+
+Următoarele secțiuni reprezintă experimente și observații la datele lor. Formulările istorice („în curs”, „nevalidat”) nu suprascriu starea activă de mai sus.
+
+---
+
 # Context curent — dual radio SX126x + SX127x
 
 ## Test nou RXBW 200 kHz pe LILYGO C1/A-only, LNA HF boost OFF (13 noiembrie 2026)
