@@ -22,7 +22,7 @@ static const Node &root(const std::vector<Node> &nodes,
                         const char *kind) {
   for (const auto &node : nodes)
     if (node.key == kind && node.block) return node;
-  throw std::runtime_error("missing block: " + kind);
+  throw std::runtime_error(std::string("missing block: ") + kind);
 }
 
 static void check_driver(const std::string &path, const std::string &name,
