@@ -56,6 +56,20 @@ inline bool supported_vif(uint8_t vif, std::string &range, std::string &unit,
     scale=std::pow(10.0,static_cast<int>(raw-0x38)-6);
     return true;
   }
+  if (raw == 0x6E) {
+    range="HeatCostAllocation"; unit="hca"; scale=1;
+    return true;
+  }
+  if (raw >= 0x64 && raw <= 0x67) {
+    range="ExternalTemperature"; unit="c";
+    scale=std::pow(10.0,static_cast<int>(raw-0x64)-3);
+    return true;
+  }
+  if (raw >= 0x5C && raw <= 0x5F) {
+    range="ReturnTemperature"; unit="c";
+    scale=std::pow(10.0,static_cast<int>(raw-0x5C)-3);
+    return true;
+  }
   return false;
 }
 
@@ -93,10 +107,16 @@ inline std::vector<DecodedRecord> decode_dv_subset(
     // Extended VIF keys are preserved but not yet evaluated.
     std::string range, unit;
     double scale=1;
-    const bool simple_vif=!(vif&0x80) && supported_vif(vif,range,unit,scale);
+    bool simple_vif=!(vif&0x80) && supported_vif(vif,range,unit,scale);
     if ((vif&0x7f)==0x7b || (vif&0x7f)==0x7d) {
       if (p>=payload.size()) throw DvError("missing VIF extension");
-      key+=hex_byte(payload[p++]);
+      const uint8_t extension=payload[p++];
+      key+=hex_byte(extension);
+      if ((vif&0x7f)==0x7d && extension==0x3A) {
+        range="Dimensionless"; unit="counter"; scale=1;
+        simple_vif=true;
+      }
+      if (extension&0x80) throw DvError("VIF extension chain not supported");
     } else {
       unsigned n=0;
       while (vif&0x80) {
