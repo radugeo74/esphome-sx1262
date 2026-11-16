@@ -12,7 +12,7 @@
 
 namespace xmq_runtime {
 
-enum class Dimension { Counter, VolumeM3 };
+enum class Dimension { Counter, VolumeM3, HCA, TemperatureC };
 struct Number {
   double value = 0;
   Dimension dimension = Dimension::Counter;
@@ -69,17 +69,16 @@ class NumericExpression {
       return {op == '+' ? a.value + b.value : a.value - b.value, a.dimension};
     }
     if (op == '*') {
-      if (a.dimension == Dimension::VolumeM3 &&
-          b.dimension == Dimension::VolumeM3)
-        throw ExpressionError("volume squared not supported");
-      return {a.value * b.value, a.dimension == Dimension::VolumeM3 ||
-                                    b.dimension == Dimension::VolumeM3 ?
-                                    Dimension::VolumeM3 : Dimension::Counter};
+      if (a.dimension != Dimension::Counter &&
+          b.dimension != Dimension::Counter)
+        throw ExpressionError("multiplication of two physical units unsupported");
+      return {a.value * b.value,
+              a.dimension != Dimension::Counter ? a.dimension : b.dimension};
     }
     if (op == '/') {
       if (b.value == 0) throw ExpressionError("division by zero");
-      if (b.dimension == Dimension::VolumeM3 && a.dimension != Dimension::VolumeM3)
-        throw ExpressionError("inverse volume not supported");
+      if (b.dimension != Dimension::Counter && a.dimension != b.dimension)
+        throw ExpressionError("inverse physical unit not supported");
       return {a.value / b.value, a.dimension == b.dimension ?
                                    Dimension::Counter : a.dimension};
     }
