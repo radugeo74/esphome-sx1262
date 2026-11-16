@@ -105,3 +105,29 @@ g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Iexperimental/xmq-runtime-stage-
 
 ---
 
+
+
+## Increment 4 — extragere DV și proiectare numerică din XMQ
+
+Fișiere noi:
+- `xmq_dv_subset.h` — parser cu limite pentru un subset de înregistrări DV clare, **după** verificarea PHY/CRC și **după** decriptare. Acceptă tipuri DIF întregi/BCD standard și VIF Volume/VolumeFlow; nu interpretează încă datele calendaristice, IXML, VIFE extinse ori structuri proprietare.
+- `test_xmq_dv_subset.cpp` — exemple de payload clare din fixture-urile originale `iperl` și `mkradio4a`, plus cazuri trunchiate/invalide.
+- `xmq_projection.h` — punte generică: aplică regulile `match` extrase din fișierul XMQ asupra înregistrărilor DV deja decodate. Produce numai câmpuri numerice Volume/Flow compatibile; detectează potriviri ambigue. Nu conține decodoare per model.
+- `test_xmq_projection.cpp` — verifică prin fișierele XMQ originale `iperl` și `mkradio4a` câmpurile numerice `total_m3`, `max_flow_m3h`, `target_m3`; respinge dublurile. Nu pretinde interpretarea câmpurilor `target_date` / `status`.
+
+**Important:** până la completarea calendarului, IXML și formulelor, **nu există paritate integrală** cu niciunul dintre aceste drivere. `mkradio4` și `fhkvdataiii` încă necesită IXML ca să creeze înregistrările DV proprietare înainte de calcule. Nu s-a făcut modificare ori flash pe Heltec/LILYGO.
+
+**Validare GitHub:** primul workflow declanșat în această etapă s-a oprit la avertismentul GCC `-Werror=dangling-reference` din `test_xmq_reader.cpp`, raportat de utilizator. S-au corectat ulterior semnătura helperului și concatenarea textului în excepție, dar corecțiile **nu au fost încă revalidate printr-o nouă execuție**. Workflow-ul cu declanșare explicită prin fișierul `run-once-20261116.txt` a fost extins să includă `projection` la o execuție viitoare; **nu a fost pornit al doilea run**.
+
+Pentru validare locală (fără GitHub Actions), din rădăcina repository-ului:
+
+```sh
+dir=experimental/xmq-runtime-stage-a
+for suite in reader semantic expression dv_subset projection; do
+  g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic -I"$dir" \
+    "$dir/test_xmq_\${suite}.cpp" -o "/tmp/test_xmq_\${suite}" || exit 1
+  "/tmp/test_xmq_\${suite}" || exit 1
+done
+```
+
+**Pasul următor:** compatibilitate cu semantica exactă a parserului upstream pentru înregistrările DV standard, date/status/BCD/semne, apoi IXML (`mkradio4`, `fhkvdataiii`) și verificarea parității complete față de rezultatele fixture-urilor originale.
