@@ -154,6 +154,11 @@ inline bool detects(const Driver &driver, const Mvt &meter) {
 // qualifiers beyond the explicitly supported keys.
 inline bool matches(const FieldRule &field, const DvRecord &record) {
   if (!field.has_match || !field.supported_match) return false;
+  // wmbusmeters FieldMatcher: exact DIF/VIF key ignores all other checks,
+  // including implicit storage/tariff/subunit = 0.
+  for (const auto &condition : field.conditions)
+    if (condition.first == "difvifkey")
+      return upper(condition.second) == upper(compact(record.difvifkey));
   bool has_storage = false, has_tariff = false, has_subunit = false;
   for (const auto &condition : field.conditions) {
     const auto &k = condition.first, &v = condition.second;
