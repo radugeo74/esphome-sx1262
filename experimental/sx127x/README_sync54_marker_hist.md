@@ -1,3 +1,5 @@
+> **Actualizare 16.11.2026 — branch comun:** această implementare SX1276 este inclusă, fără modificări radio, în `experimental/dual-radio-sx126x-sx127x-sync54`, alături de componenta `sx126x` de pe Heltec. Pentru configurațiile noi folosiți `github://radugeo74/esphome-sx1262@experimental/dual-radio-sx126x-sx127x-sync54`. Logurile LILYGO din 16 noiembrie confirmă recepție FIFO cu CRC valid T1/A și C1/A; histograma marker rămâne diagnostic, nu dovadă de livrare a fiecărui cadru. Mențiunea „not compiled/hardware-validated yet” de mai jos este istoricul momentului când a fost scris experimentul. Noul ref comun nu a fost compilat separat. Motorul XMQ dinamic nu este încă implementat.
+
 # SX1276 FIFO common 0x54 synchronization — marker histogram diagnosis
 
 Branch: `experimental/sx127x-sync54-marker-hist`.
