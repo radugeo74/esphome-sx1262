@@ -56,11 +56,23 @@ inline std::map<std::string, Number> evaluate_numeric_fields(
         if (found->unit!="m3") throw RuntimeError("XMQ Volume unit mismatch");
         dimension=Dimension::VolumeM3;
         suffix="_m3";
-      } else if (field.quantity!="Dimensionless") {
-        // Unsupported field types are not fabricated.
+      } else if (field.quantity=="HCA") {
+        if (found->unit!="hca") throw RuntimeError("XMQ HCA unit mismatch");
+        dimension=Dimension::HCA;
+        suffix="_hca";
+      } else if (field.quantity=="Temperature") {
+        if (found->unit!="c") throw RuntimeError("XMQ Temperature unit mismatch");
+        dimension=Dimension::TemperatureC;
+        suffix="_c";
+      } else if (field.quantity=="Dimensionless") {
+        if (found->unit!="counter")
+          throw RuntimeError("XMQ counter unit mismatch");
+      } else {
+        // Date, status, text and other unsupported fields not fabricated.
         continue;
       }
-      values[field.name+suffix]={found->value,dimension};
+      if (!values.emplace(field.name+suffix, Number{found->value,dimension}).second)
+        throw RuntimeError("duplicate XMQ raw field: "+field.name);
     }
   }
   // One generic pass follows XMQ field order. If upstream rules use
