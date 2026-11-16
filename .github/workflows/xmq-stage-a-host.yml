@@ -1,0 +1,42 @@
+name: XMQ Stage A isolated host tests
+on:
+  push:
+    branches:
+      - experimental/xmq-runtime-stage-a
+    paths:
+      - experimental/xmq-runtime-stage-a/run-once-20261116.txt
+permissions:
+  contents: read
+concurrency:
+  group: xmq-stage-a-single-validation
+  cancel-in-progress: false
+jobs:
+  xmq-stage-a-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile and run isolated XMQ tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=experimental/xmq-runtime-stage-a
+          for suite in reader semantic expression dv_subset; do
+            g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
+              -fsanitize=address,undefined -fno-omit-frame-pointer \
+              -I"$dir" "$dir/test_xmq_${suite}.cpp" \
+              -o "$RUNNER_TEMP/xmq-${suite}"
+            "$RUNNER_TEMP/xmq-${suite}"
+          done
+      - name: Ensure radio implementation stays unchanged from baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin experimental/dual-radio-sx126x-sx127x-sync54
+          changes=$(git diff --name-only FETCH_HEAD HEAD -- components/sx126x components/sx127x components/wmbus_radio components/wmbus_common components/wmbus_meter)
+          if [[ -n "$changes" ]]; then
+            echo "Unexpected changes in live components:"
+            printf '%s\n' "$changes"
+            exit 1
+          fi
+          echo "PASS: live radio and meter components unchanged"
