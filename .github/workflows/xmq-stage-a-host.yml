@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           dir=experimental/xmq-runtime-stage-a
-          for suite in reader semantic expression dv_subset projection; do
+          for suite in reader semantic expression dv_subset projection ixml_subset; do
             g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
               -fsanitize=address,undefined -fno-omit-frame-pointer \
               -I"$dir" "$dir/test_xmq_${suite}.cpp" \
