@@ -45,6 +45,8 @@ int main() {
           "mkradio4a rejects storage 0");
 
     const Driver mk4 = load_driver(source("mkradio4"));
+    check(matches(field(mk4,"prev_raw"), {"4215","Instantaneous","Volume",1,0,0}),
+          "exact DIF/VIF bypasses implicit storage zero");
     check(detects(mk4, {"TCH",0x95,0x62}), "mkradio4 detect");
     check(!mk4.fields.empty(), "mkradio4 fields");
 
