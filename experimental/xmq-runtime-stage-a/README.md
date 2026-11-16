@@ -125,8 +125,8 @@ Pentru validare locală (fără GitHub Actions), din rădăcina repository-ului:
 dir=experimental/xmq-runtime-stage-a
 for suite in reader semantic expression dv_subset projection; do
   g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic -I"$dir" \
-    "$dir/test_xmq_\${suite}.cpp" -o "/tmp/test_xmq_\${suite}" || exit 1
-  "/tmp/test_xmq_\${suite}" || exit 1
+    "$dir/test_xmq_${suite}.cpp" -o "/tmp/test_xmq_${suite}" || exit 1
+  "/tmp/test_xmq_${suite}" || exit 1
 done
 ```
 
