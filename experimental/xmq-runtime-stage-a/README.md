@@ -92,3 +92,16 @@ g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Iexperimental/xmq-runtime-stage-
 
 ---
 
+
+## Increment 3 — expresii numerice comune (16.11.2026)
+
+- `xmq_expression.h`: evaluator de expresii numerice cu variabile rezolvate dintr-un tabel de valori. Suportă `+`, `-`, `*`, `/`, `%`, `>>`, `<<`, comparații, `&&`, `||`, negație, paranteze și minus unar.
+- Unități tipizate în acest subset: `counter` (dimensiune numerică) și `m3` (volum); adunări între dimensiuni incompatibile sunt respinse, la fel operațiile invalide, variabilele necunoscute, diviziunea la zero, expresiile prea lungi și schimbările de biți nevalide.
+- `test_xmq_expression.cpp`: alege formulele direct din `mkradio4.xmq` nemodificat și testează lanțul numeric `prev_raw_counter` → `prev_m3` → `target_m3` și `total_m3`; verifică expresii autentice `fhkvdataiii.xmq` pentru anul/luna/ziua anterioară. Fără reguli C++ specifice driverului în motor.
+- Formula cu data de calendar din `fhkvdataiii` (`'2000-01-01' + ... month + ... h`) rămâne explicit **nesuportată**; similar expresiile cu alte unități și operații specifice upstream neintroduse încă. IXML nu este interpretat.
+- Test local suplimentar: `g++ -std=c++17 -Wall -Wextra -Werror -pedantic -Iexperimental/xmq-runtime-stage-a experimental/xmq-runtime-stage-a/test_xmq_expression.cpp -o /tmp/test_xmq_expression && /tmp/test_xmq_expression`.
+
+**Stare validare:** codul și testele sunt publicate, însă compilarea și rularea C++ nu au fost executate încă pe acest increment. Nu există paritate demonstrată pe telegrame. În pasul următor trebuie verificat local `-Werror`, apoi completate unitățile/calendarul, extractorul DV și IXML pe fixture-uri originale.
+
+---
+
