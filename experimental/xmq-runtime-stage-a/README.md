@@ -131,3 +131,29 @@ done
 ```
 
 **Pasul următor:** compatibilitate cu semantica exactă a parserului upstream pentru înregistrările DV standard, date/status/BCD/semne, apoi IXML (`mkradio4`, `fhkvdataiii`) și verificarea parității complete față de rezultatele fixture-urilor originale.
+
+
+## Increment 5 — interpret IXML din fișier, plus lanț numeric comun
+
+- `xmq_ixml_subset.h` citește expresiile `ixml` **direct din fișierele upstream**, interpretând un subset generic: `decode` și alternative, reguli numite, literali hex, `byte`, `word`, `byte*`, capturi `@DV_...` și declarații `>dvk`. Nu conține ramuri condiționate de numele driverului.
+- `test_xmq_ixml_subset.cpp` verifică extragerea DV sintetică pentru payload-uri originale `mkradio4` și `fhkvdataiii` (format `0F`) și respingerea prefixelor necunoscute. Capturile sunt doar octeți și DIF/VIF; deocamdată **nu înseamnă valori publicate în HA**.
+- `xmq_numeric_runtime.h` leagă generic IXML → înregistrări DV standard → `match` → expresii `calculate`. Subsetul de valori acceptate include `Volume` și `Dimensionless`, inclusiv valoarea de volum cu VIF `0x15`.
+- `test_xmq_numeric_runtime.cpp` citește **`mkradio4.xmq` nemodificat** și telegrama clară din fixture-ul upstream, apoi verifică numeric `target_m3 = 0.1` și `total_m3 = 0.4`. Nicio formulă per-driver nu este hardcodificată în interpret.
+- **Corecție de compatibilitate upstream:** potrivirea exactă prin `difvifkey` prevalează față de stocarea implicită zero, ca în `FieldMatcher` din wmbusmeters. Test de regresie introdus pentru `mkradio4` / `4215` (storage=1).
+
+**Limite deliberate:** IXML complet are construcții încă neimplementate; fiecare construcție necunoscută produce eroare. Pentru `fhkvdataiii` sunt capturate înregistrările sintetice, dar extragerea valorilor HCA, temperaturilor și datelor complete urmează. Nu există încă selectare automată conectată la pipeline, AES, flash runtime sau hot-reload. Niciun decodor C++ existent nu a fost eliminat.
+
+**Testare:** suitele C++ noi sunt incluse în lista **pentru următoarea verificare explicită** a workflow-ului `xmq-stage-a-host.yml`; fișierul de declanșare unică NU a fost modificat și nu a fost lansată a doua execuție GitHub Actions. Nu declarăm PASS fără compilare și rulare.
+
+Pentru rulare locală fără Actions:
+
+```sh
+dir=experimental/xmq-runtime-stage-a
+for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime; do
+  g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic -I"$dir" \
+    "$dir/test_xmq_${suite}.cpp" -o "/tmp/test_xmq_${suite}" || exit 1
+  "/tmp/test_xmq_${suite}" || exit 1
+done
+```
+
+**Următorul pas Etapa A:** verificarea integrată prin build, apoi extinderea DV către HCA, temperaturi/date și expresii calendaristice, pentru paritatea `fhkvdataiii` pe fixture-urile originale.
