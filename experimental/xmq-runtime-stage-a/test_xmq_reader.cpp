@@ -19,7 +19,7 @@ static std::string read_file(const std::string &path) {
 }
 
 static const Node &root(const std::vector<Node> &nodes,
-                        const std::string &kind) {
+                        const char *kind) {
   for (const auto &node : nodes)
     if (node.key == kind && node.block) return node;
   throw std::runtime_error("missing block: " + kind);
