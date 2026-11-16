@@ -47,7 +47,7 @@ int main() {
     require(rejects("0413181E"),"truncated value rejected");
     require(rejects("0413GG"),"invalid hex rejected");
     require(rejects("0413FF"),"partial 32-bit rejected");
-    require(rejects("8F"),"manufacturer tail test input should reject");
+    require(rejects("8201"),"truncated DIFE rejected");
     std::cout<<"DV_SUBSET_OK iperl 7.704/123.529m3 mkradio4a 16.1/75.2m3\n";
     return 0;
   } catch (const std::exception &e) {
