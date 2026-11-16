@@ -170,3 +170,24 @@ done
 
 **Regulă de menținere:** pentru driverele upstream se copiază numai fișierele `.xmq` nemodificate; se dezvoltă o singură implementare generică pentru limbaj, fără implementări pe nume de contor.
 
+
+## Increment 7 — calendar XMQ original, fără reguli per-contor (16.11.2026)
+
+- `xmq_calendar.h`: evaluator calendaristic independent de ESPHome, folosind aritmetică gregoriană exactă și expresii de forma dată ISO + luni întregi + ore întregi. Citește variabile din rezultatele numerice ale motorului comun; nu presupune luni de 30 zile și nu folosește fusul orar al sistemului.
+- `xmq_calendar_runtime.h`: evaluează câmpurile `PointInTime` cu `calculate` din `.xmq` și publică rezultatele interne `current_date` / `previous_date` ca șiruri ISO (nu entități ESPHome).
+- `test_xmq_calendar.cpp`: cazuri de test pregătite folosind **regulile și payload-urile originale** `fhkvdataiii` pentru marcajele IXML `01`, `11`, `0F` și datele de referință 2026-06-04/2025-12-31, 2020-02-08/2019-12-31, 2021-02-05/2020-12-31. Include an bisect, schimbare de an, unități nesuportate și variabile lipsă.
+- Am adăugat testul `calendar` în suita host **pentru o verificare viitoare**, fără modificarea fișierului de declanșare `run-once-20261116.txt` și fără alt workflow.
+
+**Limitări importante:** subsetul nu implementează toate operațiile calendaristice acceptate de wmbusmeters; refuză expresiile necunoscute. Nu există încă paritate confirmată prin execuția testului `calendar`; upstream nu a fost comparat complet pentru câmpuri lipsă, OMS 0x08, status sau AES. Motorul nu este încă activ în dispozitivele Heltec/LILYGO.
+
+Rulare locală, din rădăcina repo-ului:
+
+```sh
+dir=experimental/xmq-runtime-stage-a
+g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic -I"$dir" \
+  "$dir/test_xmq_calendar.cpp" -o /tmp/test_xmq_calendar
+/tmp/test_xmq_calendar
+```
+
+**Continuare:** este necesară o verificare de compilare și execuție a întregii suite C++ (fără a lansa repetat Actions). Apoi completarea semnificației valorilor DV/OMS și a câmpurilor lipsă, fără a crea cod special pentru `fhkvdataiii`.
+
