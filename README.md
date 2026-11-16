@@ -1,3 +1,49 @@
+# ESPHome wM-Bus — stare curentă (16 noiembrie 2026)
+
+**Branch comun:** `experimental/dual-radio-sx126x-sx127x-sync54`  
+**Origine verificată:** creat direct din `experimental/sx127x-sync54-marker-hist` (commit `b33a51c5`). Acest branch descinde din `experimental/dual-radio-sx126x-sx127x`; între acesta și sursa SX1276 nu există modificări în `components/sx126x`. Nu a fost necesar un merge și nu s-au schimbat algoritmii radio la crearea branch-ului comun.
+
+## Ce funcționează și ce rămâne experimental
+
+| Placă | Driver | Stare confirmată din logurile reale |
+|---|---|---|
+| Heltec Stick Lite / ESP32-S3 / SX126x | `components/sx126x` | Recepție FIFO pentru T1/A și C1/A, cadre CRC valide, integrare cu `wmbus_radio` și contoarele configurate |
+| LILYGO T3-S3 / ESP32-S3 / SX1276 | `components/sx127x` | Recepție FIFO T1/A și C1/A; diagnostice `sync54`/marker, inclusiv histograma de marker |
+| Ambele | `wmbus_radio`, `wmbus_common`, `wmbus_meter` | Validare lungime/CRC, identificare contor și procesare cu decodoarele existente |
+
+**Limitare:** recepția C1/B nu este confirmată printr-o telegramă validă în ultimele loguri. Procentul de cadre recepționate depinde de antenă, poziționare și profil radio. Funcționalitatea combinată nu echivalează cu perfecțiune RF.
+
+**Important despre XMQ:** `wmbus_common` și driverele `fhkvdataiii`, `mkradio4`, `mkradio4a` sunt încă legate de decodarea existentă (wmbusmeters C++). **Motorul interpretativ XMQ dinamic, actualizarea regulilor `.xmq` la runtime și hot-reload fără recompilare NU sunt implementate.** Numele istorice de branch sau comentariile despre „drivere XMQ” nu reprezintă validarea unui motor XMQ funcțional.
+
+## Configurare ESPHome din același branch
+
+```yaml
+# Pe Heltec — păstrează configurația sx126x: existentă
+external_components:
+  - source: github://radugeo74/esphome-sx1262@experimental/dual-radio-sx126x-sx127x-sync54
+    components: [sx126x, wmbus_common, wmbus_radio, wmbus_meter]
+
+# În wmbus_radio: se utilizează sx126x_id: <id-ul-radio-Heltec>.
+# Pe LILYGO: înlocuiește numai sx126x cu sx127x în lista
+# components și păstrează configurația sx127x: deja testată.
+# În wmbus_radio: se utilizează sx127x_id: <id-ul-radio-LILYGO>.
+```
+
+`wmbus_radio` cere **exact unul** dintre `sx126x_id` și `sx127x_id`. Cele două blocuri radio sunt alternative în fiecare YAML, nu active simultan pe aceeași placă. Pentru recepția combinată configurată: `native_stream_mode: T1_C1`. Nu copia fragmentele de mai sus peste configurațiile complete fără păstrarea pinilor, SPI, cheilor și contoarelor.
+
+## Referință pentru testele actuale
+
+- **SX1276 testat:** `experimental/sx127x-sync54-marker-hist`, cu sincronizare comună `0x54`, `wmbus_continuous_dual: true`, `wmbus_dual_sync: false`, `wmbus_fifo_dual_probe: true`, `bandwidth: 125_0kHz`, conform fișierului `experimental/sx127x/README_sync54_marker_hist.md`.
+- **SX126x testat:** `experimental/dual-radio-sx126x-sx127x`, cu calea FIFO și `native_stream_mode: T1_C1` pe Heltec.
+- În logurile simultane din **16.11.2026**, ambele au demonstrat CRC-valid T1/A și C1/A. Acestea sunt verificări **ale firmware-urilor instalate anterior**; branch-ul comun nou nu a fost încă compilat ori instalat ca ref separat.
+- Direcția de lucru: păstrăm cele două drivere existente, fără reluarea experimentelor marginale SX1276. Prioritatea este stabilitatea SX126x și implementarea reală a motorului XMQ comun, independent de radio. Nu porniți workflow-uri repetate fără schimbări relevante.
+
+## Documentație istorică
+
+Secțiunile de mai jos descriu **experimente și decizii la data lor**, nu configurația curentă recomandată. Referințele la branch-uri vechi și afirmațiile „nevalidat RF” din acele etape trebuie citite în contextul cronologic al fiecărui experiment.
+
+---
+
 ## SX1276 RAW DATA/DCLK v5 — T1 preamble gate (14 noiembrie 2026)
 
 Branch: `experimental/sx127x-raw-dclk-v5-t1-gate`, derivat strict din v4. Modificare **doar pentru LILYGO SX1276 în RAW DATA/DCLK**. Nu au fost schimbate SX126x Heltec, drivere XMQ, setările radio, ISR sau CRC.
