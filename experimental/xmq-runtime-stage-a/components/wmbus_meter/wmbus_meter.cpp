@@ -112,7 +112,7 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     auto matched_dv = [&](const char *name, Quantity quantity) {
       auto *field = this->meter->findFieldInfo(name, quantity);
       if (field == nullptr) return false;
-      for (const auto &entry : telegram->dv_entries)
+      for (auto &entry : telegram->dv_entries)
         if (entry.second.second.hasFieldInfo(field)) return true;
       return false;
     };
