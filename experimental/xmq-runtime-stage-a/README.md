@@ -380,3 +380,7 @@ Dimensiuni din `idf.py size` pentru smoke-ul minimal cu gardă: `xmq_stage_a_smo
 - `components/wmbus_meter`, `components/wmbus_common`, `components/wmbus_radio`, `components/sx126x` și `components/sx127x` sunt protejate de comparația cu branch-ul de bază și nu se modifică în acest calup.
 
 Următoarea problemă tehnică după verificarea CI: găsirea unei metode opt-in de a conecta captura după `handleTelegram` fără excepții C++ în firmware-ul ESPHome și fără a schimba observațiile din Home Assistant; nu activăm callback-ul live până la demonstrarea acestei compatibilități.
+
+### Increment 20 — prima validare
+
+[Workflow #16](https://github.com/radugeo74/esphome-sx1262/actions/runs/44117356831) a raportat FAILURE numai în testul `real_telegram_contract`: avertisment GCC `-Wunused-parameter` din constructorul privat existent în `components/wmbus_common/wmbus.h` a fost promovat la eroare de `-Werror`. Toate celelalte 19 suite host au trecut; joburile ESP-IDF și Heltec au fost sărite din cauza dependenței. Avertismentul a fost izolat prin `#pragma GCC diagnostic` doar în testul experimental, fără modificarea codului upstream. O singură revalidare separată va verifica corecția.
