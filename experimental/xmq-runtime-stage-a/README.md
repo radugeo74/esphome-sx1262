@@ -670,3 +670,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - `tools/test_legacy_setter_staging.py` verifică pozițiile reale ale celor două setter-e, contextul procesării proprietare, păstrarea exactă a sursei originale, transformarea deterministă și blocarea schimbărilor neașteptate. Testul rulează în CI-ul existent.
 - **Limitare:** aceasta este o etapă de **staging/test al codului-sursă**, nu captură firmware live. Copia instrumentată nu este încă compilată ori legată în imaginea ESPHome. Înainte de a o activa pe Heltec trebuie să validăm compatibilitatea build-ului izolat, limitele de resurse și metoda read-only de export al contoarelor jurnalului.
 - `components/wmbus_common`, radio, decodorul activ, senzorii și YAML-ul rămân nemodificate; în firmware indicatorul `provenance=not_proven` rămâne corect.
+
+## Increment AK — compilarea sintactică a copiei instrumentate (17.11.2026)
+
+- Workflow-ul existent pregătește `meters.cc` într-un director temporar, cu cele două puncte de instrumentare a setterelor și un jurnal nou pentru fiecare telegramă, apoi rulează compilatorul C++17 cu `-fsyntax-only` și antetele reale ale `wmbus_common`.
+- Testul verifică **întregul translation unit**, inclusiv metodele proprietare; nu înlocuiește biblioteca activă și nu face link în firmware.
+- Separat, verificările preexistente continuă să compileze imaginile ESPHome Heltec și firmware-ul ESP-IDF standard, fără instrumentare live.
+- Următoarea poartă de validare: un build experimental izolat și o metodă fail-open de colectare, urmate de export agregat și observație pe telegrame reale.
