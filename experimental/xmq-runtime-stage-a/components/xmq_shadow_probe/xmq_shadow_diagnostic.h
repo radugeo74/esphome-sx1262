@@ -18,7 +18,8 @@ enum class ShadowDisposition {
   Match,
   Difference,
   UnsupportedOrError,
-  BudgetExhausted
+  BudgetExhausted,
+  IncompleteReference
 };
 
 struct ShadowCounters {
@@ -52,7 +53,8 @@ class ShadowDiagnostic {
                             const ShadowReference &old_outputs,
                             size_t free_heap=0,
                             bool valid_heap_sample=false,
-                            const std::string &explicit_driver="") noexcept {
+                            const std::string &explicit_driver="",
+                            const std::vector<std::string> &expected_numeric={}) noexcept {
     if (!enabled_) {
       ++counters_.skipped;
       return ShadowDisposition::Disabled;
@@ -74,7 +76,18 @@ class ShadowDiagnostic {
         throw std::invalid_argument("invalid shadow tolerance");
       const auto new_outputs=project_verified_application(
           registry,inner_mvt,encoding,clear_application,explicit_driver);
-      const auto comparison=compare_shadow_reference(
+      // In strict mode, an incomplete legacy snapshot must not pass as MATCH.
+    // The complete expected field list is a caller-supplied contract for
+    // each telegram variant; never infer "parity" from only one known value.
+    if (!expected_numeric.empty()) {
+      for (const auto &field : expected_numeric) {
+        if (old_outputs.numeric.count(field)==0) {
+          ++counters_.skipped;
+          return ShadowDisposition::IncompleteReference;
+        }
+      }
+    }
+    const auto comparison=compare_shadow_reference(
           new_outputs,old_outputs,tolerance_);
       counters_.last_compared=comparison.compared;
       counters_.last_mismatches=comparison.mismatches.size();
