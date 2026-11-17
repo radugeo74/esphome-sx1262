@@ -17,7 +17,16 @@ inline std::map<std::string,std::string> evaluate_calendar_fields(
     if (field.quantity!="PointInTime" || field.calculate.empty()) continue;
     if (!field.has_match && field.match_entire_payload)
       throw CalendarError("unsupported date payload projection");
-    const std::string date=CalendarExpression(numeric).evaluate(field.calculate);
+    std::string date;
+    try {
+      date=CalendarExpression(numeric).evaluate(field.calculate);
+    } catch (const CalendarError &error) {
+      // Not every telegram provides the proprietary date raw records:
+      // missing dependencies mean the date must remain absent, not stale.
+      if (std::string(error.what()).rfind("unresolved variable:",0)==0)
+        continue;
+      throw;
+    }
     if (!dates.emplace(field.name+"_date",date).second)
       throw CalendarError("duplicate calculated date field");
   }
