@@ -14,9 +14,9 @@ static std::string source(const std::string &name) {
   return {std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
 }
 static const xmq_runtime::FieldRule &field(const xmq_runtime::Driver &d,
-                                           const std::string &name) {
+                                           const char *name) {
   for (const auto &f : d.fields) if (f.name == name && f.has_match) return f;
-  throw std::runtime_error("missing matched field " + name);
+  throw std::runtime_error(std::string("missing matched field ") + name);
 }
 int main() {
   using namespace xmq_runtime;
