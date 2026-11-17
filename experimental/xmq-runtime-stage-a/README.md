@@ -524,3 +524,19 @@ Următorul prag pentru primul canary: copierea locală a ID-urilor, cheilor și 
 [Workflow #25](https://github.com/radugeo74/esphome-sx1262/actions/runs/44141792385) a trecut toate cele 21 de suite XMQ pe host, dar jobul s-a oprit în verificarea `check_canary_12.py`: expresia `overlay.count("id: heat_baie")` număra și ocurențele `parent_id: heat_baie`. Testul a fost corectat astfel încât să verifice **doar declarațiile `^  - id: ...$`**; lista contorului și câmpurile nu s-au modificat. Celelalte joburi au fost sărite de mecanismul `needs`, fără erori de compilare demonstrate.
 
 După corecție, am verificat separat structura YAML: 12 declarații `wmbus_meter` (7 HCA, 5 apă), 50 declarații de senzori, 12 ID-uri și 12 chei prin `!secret`, toate `mode: [T1]`. Rezultatul complet al `esphome compile` urmează să fie confirmat în revalidarea unică a acestui calup.
+
+
+### Increment 24 — rezultat confirmat: workflow #26 SUCCESS
+
+[Workflow #26 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44142407052), commit `3753f5e666e97607d404fc23688d96707eb19312`. **Toate cele patru joburi au trecut**, inclusiv host/12-meter safety gate, ESP-IDF minimal, Heltec legacy și compilarea Heltec + XMQ cu Wi-Fi/API/OTA plus 7 repartitoare și 5 apometre. În jobul canary s-au generat ID-uri și chei AES **fictive, exclusiv în runner**; nu există chei reale în repository.
+
+Rezultate `idf.py size` ale firmware-urilor comparabile cu același ESPHome 2026.10.1:
+
+| Configurație | Imagine estimată | DIRAM static utilizat | DIRAM static rămas |
+|---|---:|---:|---:|
+| Canary cu contor sintetic | 1195931 B | 106855 B | 234905 B |
+| Canary cu 12 contoare (7 HCA + 5 apă; 50 senzori) | **1206839 B** | **110983 B** | **230777 B** |
+
+Extinderea la 12 contoare a adăugat **10908 B** de imagine și **4128 B** DIRAM static în această configurație de test. Dimensiunea `heltec-xmq-canary.bin` extinsă este `0x126ab0` (1206960 B); în partiția app 0x3c0000 rămân circa 69% liberi. **Nu reprezintă heap liber în timpul funcționării și nu validează recepția radio ori decriptarea pe hardware.**
+
+Persistă avertismentul neblocant ESPHome privind costul OTA cu parolă. Testul conține exclusiv **T1**, nu T1+C1. Senzorii și ID-urile trebuie confruntate cu YAML-ul funcțional și cu entitățile Home Assistant înainte de prima instalare: schimbarea denumirilor sau a numelui nodului poate produce entități noi sau poate afecta automatizări. Noua configurație rămâne **build-only, nu flash-ready** până la integrarea secretelor și setărilor RF private, confirmarea backupului și verificarea rollback-ului.
