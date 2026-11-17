@@ -253,3 +253,14 @@ Testele vor fi validate împreună într-un singur workflow. Nu se modifică dec
 - `test_xmq_source_registry.cpp` folosește cele 4 fișiere originale upstream ca date memorate, selectează driverele după MVT, verifică decodarea standard și refuză sursele goale, duplicate sau peste limite.
 - Acesta este **doar un pas portabil, testat pe host**. NU citește efectiv LittleFS/SPIFFS de pe ESP32, nu face actualizare fără recompilare și nu este conectat la radio sau la senzorii Home Assistant.
 - Baza precedentă: [workflow #7 verde](https://github.com/radugeo74/esphome-sx1262/actions/runs/44098363372). Verificarea noului calup se efectuează separat, o singură dată.
+
+
+## Increment 14 — adaptor read-only pentru un VFS deja montat (17.11.2026)
+
+- `xmq_mounted_vfs.h`: adaptor separat, independent de ESPHome și de recepția radio, care citește `/cale/montata/<driver>.xmq` prin `fopen/fread` standard C, compatibile conceptual cu VFS-ul ESP-IDF **după montarea sistemului de fișiere de către aplicație**. Nu formatează, nu montează, nu scrie și nu actualizează partiții flash.
+- Se folosesc aceleași reguli XMQ originale și registrul `xmq_source_registry.h`. Numele driverelor sunt date explicit și validate; nu există traversare de directoare la citirea numelor. Mount point-ul trebuie să fie de încredere; acest adaptor nu izolează symlink-uri ostile dintr-un filesystem host.
+- Limite implicite pentru experiment: **maxim 8 drivere, 16 KiB per fișier, 32 KiB text total**. Sunt limite de intrare, **nu** un buget garantat de heap (parserul și structurile C++ consumă RAM suplimentară). Valoarea se validează mai târziu pe ESP32.
+- `test_xmq_mounted_vfs.cpp`: simulează VFS montat pe host, cu cele patru surse upstream copiate într-un director temporar, verifică autodetectarea, rezultate `mkradio4a`, căi invalide, fișiere absente/goale/depășite, date XMQ invalide și depășiri ale limitelor.
+- **Nu reprezintă încă build ESP-IDF/ESPHome sau test hardware.** Bibliotecile C++ folosesc excepții și trebuie evaluată compatibilitatea cu configurația firmware-ului. Nu există încă provisionare de imagini LittleFS/SPIFFS, montare VFS, securitate/integritate a driverelor actualizate, încărcare OTA ori publicare de senzori.
+
+Workflow-ul pentru increment compilează și testează acest adaptor pe host în cadrul unei singure execuții GitHub Actions. Nicio componentă radio nu este modificată.
