@@ -334,3 +334,12 @@ Față de smoke-ul precedent, includerea reală a motorului în linkare crește 
 - Build-ul minimal ESP32-S3 include acum instanțierea și folosirea efectivă a sesiunii `ShadowDiagnostic`, fără intercepția unui cadru radio.
 - **Nu este încă o opțiune YAML ESPHome și nu s-a implementat callback-ul live din `wmbus_meter`**. Următorul pas, după CI verde, este adaptarea la un punct de captură care poate extrage *în siguranță* plaintext-ul deja decriptat din structura `Telegram`, evitând orice a doua decriptare, orice decodare pe firmware-ul de producție și orice schimbare a fluxului de senzori.
 - Verificarea constă dintr-un singur workflow GitHub Actions pentru calup, cu teste host și un build ESP32-S3 izolat. Toate componentele `components/sx126x`, `components/sx127x`, `components/wmbus_radio`, `components/wmbus_common` și `components/wmbus_meter` rămân nemodificate.
+
+
+### Validare Increment 18 — SUCCESS
+
+[Workflow XMQ Stage A #14](https://github.com/radugeo74/esphome-sx1262/actions/runs/44108627499) — ambele joburi au trecut: suitele host, inclusiv `shadow_diagnostic`, și compilarea/linkarea ESP-IDF v5.5 pentru `esp32s3`. Baza radio a rămas nemodificată.
+
+Logul `idf.py size` pentru imaginea **minimală** cu diagnostic: `xmq_stage_a_smoke.bin` = `0x86000` = 548864 octeți; dimensiune estimată 548741 octeți; DIRAM static 60839 octeți (17,8% din totalul raportat), rămas 280921 octeți. Nici acestea nu sunt măsurători de heap live și nici dimensiunea firmware-ului Heltec complet.
+
+**Următoarea limitare de rezolvat:** capturarea sigură a datelor deja decriptate din pipeline-ul existent și eliminarea/izolarea excepțiilor C++ înainte de activarea în ESPHome. Nu instalați încă imaginea minimală.
