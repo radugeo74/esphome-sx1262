@@ -4,6 +4,7 @@
 #include "xmq_calendar_runtime.h"
 #include "xmq_frame_bridge.h"
 #include "xmq_shadow_diagnostic.h"
+#include "xmq_telegram_capture.h"
 
 #include <cstdio>
 #include <exception>
@@ -38,6 +39,30 @@ extern "C" void app_main(void) {
     std::printf("XMQ shadow result=%u observations=%u\n",
                 static_cast<unsigned>(observation),
                 static_cast<unsigned>(shadow.counters().observations));
+    // Compile and link the post-decryption snapshot guard with a shape
+    // matching wmbus_common::Telegram; no live radio or AES keys in smoke.
+    struct AddressShape {
+      unsigned mfct;
+      uint8_t version;
+      uint8_t type;
+    };
+    struct TelegramShape {
+      std::vector<uint8_t> frame;
+      int header_size;
+      int suffix_size;
+      int tpl_ci;
+      bool decryption_failed;
+      bool discard;
+      std::vector<AddressShape> addresses;
+    };
+    const TelegramShape existing{{0x7A,0x43,0x15,0xA1,0,0},
+                                 1,0,0x7A,false,false,{{0x5068,0x95,0x37}}};
+    xmq_runtime::VerifiedApplication snapshot;
+    const bool captured=xmq_runtime::capture_verified_payload(
+        existing,true,xmq_runtime::ApplicationEncoding::StandardDv,snapshot);
+    std::printf("XMQ verified capture=%u length=%u\n",
+                static_cast<unsigned>(captured),
+                static_cast<unsigned>(snapshot.payload.size()));
     xmq_runtime::MountedXmqFiles source("/xmq",4096);
     auto file = source.read("not-mounted");
     std::printf("Unexpected mounted source length=%u\n",
