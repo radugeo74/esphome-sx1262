@@ -3,6 +3,7 @@
 #include "xmq_mounted_vfs.h"
 #include "xmq_calendar_runtime.h"
 #include "xmq_frame_bridge.h"
+#include "xmq_shadow_diagnostic.h"
 
 #include <cstdio>
 #include <exception>
@@ -25,6 +26,18 @@ extern "C" void app_main(void) {
         {0x43,0x15,0xA1,0x00,0x00});
     std::printf("XMQ bridge smoke records=%u\\n",
                 static_cast<unsigned>(result.numeric.size()));
+    // Opt-in isolated shadow diagnostics are compiled and linked for the
+    // Xtensa target; they do not intercept live WMBus or publish sensors.
+    xmq_runtime::ShadowDiagnostic shadow(1);
+    shadow.set_enabled(true);
+    xmq_runtime::ShadowReference legacy;
+    const auto observation=shadow.inspect(
+        registry,{"TCH",0x95,0x37},
+        xmq_runtime::ApplicationEncoding::StandardDv,
+        {0x43,0x15,0xA1,0x00,0x00},legacy);
+    std::printf("XMQ shadow result=%u observations=%u\n",
+                static_cast<unsigned>(observation),
+                static_cast<unsigned>(shadow.counters().observations));
     xmq_runtime::MountedXmqFiles source("/xmq",4096);
     auto file = source.read("not-mounted");
     std::printf("Unexpected mounted source length=%u\n",
