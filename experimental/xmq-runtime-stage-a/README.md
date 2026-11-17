@@ -567,3 +567,16 @@ Persistă avertismentul neblocant ESPHome privind costul OTA cu parolă. Testul 
 - Fișierul \`heltec-xmq-canary-12-meters.yaml\` rămâne un fixture de compilare cu \`!secret\` și ID-uri fictive în CI; **nu este substitutul YAML-ului funcțional**. Nu ghicim datele private și nu le publicăm. Rezultatele de heap și RF sunt în continuare necunoscute, deci instalarea canary nu este încă efectuată.
 
 **Poartă următoare:** validarea unei copii private cu configurația reală existentă, compilarea ei completă cu XMQ dezactivat și confirmarea rollback-ului, apoi prima instalare pe dispozitivul de test.
+
+
+### Increment 25 — validare confirmată (17.11.2026)
+
+[Workflow XMQ Stage A #27 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44145118583), commit de validare `aa216a12e6d3804b708ef8347b017134f8372237`: **toate cele 4 joburi au trecut**.
+
+- Toate cele 21 de suite C++ existente: PASS, fără eșecuri.
+- `test_preflight_canary.py`: **PASS 17 scenarii** numai cu date sintetice; refuză diferențe în API/Wi-Fi/OTA, numele dispozitivului, RF/C1, ID-uri și chei, modurile contoarelor, senzorii HA și activarea prematură a probei.
+- `check_shadow_lab_meter.py` și `check_canary_12.py`: PASS; componentele active radio/metru neschimbate, 7 repartitoare + 5 apometre și 50 senzori, toate ID-urile/cheile prin `!secret`.
+- Build XMQ ESP-IDF ESP32-S3, firmware Heltec de bază și firmware Heltec+XMQ cu probe dezactivată: PASS.
+- Canary-ul de compilare cu 12 contoare + Wi-Fi/API/OTA, folosind exclusiv chei fictive CI: PASS. Dimensiuni estimate reconfirmate: **1.206.839 B imagine, 110.983 B DIRAM static folosit, 230.777 B DIRAM static rămas**. Acestea nu sunt măsurători de heap în funcționare.
+
+**Punct critic:** testele din CI verifică **instrumentul preflight cu date simulate**; nu au comparat încă cele două YAML-uri **reale** ale dispozitivului. Un `PREFLIGHT_OK` local este necesar, dar nu suficient: verificarea surselor componentelor, backup/rollback fizic și recepția RF cu XMQ dezactivat rămân pași separați. Nu instalați firmware-ul fixture cu ID-uri inventate. Pentru prima instalare trebuie folosit exclusiv canary-ul local obținut din YAML-ul funcțional al aceluiași Heltec.
