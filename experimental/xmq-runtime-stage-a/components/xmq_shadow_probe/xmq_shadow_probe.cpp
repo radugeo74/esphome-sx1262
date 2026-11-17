@@ -29,9 +29,16 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
     const auto heap = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT));
     if (heap < min_free_heap_) min_free_heap_ = heap;
     xmq_runtime::ShadowReference old;
+    unsigned changed_numeric = 0;
+    unsigned unchanged_numeric = 0;
+    unsigned changed_dates = 0;
+    unsigned unchanged_dates = 0;
     const std::string name = driver == nullptr ? "" : driver;
-    auto put = [&old](const char *key, const LegacyNumeric &value) {
-      if (value.present) old.numeric.emplace(key, static_cast<double>(value.value));
+    auto put = [&](const char *key, const LegacyNumeric &value) {
+      if (!value.present) return;
+      old.numeric.emplace(key, static_cast<double>(value.value));
+      if (value.changed) ++changed_numeric;
+      else ++unchanged_numeric;
     };
     if (name == "mkradio4") {
       put("target_m3", old_values.target_m3);
@@ -41,10 +48,16 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
       put("previous_hca", old_values.previous_hca);
       put("temp_room_c", old_values.temp_room_c);
       put("temp_radiator_c", old_values.temp_radiator_c);
-      if (!old_values.current_date.empty())
+      if (!old_values.current_date.empty()) {
         old.dates.emplace("current_date", old_values.current_date);
-      if (!old_values.previous_date.empty())
+        if (old_values.current_date_changed) ++changed_dates;
+        else ++unchanged_dates;
+      }
+      if (!old_values.previous_date.empty()) {
         old.dates.emplace("previous_date", old_values.previous_date);
+        if (old_values.previous_date_changed) ++changed_dates;
+        else ++unchanged_dates;
+      }
     } else {
       ++unsupported_;
       return;
@@ -83,13 +96,15 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
     ESP_LOGI(TAG,
              "Live XMQ shadow: driver=%s disposition=%u compared=%u mismatches=%u "
              "matched=%u different=%u unsupported=%u calendar_refs=%u observed=%u captured=%u "
-             "rejected=%u min_free_heap=%u",
+             "rejected=%u changed_numeric=%u unchanged_numeric=%u "
+             "changed_dates=%u unchanged_dates=%u provenance=not_proven min_free_heap=%u",
              name.c_str(), static_cast<unsigned>(disposition),
              static_cast<unsigned>(stats.last_compared),
              static_cast<unsigned>(stats.last_mismatches),
              stats.matched, stats.different, stats.errors + unsupported_,
              static_cast<unsigned>(old.dates.size()),
-             inspected_, captured_, rejected_, min_free_heap_);
+             inspected_, captured_, rejected_, changed_numeric, unchanged_numeric,
+             changed_dates, unchanged_dates, min_free_heap_);
   } catch (const std::exception &) {
     ++unsupported_;
     ESP_LOGW(TAG, "Live XMQ shadow unsupported/error; legacy decoder unaffected");
