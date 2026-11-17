@@ -312,3 +312,12 @@ Logul `idf.py size` pentru imaginea minimală care **referențiază și leagă a
 - Flash Code: 340002 octeți; Flash Data: 135060 octeți.
 
 Față de smoke-ul precedent, includerea reală a motorului în linkare crește semnificativ imaginea flash (de la ~239 KiB), dar numai cu 4832 octeți DIRAM static raportat. **Nu reprezintă RAM de vârf, heap folosit în procesare, stocarea driverelor ori firmware-ul complet ESPHome**. Compatibilitatea excepțiilor C++ cu configurația finală și limitele RAM la decode rămân probleme deschise. Firmware-ul de test nu este instalabil ca receptor funcțional.
+
+
+## Increment 17 — comparator de paritate offline, fără impact asupra firmware-ului
+
+- `xmq_shadow_compare.h`: comparator generic, read-only, pentru rezultatele numerice și datele decodate de `xmq_frame_bridge.h` în raport cu rezultate așteptate documentate. Raportează diferențe, valori/date lipsă și valori neașteptate, cu toleranță numerică explicită. Nu modifică registrul, cadrele radio sau starea vreunui contor.
+- `test_xmq_shadow_compare.cpp`: testează sursele XMQ originale `fhkvdataiii` (0x94 proprietar + OMS 0x08), `mkradio4`, `mkradio4a`, `iperl`. Valorile sunt copiate ca așteptări din fixture-urile `json` upstream, doar pentru subsetul suportat. Verifică și că abaterile simulate sunt detectate.
+- Aceste teste sunt **paritate față de valori de referință din fixture-urile upstream**, nu execută în paralel instanțe ale driverului vechi C++ și XMQ pe aceeași telegramă recepționată live. Diferențele de status/TPL, criptare, decodare completă și câmpurile neimplementate rămân în afara contractului.
+- Nu s-a modificat `components/wmbus_meter` sau `components/wmbus_radio` și nu s-a conectat comparatorul la calea live de recepție. Nu marcați aceste teste drept dovadă că XMQ poate înlocui încă decodorul vechi pe Heltec.
+- Un singur workflow pentru Incrementul 17, care include toate suitele host și compilarea izolată ESP32-S3, va valida acest calup.
