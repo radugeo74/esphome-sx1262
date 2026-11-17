@@ -388,3 +388,16 @@ Următoarea problemă tehnică după verificarea CI: găsirea unei metode opt-in
 ### Increment 20 — a doua validare
 
 [Workflow #17](https://github.com/radugeo74/esphome-sx1262/actions/runs/44117972169) a trecut toate cele 19 teste existente, iar testul `real_telegram_contract` a compilat, dar nu a putut fi legat: `wmbus.h` conține obiectul static `NoDifVifKey("")`, care invocă `extractDV()` din `dvparser.cc`. Am adăugat **numai în executabilele izolate de test**, host și ESP-IDF, o implementare minimală care acceptă exclusiv cheia goală și refuză orice intrare DIF/VIF reală. Nu intră în firmware-ul ESPHome și nu înlocuiește funcția adevărată. Următoarea revalidare va putea continua către cele două compilări build-only.
+
+
+### Increment 20 — validare completă a contractului real Telegram
+
+[Workflow #18 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44118661664), commit `fd9241b4eeb43c91b848c6024c540fb6699daaef`: toate cele trei joburi au trecut.
+
+- Host: 20 de suite trecute, inclusiv `real_telegram_contract`, cu declarațiile reale `::Telegram` și `::Address`, fără modificări la `wmbus_common`.
+- ESP-IDF minimal 5.5/ESP32-S3: compilare și linkare cu `::Telegram` real și captura XMQ, dar cu shim `esphome/core/log.h` și stub `extractDV` pentru `NoDifVifKey("")` **numai în proiectul izolat**. `xmq_stage_a_smoke.bin` = `0x86d20` (552224 B), `idf.py size` 552105 B; DIRAM static 61151 B (17,89%).
+- ESPHome 2026.10.1 Heltec/SX1262: `esphome config` și `esphome compile tests/sx126x-wmbus-bridge.yaml` **SUCCESS**. Imaginea de bază `sx126x-wmbus-bridge.bin` = `0x8ce10` (577040 B), `idf.py size` 569023 B, DIRAM static 57419 B (16,8%). Acesta este **firmware-ul existent de laborator, fără XMQ integrat**.
+
+Cele două dimensiuni aparțin unor firmware-uri **diferite**: nu se însumează și nu reprezintă consumul unei integrări finale. Nu a existat flash pe dispozitive, măsurare heap live, interceptare decriptare AES sau validare RF.
+
+**Pas rămas înainte de o versiune instalabilă:** integrarea opt-in a capturii și comparației în binarul ESPHome complet, într-o configurație izolată, plus rezolvarea excepțiilor C++ din motorul XMQ și verificarea comportamentului radio/heap. Până atunci nu instalați imaginea smoke pe Heltec.
