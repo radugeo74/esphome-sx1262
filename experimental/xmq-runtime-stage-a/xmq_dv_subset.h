@@ -16,6 +16,7 @@ struct DecodedRecord {
   DvRecord meta;
   double value = 0;
   std::string unit;
+  std::string iso_date; // populated only for an explicitly decoded OMS Date VIF
   size_t offset = 0;
 };
 
@@ -54,6 +55,10 @@ inline bool supported_vif(uint8_t vif, std::string &range, std::string &unit,
   if (raw >= 0x38 && raw <= 0x3F) {
     range="VolumeFlow"; unit="m3h";
     scale=std::pow(10.0,static_cast<int>(raw-0x38)-6);
+    return true;
+  }
+  if (raw == 0x6C) {
+    range="Date"; unit="date"; scale=1;
     return true;
   }
   if (raw == 0x6E) {
@@ -172,6 +177,21 @@ inline std::vector<DecodedRecord> decode_dv_subset(
                                 mt==1?"Maximum":mt==2?"Minimum":"AtError";
       rec.value=numeric*scale;
       rec.unit=unit;
+      if (unit=="date") {
+        if (coding!=2 || len!=2) throw DvError("OMS Date requires 16-bit data");
+        const uint8_t first=payload[p-2], second=payload[p-1];
+        const unsigned day=first&0x1F;
+        const unsigned month=second&0x0F;
+        const unsigned year=2000+((first>>5)&7)+((second>>4)&15)*8;
+        const bool leap=(year%4==0 && (year%100!=0 || year%400==0));
+        const unsigned days_per_month[13]={0,31,28,31,30,31,30,31,31,30,31,30,31};
+        if (month<1 || month>12 || day<1 ||
+            day>days_per_month[month]+(month==2 && leap?1u:0u))
+          throw DvError("invalid OMS Date value");
+        rec.iso_date=std::to_string(year)+"-"+
+                     (month<10?"0":"")+std::to_string(month)+"-"+
+                     (day<10?"0":"")+std::to_string(day);
+      }
       rec.offset=start;
       if (!std::isfinite(rec.value)) throw DvError("nonfinite scaled value");
       records.push_back(std::move(rec));
