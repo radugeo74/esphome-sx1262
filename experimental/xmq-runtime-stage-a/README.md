@@ -275,3 +275,15 @@ Workflow-ul pentru increment compilează și testează acest adaptor pe host în
 - După o validare verde a acestui calup, următorii pași necesari sunt montarea reală a unui sistem de fișiere cu integritate verificată, testarea pe dispozitiv, integrarea în `wmbus_common` și strategia fără excepții pentru compatibilitatea cu ESPHome.
 
 **Regulă CI:** un singur workflow declanșat pentru acest increment; în interiorul său două joburi ordonate (host, apoi ESP32-S3 build-only). Componentele radio funcționale nu sunt schimbate.
+
+
+### Rezultat validat al Incrementului 15 — GitHub Actions #11
+
+[Workflow #11 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44102921242), commit `faf32169260bc22babd1cba2bff225c3042b3916`. Ambele joburi au trecut: suita XMQ host și compilarea/linkarea proiectului minimal pe **ESP-IDF v5.5, target esp32s3**, urmată de `idf.py size`.
+
+Valorile obținute din logul **imaginii minimale**:
+- `xmq_stage_a_smoke.bin`: `0x3a5d0` octeți (239056 octeți), într-o partiție de aplicație de 1 MiB.
+- `idf.py size`: imaginea totală estimată 238933 octeți; DIRAM static 56007 octeți (16,39% din 341760), memorie DIRAM rămasă 285753 octeți, flash code 108246 octeți și flash data 60616 octeți.
+- Datele **nu sunt** măsurători de heap în funcționare, nu includ configurarea radio/ESPHome, fișierele XMQ stocate și nici consumul integral pentru decodare. În această imagine, apelul către un fișier nemontat este doar pentru a asigura compilarea simbolurilor.
+
+**Nu folosiți această imagine pentru flash pe Heltec/LILYGO**: este un smoke test fără partiție de drivere, fără montare filesystem și fără integrare radio.
