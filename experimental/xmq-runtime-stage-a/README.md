@@ -506,3 +506,14 @@ Pași rămași până la prima instalare canary: copierea locală a parametrilor
 - Avertisment neblocant ESPHome: OTA pe bază de **parolă** consumă mai mult flash/RAM decât configurația OTA cu `encryption`; păstrăm deocamdată parola pentru compatibilitate cu vechiul flux, urmând migrare controlată dacă se dorește.
 
 **Nu instalați șablonul direct!** Nu conține setul real de 12 contoare, cheile lor, selecția completă T1/C1, numele actual al dispozitivului și nici configurația de senzori dorită. Pentru primul canary trebuie transplantate local din YAML-ul funcțional, fără expunere publică. Testarea pe hardware și confirmarea rollback-ului încă lipsesc.
+
+
+## Increment 24 — șablon canary complet pentru 12 contoare, fără date private
+
+`heltec-xmq-canary-12-meters.yaml` extinde configurația conectată `heltec-xmq-canary.yaml` și înlocuiește contorul sintetic de laborator cu **12 intrări**: șapte repartitoare `fhkvdataiii` (baie, dormitor 1, sufragerie, bucătărie, dormitor 2, dormitor 3, WC serviciu) și cinci apometre `mkradio4` (apă rece baie/bucătărie și apă caldă baie/bucătărie/WC serviciu). Fiecare are **`meter_id: !secret ..._id` și `key: !secret ..._key`**, astfel încât ID-urile reale și cheile AES nu se publică. Împreună, intrările declară **50 de senzori** de probă: HCA curent/anterior, temperaturi de cameră/radiator, RSSI pentru fiecare repartitor și apă target/total/RSSI pentru fiecare apometru. Senzorii sunt furnizați numai de driverul existent, nu de XMQ.
+
+`tools/check_canary_12.py` verifică static numărul de contoare/senzori, corespondența `parent_id`, existența referințelor `!secret` pentru toate cele 12 ID-uri și chei, absența contorului fictiv din noua listă și faptul că XMQ rămâne dezactivat în pachetul de bază. Workflow-ul adaugă numai **ID-uri și chei sintetice** în `secrets.yaml` din runner, compilează YAML-ul extins, apoi șterge fișierul; configurația reală trebuie completată local.
+
+**Limite importante:** `native_stream_mode: T1` este moștenit deliberat din fixture-ul anterior, pentru comparație de build; **nu înseamnă T1+C1 validat**. În firmware-ul folosit acasă, unele apometre pot avea AES și mod C1; configurația radio/link mode trebuie transplantată conform YAML-ului actual de producție. De asemenea, cei 50 de senzori sunt doar o topologie exemplificativă: numele, unitățile și câmpurile finale trebuie potrivite cu entitățile actuale HA înainte de orice instalare. `heltec-xmq-canary-12-meters.yaml` **nu este un fișier pregătit pentru flash**, chiar dacă compilează.
+
+Următorul prag pentru primul canary: copierea locală a ID-urilor, cheilor și setărilor radio/senzorilor din firmware-ul funcțional, confirmarea numelui/API/OTA pentru accesul existent, salvarea firmware-ului și validarea rollback-ului, apoi flash pe dispozitivul canary cu `xmq_shadow_probe.enabled: false`. Activarea capturii și testele heap/RF se fac doar după confirmarea funcționării normale.
