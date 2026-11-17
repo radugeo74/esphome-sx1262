@@ -165,3 +165,10 @@ jobs:
           esphome config "$dir/heltec-xmq-canary-12-meters.yaml"
           esphome compile "$dir/heltec-xmq-canary-12-meters.yaml"
           echo "PASS: twelve-meter canary compiles with 7 HCA and 5 water meters, dummy CI-only credentials; XMQ disabled"
+      - name: Compile GitHub-sourced Heltec XMQ component without local staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          esphome config experimental/xmq-runtime-stage-a/heltec-xmq-github-install-smoke.yaml
+          esphome compile experimental/xmq-runtime-stage-a/heltec-xmq-github-install-smoke.yaml
+          echo "PASS: direct GitHub external_components, no local staged headers required"
