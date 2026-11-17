@@ -653,3 +653,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Un `matched_*_dv` confirmă că un extractor `FieldInfo` a fost asociat unei intrări DV din telegrama curentă. **Nu** dovedește că extracția a reușit sau că valoarea păstrată a fost suprascrisă. Formulele fără matcher și parsările proprietare pot produce `unmatched` chiar și când sunt corecte.
 - `provenance=not_proven` rămâne obligatoriu. Paritatea numerică existentă nu este modificată, iar rezultatele sunt doar diagnostice. Data calendaristică rămâne neverificată când `calendar_refs=0`.
 - Un singur workflow pentru întregul calup, cu compilare Heltec direct din GitHub; nu se modifică YAML-ul, senzorii HA, recepția sau driverele active.
+
+## Increment AI — jurnal de scrieri, numai host (17.11.2026)
+
+- `xmq_legacy_write_journal.h` este un jurnal C++17 izolat și cu limite explicite pentru scrierile numerice și text dintr-o singură telegramă; `begin_telegram()` șterge complet referințele anterioare.
+- Spre deosebire de comparația `before/after`, jurnalul ar putea recunoaște și o scriere cu **aceeași valoare** ca în telegrama precedentă.
+- Testul `test_xmq_legacy_write_journal.cpp` acoperă repetarea scrierii, separarea numeric/text, respingerea operațiilor în afara telegramei, prevenirea informațiilor învechite și limitele de memorie.
+- **IMPORTANT:** jurnalul este deocamdată numai infrastructură host/test. Nu este conectat la `MeterCommonImplementation::setNumericValue` sau `setStringValue`; în firmware-ul live NU există încă o dovadă de scriere per-telegramă. Nu se modifică `components/wmbus_common`, radio, senzorii ori YAML. Abordarea live va necesita un adaptor izolat sau un punct de extensie verificat, fără modificarea driverului de producție.
+- Indicatorii actuali `matched_numeric_dv=0` din logurile Heltec sunt compatibili cu driverele proprietare și nu indică automat o defecțiune a decodării.
