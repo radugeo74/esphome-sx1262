@@ -7,3 +7,7 @@
 /*-working.yaml
 /*.bin
 /*.ota.bin
+
+# Offline firmware release manifests and local recovery material.
+/*-release-manifest.json
+/*-recovery/
