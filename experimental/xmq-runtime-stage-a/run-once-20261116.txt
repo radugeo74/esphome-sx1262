@@ -21,3 +21,5 @@ Validation batch 2026-11-17 I: one workflow for mounted VFS FILE custom deleter 
 Validation batch 2026-11-17 J: exactly one workflow with Stage A host suite, then isolated ESP32-S3 ESP-IDF 5.5 build-only and size output.
 
 Validation batch 2026-11-17 K: one workflow for isolated verified-application XMQ frame bridge host test and ESP32-S3 cross-compilation.
+
+Validation batch 2026-11-17 L: one workflow for offline original-XMQ output shadow comparator, all existing host suites and isolated ESP32-S3 build.
