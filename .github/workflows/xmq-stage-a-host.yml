@@ -21,13 +21,27 @@ jobs:
         run: |
           set -euo pipefail
           dir=experimental/xmq-runtime-stage-a
+          failures=0
           for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime hca_numeric calendar oms_partial; do
-            g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
+            echo "::group::XMQ suite: $suite"
+            if g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
               -fsanitize=address,undefined -fno-omit-frame-pointer \
               -I"$dir" "$dir/test_xmq_${suite}.cpp" \
-              -o "$RUNNER_TEMP/xmq-${suite}"
-            "$RUNNER_TEMP/xmq-${suite}"
+              -o "$RUNNER_TEMP/xmq-${suite}"; then
+              if "$RUNNER_TEMP/xmq-${suite}"; then
+                echo "PASS $suite"
+              else
+                echo "::error title=XMQ test failure::$suite failed"
+                failures=$((failures+1))
+              fi
+            else
+              echo "::error title=XMQ compile failure::$suite failed compilation"
+              failures=$((failures+1))
+            fi
+            echo "::endgroup::"
           done
+          echo "XMQ suite failures: $failures"
+          exit "$((failures>0))"
       - name: Ensure radio implementation stays unchanged from baseline
         shell: bash
         run: |
