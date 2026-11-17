@@ -1,4 +1,5 @@
 #include "wmbus_meter.h"
+#include "esphome/components/xmq_shadow_probe/xmq_live_capture_hook.h"
 
 namespace esphome {
 namespace wmbus_meter {
@@ -61,8 +62,12 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
   bool id_match = false;
   auto telegram = std::make_unique<Telegram>();
 
-  this->meter->handleTelegram(about, frame->data(), false, &adresses, &id_match,
-                              telegram.get());
+  const bool decoded = this->meter->handleTelegram(
+      about, frame->data(), false, &adresses, &id_match, telegram.get());
+
+  // Lab-only observer, AFTER the existing AES/parser/field update path.
+  // No changes to old handled semantics, sensor output, or radio ownership.
+  xmq_shadow_probe::observe_legacy_telegram(*telegram, decoded);
 
   if (id_match) {
     this->last_telegram = std::move(telegram);
