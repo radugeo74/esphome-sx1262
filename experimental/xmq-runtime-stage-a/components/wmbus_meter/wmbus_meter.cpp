@@ -87,6 +87,20 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
       capture("previous_hca", legacy.previous_hca);
       capture("temp_room_c", legacy.temp_room_c);
       capture("temp_radiator_c", legacy.temp_radiator_c);
+      // fhkvdataiii publishes PointInTime fields named "current" and
+      // "previous". Read strings only; never modify timestamps or meter state.
+      auto date = [this](const char *name) -> std::string {
+        auto *field = this->meter->findFieldInfo(name, Quantity::PointInTime);
+        if (!field) return {};
+        const std::string text = this->meter->getStringValue(field);
+        // Accept only an exact yyyy-mm-dd date as a verified reference.
+        if (text.size() != 10 || text[4] != '-' || text[7] != '-') return {};
+        for (size_t i = 0; i < text.size(); ++i)
+          if (i != 4 && i != 7 && (text[i] < '0' || text[i] > '9')) return {};
+        return text;
+      };
+      legacy.current_date = date("current");
+      legacy.previous_date = date("previous");
     }
   }
   const std::string shadow_driver = this->get_driver();
