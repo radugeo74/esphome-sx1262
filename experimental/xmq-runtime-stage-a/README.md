@@ -369,3 +369,14 @@ Regula păstrată: **un singur workflow per calup**, fără modificări la compo
 Dimensiuni din `idf.py size` pentru smoke-ul minimal cu gardă: `xmq_stage_a_smoke.bin` = `0x866b0` = 550576 octeți; imagine totală raportată **550461 octeți**; DIRAM static **60839 octeți** (17,8% din 341760), rămas raportat **280921 octeți**. Aceste valori nu includ firmware-ul complet ESPHome și nici utilizarea de heap în timpul interpretării.
 
 **Nu este încă disponibil un firmware nou instalabil pe Heltec.** Acest increment asigură doar capturarea corectă dintr-o structură cu forma `Telegram` în build-ul izolat. Următorul pas trebuie să fie testul cu API-ul `Telegram` real din `wmbus_common` și introducerea unui callback `shadow` opt-in într-un build ESPHome izolat, fără a modifica traseul activ și fără a considera `id_match` echivalent cu succesul decodării.
+
+
+## Increment 20 — contract real Telegram + compilare Heltec completă, fără flash (17.11.2026)
+
+- `test_xmq_real_telegram_contract.cpp` include chiar `components/wmbus_common/wmbus.h` din proiect, instanțiază `::Telegram` și `::Address` și exercită `capture_verified_payload` după un apel reușit, cu adresă interioară TCH și convertor exterior SEN. Verifică și că rezultatul decodorului vechi, câmpul `decryption_failed` și limitele header/suffix rămân respectate.
+- Compilarea izolată ESP-IDF v5.5 pentru ESP32-S3 include acum același `::Telegram` real, nu doar un mock. `espidf-smoke/main/esphome/core/log.h` este **doar un shim de build** pentru declarația reală; nu se distribuie în ESPHome sau în componentele radio. Nu verifică simbolurile întregului decodor existent din firmware.
+- Workflow-ul unic adaugă `heltec-esphome-build`: instalează ESPHome 2026.10.1 și compilează exclusiv configurația deja existentă `tests/sx126x-wmbus-bridge.yaml` pentru Heltec/SX1262. Această configurație nu conține un hook live XMQ și nu a fost modificată. Este o verificare a regresiilor radio/ESPHome, nu dovadă că XMQ este integrat în binarul complet.
+- Păstrăm distincte trei verificări: motor host, captura cu declarația reală `Telegram` pe ESP32-S3, respectiv firmware-ul existent Heltec. **Niciunul nu are voie să fie considerat test hardware sau demonstrație de decodare AES live**.
+- `components/wmbus_meter`, `components/wmbus_common`, `components/wmbus_radio`, `components/sx126x` și `components/sx127x` sunt protejate de comparația cu branch-ul de bază și nu se modifică în acest calup.
+
+Următoarea problemă tehnică după verificarea CI: găsirea unei metode opt-in de a conecta captura după `handleTelegram` fără excepții C++ în firmware-ul ESPHome și fără a schimba observațiile din Home Assistant; nu activăm callback-ul live până la demonstrarea acestei compatibilități.
