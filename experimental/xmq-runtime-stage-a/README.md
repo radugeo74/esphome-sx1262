@@ -321,3 +321,5 @@ Față de smoke-ul precedent, includerea reală a motorului în linkare crește 
 - Aceste teste sunt **paritate față de valori de referință din fixture-urile upstream**, nu execută în paralel instanțe ale driverului vechi C++ și XMQ pe aceeași telegramă recepționată live. Diferențele de status/TPL, criptare, decodare completă și câmpurile neimplementate rămân în afara contractului.
 - Nu s-a modificat `components/wmbus_meter` sau `components/wmbus_radio` și nu s-a conectat comparatorul la calea live de recepție. Nu marcați aceste teste drept dovadă că XMQ poate înlocui încă decodorul vechi pe Heltec.
 - Un singur workflow pentru Incrementul 17, care include toate suitele host și compilarea izolată ESP32-S3, va valida acest calup.
+
+**Validare Increment 17:** [workflow #13 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44106958561). Au trecut atât toate testele host (inclusiv `shadow_compare`), cât și build-ul separat ESP-IDF ESP32-S3. Nicio schimbare în componentele active. Aceasta nu certifică comparația live cu decodorul C++ vechi și nu autorizează instalarea imaginii minimale pe Heltec.
