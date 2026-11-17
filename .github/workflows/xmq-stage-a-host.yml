@@ -43,6 +43,8 @@ jobs:
           done
           echo "XMQ suite failures: $failures"
           exit "$((failures>0))"
+      - name: Verify lab meter clone has only the guarded post-decode hook
+        run: python experimental/xmq-runtime-stage-a/tools/check_shadow_lab_meter.py
       - name: Ensure radio implementation stays unchanged from baseline
         shell: bash
         run: |
