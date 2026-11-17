@@ -1,0 +1,386 @@
+# BUILD-ONLY 12-meter canary overlay for Heltec SX1262.
+# All meter IDs and AES keys are read from local secrets.yaml. No real data
+# is committed. The placeholder CI build is NOT authorization to flash.
+# The old wmbus_meter still owns state and HA publishing.
+packages:
+  connectivity: !include heltec-xmq-canary.yaml
+
+# Replace the synthetic meter list entirely, preserving the radio.
+# Only T1 is enabled here, as in the previously passing build fixture.
+# Enable C1/T1_C1 only after confirming the correct RF revision and firmware.
+wmbus_meter:
+  - id: heat_baie
+    radio_id: wmbus_receiver
+    meter_id: !secret heat_baie_id
+    key: !secret heat_baie_key
+    type: fhkvdataiii
+    mode: [T1]
+  - id: heat_dormitor_1
+    radio_id: wmbus_receiver
+    meter_id: !secret heat_dormitor_1_id
+    key: !secret heat_dormitor_1_key
+    type: fhkvdataiii
+    mode: [T1]
+  - id: heat_sufragerie
+    radio_id: wmbus_receiver
+    meter_id: !secret heat_sufragerie_id
+    key: !secret heat_sufragerie_key
+    type: fhkvdataiii
+    mode: [T1]
+  - id: heat_bucatarie
+    radio_id: wmbus_receiver
+    meter_id: !secret heat_bucatarie_id
+    key: !secret heat_bucatarie_key
+    type: fhkvdataiii
+    mode: [T1]
+  - id: heat_dormitor_2
+    radio_id: wmbus_receiver
+    meter_id: !secret heat_dormitor_2_id
+    key: !secret heat_dormitor_2_key
+    type: fhkvdataiii
+    mode: [T1]
+  - id: heat_dormitor_3
+    radio_id: wmbus_receiver
+    meter_id: !secret heat_dormitor_3_id
+    key: !secret heat_dormitor_3_key
+    type: fhkvdataiii
+    mode: [T1]
+  - id: heat_wc_serviciu
+    radio_id: wmbus_receiver
+    meter_id: !secret heat_wc_serviciu_id
+    key: !secret heat_wc_serviciu_key
+    type: fhkvdataiii
+    mode: [T1]
+  - id: water_rece_baie
+    radio_id: wmbus_receiver
+    meter_id: !secret water_rece_baie_id
+    key: !secret water_rece_baie_key
+    type: mkradio4
+    mode: [T1]
+  - id: water_rece_bucatarie
+    radio_id: wmbus_receiver
+    meter_id: !secret water_rece_bucatarie_id
+    key: !secret water_rece_bucatarie_key
+    type: mkradio4
+    mode: [T1]
+  - id: water_calda_baie
+    radio_id: wmbus_receiver
+    meter_id: !secret water_calda_baie_id
+    key: !secret water_calda_baie_key
+    type: mkradio4
+    mode: [T1]
+  - id: water_calda_bucatarie
+    radio_id: wmbus_receiver
+    meter_id: !secret water_calda_bucatarie_id
+    key: !secret water_calda_bucatarie_key
+    type: mkradio4
+    mode: [T1]
+  - id: water_calda_wc_serviciu
+    radio_id: wmbus_receiver
+    meter_id: !secret water_calda_wc_serviciu_id
+    key: !secret water_calda_wc_serviciu_key
+    type: mkradio4
+    mode: [T1]
+
+# This list deliberately replaces the synthetic lab sensors as well.
+sensor:
+  - platform: wmbus_meter
+    parent_id: heat_baie
+    name: "Heat baie current_hca"
+    field: current_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_baie
+    name: "Heat baie previous_hca"
+    field: previous_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_baie
+    name: "Heat baie temp_room_c"
+    field: temp_room_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_baie
+    name: "Heat baie temp_radiator_c"
+    field: temp_radiator_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_baie
+    name: "Heat baie rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_1
+    name: "Heat dormitor 1 current_hca"
+    field: current_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_1
+    name: "Heat dormitor 1 previous_hca"
+    field: previous_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_1
+    name: "Heat dormitor 1 temp_room_c"
+    field: temp_room_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_1
+    name: "Heat dormitor 1 temp_radiator_c"
+    field: temp_radiator_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_1
+    name: "Heat dormitor 1 rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_sufragerie
+    name: "Heat sufragerie current_hca"
+    field: current_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_sufragerie
+    name: "Heat sufragerie previous_hca"
+    field: previous_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_sufragerie
+    name: "Heat sufragerie temp_room_c"
+    field: temp_room_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_sufragerie
+    name: "Heat sufragerie temp_radiator_c"
+    field: temp_radiator_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_sufragerie
+    name: "Heat sufragerie rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_bucatarie
+    name: "Heat bucatarie current_hca"
+    field: current_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_bucatarie
+    name: "Heat bucatarie previous_hca"
+    field: previous_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_bucatarie
+    name: "Heat bucatarie temp_room_c"
+    field: temp_room_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_bucatarie
+    name: "Heat bucatarie temp_radiator_c"
+    field: temp_radiator_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_bucatarie
+    name: "Heat bucatarie rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_2
+    name: "Heat dormitor 2 current_hca"
+    field: current_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_2
+    name: "Heat dormitor 2 previous_hca"
+    field: previous_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_2
+    name: "Heat dormitor 2 temp_room_c"
+    field: temp_room_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_2
+    name: "Heat dormitor 2 temp_radiator_c"
+    field: temp_radiator_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_2
+    name: "Heat dormitor 2 rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_3
+    name: "Heat dormitor 3 current_hca"
+    field: current_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_3
+    name: "Heat dormitor 3 previous_hca"
+    field: previous_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_3
+    name: "Heat dormitor 3 temp_room_c"
+    field: temp_room_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_3
+    name: "Heat dormitor 3 temp_radiator_c"
+    field: temp_radiator_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_dormitor_3
+    name: "Heat dormitor 3 rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_wc_serviciu
+    name: "Heat wc serviciu current_hca"
+    field: current_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_wc_serviciu
+    name: "Heat wc serviciu previous_hca"
+    field: previous_hca
+    unit_of_measurement: "hca"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: heat_wc_serviciu
+    name: "Heat wc serviciu temp_room_c"
+    field: temp_room_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_wc_serviciu
+    name: "Heat wc serviciu temp_radiator_c"
+    field: temp_radiator_c
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  - platform: wmbus_meter
+    parent_id: heat_wc_serviciu
+    name: "Heat wc serviciu rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: water_rece_baie
+    name: "Water rece baie target_m3"
+    field: target_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_rece_baie
+    name: "Water rece baie total_m3"
+    field: total_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_rece_baie
+    name: "Water rece baie rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: water_rece_bucatarie
+    name: "Water rece bucatarie target_m3"
+    field: target_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_rece_bucatarie
+    name: "Water rece bucatarie total_m3"
+    field: total_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_rece_bucatarie
+    name: "Water rece bucatarie rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: water_calda_baie
+    name: "Water calda baie target_m3"
+    field: target_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_calda_baie
+    name: "Water calda baie total_m3"
+    field: total_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_calda_baie
+    name: "Water calda baie rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: water_calda_bucatarie
+    name: "Water calda bucatarie target_m3"
+    field: target_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_calda_bucatarie
+    name: "Water calda bucatarie total_m3"
+    field: total_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_calda_bucatarie
+    name: "Water calda bucatarie rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+  - platform: wmbus_meter
+    parent_id: water_calda_wc_serviciu
+    name: "Water calda wc serviciu target_m3"
+    field: target_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_calda_wc_serviciu
+    name: "Water calda wc serviciu total_m3"
+    field: total_m3
+    unit_of_measurement: "m³"
+    accuracy_decimals: 1
+  - platform: wmbus_meter
+    parent_id: water_calda_wc_serviciu
+    name: "Water calda wc serviciu rssi_dbm"
+    field: rssi_dbm
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
