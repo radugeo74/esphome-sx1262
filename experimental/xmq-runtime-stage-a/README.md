@@ -401,3 +401,13 @@ Următoarea problemă tehnică după verificarea CI: găsirea unei metode opt-in
 Cele două dimensiuni aparțin unor firmware-uri **diferite**: nu se însumează și nu reprezintă consumul unei integrări finale. Nu a existat flash pe dispozitive, măsurare heap live, interceptare decriptare AES sau validare RF.
 
 **Pas rămas înainte de o versiune instalabilă:** integrarea opt-in a capturii și comparației în binarul ESPHome complet, într-o configurație izolată, plus rezolvarea excepțiilor C++ din motorul XMQ și verificarea comportamentului radio/heap. Până atunci nu instalați imaginea smoke pe Heltec.
+
+
+## Increment 21 — primul firmware ESPHome Heltec cu XMQ inclus, numai build (17.11.2026)
+
+- `components/xmq_shadow_probe/`: componentă ESPHome **experimentală, izolată**, ce include și leagă real `xmq_shadow_diagnostic.h` și motorul comun XMQ în **același firmware** în care există `wmbus_common`, `wmbus_meter`, `wmbus_radio` și SX1262. Nu se conectează la handlerul radio și nu modifică datele Home Assistant. Activarea opțională execută doar un **self-test cu date sintetice** la pornire, nu decodare live. Dezactivată implicit.
+- `heltec-xmq-shadow-build.yaml`: copie de laborator a fixture-ului Heltec, cu ID de contor sintetic și `xmq_shadow_probe.enabled: false`; nu are Wi-Fi/API/AES key și nu trebuie instalată ca firmware de producție.
+- Această etapă activează explicit **`CONFIG_COMPILER_CXX_EXCEPTIONS=y`** prin API-ul ESPHome pentru configurarea ESP-IDF, deoarece interpretul XMQ existent încă folosește excepții. Nu presupunem că acestea pot fi activate în firmware-ul stabil fără costuri sau incompatibilități.
+- Workflow-ul existent conține un job suplimentar `heltec-xmq-shadow-build` pentru `esphome config` + `esphome compile` cu ESPHome 2026.10.1, în același CI cu suita de 20 teste host, compilarea XMQ ESP-IDF izolată și fixture-ul Heltec vechi. Verifică static că proba este dezactivată și că implementarea ei nu apelează handleri radio.
+- **Limitări:** chiar un succes al acestei compilări validează doar coexistența în același binar ESPHome. Nu este un hook de captură după AES, nu există comparații live, nu se măsoară heap-ul de procesare și nu se autorizează flash pe Heltec.
+- Următorul pas după un build verde: proiectarea unui callback opt-in după decodarea cu succes a `Telegram` (folosind valoarea returnată de `handleTelegram`, nu doar `id_match`) într-un branch distinct, cu comparații reale și limite de CPU/heap.
