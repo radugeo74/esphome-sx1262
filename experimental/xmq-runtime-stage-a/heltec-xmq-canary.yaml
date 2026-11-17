@@ -3,8 +3,7 @@
 # backed-up working YAML before any installation. DO NOT flash this file as-is.
 # Real credentials live ONLY in local secrets.yaml, never in Git.
 packages:
-  radio_and_shadow:
-    !include heltec-xmq-shadow-build.yaml
+  radio_and_shadow: !include heltec-xmq-shadow-build.yaml
 
 esphome:
   name: heltec-xmq-canary
