@@ -25,7 +25,10 @@ start = clone.index("  const bool decoded = this->meter->handleTelegram(")
 end = clone.index("\n  if (id_match) {", start)
 observer = clone[start:end]
 assert observer.count("this->meter->handleTelegram(") == 1
-assert "if (decoded && xmq_shadow_probe::wants_legacy_readings())" in observer
+assert "const bool probe_requested = xmq_shadow_probe::wants_legacy_readings();" in observer
+assert "if (probe_requested) snapshot(before);" in observer
+assert "if (decoded && probe_requested)" in observer
+assert "after.changed = after.present" in observer
 assert "capture(\"target_m3\"" in observer
 assert "capture(\"current_hca\"" in observer
 assert "xmq_shadow_probe::observe_legacy_telegram(" in observer
@@ -41,6 +44,8 @@ assert "diagnostic_.inspect(" in probe
 assert "source_mkradio4()" in probe
 assert "source_fhkvdataiii()" in probe
 assert "old.numeric.empty()" in probe
+assert "provenance=not_proven" in probe
+assert "changed_numeric" in probe
 assert "observe_legacy_telegram" in probe
 yaml=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-build.yaml").read_text()
 assert "enabled: false" in yaml
