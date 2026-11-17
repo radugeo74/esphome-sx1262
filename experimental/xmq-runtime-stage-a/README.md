@@ -411,3 +411,12 @@ Cele două dimensiuni aparțin unor firmware-uri **diferite**: nu se însumează
 - Workflow-ul existent conține un job suplimentar `heltec-xmq-shadow-build` pentru `esphome config` + `esphome compile` cu ESPHome 2026.10.1, în același CI cu suita de 20 teste host, compilarea XMQ ESP-IDF izolată și fixture-ul Heltec vechi. Verifică static că proba este dezactivată și că implementarea ei nu apelează handleri radio.
 - **Limitări:** chiar un succes al acestei compilări validează doar coexistența în același binar ESPHome. Nu este un hook de captură după AES, nu există comparații live, nu se măsoară heap-ul de procesare și nu se autorizează flash pe Heltec.
 - Următorul pas după un build verde: proiectarea unui callback opt-in după decodarea cu succes a `Telegram` (folosind valoarea returnată de `handleTelegram`, nu doar `id_match`) într-un branch distinct, cu comparații reale și limite de CPU/heap.
+
+
+### Increment 21 — prima execuție și corecția de împachetare
+
+[Workflow #19](https://github.com/radugeo74/esphome-sx1262/actions/runs/44122827101) a trecut cele 20 de suite host, ESP-IDF XMQ izolat și compilarea firmware-ului Heltec vechi. Numai **build-ul combinat Heltec+XMQ** a eșuat: configurația YAML s-a validat și compilarea a ajuns la `xmq_shadow_probe.cpp`, dar ESPHome native a raportat `fatal error: xmq_shadow_diagnostic.h: No such file or directory`. Opțiunea `-I` trimisă din componentă nu a adăugat sursele originale în directorul generat de compilare.
+
+Corecție **strict de împachetare, fără modificarea motorului**: `tools/stage_shadow_headers.py` copiază toate fișierele `xmq_*.h` **nemodificate** lângă componenta experimentală înainte de compilarea YAML. Scriptul afișează SHA-256 prescurtat pentru fiecare sursă, iar `.gitignore` exclude copiile generate. Se rulează manual cu `python experimental/xmq-runtime-stage-a/tools/stage_shadow_headers.py` înainte de `esphome compile experimental/xmq-runtime-stage-a/heltec-xmq-shadow-build.yaml`. Workflow-ul face automat acest pas. Copiile nu sunt în Git și nu modifică sursele XMQ principale.
+
+Atenție: fișierele sunt incluse în imaginea **de test**, iar activarea excepțiilor C++ rămâne experimentală; nu folosiți acest flux pentru actualizarea Heltec de producție. O singură revalidare corectivă va testa compilarea combinată.
