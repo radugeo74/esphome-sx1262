@@ -10,6 +10,7 @@ struct LegacyNumeric {
   float value{0.0f};
   bool present{false};
   bool changed{false};
+  bool matched_dv{false};
 };
 struct LegacyReadings {
   LegacyNumeric target_m3;
@@ -22,6 +23,8 @@ struct LegacyReadings {
   std::string previous_date;
   bool current_date_changed{false};
   bool previous_date_changed{false};
+  bool current_date_matched_dv{false};
+  bool previous_date_matched_dv{false};
 };
 bool wants_legacy_readings() noexcept;
 void observe_legacy_telegram(const ::Telegram &telegram, bool decoded,
