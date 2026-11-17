@@ -35,3 +35,5 @@ Validation batch 2026-11-17 P: one correction run for test-only real Telegram pr
 Validation batch 2026-11-17 Q: single correction validation for empty upstream NoDifVifKey header initializer isolated host and Xtensa fixture; Heltec legacy ESPHome build-only.
 
 Validation batch 2026-11-17 R: one workflow for first combined Heltec ESPHome + XMQ shadow probe build (disabled), all prior host, ESP32-S3 and legacy Heltec checks.
+
+Validation batch 2026-11-17 S: exactly one corrective workflow for native ESPHome staging of unmodified XMQ headers in combined Heltec shadow build.
