@@ -45,8 +45,13 @@ class MountedXmqFiles {
       throw FlashSourceError("unsafe XMQ flash driver name");
     const std::string file=mount_root_+"/"+name+".xmq";
     if (file.size()>256) throw FlashSourceError("XMQ file path limit");
-    using FilePtr=std::unique_ptr<std::FILE,decltype(&std::fclose)>;
-    FilePtr handle(std::fopen(file.c_str(),"rb"),&std::fclose);
+    struct FileCloser {
+      void operator()(std::FILE *file) const noexcept {
+        if (file) (void)std::fclose(file);
+      }
+    };
+    using FilePtr=std::unique_ptr<std::FILE,FileCloser>;
+    FilePtr handle(std::fopen(file.c_str(),"rb"));
     if (!handle) throw FlashSourceError("XMQ file not readable on mounted VFS");
 
     std::string source;
