@@ -49,6 +49,8 @@ jobs:
           set -euo pipefail
           python -m pip install --disable-pip-version-check "PyYAML==6.0.2"
           python experimental/xmq-runtime-stage-a/tools/test_preflight_canary.py
+      - name: Verify local rollback image manifest gate with synthetic images only
+        run: python experimental/xmq-runtime-stage-a/tools/test_verify_rollback.py
       - name: Verify lab meter clone has only the guarded post-decode hook
         run: python experimental/xmq-runtime-stage-a/tools/check_shadow_lab_meter.py
       - name: Ensure 12-meter canary never contains private IDs or AES keys
