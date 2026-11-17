@@ -54,3 +54,18 @@ jobs:
             exit 1
           fi
           echo "PASS: live radio and meter components unchanged"
+
+  esp32s3-xmq-build:
+    name: ESP32-S3 XMQ isolated ESP-IDF build-only
+    needs: xmq-stage-a-host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compile minimal XMQ ESP32-S3 firmware with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5
+          target: esp32s3
+          path: experimental/xmq-runtime-stage-a/espidf-smoke
+          command: idf.py build && idf.py size
