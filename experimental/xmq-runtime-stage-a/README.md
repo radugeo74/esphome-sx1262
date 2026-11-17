@@ -323,3 +323,14 @@ Față de smoke-ul precedent, includerea reală a motorului în linkare crește 
 - Un singur workflow pentru Incrementul 17, care include toate suitele host și compilarea izolată ESP32-S3, va valida acest calup.
 
 **Validare Increment 17:** [workflow #13 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44106958561). Au trecut atât toate testele host (inclusiv `shadow_compare`), cât și build-ul separat ESP-IDF ESP32-S3. Nicio schimbare în componentele active. Aceasta nu certifică comparația live cu decodorul C++ vechi și nu autorizează instalarea imaginii minimale pe Heltec.
+
+
+## Increment 18 — modul „shadow” numai pentru diagnostic, fără impact asupra producției (17.11.2026)
+
+- `xmq_shadow_diagnostic.h`: sesiune read-only de comparație a rezultatului XMQ cu valori deja produse de decodorul existent. Este **dezactivată implicit**; se activează explicit prin `set_enabled(true)`. Are număr maxim de observații configurabil, toleranță pentru diferențe numerice, contoare de potriviri/diferențe/erori și suport pentru eșantioane ale memoriei libere furnizate de apelant.
+- Orice eroare în interpretul XMQ/comparator este reținută drept diagnostic `UnsupportedOrError` și **nu propagă excepții** către apelantul care execută decodarea veche. Un apel de diagnostic nu schimbă valorile vechi, nu marchează telegrama ca procesată și nu publică senzori.
+- Nu se rețin payloaduri, adrese, identificatori, chei sau valorile fiecărei telegrame în contorul de diagnostic. Se rețin numai statistici agregate și ultima dimensiune a comparației; aplicația este responsabilă de a furniza un payload **deja verificat CRC și decriptat**, cu identitatea MVT interioară corectă.
+- `test_xmq_shadow_diagnostic.cpp`: testează modul dezactivat, concordanțe, abateri, format/MVT invalid, limita de observații, contabilizarea probelor de heap și izolarea erorilor.
+- Build-ul minimal ESP32-S3 include acum instanțierea și folosirea efectivă a sesiunii `ShadowDiagnostic`, fără intercepția unui cadru radio.
+- **Nu este încă o opțiune YAML ESPHome și nu s-a implementat callback-ul live din `wmbus_meter`**. Următorul pas, după CI verde, este adaptarea la un punct de captură care poate extrage *în siguranță* plaintext-ul deja decriptat din structura `Telegram`, evitând orice a doua decriptare, orice decodare pe firmware-ul de producție și orice schimbare a fluxului de senzori.
+- Verificarea constă dintr-un singur workflow GitHub Actions pentru calup, cu teste host și un build ESP32-S3 izolat. Toate componentele `components/sx126x`, `components/sx127x`, `components/wmbus_radio`, `components/wmbus_common` și `components/wmbus_meter` rămân nemodificate.
