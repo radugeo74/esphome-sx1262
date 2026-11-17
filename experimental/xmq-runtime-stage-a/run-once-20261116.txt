@@ -71,3 +71,5 @@ Validation batch AH 2026-11-17: ONE CI run; observe current telegram DVEntry Fie
 Validation batch AI 2026-11-17: ONE CI run; host-only bounded per-telegram setter journal with stale/unchanged field tests, production radio/common/meter unchanged.
 
 Validation batch AJ 2026-11-17: one gated CI for fail-closed laboratory-only legacy numeric/string setter instrumentation staging and existing host journal tests; live common/radio unchanged.
+
+Validation batch AK 2026-11-17: ONE recovery CI after YAML syntax correction; verify isolated setter instrumentation staging and prior full XMQ/Heltec suites.
