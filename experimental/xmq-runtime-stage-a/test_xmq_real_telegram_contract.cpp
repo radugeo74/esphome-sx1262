@@ -1,6 +1,11 @@
 #include "xmq_telegram_capture.h"
 // This is the ACTUAL existing production Telegram declaration, not a mock.
+// The unchanged upstream Telegram declares a private constructor with an
+// intentionally unused argument; contain its warning, keep -Werror for tests.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "../../components/wmbus_common/wmbus.h"
+#pragma GCC diagnostic pop
 #include <iostream>
 #include <stdexcept>
 #include <type_traits>
