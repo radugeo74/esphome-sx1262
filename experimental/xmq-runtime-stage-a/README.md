@@ -661,3 +661,12 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Testul `test_xmq_legacy_write_journal.cpp` acoperă repetarea scrierii, separarea numeric/text, respingerea operațiilor în afara telegramei, prevenirea informațiilor învechite și limitele de memorie.
 - **IMPORTANT:** jurnalul este deocamdată numai infrastructură host/test. Nu este conectat la `MeterCommonImplementation::setNumericValue` sau `setStringValue`; în firmware-ul live NU există încă o dovadă de scriere per-telegramă. Nu se modifică `components/wmbus_common`, radio, senzorii ori YAML. Abordarea live va necesita un adaptor izolat sau un punct de extensie verificat, fără modificarea driverului de producție.
 - Indicatorii actuali `matched_numeric_dv=0` din logurile Heltec sunt compatibili cu driverele proprietare și nu indică automat o defecțiune a decodării.
+
+## Increment AJ — integrare sigură a punctelor de scriere (17.11.2026)
+
+- Am identificat în decodorul vechi traseul de execuție: `handleTelegram` → `processFieldExtractors` → `processContent` (proprietar) → `processFieldCalculators`. Toate folosesc în final `MeterCommonImplementation::setNumericValue` / `setStringValue` pentru câmpurile acceptate.
+- `tools/stage_legacy_setter_instrumentation.py` aplică o instrumentare strictă **numai pe o copie** a fișierului `components/wmbus_common/meters.cc`. La orice modificare a ancorelor din sursă, operația eșuează explicit.
+- Instrumentarea delimitată RAII pornește un jurnal nou per telegramă la procesarea câmpurilor și marchează apelurile de scriere numerică și textuală, inclusiv scrierile aceleiași valori. Nu imprimă date reale, chei sau payload-uri.
+- `tools/test_legacy_setter_staging.py` verifică pozițiile reale ale celor două setter-e, contextul procesării proprietare, păstrarea exactă a sursei originale, transformarea deterministă și blocarea schimbărilor neașteptate. Testul rulează în CI-ul existent.
+- **Limitare:** aceasta este o etapă de **staging/test al codului-sursă**, nu captură firmware live. Copia instrumentată nu este încă compilată ori legată în imaginea ESPHome. Înainte de a o activa pe Heltec trebuie să validăm compatibilitatea build-ului izolat, limitele de resurse și metoda read-only de export al contoarelor jurnalului.
+- `components/wmbus_common`, radio, decodorul activ, senzorii și YAML-ul rămân nemodificate; în firmware indicatorul `provenance=not_proven` rămâne corect.
