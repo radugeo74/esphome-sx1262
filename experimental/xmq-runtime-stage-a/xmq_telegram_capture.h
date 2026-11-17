@@ -7,6 +7,8 @@
 // update meter state or log any private telegram bytes.
 #include "xmq_frame_bridge.h"
 #include <cstdint>
+#include <cstddef>
+#include <initializer_list>
 #include <string>
 #include <vector>
 #include <utility>
@@ -18,6 +20,17 @@ struct VerifiedApplication {
   ApplicationEncoding encoding=ApplicationEncoding::StandardDv;
   std::vector<uint8_t> payload;
 };
+
+inline std::string manufacturer_code_to_flag(unsigned code) {
+  if (code>0x7fff) return "";
+  std::string result;
+  for (unsigned shift : {10u,5u,0u}) {
+    unsigned n=(code>>shift)&31u;
+    if (n<1 || n>26) return "";
+    result.push_back(static_cast<char>('A'+n-1));
+  }
+  return result;
+}
 
 inline bool numeric_mfct_matches(const std::string &s, unsigned code) noexcept {
   if (s.size()!=3 || code>0x7fff) return false;
@@ -90,17 +103,6 @@ bool capture_verified_payload(const TelegramT &telegram,
     destination=VerifiedApplication{};
     return false;
   }
-}
-
-inline std::string manufacturer_code_to_flag(unsigned code) {
-  if (code>0x7fff) return "";
-  std::string result;
-  for (unsigned shift : {10u,5u,0u}) {
-    unsigned n=(code>>shift)&31u;
-    if (n<1 || n>26) return "";
-    result.push_back(static_cast<char>('A'+n-1));
-  }
-  return result;
 }
 
 } // namespace xmq_runtime
