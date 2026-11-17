@@ -57,3 +57,5 @@ Validation batch 2026-11-17 AA: one workflow for offline ESP32-S3 fallback/canar
 Validation batch 2026-11-17 AB: one corrective workflow for rollback manifest preservation test; all XMQ host, preflight and full Heltec canary builds.
 
 Validation batch 2026-11-17 AC: ONE GitHub Actions run for direct GitHub ESPHome SX1262 XMQ component install (bundled 16 headers, remote smoke compile), plus existing host and firmware baseline gates; no flash.
+
+Validation batch 2026-11-17 AD: ONE CI run for read-only live XMQ numeric shadow comparison of mkradio4/fhkvdataiii using original bundled upstream XMQ rules; no radio/HA changes; GitHub-only ESPHome compile; no flash.
