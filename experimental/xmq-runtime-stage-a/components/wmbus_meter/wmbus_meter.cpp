@@ -106,6 +106,36 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
 
   if (decoded && probe_requested) {
     snapshot(legacy);
+    // This telegram records which FieldInfo extractors were selected by
+    // parsed DIF/VIF entries. This is supporting evidence of an attempted
+    // per-frame extraction, not proof of a successful field write.
+    auto matched_dv = [&](const char *name, Quantity quantity) {
+      auto *field = this->meter->findFieldInfo(name, quantity);
+      if (field == nullptr) return false;
+      for (const auto &entry : telegram->dv_entries)
+        if (entry.second.second.hasFieldInfo(field)) return true;
+      return false;
+    };
+    auto evidence = [&](const char *field_name,
+                        xmq_shadow_probe::LegacyNumeric &value) {
+      if (!value.present) return;
+      std::string name;
+      Unit unit;
+      extractUnit(field_name, &name, &unit);
+      value.matched_dv = matched_dv(name.c_str(), toQuantity(unit));
+    };
+    evidence("target_m3", legacy.target_m3);
+    evidence("total_m3", legacy.total_m3);
+    evidence("current_hca", legacy.current_hca);
+    evidence("previous_hca", legacy.previous_hca);
+    evidence("temp_room_c", legacy.temp_room_c);
+    evidence("temp_radiator_c", legacy.temp_radiator_c);
+    legacy.current_date_matched_dv =
+        !legacy.current_date.empty() &&
+        matched_dv("current", Quantity::PointInTime);
+    legacy.previous_date_matched_dv =
+        !legacy.previous_date.empty() &&
+        matched_dv("previous", Quantity::PointInTime);
     auto mark = [](xmq_shadow_probe::LegacyNumeric &after,
                    const xmq_shadow_probe::LegacyNumeric &prior) {
       after.changed = after.present &&
