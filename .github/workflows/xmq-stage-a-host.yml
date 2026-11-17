@@ -146,8 +146,8 @@ jobs:
           ]
           with p.open("a") as out:
               for i, name in enumerate(meters, 1):
-                  out.write(f"{name}_id: 0x{0x12340000 + i:08X}\\n")
-                  out.write(f"{name}_key: '0123456789ABCDEF0123456789ABCDEF'\\n")
+                  out.write(f"{name}_id: 0x{0x12340000 + i:08X}\n")
+                  out.write(f"{name}_key: '0123456789ABCDEF0123456789ABCDEF'\n")
           PY
           grep -q 'enabled: false' "$dir/heltec-xmq-canary.yaml"
           ! grep -E '(^|[[:space:]])(ssid|password|key): [^!]' "$dir/heltec-xmq-canary.yaml"
