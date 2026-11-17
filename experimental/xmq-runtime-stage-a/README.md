@@ -264,3 +264,14 @@ Testele vor fi validate împreună într-un singur workflow. Nu se modifică dec
 - **Nu reprezintă încă build ESP-IDF/ESPHome sau test hardware.** Bibliotecile C++ folosesc excepții și trebuie evaluată compatibilitatea cu configurația firmware-ului. Nu există încă provisionare de imagini LittleFS/SPIFFS, montare VFS, securitate/integritate a driverelor actualizate, încărcare OTA ori publicare de senzori.
 
 Workflow-ul pentru increment compilează și testează acest adaptor pe host în cadrul unei singure execuții GitHub Actions. Nicio componentă radio nu este modificată.
+
+
+## Increment 15 — compilare reală ESP-IDF ESP32-S3, izolată (17.11.2026)
+
+- Proiectul minimal `espidf-smoke/` compilează adaptorul de citire `xmq_mounted_vfs.h` și traseul de interpretare XMQ pentru **ESP32-S3**, nu doar pentru arhitectura x86 Linux. Nu se include `xmq_driver_loader.h` (dependent de `std::filesystem`, rezervat hostului).
+- `espidf-smoke/sdkconfig.defaults` activează explicit `CONFIG_COMPILER_CXX_EXCEPTIONS=y`. Acesta este doar un workaround necesar motorului experimental actual; nu demonstrează compatibilitate cu ESPHome, unde excepțiile pot fi dezactivate. Eliminarea excepțiilor din motor sau configurarea explicită a acestora rămâne un pas înaintea integrării.
+- Jobul dependent `esp32s3-xmq-build` din **același workflow** `xmq-stage-a-host.yml` utilizează `espressif/esp-idf-ci-action@v1`, imagine ESP-IDF `v5.5`, `target=esp32s3`; rulează `idf.py build && idf.py size`. Jobul pornește numai după ce toate testele host au trecut.
+- Fișierul `main.cpp` verifică strict compilarea, linkarea și tratarea controlată a unei surse nemontate. **Nu montează efectiv LittleFS/SPIFFS, nu citește partiția flash reală, nu publică senzori și nu este compilare a firmware-ului final Heltec/LILYGO.** Raportul `idf.py size` se referă la imaginea minimală, nu la heap maxim ori fragmentare în runtime.
+- După o validare verde a acestui calup, următorii pași necesari sunt montarea reală a unui sistem de fișiere cu integritate verificată, testarea pe dispozitiv, integrarea în `wmbus_common` și strategia fără excepții pentru compatibilitatea cu ESPHome.
+
+**Regulă CI:** un singur workflow declanșat pentru acest increment; în interiorul său două joburi ordonate (host, apoi ESP32-S3 build-only). Componentele radio funcționale nu sunt schimbate.
