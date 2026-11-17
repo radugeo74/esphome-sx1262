@@ -1,0 +1,88 @@
+#include "xmq_shadow_diagnostic.h"
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <stdexcept>
+#include <string>
+static std::string upstream(const char *name) {
+  std::ifstream f(std::string("experimental/xmq-runtime-stage-a/upstream/src/")+name+".xmq");
+  if (!f) throw std::runtime_error("upstream missing");
+  return {std::istreambuf_iterator<char>(f),std::istreambuf_iterator<char>()};
+}
+static void require(bool value,const char *reason) {
+  if (!value) throw std::runtime_error(reason);
+}
+int main() {
+  using namespace xmq_runtime;
+  try {
+    DriverRegistry registry({load_driver(upstream("mkradio4a"))});
+    const auto valid=parse_hex("4315A10000426CBF2C");
+    ShadowReference old;
+    old.numeric={{"target_m3",16.1}};
+    old.dates={{"target_date","2021-12-31"}};
+    ShadowDiagnostic disabled(3);
+    require(disabled.inspect(registry,{"HYD",0xFE,0x06},
+                            ApplicationEncoding::StandardDv,valid,old)==
+            ShadowDisposition::Disabled,"default must be disabled");
+    require(disabled.counters().observations==0,"disabled performed a decode");
+    disabled.set_enabled(true);
+    require(disabled.inspect(registry,{"HYD",0xFE,0x06},
+                            ApplicationEncoding::StandardDv,valid,old,
+                            120000,true)==ShadowDisposition::Match,
+            "matching old decoder output not detected");
+    require(disabled.counters().matched==1 &&
+            disabled.counters().last_compared==2 &&
+            disabled.counters().min_free_heap==120000,
+            "matched counters / heap sample incorrect");
+
+    auto wrong=old;
+    wrong.numeric["target_m3"]=25.0;
+    require(disabled.inspect(registry,{"HYD",0xFE,0x06},
+                            ApplicationEncoding::StandardDv,valid,wrong,
+                            110000,true)==ShadowDisposition::Difference,
+            "numeric divergence not flagged");
+    require(disabled.counters().different==1 &&
+            disabled.counters().last_mismatches==1 &&
+            disabled.counters().min_free_heap==110000,
+            "divergence counters incorrect");
+    require(disabled.inspect(registry,{"ABC",0,0},
+                            ApplicationEncoding::StandardDv,valid,old,
+                            100000,true)==ShadowDisposition::UnsupportedOrError,
+            "unsupported MVT must not propagate");
+    require(disabled.counters().errors==1 &&
+            disabled.counters().observations==3,
+            "error statistics incorrect");
+    require(disabled.inspect(registry,{"HYD",0xFE,0x06},
+                            ApplicationEncoding::StandardDv,valid,old)==
+            ShadowDisposition::BudgetExhausted,"observation cap bypassed");
+    require(disabled.counters().observations==3 &&
+            disabled.counters().skipped==2 &&
+            disabled.counters().has_heap_sample &&
+            disabled.counters().min_free_heap==100000,
+            "budget or heap statistics changed unexpectedly");
+
+    ShadowDiagnostic invalid(1,-1.0);
+    invalid.set_enabled(true);
+    require(invalid.inspect(registry,{"HYD",0xFE,0x06},
+                            ApplicationEncoding::StandardDv,valid,old)==
+            ShadowDisposition::UnsupportedOrError,
+            "bad tolerance bypassed non-throwing boundary");
+    ShadowDiagnostic partial(1);
+    partial.set_enabled(true);
+    require(partial.inspect(registry,{"HYD",0xFE,0x06},
+                            ApplicationEncoding::StandardDv,{},old)==
+            ShadowDisposition::UnsupportedOrError,
+            "empty plaintext bypassed non-throwing boundary");
+    // A diagnostic error cannot change the existing reference object.
+    require(old.numeric.at("target_m3")==16.1 &&
+            old.dates.at("target_date")=="2021-12-31",
+            "reference outputs changed during diagnostics");
+
+    std::cout<<"SHADOW_DIAGNOSTIC_OK opt-in, bounded, non-throwing, "
+                "counter isolation, heap samples, error containment\n";
+    return 0;
+  } catch (const std::exception &error) {
+    std::cerr<<"FAIL "<<error.what()<<"\n";
+    return 1;
+  }
+}
