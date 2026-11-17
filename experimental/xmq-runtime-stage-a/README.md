@@ -457,3 +457,14 @@ Acestea **nu sunt măsurători live de heap** și nu includ costul de memorie al
 **Stare exactă:** Am obținut coexistența de build ESPHome + SX1262 + XMQ. Nu există încă captură live după decriptare, compare shadow în funcționare sau configurare de producție. Configurația experimentală nu are Wi-Fi/API și nu trebuie instalată ca înlocuitor pentru firmware-ul real. Recepția radio, `wmbus_common`, `wmbus_meter` și senzorii originali au rămas nemodificați.
 
 **Următorul calup** este un hook opțional de observație după succesul complet al `handleTelegram()`, în continuare fără a permite modulului XMQ să modifice rezultatul sau să marcheze un cadru radio drept procesat. Pentru activarea efectivă pe Heltec este necesară validarea compilării și a consumului heap, apoi comparație pe telegrame reale.
+
+
+## Increment 22 — hook post-decodare în copia izolată a `wmbus_meter`
+
+Am adăugat o copie de laborator a componentei `components/wmbus_meter` în `experimental/xmq-runtime-stage-a/components/wmbus_meter/`, inclusiv platformele sensor și text_sensor. **Nu se modifică nimic în `components/` activ.** Copia este identică cu originalul, cu excepția `wmbus_meter.cpp`: după `handleTelegram(...)`, păstrează bool-ul `decoded` și invocă `xmq_shadow_probe::observe_legacy_telegram(*telegram, decoded)` înaintea ramurii existente `if (id_match)`. Nu se modifică `frame->mark_as_handled()`, actualizarea senzorilor sau gestionarea adreselor și cheilor.
+
+`xmq_live_capture_hook.h` are numai declarația funcției, fără să expună parserul XMQ prin headerele contorului. `xmq_shadow_probe.cpp` definește un callback global **inert implicit**: numai dacă `enabled: true`, captează copia payloadului validat de parserul vechi (`decoded`, `!decryption_failed`, `!discard`, CI validat, limite de header/sufix), fără să păstreze identități, chei AES ori cadre, fără să altereze `Telegram`. Limitează observațiile la 128 pe boot și raportează doar numărul acceptărilor/refuzurilor și minimul heap liber observat. **Nu rulează încă driverele XMQ pe telegramele live și nu compară valori numerice**; acesta este un test al capturii și izolării, nu al parității de decodare.
+
+`heltec-xmq-shadow-build.yaml` folosește copia de laborator `wmbus_meter` și `xmq_shadow_probe.enabled: false`. `tools/check_shadow_lab_meter.py` verifică exact că fiecare fișier din copia laboratorului este neschimbat, cu excepția hook-ului permis, și că opțiunea YAML rămâne dezactivată. Testul se execută în workflow înainte de comparația radio și de compilările ESP-IDF/Heltec. Păstrăm un singur workflow per calup.
+
+Pentru un canary real urmează: build Heltec verde cu hook, configurație completă cu Wi-Fi/API/secrete locale fără publicarea lor, probă pe un dispozitiv de test cu backup de firmware și posibilitate de rollback, apoi verificarea traficului RF, a senzorilor existenți și a memoriei. **Nu flash-uiți configurația build-only fără Wi-Fi/API.**
