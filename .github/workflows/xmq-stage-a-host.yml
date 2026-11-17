@@ -107,6 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           dir=experimental/xmq-runtime-stage-a
+          python "$dir/tools/stage_shadow_headers.py"
           grep -q 'enabled: false' "$dir/heltec-xmq-shadow-build.yaml"
           ! grep -E '(add_frame_handler|add_meter_frame_handler|handleTelegram|mark_as_handled)' "$dir/components/xmq_shadow_probe/xmq_shadow_probe.cpp"
           esphome config "$dir/heltec-xmq-shadow-build.yaml"
