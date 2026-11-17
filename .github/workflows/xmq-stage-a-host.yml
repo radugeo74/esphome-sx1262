@@ -45,6 +45,8 @@ jobs:
           exit "$((failures>0))"
       - name: Verify lab meter clone has only the guarded post-decode hook
         run: python experimental/xmq-runtime-stage-a/tools/check_shadow_lab_meter.py
+      - name: Ensure 12-meter canary never contains private IDs or AES keys
+        run: python experimental/xmq-runtime-stage-a/tools/check_canary_12.py
       - name: Ensure radio implementation stays unchanged from baseline
         shell: bash
         run: |
@@ -134,9 +136,24 @@ jobs:
               f"heltec_api_key: {dummy_key}\n"
               "heltec_ota_password: ci-placeholder-ota-only\n"
           )
+          # Synthetic, NON-SECRET credentials for the twelve-meter CI fixture.
+          meters = [
+              "heat_baie", "heat_dormitor_1", "heat_sufragerie",
+              "heat_bucatarie", "heat_dormitor_2", "heat_dormitor_3",
+              "heat_wc_serviciu", "water_rece_baie", "water_rece_bucatarie",
+              "water_calda_baie", "water_calda_bucatarie",
+              "water_calda_wc_serviciu"
+          ]
+          with p.open("a") as out:
+              for i, name in enumerate(meters, 1):
+                  out.write(f"{name}_id: 0x{0x12340000 + i:08X}\\n")
+                  out.write(f"{name}_key: '0123456789ABCDEF0123456789ABCDEF'\\n")
           PY
           grep -q 'enabled: false' "$dir/heltec-xmq-canary.yaml"
           ! grep -E '(^|[[:space:]])(ssid|password|key): [^!]' "$dir/heltec-xmq-canary.yaml"
           esphome config "$dir/heltec-xmq-canary.yaml"
           esphome compile "$dir/heltec-xmq-canary.yaml"
           echo "PASS: canary has Wi-Fi, encrypted API and OTA with local-secret references only; XMQ disabled"
+          esphome config "$dir/heltec-xmq-canary-12-meters.yaml"
+          esphome compile "$dir/heltec-xmq-canary-12-meters.yaml"
+          echo "PASS: twelve-meter canary compiles with 7 HCA and 5 water meters, dummy CI-only credentials; XMQ disabled"
