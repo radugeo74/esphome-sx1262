@@ -43,3 +43,5 @@ Validation batch 2026-11-17 T: one corrective workflow for legacy wmbus error ma
 Validation batch 2026-11-17 U: one corrective workflow to guard temporary XMQ reader at ESPHome auto-inclusion boundary, plus all previous host and ESP32/Heltec builds.
 
 Validation batch 2026-11-17 V: one workflow for lab-only post-legacy-decode captured payload hook, exact meter clone parity, and full combined Heltec ESPHome build.
+
+Validation batch 2026-11-17 W: one workflow to validate connectivity canary template with temporary CI-only secrets and shadow disabled; no device flash.
