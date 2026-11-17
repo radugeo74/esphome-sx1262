@@ -1,0 +1,3 @@
+# Strictly build-only ESP32-S3 experiment: the current XMQ engine
+# throws C++ exceptions, which are disabled by default in ESP-IDF.
+CONFIG_COMPILER_CXX_EXCEPTIONS=y
