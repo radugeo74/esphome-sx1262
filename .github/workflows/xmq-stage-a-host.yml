@@ -129,10 +129,10 @@ jobs:
           assert not p.exists(), "CI must not overwrite existing credentials"
           dummy_key=base64.b64encode(bytes(range(32))).decode("ascii")
           p.write_text(
-              "wifi_ssid: xmq-ci-only\\n"
-              "wifi_password: ci-placeholder-do-not-use\\n"
-              f"heltec_api_key: {dummy_key}\\n"
-              "heltec_ota_password: ci-placeholder-ota-only\\n"
+              "wifi_ssid: xmq-ci-only\n"
+              "wifi_password: ci-placeholder-do-not-use\n"
+              f"heltec_api_key: {dummy_key}\n"
+              "heltec_ota_password: ci-placeholder-ota-only\n"
           )
           PY
           grep -q 'enabled: false' "$dir/heltec-xmq-canary.yaml"
