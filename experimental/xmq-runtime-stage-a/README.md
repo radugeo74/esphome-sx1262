@@ -540,3 +540,30 @@ Rezultate `idf.py size` ale firmware-urilor comparabile cu același ESPHome 2026
 Extinderea la 12 contoare a adăugat **10908 B** de imagine și **4128 B** DIRAM static în această configurație de test. Dimensiunea `heltec-xmq-canary.bin` extinsă este `0x126ab0` (1206960 B); în partiția app 0x3c0000 rămân circa 69% liberi. **Nu reprezintă heap liber în timpul funcționării și nu validează recepția radio ori decriptarea pe hardware.**
 
 Persistă avertismentul neblocant ESPHome privind costul OTA cu parolă. Testul conține exclusiv **T1**, nu T1+C1. Senzorii și ID-urile trebuie confruntate cu YAML-ul funcțional și cu entitățile Home Assistant înainte de prima instalare: schimbarea denumirilor sau a numelui nodului poate produce entități noi sau poate afecta automatizări. Noua configurație rămâne **build-only, nu flash-ready** până la integrarea secretelor și setărilor RF private, confirmarea backupului și verificarea rollback-ului.
+
+
+## Increment 25 — preflight local fail-closed înainte de primul canary SX1262
+
+**Scop:** păstrăm aproape byte-cu-byte configurația operativă a utilizatorului, evitând rescrierea manuală a celor 12 contoare, a cheilor AES, a modurilor T1/C1 și a numelor entităților HA. Instrumentul \`tools/preflight_canary.py\` compară **configurațiile expandate și validate de ESPHome**, nu doar sursele YAML. Rulează **numai local** pe două YAML-uri confidențiale; capturează tot stdout/stderr-ul ESPHome în memorie (fără afișare/salvare) și raportează numai căile câmpurilor diferite.
+
+### Procedură locală, fără secrete în GitHub
+
+1. Faceți copie de siguranță a YAML-ului **actual și funcțional** al Heltec într-un director local, de exemplu \`heltec-working.yaml\`, împreună cu \`secrets.yaml\` și pachetele incluse. Păstrați-le în afara Git sau folosiți fișiere \`*-private.yaml\` / \`*-working.yaml\` ignorate de Git.
+2. Creați \`heltec-xmq-canary-private.yaml\` prin **copierea YAML-ului original funcțional** (nu prin copierea fixture-ului cu ID-uri fictive). Păstrați fără modificări **\`esphome.name\`**, IP, \`wifi\`, \`api\`, \`ota\`, \`sx126x\`, \`wmbus_radio\` (inclusiv **T1_C1 dacă acesta e modul real**), cele 12 \`wmbus_meter\`, orice ID/cheie AES și toate \`sensor\`/\`text_sensor\`, inclusiv \`name\`, \`id\`, \`field\`, unități și precizie.
+3. Schimbați **doar sursa externă \`wmbus_meter\`** către copia locală de laborator \`experimental/xmq-runtime-stage-a/components/wmbus_meter\`, adăugați componenta \`xmq_shadow_probe\` din \`experimental/xmq-runtime-stage-a/components\`, apoi blocul \`xmq_shadow_probe: {id: xmq_lab_probe, enabled: false}\`. Mențineți restul componentelor radio pe sursa lor verificată. Pentru build local rulați întâi \`python experimental/xmq-runtime-stage-a/tools/stage_shadow_headers.py\`. **Nu adăugați automat un al doilea receptor radio.**
+4. Din mediul cu ESPHome 2026.10.1, executați:
+   \`\`\`bash
+   python experimental/xmq-runtime-stage-a/tools/preflight_canary.py \
+      --reference /cale/locala/heltec-working.yaml \
+      --candidate /cale/locala/heltec-xmq-canary-private.yaml
+   \`\`\`
+   Programul oprește migrarea la orice diferență de configurație operativă, inclusiv un contor lipsă, o cheie sau un nume de entitate diferit, modul C1 dezactivat sau XMQ activat prematur.
+5. **Nu interpretați \`PREFLIGHT_OK\` drept permisiune de flash.** Revizuiți **manual** sursele externe efective (preflight verifică numele componentelor și prezența celor 4 componente radio/metru, dar NU garantează echivalența codului dintre surse). Pregătiți firmware-ul funcțional pentru revenire, confirmați procedura USB și accesul fizic, apoi compilați local candidatul. Verificați entitățile și recepția radio mai întâi cu shadow **off**.
+
+### Siguranță și limite
+
+- Instrumentul nu modifică niciun YAML, nu execută \`esphome run\` sau \`upload\`, nu conectează dispozitivul și nu citește secrete pentru a le exporta. \`esphome config\` este apelat în subproces cu **toată ieșirea capturată**, deoarece configurația validată poate conține valori secrete. În caz de eroare sunt afișate doar căile structurale ale diferențelor.
+- \`test_preflight_canary.py\` folosește exclusiv date fictive pentru a verifica potrivirile și blocarea schimbărilor de Wi-Fi, API, OTA, RF, C1, AES, ID-uri, senzori, numele nodului, componente externe și activare prematură XMQ. Este inclus în **workflow-ul existent**, nu creează workflow-uri suplimentare.
+- Fișierul \`heltec-xmq-canary-12-meters.yaml\` rămâne un fixture de compilare cu \`!secret\` și ID-uri fictive în CI; **nu este substitutul YAML-ului funcțional**. Nu ghicim datele private și nu le publicăm. Rezultatele de heap și RF sunt în continuare necunoscute, deci instalarea canary nu este încă efectuată.
+
+**Poartă următoare:** validarea unei copii private cu configurația reală existentă, compilarea ei completă cu XMQ dezactivat și confirmarea rollback-ului, apoi prima instalare pe dispozitivul de test.
