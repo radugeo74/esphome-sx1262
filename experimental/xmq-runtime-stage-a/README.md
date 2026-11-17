@@ -621,3 +621,12 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - build ESPHome Heltec+XMQ dezactivat, plus build-uri canary conectate și cu 12 contoare, exclusiv cu chei fictive în CI.
 
 **Atenție:** CI nu conține binarul funcțional al utilizatorului și nu a testat posibilitatea efectivă de rollback USB. `verify_rollback.py` doar verifică offline proprietăți de fișier și produce un manifest; înainte de instalare trebuie folosite local imaginile reale și confirmată proveniența backupului, compatibilitatea hardware/partiții și copia integrală a YAML/secrets. Niciun flash nu a fost făcut.
+
+## Increment AD — comparație shadow numerică live (17.11.2026)
+
+- Componenta `xmq_shadow_probe` conține acum sursele upstream `mkradio4.xmq` și `fhkvdataiii.xmq` încorporate, pentru instalarea ESPHome **direct din GitHub**.
+- Cu `enabled: true`, după `handleTelegram` reușit, clonarea experimentală `wmbus_meter` citește doar valori numerice publicate de decodorul vechi. Nicio schimbare la radio, la semantica de `mark_as_handled` sau la senzorii HA.
+- XMQ primește payload-ul verificat și deja decriptat, rulează regulile XMQ disponibile și compară numai câmpurile cunoscute din referința veche (apa: `target_m3`, `total_m3`; căldură: `current_hca`, `previous_hca`, `temp_room_c`, `temp_radiator_c`). Prag provizoriu: 0,051 unități; fără paritate demonstrată pentru date/status.
+- Logurile emit doar `driver`, `disposition`, `compared`, `mismatches` și contori cumulați — **fără ID-uri, chei sau payload-uri**. Sunt maximum 128 de observații per boot, iar eșecurile XMQ nu afectează decodorul vechi. Cazurile nesuportate sunt distincte de diferențele dovedite.
+- **Stare:** cod publicat; CI pentru această schimbare a fost declanșat, dar încă nu există un rezultat de compilare confirmat aici. Nu recomandăm încă flash-ul acestei versiuni. Pentru rollback păstrați firmware-ul testat anterior.
+- Atenție: referințele sunt valorile existente în obiectul driverului după `handleTelegram`; unele câmpuri pot fi păstrate de la telegrame anterioare. Un `matched` parțial nu reprezintă dovadă de paritate completă a driverului și necesită validarea provenienței pe telegramă.
