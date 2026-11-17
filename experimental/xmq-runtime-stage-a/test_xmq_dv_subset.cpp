@@ -35,12 +35,12 @@ int main() {
             "iperl unencrypted 123.529m3");
 
     auto mk4a=decode_dv_subset(parse_hex("4315A10000426CBF2C"));
-    require(mk4a.size()==1 && mk4a[0].meta.storage_nr==1 &&
+    require(mk4a.size()==2 && mk4a[0].meta.storage_nr==1 &&
             mk4a[0].meta.difvifkey=="4315" &&
             std::abs(mk4a[0].value-16.1)<1e-9,
             "mkradio4a target 16.1m3");
     auto mk4a2=decode_dv_subset(parse_hex("4315F00200426CBF2C"));
-    require(mk4a2.size()==1 &&
+    require(mk4a2.size()==2 &&
             std::abs(mk4a2[0].value-75.2)<1e-9,
             "mkradio4a cold target 75.2m3");
 
