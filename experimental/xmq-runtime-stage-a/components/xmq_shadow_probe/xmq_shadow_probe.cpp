@@ -33,12 +33,18 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
     unsigned unchanged_numeric = 0;
     unsigned changed_dates = 0;
     unsigned unchanged_dates = 0;
+    unsigned matched_numeric_dv = 0;
+    unsigned unmatched_numeric_dv = 0;
+    unsigned matched_date_dv = 0;
+    unsigned unmatched_date_dv = 0;
     const std::string name = driver == nullptr ? "" : driver;
     auto put = [&](const char *key, const LegacyNumeric &value) {
       if (!value.present) return;
       old.numeric.emplace(key, static_cast<double>(value.value));
       if (value.changed) ++changed_numeric;
       else ++unchanged_numeric;
+      if (value.matched_dv) ++matched_numeric_dv;
+      else ++unmatched_numeric_dv;
     };
     if (name == "mkradio4") {
       put("target_m3", old_values.target_m3);
@@ -52,11 +58,15 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
         old.dates.emplace("current_date", old_values.current_date);
         if (old_values.current_date_changed) ++changed_dates;
         else ++unchanged_dates;
+        if (old_values.current_date_matched_dv) ++matched_date_dv;
+        else ++unmatched_date_dv;
       }
       if (!old_values.previous_date.empty()) {
         old.dates.emplace("previous_date", old_values.previous_date);
         if (old_values.previous_date_changed) ++changed_dates;
         else ++unchanged_dates;
+        if (old_values.previous_date_matched_dv) ++matched_date_dv;
+        else ++unmatched_date_dv;
       }
     } else {
       ++unsupported_;
@@ -97,14 +107,19 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
              "Live XMQ shadow: driver=%s disposition=%u compared=%u mismatches=%u "
              "matched=%u different=%u unsupported=%u calendar_refs=%u observed=%u captured=%u "
              "rejected=%u changed_numeric=%u unchanged_numeric=%u "
-             "changed_dates=%u unchanged_dates=%u provenance=not_proven min_free_heap=%u",
+             "changed_dates=%u unchanged_dates=%u "
+             "matched_numeric_dv=%u unmatched_numeric_dv=%u "
+             "matched_date_dv=%u unmatched_date_dv=%u "
+             "provenance=not_proven min_free_heap=%u",
              name.c_str(), static_cast<unsigned>(disposition),
              static_cast<unsigned>(stats.last_compared),
              static_cast<unsigned>(stats.last_mismatches),
              stats.matched, stats.different, stats.errors + unsupported_,
              static_cast<unsigned>(old.dates.size()),
              inspected_, captured_, rejected_, changed_numeric, unchanged_numeric,
-             changed_dates, unchanged_dates, min_free_heap_);
+             changed_dates, unchanged_dates, matched_numeric_dv,
+             unmatched_numeric_dv, matched_date_dv, unmatched_date_dv,
+             min_free_heap_);
   } catch (const std::exception &) {
     ++unsupported_;
     ESP_LOGW(TAG, "Live XMQ shadow unsupported/error; legacy decoder unaffected");
