@@ -21,10 +21,30 @@ def main() -> None:
     DEST.mkdir(parents=True, exist_ok=True)
     for source in headers:
         target = DEST / source.name
-        copy2(source, target)
-        checksum = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
-        print(f"STAGED {source.name} sha256={checksum}")
-    print(f"XMQ_STAGING_OK {len(headers)} unchanged headers for build-only probe")
+        original = source.read_bytes()
+        if source.name == "xmq_reader.h":
+            # ESPHome generates esphome.h with every component header,
+            # including this one DIRECTLY. Protect the staged copy itself.
+            # Keep parser code otherwise byte-for-byte identical.
+            prefix = (
+                "#ifdef error\\n"
+                "#pragma push_macro(\\\"error\\\")\\n"
+                "#undef error\\n"
+                "#define XMQ_READER_RESTORE_ERROR_MACRO\\n"
+                "#endif\\n"
+            )
+            suffix = (
+                "\\n#ifdef XMQ_READER_RESTORE_ERROR_MACRO\\n"
+                "#pragma pop_macro(\\\"error\\\")\\n"
+                "#undef XMQ_READER_RESTORE_ERROR_MACRO\\n"
+                "#endif\\n"
+            )
+            target.write_bytes(prefix.encode() + original + suffix.encode())
+        else:
+            copy2(source, target)
+        checksum = hashlib.sha256(original).hexdigest()[:12]
+        print(f"STAGED {source.name} source_sha256={checksum}")
+    print(f"XMQ_STAGING_OK {len(headers)} headers; reader has build-only macro guard")
 
 
 if __name__ == "__main__":
