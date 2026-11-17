@@ -21,24 +21,28 @@ for name in ("__init__.py","automation.h","base_sensor.cpp","base_sensor.h",
 include='#include "esphome/components/xmq_shadow_probe/xmq_live_capture_hook.h"\n'
 assert clone.count(include)==1
 clone=clone.replace(include,"")
-change='''  const bool decoded = this->meter->handleTelegram(
-      about, frame->data(), false, &adresses, &id_match, telegram.get());
-
-  // Lab-only observer, AFTER the existing AES/parser/field update path.
-  // No changes to old handled semantics, sensor output, or radio ownership.
-  xmq_shadow_probe::observe_legacy_telegram(*telegram, decoded);
-
-'''
-assert clone.count(change)==1
-clone=clone.replace(change,'''  this->meter->handleTelegram(about, frame->data(), false, &adresses, &id_match,
+start = clone.index("  const bool decoded = this->meter->handleTelegram(")
+end = clone.index("\n  if (id_match) {", start)
+observer = clone[start:end]
+assert observer.count("this->meter->handleTelegram(") == 1
+assert "if (decoded && xmq_shadow_probe::wants_legacy_readings())" in observer
+assert "capture(\"target_m3\"" in observer
+assert "capture(\"current_hca\"" in observer
+assert "xmq_shadow_probe::observe_legacy_telegram(" in observer
+assert "frame->mark_as_handled()" not in observer
+assert "set_radio(" not in observer
+clone = clone[:start] + '''  this->meter->handleTelegram(about, frame->data(), false, &adresses, &id_match,
                               telegram.get());
-
-''')
+''' + clone[end:]
 assert clone==base, "unexpected changes to meter handling outside lab hook"
 probe=(lab.parent/"xmq_shadow_probe/xmq_shadow_probe.cpp").read_text()
-assert "if (!enabled_ || inspected_ >= kMaxObservations) return;" in probe
+assert "if (!wants_readings()) return;" in probe
+assert "diagnostic_.inspect(" in probe
+assert "source_mkradio4()" in probe
+assert "source_fhkvdataiii()" in probe
+assert "old.numeric.empty()" in probe
 assert "observe_legacy_telegram" in probe
 yaml=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-build.yaml").read_text()
 assert "enabled: false" in yaml
 assert "components: [wmbus_meter, xmq_shadow_probe]" in yaml
-print("SHADOW_LAB_METER_OK: only post-decode observer changed; legacy dispatch unchanged")
+print("SHADOW_LAB_METER_OK: guarded legacy field snapshot + read-only XMQ comparison; dispatch unchanged")
