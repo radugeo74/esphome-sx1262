@@ -13,3 +13,5 @@ Validation batch 2026-11-17 E: one workflow for strict source-driven MVT driver 
 Validation batch 2026-11-17 F: exactly one workflow for bounded directory-based original XMQ registry loader and all prior host tests.
 
 Validation batch 2026-11-17 G: one workflow for platform-neutral callback XMQ registry loader and prior tests.
+
+Validation batch 2026-11-17 H: exactly one host workflow for read-only bounded mounted VFS adapter and all existing XMQ tests.
