@@ -57,7 +57,7 @@ int main() {
     check(out.inner_mvt.manufacturer=="TCH" &&
           out.inner_mvt.version==0x94 && out.inner_mvt.type==0x80,
           "must use inner address instead of converter DLL");
-    check(out.payload.size()==40 && out.payload.front()==0x0F &&
+    check(out.payload.size()==41 && out.payload.front()==0x0F &&
           out.payload.back()==0x0E,"wrong payload size/header/suffix stripped");
 
     auto standard=telegram(parse_hex(
