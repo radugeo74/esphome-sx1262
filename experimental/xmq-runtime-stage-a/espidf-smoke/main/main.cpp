@@ -2,7 +2,6 @@
 // No radio components, no filesystem mount, no sensors, no flash or RF tests.
 #include "xmq_mounted_vfs.h"
 #include "xmq_calendar_runtime.h"
-#include "xmq_driver_loader.h"
 
 #include <cstdio>
 #include <exception>
