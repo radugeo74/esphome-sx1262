@@ -3,7 +3,7 @@
 // obtain AES keys, access Telegram, or modify any meter/sensor.
 #include "esphome/core/component.h"
 #include "esphome/core/log.h"
-#include "xmq_shadow_diagnostic.h"
+#include "xmq_compat_include.h"
 
 namespace esphome {
 namespace xmq_shadow_probe {
