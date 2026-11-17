@@ -69,3 +69,5 @@ Validation batch AG 2026-11-17: one CI run; compare legacy snapshot before/after
 Validation batch AH 2026-11-17: ONE CI run; observe current telegram DVEntry FieldInfo associations in isolated XMQ shadow only, with aggregate logs and no HA/radio changes.
 
 Validation batch AI 2026-11-17: ONE CI run; host-only bounded per-telegram setter journal with stale/unchanged field tests, production radio/common/meter unchanged.
+
+Validation batch AJ 2026-11-17: one gated CI for fail-closed laboratory-only legacy numeric/string setter instrumentation staging and existing host journal tests; live common/radio unchanged.
