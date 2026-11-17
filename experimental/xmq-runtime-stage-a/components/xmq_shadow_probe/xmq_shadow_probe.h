@@ -5,6 +5,7 @@
 #include "esphome/core/log.h"
 #include "xmq_compat_include.h"
 #include "xmq_live_capture_hook.h"
+#include <memory>
 
 namespace esphome {
 namespace xmq_shadow_probe {
