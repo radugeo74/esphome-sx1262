@@ -22,11 +22,11 @@ jobs:
           set -euo pipefail
           dir=experimental/xmq-runtime-stage-a
           failures=0
-          for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime hca_numeric calendar oms_partial clear_runtime driver_registry driver_loader source_registry mounted_vfs frame_bridge shadow_compare shadow_diagnostic telegram_capture; do
+          for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime hca_numeric calendar oms_partial clear_runtime driver_registry driver_loader source_registry mounted_vfs frame_bridge shadow_compare shadow_diagnostic telegram_capture real_telegram_contract; do
             echo "::group::XMQ suite: $suite"
             if g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
               -fsanitize=address,undefined -fno-omit-frame-pointer \
-              -I"$dir" "$dir/test_xmq_${suite}.cpp" \
+              -I"$dir" -I"$dir/host-stubs" "$dir/test_xmq_${suite}.cpp" \
               -o "$RUNNER_TEMP/xmq-${suite}"; then
               if "$RUNNER_TEMP/xmq-${suite}"; then
                 echo "PASS $suite"
@@ -69,3 +69,23 @@ jobs:
           target: esp32s3
           path: experimental/xmq-runtime-stage-a/espidf-smoke
           command: idf.py build && idf.py size
+
+  heltec-esphome-build:
+    name: Heltec SX1262 legacy ESPHome build-only baseline
+    needs: xmq-stage-a-host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned ESPHome
+        run: python -m pip install --disable-pip-version-check "esphome==2026.10.1"
+      - name: Validate and compile existing Heltec SX1262 fixture, NO FLASH
+        shell: bash
+        run: |
+          set -euo pipefail
+          esphome config tests/sx126x-wmbus-bridge.yaml
+          esphome compile tests/sx126x-wmbus-bridge.yaml
+          echo "PASS: production-shaped Heltec fixture still compiles"
