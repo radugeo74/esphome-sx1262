@@ -203,3 +203,14 @@ g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic -I"$dir" \
 
 **Limitări:** data OMS standard `426C` nu este încă interpretată de subsetul numeric, iar statusurile, AES, IXML complet, întreaga bibliotecă XMQ și integrarea ESPHome rămân nefinalizate. Nu înlocuiți decodoarele actuale pe hardware.
 
+
+## Increment 9 — date standard OMS VIF 0x6C (17.11.2026)
+
+- `xmq_dv_subset.h`: suport generic pentru data OMS de doi octeți, VIF `6C`. Decodarea calculează ziua, luna și anul din structura EN 13757, validează intervalele și anii bisecți și atașează un șir ISO `YYYY-MM-DD` la `DecodedRecord::iso_date`. Valorile numerice HCA se păstrează.
+- `xmq_oms_date.h`: proiecție de câmpuri Date exclusiv după regulile `match` citite din `.xmq`, fără condiții dependente de numele contorului; ambiguitățile sunt respinse.
+- `test_xmq_oms_partial.cpp`: fixture upstream OMS `0x08` pentru `fhkvdataiii` verifică `set_date=2025-12-31`, `current_consumption_hca=152`, `consumption_at_set_date_hca=1092`. `current_date`/`previous_date` din formule proprietare **rămân absente** în acest frame. Teste de respingere pentru lună invalidă și zi zero.
+- În același fișier de test se verifică separarea între o telegramă completă proprietară și una OMS parțială.
+
+**Validare:** nu s-a putut accesa GitHub din mediul local de compilare (DNS `github.com` indisponibil). Fișierele au fost actualizate prin conexiunea GitHub, dar compilarea/rularea efectivă a testelor noi **nu este confirmată**. Nu s-a pornit un alt workflow GitHub. Actualizarea păstrează componentele radio și decoder-ele de producție nemodificate.
+
+**Următorul pas prioritar:** verificarea de compilare și execuție a întregului set de teste host, corectarea eșecurilor observate și verificarea parității OMS/IXML înainte de extinderea motorului.
