@@ -27,17 +27,17 @@ def main() -> None:
             # including this one DIRECTLY. Protect the staged copy itself.
             # Keep parser code otherwise byte-for-byte identical.
             prefix = (
-                "#ifdef error\\n"
-                "#pragma push_macro(\\\"error\\\")\\n"
-                "#undef error\\n"
-                "#define XMQ_READER_RESTORE_ERROR_MACRO\\n"
-                "#endif\\n"
+                "#ifdef error\n"
+                "#pragma push_macro(\"error\")\n"
+                "#undef error\n"
+                "#define XMQ_READER_RESTORE_ERROR_MACRO\n"
+                "#endif\n"
             )
             suffix = (
-                "\\n#ifdef XMQ_READER_RESTORE_ERROR_MACRO\\n"
-                "#pragma pop_macro(\\\"error\\\")\\n"
-                "#undef XMQ_READER_RESTORE_ERROR_MACRO\\n"
-                "#endif\\n"
+                "\n#ifdef XMQ_READER_RESTORE_ERROR_MACRO\n"
+                "#pragma pop_macro(\"error\")\n"
+                "#undef XMQ_READER_RESTORE_ERROR_MACRO\n"
+                "#endif\n"
             )
             target.write_bytes(prefix.encode() + original + suffix.encode())
         else:
