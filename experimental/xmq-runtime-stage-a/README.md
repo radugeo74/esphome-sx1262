@@ -244,3 +244,12 @@ Testele vor fi validate împreună într-un singur workflow. Nu se modifică dec
 - `test_xmq_driver_loader.cpp`: testează încărcarea setului upstream `iperl`, `mkradio4a`, `mkradio4`, `fhkvdataiii`, selecția automată și decodarea unui exemplu clar, limitele de resurse, refuzul unui alias, al unui XMQ incomplet și al unui fișier symlink.
 - Modificarea este **strict experimentală**, independentă de ESPHome. Folosește sistemul de fișiere al hostului, nu încărcare din flash pe ESP32. Înlocuirea driverelor runtime fără recompilare și încărcarea unei biblioteci XMQ complete sunt obiective viitoare; nu sunt încă implementate.
 - Testul `driver_loader` este adăugat în suita host și se validează într-un singur workflow pentru acest calup.
+
+
+## Increment 13 — încărcare XMQ independentă de sistemul de fișiere
+
+- `xmq_source_registry.h` primește lista numelor driverelor și un **callback de citire** a textului XMQ. Motorul nu folosește `std::filesystem`: adaptorul poate proveni ulterior din flash sau alt sistem de stocare, fără să schimbe parserul ori decodoarele comune.
+- Sunt impuse limite explicite (maxim 128 drivere, 256 KiB/fișier, 1 MiB surse text total), nume simple fără căi, fără duplicate și identificare `driver.name` egală cu numele sursei. Callback-ul este furnizat de apelant și trebuie să returneze surse de încredere.
+- `test_xmq_source_registry.cpp` folosește cele 4 fișiere originale upstream ca date memorate, selectează driverele după MVT, verifică decodarea standard și refuză sursele goale, duplicate sau peste limite.
+- Acesta este **doar un pas portabil, testat pe host**. NU citește efectiv LittleFS/SPIFFS de pe ESP32, nu face actualizare fără recompilare și nu este conectat la radio sau la senzorii Home Assistant.
+- Baza precedentă: [workflow #7 verde](https://github.com/radugeo74/esphome-sx1262/actions/runs/44098363372). Verificarea noului calup se efectuează separat, o singură dată.
