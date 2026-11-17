@@ -60,7 +60,7 @@ jobs:
         run: python experimental/xmq-runtime-stage-a/tools/test_verify_rollback.py
       - name: Verify lab meter clone has only the guarded post-decode hook
         run: python experimental/xmq-runtime-stage-a/tools/check_shadow_lab_meter.py
-      - name: Ensure 12-meter canary never contains private IDs or AES keys
+      - name: Verify future isolated legacy setter instrumentation staging without patching active common\n        run: python experimental/xmq-runtime-stage-a/tools/test_legacy_setter_staging.py\n      - name: Ensure 12-meter canary never contains private IDs or AES keys
         run: python experimental/xmq-runtime-stage-a/tools/check_canary_12.py
       - name: Ensure radio implementation stays unchanged from baseline
         shell: bash
