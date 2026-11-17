@@ -228,3 +228,11 @@ https://github.com/radugeo74/esphome-sx1262/actions/runs/44093741937
 **Limitări:** datele trebuie să fie deja verificate la nivel radio/CRC și decriptate; nu există interpretare completă a statusului, a tuturor VIF/VIFE ori paritate integrală. Motorul încă nu este conectat la firmware.
 
 Testul nou este inclus în **următoarea singură execuție GitHub Actions**, care trebuie verificată înaintea incrementului următor.
+
+## Increment 11 — registru comun auto/explicit (17.11.2026)
+
+- `xmq_driver_registry.h` selectează automat driverul din `detect.mvt` al fișierelor XMQ originale; acceptă și nume explicit, dacă există în registru și identificarea MVT se potrivește. Refuză coliziunile de identificare și numele duplicate, fără a alege arbitrar.
+- `test_xmq_driver_registry.cpp` verifică selecția `iperl`, `mkradio4a`, `mkradio4`, `fhkvdataiii` și refuzurile pentru necunoscute și ambiguități; include decodare standard de test după selectare.
+- Limite: selectarea funcționează doar pe identitatea MVT primită deja de la un apelant, nu extrage identitatea din telegramă; nu este încă adaptor ESPHome, nu gestionează prioritatea upstream, nu interpretează cadrele radio și nu decriptează AES. Alegerea explicită este momentan strictă la MVT.
+
+Testele vor fi validate împreună într-un singur workflow. Nu se modifică decodoarele de producție.
