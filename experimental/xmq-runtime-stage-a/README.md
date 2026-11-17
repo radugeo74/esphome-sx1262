@@ -438,3 +438,22 @@ Acesta rămâne un test de **coexistență la compilare**, nu o implementare a c
 Soluția fără modificarea parserului original: scriptul de pregătire adaugă **numai copiei temporare pentru build** a lui `xmq_reader.h` un `#pragma push_macro("error")` / `#undef error` înainte de codul original și `#pragma pop_macro("error")` după el. Restul fișierului rămâne byte-for-byte identic cu originalul. `test_xmq_staged_reader.cpp` reproduce includerea directă ESPHome cu macro-ul deja definit; rulează după pregătirea headerelor. Nicio componentă radio nu este modificată.
 
 O singură revalidare corectivă, cu toate joburile în workflow-ul existent, urmează să confirme legarea binarului complet. Până la un rezultat verde, această etapă **nu** este pregătită pentru instalare.
+
+
+### Increment 21 — VALIDAT: primul firmware ESPHome Heltec cu XMQ inclus
+
+[Workflow #22 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44126705769), commit `bbc8f59c815ebac494246c09d329a50148da349a`: **toate cele patru joburi au trecut**, inclusiv `heltec-xmq-shadow-build`, primul build real ESPHome 2026.10.1/ESP32-S3/SX1262 care leagă în același binar motorul vechi wM-Bus și codul XMQ, cu `xmq_shadow_probe.enabled: false`. A trecut și noul test direct pentru includerea `xmq_reader.h` sub macro-ul `error`.
+
+Dimensiuni `idf.py size` raportate de CI (același toolchain și aceeași configurație de bază, două binare distincte):
+
+| Indicator | Heltec de bază | Heltec + XMQ (shadow dezactivat) | Diferență |
+|---|---:|---:|---:|
+| Imagine totală estimată | 569023 B | 665203 B | **+96180 B** |
+| DIRAM static folosit | 57419 B | 57627 B | **+208 B** |
+| DIRAM static rămas raportat | 284341 B | 284133 B | **−208 B** |
+
+Acestea **nu sunt măsurători live de heap** și nu includ costul de memorie al încărcării și execuției driverelor XMQ la runtime. Folosirea excepțiilor C++ este activată explicit în configurarea build-ului de laborator și poate avea cost de flash și comportament diferit față de firmware-ul funcțional.
+
+**Stare exactă:** Am obținut coexistența de build ESPHome + SX1262 + XMQ. Nu există încă captură live după decriptare, compare shadow în funcționare sau configurare de producție. Configurația experimentală nu are Wi-Fi/API și nu trebuie instalată ca înlocuitor pentru firmware-ul real. Recepția radio, `wmbus_common`, `wmbus_meter` și senzorii originali au rămas nemodificați.
+
+**Următorul calup** este un hook opțional de observație după succesul complet al `handleTelegram()`, în continuare fără a permite modulului XMQ să modifice rezultatul sau să marcheze un cadru radio drept procesat. Pentru activarea efectivă pe Heltec este necesară validarea compilării și a consumului heap, apoi comparație pe telegrame reale.
