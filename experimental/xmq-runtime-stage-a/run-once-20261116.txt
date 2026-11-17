@@ -73,3 +73,5 @@ Validation batch AI 2026-11-17: ONE CI run; host-only bounded per-telegram sette
 Validation batch AJ 2026-11-17: one gated CI for fail-closed laboratory-only legacy numeric/string setter instrumentation staging and existing host journal tests; live common/radio unchanged.
 
 Validation batch AK 2026-11-17: ONE recovery CI after YAML syntax correction; verify isolated setter instrumentation staging and prior full XMQ/Heltec suites.
+
+Validation batch AL 2026-11-17: single CI validates syntax compilation of real instrumented legacy meters.cc in temporary directory plus existing host and Heltec baseline; never changes active wmbus_common.
