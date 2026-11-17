@@ -10,6 +10,18 @@
 #include <stdexcept>
 #include <type_traits>
 
+// Link-only fixture for a harmless upstream header-global NoDifVifKey("").
+// The actual legacy parser is NOT exercised by this header contract test.
+// Refuse any real DIF/VIF input instead of pretending to implement extractDV.
+void extractDV(std::string &key, uchar *dif, int *vif,
+               bool *has_difes, bool *has_vifes) {
+  if (!key.empty()) throw std::runtime_error("unexpected DV parser input");
+  if (dif) *dif=0;
+  if (vif) *vif=0;
+  if (has_difes) *has_difes=false;
+  if (has_vifes) *has_vifes=false;
+}
+
 static void require(bool yes, const char *reason) {
   if (!yes) throw std::runtime_error(reason);
 }
