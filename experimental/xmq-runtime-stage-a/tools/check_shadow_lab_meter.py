@@ -21,7 +21,7 @@ for name in ("__init__.py","automation.h","base_sensor.cpp","base_sensor.h",
 include='#include "esphome/components/xmq_shadow_probe/xmq_live_capture_hook.h"\n'
 assert clone.count(include)==1
 clone=clone.replace(include,"")
-start = clone.index("  const bool decoded = this->meter->handleTelegram(")
+start = clone.index("  // Baseline values are observed BEFORE legacy decoding.")
 end = clone.index("\n  if (id_match) {", start)
 observer = clone[start:end]
 assert observer.count("this->meter->handleTelegram(") == 1
