@@ -47,3 +47,5 @@ Validation batch 2026-11-17 V: one workflow for lab-only post-legacy-decode capt
 Validation batch 2026-11-17 W: one workflow to validate connectivity canary template with temporary CI-only secrets and shadow disabled; no device flash.
 
 Validation batch 2026-11-17 X: single workflow for twelve-meter SX1262 canary overlay; all 12 IDs and AES keys synthetic CI only; 50 sensors; legacy remains source; XMQ disabled.
+
+Validation batch 2026-11-17 Y: one corrective CI for anchored 12-meter canary structural assertion; full host, SX1262 radio and 12-meter API/OTA builds.
