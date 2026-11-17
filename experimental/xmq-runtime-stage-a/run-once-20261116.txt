@@ -39,3 +39,5 @@ Validation batch 2026-11-17 R: one workflow for first combined Heltec ESPHome + 
 Validation batch 2026-11-17 S: exactly one corrective workflow for native ESPHome staging of unmodified XMQ headers in combined Heltec shadow build.
 
 Validation batch 2026-11-17 T: one corrective workflow for legacy wmbus error macro isolation in full ESPHome/XMQ Heltec combined build.
+
+Validation batch 2026-11-17 U: one corrective workflow to guard temporary XMQ reader at ESPHome auto-inclusion boundary, plus all previous host and ESP32/Heltec builds.
