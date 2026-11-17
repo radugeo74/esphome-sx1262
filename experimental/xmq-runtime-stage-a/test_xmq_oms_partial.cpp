@@ -35,6 +35,15 @@ int main() {
     check(records.size()==3, "expected two HCA values and one standard OMS date");
     const auto oms_dates=project_oms_dates(driver,records);
     check(oms_dates.at("set_date")=="2025-12-31", "OMS date mismatch");
+    bool bad_date_rejected=false;
+    try { (void)decode_dv_subset(parse_hex("026C1F00")); }
+    catch (const DvError &) { bad_date_rejected=true; }
+    check(bad_date_rejected,"OMS date with invalid month accepted");
+    bad_date_rejected=false;
+    try { (void)decode_dv_subset(parse_hex("026C0002")); }
+    catch (const DvError &) { bad_date_rejected=true; }
+    check(bad_date_rejected,"OMS date with day zero accepted");
+
     const auto numbers=evaluate_numeric_fields(driver,records);
     check(std::abs(get(numbers,"current_consumption_hca")-152)<1e-9,
           "OMS current consumption should be 152 HCA");
