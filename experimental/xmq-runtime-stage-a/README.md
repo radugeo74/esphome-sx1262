@@ -638,3 +638,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Testul de diagnostic verifică atât refuzul referinței numerice incomplete, cât și identificarea unei date diferite.
 - **Limitare importantă:** această versiune nu poate dovedi încă faptul că fiecare referință din obiectul vechi a fost actualizată exclusiv de telegrama curentă; deci `MATCH` semnifică doar paritate a valorilor verificate pe captură, nu paritate completă de driver.
 - Nu s-au schimbat receptorul SX126x/SX127x, telegramele recepționate, senzorii sau YAML-ul. Până la validare CI/compilare și analiză de loguri nu înlocuiți decodorul vechi.
+
+## Increment AG — observație conservatoare a schimbărilor (17.11.2026)
+
+- În clona izolată de `wmbus_meter`, componentele shadow citesc câmpurile **înainte și după** `handleTelegram`, exclusiv la cererea probei XMQ.
+- Logul separă `changed_numeric`, `unchanged_numeric`, `changed_dates` și `unchanged_dates`. Un câmp neschimbat nu constituie dovadă de prospețime; chiar și un câmp schimbat nu demonstrează în mod formal proveniența sa exclusiv din telegramă.
+- De aceea logul declară explicit `provenance=not_proven`; `matched` continuă să însemne **egalitate numerică/calendaristică observată**, nu paritate completă dovedită per-telegramă.
+- Nicio modificare la decodorul vechi activ, la recepția radio, la senzorii HA sau la YAML. Compilarea direct din GitHub este acoperită de CI.
