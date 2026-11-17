@@ -81,7 +81,18 @@ inline std::map<std::string, Number> evaluate_numeric_fields(
     if (field.calculate.empty()) continue;
     if (field.quantity!="Volume" && field.quantity!="Dimensionless")
       continue;
-    const Number result=NumericExpression(values).evaluate(field.calculate);
+    Number result;
+    try {
+      result=NumericExpression(values).evaluate(field.calculate);
+    } catch (const ExpressionError &error) {
+      // A valid telegram may omit entire application records (e.g. OMS
+      // 0x08 HCA without the proprietary billing-date fields). Never
+      // synthesize a result from stale data or abort the entire telegram.
+      // Other evaluation errors remain fatal, not silently ignored.
+      if (std::string(error.what()).rfind("unresolved variable:",0)==0)
+        continue;
+      throw;
+    }
     const Dimension expected=field.quantity=="Volume" ?
         Dimension::VolumeM3 : Dimension::Counter;
     if (result.dimension!=expected)
