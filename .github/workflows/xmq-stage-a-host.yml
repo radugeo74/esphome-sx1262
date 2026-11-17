@@ -22,7 +22,7 @@ jobs:
           set -euo pipefail
           dir=experimental/xmq-runtime-stage-a
           failures=0
-          for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime hca_numeric calendar oms_partial clear_runtime driver_registry driver_loader source_registry mounted_vfs frame_bridge shadow_compare shadow_diagnostic; do
+          for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime hca_numeric calendar oms_partial clear_runtime driver_registry driver_loader source_registry mounted_vfs frame_bridge shadow_compare shadow_diagnostic telegram_capture; do
             echo "::group::XMQ suite: $suite"
             if g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
               -fsanitize=address,undefined -fno-omit-frame-pointer \
