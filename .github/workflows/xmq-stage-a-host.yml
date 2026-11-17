@@ -62,6 +62,18 @@ jobs:
         run: python experimental/xmq-runtime-stage-a/tools/check_shadow_lab_meter.py
       - name: Verify future isolated legacy setter instrumentation staging without patching active common
         run: python experimental/xmq-runtime-stage-a/tools/test_legacy_setter_staging.py
+      - name: Syntax compile actual lab-instrumented legacy common decoder on host
+        shell: bash
+        run: |
+          set -euo pipefail
+          scratch="$(mktemp -d)"
+          trap 'rm -rf "$scratch"' EXIT
+          python experimental/xmq-runtime-stage-a/tools/stage_legacy_setter_instrumentation.py --output "$scratch/meters.cc"
+          g++ -std=c++17 -fsyntax-only -Wall -Wextra -Wno-unused-parameter \
+            -Icomponents/wmbus_common \
+            -Iexperimental/xmq-runtime-stage-a \
+            "$scratch/meters.cc"
+          echo "PASS: real legacy meters.cc syntax-checks with isolated per-telegram write journal"
       - name: Ensure 12-meter canary never contains private IDs or AES keys
         run: python experimental/xmq-runtime-stage-a/tools/check_canary_12.py
       - name: Ensure radio implementation stays unchanged from baseline
