@@ -1,0 +1,32 @@
+# CANARY TEMPLATE — Heltec ESP32-S3 / SX1262, NOT production-ready.
+# This intentionally has one SYNTHETIC meter; replace IDs/fields using your
+# backed-up working YAML before any installation. DO NOT flash this file as-is.
+# Real credentials live ONLY in local secrets.yaml, never in Git.
+packages:
+  radio_and_shadow:
+    !include heltec-xmq-shadow-build.yaml
+
+esphome:
+  name: heltec-xmq-canary
+  friendly_name: Heltec XMQ Canary
+
+logger:
+  level: DEBUG
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  reboot_timeout: 0s
+
+api:
+  encryption:
+    key: !secret heltec_api_key
+
+ota:
+  - platform: esphome
+    password: !secret heltec_ota_password
+
+# First boot MUST retain disabled XMQ; never publish shadow values.
+xmq_shadow_probe:
+  id: xmq_lab_probe
+  enabled: false
