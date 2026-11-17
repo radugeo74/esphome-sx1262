@@ -41,6 +41,10 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
       put("previous_hca", old_values.previous_hca);
       put("temp_room_c", old_values.temp_room_c);
       put("temp_radiator_c", old_values.temp_radiator_c);
+      if (!old_values.current_date.empty())
+        old.dates.emplace("current_date", old_values.current_date);
+      if (!old_values.previous_date.empty())
+        old.dates.emplace("previous_date", old_values.previous_date);
     } else {
       ++unsupported_;
       return;
@@ -69,17 +73,22 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
     ++captured_;
     const auto disposition = diagnostic_.inspect(
         *registry_, snapshot.inner_mvt, snapshot.encoding,
-        snapshot.payload, old, heap, true, name);
+        snapshot.payload, old, heap, true, name,
+        name == "mkradio4" ?
+            std::vector<std::string>{"target_m3", "total_m3"} :
+            std::vector<std::string>{"current_hca", "previous_hca",
+                                     "temp_room_c", "temp_radiator_c"});
     const auto &stats = diagnostic_.counters();
     // Log only aggregates, never IDs, raw payloads, keys or old/new values.
     ESP_LOGI(TAG,
              "Live XMQ shadow: driver=%s disposition=%u compared=%u mismatches=%u "
-             "matched=%u different=%u unsupported=%u observed=%u captured=%u "
+             "matched=%u different=%u unsupported=%u calendar_refs=%u observed=%u captured=%u "
              "rejected=%u min_free_heap=%u",
              name.c_str(), static_cast<unsigned>(disposition),
              static_cast<unsigned>(stats.last_compared),
              static_cast<unsigned>(stats.last_mismatches),
              stats.matched, stats.different, stats.errors + unsupported_,
+             static_cast<unsigned>(old.dates.size()),
              inspected_, captured_, rejected_, min_free_heap_);
   } catch (const std::exception &) {
     ++unsupported_;
