@@ -384,3 +384,7 @@ Următoarea problemă tehnică după verificarea CI: găsirea unei metode opt-in
 ### Increment 20 — prima validare
 
 [Workflow #16](https://github.com/radugeo74/esphome-sx1262/actions/runs/44117356831) a raportat FAILURE numai în testul `real_telegram_contract`: avertisment GCC `-Wunused-parameter` din constructorul privat existent în `components/wmbus_common/wmbus.h` a fost promovat la eroare de `-Werror`. Toate celelalte 19 suite host au trecut; joburile ESP-IDF și Heltec au fost sărite din cauza dependenței. Avertismentul a fost izolat prin `#pragma GCC diagnostic` doar în testul experimental, fără modificarea codului upstream. O singură revalidare separată va verifica corecția.
+
+### Increment 20 — a doua validare
+
+[Workflow #17](https://github.com/radugeo74/esphome-sx1262/actions/runs/44117972169) a trecut toate cele 19 teste existente, iar testul `real_telegram_contract` a compilat, dar nu a putut fi legat: `wmbus.h` conține obiectul static `NoDifVifKey("")`, care invocă `extractDV()` din `dvparser.cc`. Am adăugat **numai în executabilele izolate de test**, host și ESP-IDF, o implementare minimală care acceptă exclusiv cheia goală și refuză orice intrare DIF/VIF reală. Nu intră în firmware-ul ESPHome și nu înlocuiește funcția adevărată. Următoarea revalidare va putea continua către cele două compilări build-only.
