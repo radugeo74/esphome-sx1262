@@ -20,15 +20,15 @@ external_components:
   - source:
       type: local
       path: ../../components
-    components: [sx126x, wmbus_common, wmbus_radio, wmbus_meter]
+    components: [sx126x, wmbus_common, wmbus_radio]
   - source:
       type: local
       path: ./components
-    components: [xmq_shadow_probe]
+    components: [wmbus_meter, xmq_shadow_probe]
 
 xmq_shadow_probe:
   id: xmq_lab_probe
-  enabled: false  # build/link only; NEVER intercepts radio or sensors
+  enabled: false  # opt-in capture-only; still disabled in build fixture
 
 spi:
   clk_pin: GPIO9
