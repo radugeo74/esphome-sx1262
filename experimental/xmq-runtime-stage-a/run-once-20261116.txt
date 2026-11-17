@@ -5,3 +5,5 @@ Validation batch 2026-11-17: one workflow run to check all 10 existing XMQ host 
 Validation batch 2026-11-17 B: one execution after semantic test GCC fix; collect all suite failures, no parallel workflows.
 
 Validation batch 2026-11-17 C: one host run after corrections based on all ten suite diagnostics from run 44093290717.
+
+Validation batch 2026-11-17 D: run once for source-driven standard-clear adapter iperl/mkradio4a and existing suites.
