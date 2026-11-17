@@ -1,3 +1,9 @@
 # Local canary credentials and build artifacts must never be committed.
 /secrets.yaml
 /.esphome/
+
+# Keep private copies of the user's working/canary YAML and firmware backups local.
+/*-private.yaml
+/*-working.yaml
+/*.bin
+/*.ota.bin
