@@ -51,3 +51,5 @@ Validation batch 2026-11-17 X: single workflow for twelve-meter SX1262 canary ov
 Validation batch 2026-11-17 Y: one corrective CI for anchored 12-meter canary structural assertion; full host, SX1262 radio and 12-meter API/OTA builds.
 
 Validation batch 2026-11-17 Z: single workflow for secret-safe local canary parity gate, synthetic regression tests, all existing XMQ host and Heltec builds; no device flash.
+
+Validation batch 2026-11-17 AA: one workflow for offline ESP32-S3 fallback/canary SHA-256 image gate synthetic tests, existing preflight, all XMQ regressions and Heltec build-only checks.
