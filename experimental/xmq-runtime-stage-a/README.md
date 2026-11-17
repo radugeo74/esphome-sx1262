@@ -483,3 +483,14 @@ Pentru un canary real urmează: build Heltec verde cu hook, configurație comple
 **Concluzie strictă:** s-a demonstrat coexistența codului hook și a motoarelor în același firmware ESPHome. Nu s-a demonstrat încă decodarea efectivă XMQ pe telegrame radio live sau consumul de heap la captură. Hook-ul nu modifică rama/codul de decodare existent, `frame->mark_as_handled` și senzorii rămân în controlul bibliotecii vechi.
 
 **Înainte de primul canary pe SX1262:** pregătiți un YAML complet cu Wi-Fi/API/OTA și contoarele reale, dar păstrați probe-ul dezactivat la prima instalare; validați funcționarea și rollback-ul, apoi activați `enabled: true` pe un dispozitiv de test pentru contorizarea capturilor. CI/compilarea build-only actuală nu autorizează încă flash. Ulterior încărcați sursele driverelor XMQ și comparați pe același payload clar, fără a modifica sursa senzorilor.
+
+
+## Increment 23 — canary SX1262 cu conectivitate, pregătit numai pentru compilare (17.11.2026)
+
+`heltec-xmq-canary.yaml` moștenește configurația Heltec/XMQ de laborator și adaugă **Wi-Fi, API Home Assistant criptat și OTA**, cu `wifi_ssid`, `wifi_password`, `heltec_api_key`, `heltec_ota_password` exclusiv din `!secret`. `experimental/xmq-runtime-stage-a/.gitignore` exclude `secrets.yaml`; **nu se publică date reale**. Pentru compilare manuală pe mașina locală trebuie create cheile reale în `experimental/xmq-runtime-stage-a/secrets.yaml` (fișier local, niciodată comis).
+
+**ATENȚIE: nu instalați încă acest YAML.** Pachetul de laborator conține doar ID-ul de contor *sintetic* `0x12345678` și doi senzori de test; lipsește configurația privată reală cu toate repartitoarele și apometrele. Nu are strategia finală de rețea, numele actual al dispozitivului și nici backup/rollback confirmat pe hardware. `xmq_shadow_probe.enabled: false` la prima pornire; decodorul vechi rămâne responsabil de senzori.
+
+Workflow-ul **existent** compilează mai întâi imaginea combinată precedentă și apoi `heltec-xmq-canary.yaml` într-un job de validare, injectând temporar numai parole și o cheie API complet fictive generate în runner; le șterge imediat după test. Niciun secret de producție nu intră în CI. CI confirmă exclusiv generarea imaginii și configurația validă, nu conectivitatea reală, recepția radio, memoria heap sau disponibilitatea OTA în rețeaua utilizatorului.
+
+Pași rămași până la prima instalare canary: copierea locală a parametrilor legitimi din YAML-ul Heltec funcțional (nume, Wi-Fi, API/OTA, 12 contoare, chei AES, senzori), compilare pe țintă, salvarea firmware-ului vechi și validarea unei proceduri de revenire. Abia după verificare hardware se poate activa diagnosticul pentru maximum 128 de capturi, fără a publica date XMQ.
