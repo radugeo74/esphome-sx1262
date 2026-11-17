@@ -468,3 +468,18 @@ Am adăugat o copie de laborator a componentei `components/wmbus_meter` în `exp
 `heltec-xmq-shadow-build.yaml` folosește copia de laborator `wmbus_meter` și `xmq_shadow_probe.enabled: false`. `tools/check_shadow_lab_meter.py` verifică exact că fiecare fișier din copia laboratorului este neschimbat, cu excepția hook-ului permis, și că opțiunea YAML rămâne dezactivată. Testul se execută în workflow înainte de comparația radio și de compilările ESP-IDF/Heltec. Păstrăm un singur workflow per calup.
 
 Pentru un canary real urmează: build Heltec verde cu hook, configurație completă cu Wi-Fi/API/secrete locale fără publicarea lor, probă pe un dispozitiv de test cu backup de firmware și posibilitate de rollback, apoi verificarea traficului RF, a senzorilor existenți și a memoriei. **Nu flash-uiți configurația build-only fără Wi-Fi/API.**
+
+
+### Increment 22 — SUCCESS: callback-ul post-decodare poate fi compilat în firmware-ul Heltec
+
+[Workflow XMQ Stage A #23 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44131164851), commit `774ca02a8914c9a823cc566acbb851043edfe7da`: toate cele patru joburi au trecut, inclusiv verificarea strictă a copiei de laborator `wmbus_meter` și compilarea firmware-ului Heltec cu noul hook prezent, dar `xmq_shadow_probe.enabled: false`.
+
+| Indicator (ESPHome 2026.10.1, ESP32-S3) | Heltec bază | Heltec + XMQ / hook dezactivat | Diferență |
+|---|---:|---:|---:|
+| `idf.py size` imagine | 569023 B | 666691 B | +97668 B |
+| DIRAM static utilizat | 57419 B | 57683 B | +264 B |
+| DIRAM static raportat rămas | 284341 B | 284077 B | -264 B |
+
+**Concluzie strictă:** s-a demonstrat coexistența codului hook și a motoarelor în același firmware ESPHome. Nu s-a demonstrat încă decodarea efectivă XMQ pe telegrame radio live sau consumul de heap la captură. Hook-ul nu modifică rama/codul de decodare existent, `frame->mark_as_handled` și senzorii rămân în controlul bibliotecii vechi.
+
+**Înainte de primul canary pe SX1262:** pregătiți un YAML complet cu Wi-Fi/API/OTA și contoarele reale, dar păstrați probe-ul dezactivat la prima instalare; validați funcționarea și rollback-ul, apoi activați `enabled: true` pe un dispozitiv de test pentru contorizarea capturilor. CI/compilarea build-only actuală nu autorizează încă flash. Ulterior încărcați sursele driverelor XMQ și comparați pe același payload clar, fără a modifica sursa senzorilor.
