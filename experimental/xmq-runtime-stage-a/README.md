@@ -517,3 +517,10 @@ Pași rămași până la prima instalare canary: copierea locală a parametrilor
 **Limite importante:** `native_stream_mode: T1` este moștenit deliberat din fixture-ul anterior, pentru comparație de build; **nu înseamnă T1+C1 validat**. În firmware-ul folosit acasă, unele apometre pot avea AES și mod C1; configurația radio/link mode trebuie transplantată conform YAML-ului actual de producție. De asemenea, cei 50 de senzori sunt doar o topologie exemplificativă: numele, unitățile și câmpurile finale trebuie potrivite cu entitățile actuale HA înainte de orice instalare. `heltec-xmq-canary-12-meters.yaml` **nu este un fișier pregătit pentru flash**, chiar dacă compilează.
 
 Următorul prag pentru primul canary: copierea locală a ID-urilor, cheilor și setărilor radio/senzorilor din firmware-ul funcțional, confirmarea numelui/API/OTA pentru accesul existent, salvarea firmware-ului și validarea rollback-ului, apoi flash pe dispozitivul canary cu `xmq_shadow_probe.enabled: false`. Activarea capturii și testele heap/RF se fac doar după confirmarea funcționării normale.
+
+
+### Increment 24 — prima validare și corecție a testului de structură
+
+[Workflow #25](https://github.com/radugeo74/esphome-sx1262/actions/runs/44141792385) a trecut toate cele 21 de suite XMQ pe host, dar jobul s-a oprit în verificarea `check_canary_12.py`: expresia `overlay.count("id: heat_baie")` număra și ocurențele `parent_id: heat_baie`. Testul a fost corectat astfel încât să verifice **doar declarațiile `^  - id: ...$`**; lista contorului și câmpurile nu s-au modificat. Celelalte joburi au fost sărite de mecanismul `needs`, fără erori de compilare demonstrate.
+
+După corecție, am verificat separat structura YAML: 12 declarații `wmbus_meter` (7 HCA, 5 apă), 50 declarații de senzori, 12 ID-uri și 12 chei prin `!secret`, toate `mode: [T1]`. Rezultatul complet al `esphome compile` urmează să fie confirmat în revalidarea unică a acestui calup.
