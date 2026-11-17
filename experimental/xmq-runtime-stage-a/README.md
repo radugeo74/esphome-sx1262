@@ -645,3 +645,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Logul separă `changed_numeric`, `unchanged_numeric`, `changed_dates` și `unchanged_dates`. Un câmp neschimbat nu constituie dovadă de prospețime; chiar și un câmp schimbat nu demonstrează în mod formal proveniența sa exclusiv din telegramă.
 - De aceea logul declară explicit `provenance=not_proven`; `matched` continuă să însemne **egalitate numerică/calendaristică observată**, nu paritate completă dovedită per-telegramă.
 - Nicio modificare la decodorul vechi activ, la recepția radio, la senzorii HA sau la YAML. Compilarea direct din GitHub este acoperită de CI.
+
+## Increment AH — dovada de asociere cu înregistrările DV din telegrama curentă
+
+- Clona experimentală `wmbus_meter` consultă **după decodare** exclusiv `telegram->dv_entries` și `DVEntry::hasFieldInfo(...)`, fără modificarea codului radio sau a stării contorului.
+- Pentru fiecare câmp numeric existent se raportează, agregat și fără valori/ID: `matched_numeric_dv` sau `unmatched_numeric_dv`; pentru referințe calendaristice disponibile: `matched_date_dv` / `unmatched_date_dv`.
+- Un `matched_*_dv` confirmă că un extractor `FieldInfo` a fost asociat unei intrări DV din telegrama curentă. **Nu** dovedește că extracția a reușit sau că valoarea păstrată a fost suprascrisă. Formulele fără matcher și parsările proprietare pot produce `unmatched` chiar și când sunt corecte.
+- `provenance=not_proven` rămâne obligatoriu. Paritatea numerică existentă nu este modificată, iar rezultatele sunt doar diagnostice. Data calendaristică rămâne neverificată când `calendar_refs=0`.
+- Un singur workflow pentru întregul calup, cu compilare Heltec direct din GitHub; nu se modifică YAML-ul, senzorii HA, recepția sau driverele active.
