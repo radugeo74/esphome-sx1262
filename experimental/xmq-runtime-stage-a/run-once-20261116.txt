@@ -67,3 +67,5 @@ Validation batch AF 2026-11-17: single CI run; fix direct-GitHub XMQ shadow 9-ar
 Validation batch AG 2026-11-17: one CI run; compare legacy snapshot before/after decoding and report changed/unchanged fields with unproven per-frame provenance; zero radio/HA changes.
 
 Validation batch AH 2026-11-17: ONE CI run; observe current telegram DVEntry FieldInfo associations in isolated XMQ shadow only, with aggregate logs and no HA/radio changes.
+
+Validation batch AI 2026-11-17: ONE CI run; host-only bounded per-telegram setter journal with stale/unchanged field tests, production radio/common/meter unchanged.
