@@ -1,0 +1,3 @@
+# Local canary credentials and build artifacts must never be committed.
+/secrets.yaml
+/.esphome/
