@@ -287,3 +287,15 @@ Valorile obținute din logul **imaginii minimale**:
 - Datele **nu sunt** măsurători de heap în funcționare, nu includ configurarea radio/ESPHome, fișierele XMQ stocate și nici consumul integral pentru decodare. În această imagine, apelul către un fișier nemontat este doar pentru a asigura compilarea simbolurilor.
 
 **Nu folosiți această imagine pentru flash pe Heltec/LILYGO**: este un smoke test fără partiție de drivere, fără montare filesystem și fără integrare radio.
+
+
+## Increment 16 — pod izolat de la payload validat la interpretul XMQ
+
+- După [workflow-ul #11 verde](https://github.com/radugeo74/esphome-sx1262/actions/runs/44102921242), am verificat calea actuală `components/wmbus_meter/wmbus_meter.cpp`: handlerul său apelează în continuare `Meter::handleTelegram` din motorul existent. **Nu s-a schimbat acest traseu**.
+- `xmq_frame_bridge.h` introduce un punct de intrare comun pentru aplicația deja validată/decriptată, identitatea MVT interioară și formatul explicit `StandardDv` sau `OriginalIxml`. Selectează driverul din registrul comun, aplică regulile originale XMQ pentru câmpuri numerice și date; refuză identități/formate greșite și payloaduri goale.
+- `test_xmq_frame_bridge.cpp`: compară rezultate definite de fixture-urile originale `fhkvdataiii`, `mkradio4`, `mkradio4a`, `iperl`: HCA 4/45, temperaturi 22.37/23.60, date ISO, HCA OMS 152/1092 și set_date, apă 0.1/0.4, 16.1 și 123.529 m³.
+- Proiectul `espidf-smoke/main/main.cpp` compilează și leagă același pod de aplicație în build-ul minimal ESP32-S3, pe lângă adaptorul VFS.
+- **Limită de securitate:** podul nu primește telegrame brute, nu verifică CRC, nu decriptează AES, nu determină CI/link-mode automat și nu marchează un cadru ca handled. Nu înlocuiește driverul existent și nu emite senzori; trebuie să primească payloadul clar și identitatea verificate de pipeline-ul actual.
+- Nu instalați încă imaginea ESP-IDF minimală pe Heltec; înainte sunt obligatorii integrarea controlată în ESPHome, comparație paralelă cu decodorul vechi și măsurarea consumului de heap.
+
+Validare: un singur workflow GitHub Actions cu teste host și compilare ESP32-S3 build-only pentru acest calup.
