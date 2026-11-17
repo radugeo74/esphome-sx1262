@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 // Lab-only, read-only post-decode hook. This small POD API avoids linking
 // the legacy meter source against XMQ parser internals.
 // No radio callbacks, meter mutations, HA sensors or sensitive payload logs.
@@ -16,6 +17,8 @@ struct LegacyReadings {
   LegacyNumeric previous_hca;
   LegacyNumeric temp_room_c;
   LegacyNumeric temp_radiator_c;
+  std::string current_date;
+  std::string previous_date;
 };
 bool wants_legacy_readings() noexcept;
 void observe_legacy_telegram(const ::Telegram &telegram, bool decoded,
