@@ -610,3 +610,14 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 ### Increment 26 — prima validare și corecție de test
 
 [Workflow #28](https://github.com/radugeo74/esphome-sx1262/actions/runs/44147774732): 21 de suite C++ XMQ și cele 17 scenarii preflight au trecut. Noul test `test_verify_rollback.py` a identificat o **eroare în aserțiunea de test pentru protecția manifestului existent**: `verify_rollback.py` a refuzat corect suprascrierea, dar testul verifica în mod greșit absența fișierului. Testul a fost corectat să verifice că manifestul preexistent **rămâne prezent și identic** după refuz. Cele trei joburi de compilare au fost sărite, conform condiției `needs`; acest rezultat nu demonstrează un eșec al firmware-ului. Se va rula o singură revalidare corectivă.
+
+
+### Increment 26 — validare definitivă (workflow #29)
+
+[Workflow #29 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44148420644), commit `5dc4569f1466772f15e673e3b330cab84fc44fe3`. Toate cele **patru joburi** au trecut:
+- 21 suite C++ XMQ, 17 scenarii preflight, **10 scenarii de verificare rollback** cu fișiere sintetice, integritatea copiei `wmbus_meter`, integritatea topologiei 7+5 și interdicția modificării componentelor radio active;
+- build ESP-IDF ESP32-S3 izolat;
+- build ESPHome Heltec SX1262 vechi (control);
+- build ESPHome Heltec+XMQ dezactivat, plus build-uri canary conectate și cu 12 contoare, exclusiv cu chei fictive în CI.
+
+**Atenție:** CI nu conține binarul funcțional al utilizatorului și nu a testat posibilitatea efectivă de rollback USB. `verify_rollback.py` doar verifică offline proprietăți de fișier și produce un manifest; înainte de instalare trebuie folosite local imaginile reale și confirmată proveniența backupului, compatibilitatea hardware/partiții și copia integrală a YAML/secrets. Niciun flash nu a fost făcut.
