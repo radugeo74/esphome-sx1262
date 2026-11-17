@@ -15,3 +15,5 @@ Validation batch 2026-11-17 F: exactly one workflow for bounded directory-based 
 Validation batch 2026-11-17 G: one workflow for platform-neutral callback XMQ registry loader and prior tests.
 
 Validation batch 2026-11-17 H: exactly one host workflow for read-only bounded mounted VFS adapter and all existing XMQ tests.
+
+Validation batch 2026-11-17 I: one workflow for mounted VFS FILE custom deleter GCC warning correction.
