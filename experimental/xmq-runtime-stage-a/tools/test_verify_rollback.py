@@ -16,11 +16,15 @@ def fake(path, suffix: bytes, *, chip=9, magic=0xe9, segments=1):
     path.write_bytes(header + (b"\x00" * 256) + suffix)
 
 def blocked(old, new, manifest, label):
+    existed = manifest.exists() or manifest.is_symlink()
+    original = manifest.read_bytes() if existed and not manifest.is_symlink() else None
     try:
         with contextlib.redirect_stdout(io.StringIO()):
             verify(old, new, manifest)
     except GateError:
-        assert not manifest.exists(), label
+        assert (manifest.exists() or manifest.is_symlink()) == existed, label
+        if original is not None:
+            assert manifest.read_bytes() == original, label + ": existing manifest changed"
         return
     raise AssertionError("unsafe rollback accepted: "+label)
 
