@@ -214,3 +214,17 @@ g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic -I"$dir" \
 **Validare:** nu s-a putut accesa GitHub din mediul local de compilare (DNS `github.com` indisponibil). Fișierele au fost actualizate prin conexiunea GitHub, dar compilarea/rularea efectivă a testelor noi **nu este confirmată**. Nu s-a pornit un alt workflow GitHub. Actualizarea păstrează componentele radio și decoder-ele de producție nemodificate.
 
 **Următorul pas prioritar:** verificarea de compilare și execuție a întregului set de teste host, corectarea eșecurilor observate și verificarea parității OMS/IXML înainte de extinderea motorului.
+
+
+## Increment 10 — cale comună pentru payload-uri OMS clare (17.11.2026)
+
+Validarea precedentă GitHub Actions #4 a fost **verde**, inclusiv verificarea că radio-ul și componentele wmbus active nu au fost modificate:
+https://github.com/radugeo74/esphome-sx1262/actions/runs/44093741937
+
+- `xmq_clear_runtime.h`: o cale generică independentă de ESPHome care validează tripletul MVT al contorului, decodează înregistrări DV standard, proiectează valorile Volume/Flow și datele OMS conform regulilor `match` din **fișierele XMQ originale**.
+- `test_xmq_clear_runtime.cpp`: folosește fișierele upstream `iperl.xmq` și `mkradio4a.xmq` nemodificate; verifică numeric 7.704/123.529 m³, 16.1/75.2 m³, precum și `target_date=2021-12-31` (cheia internă `target` în proiecția OMS). Mai testează MVT incompatibil, dată invalidă și lipsa scurgerilor de stare între telegrame.
+- Nu adaugă funcții per-driver; proiectarea rezultatelor este comună.
+
+**Limitări:** datele trebuie să fie deja verificate la nivel radio/CRC și decriptate; nu există interpretare completă a statusului, a tuturor VIF/VIFE ori paritate integrală. Motorul încă nu este conectat la firmware.
+
+Testul nou este inclus în **următoarea singură execuție GitHub Actions**, care trebuie verificată înaintea incrementului următor.
