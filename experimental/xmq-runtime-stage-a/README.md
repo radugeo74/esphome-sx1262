@@ -191,3 +191,15 @@ g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic -I"$dir" \
 
 **Continuare:** este necesară o verificare de compilare și execuție a întregii suite C++ (fără a lansa repetat Actions). Apoi completarea semnificației valorilor DV/OMS și a câmpurilor lipsă, fără a crea cod special pentru `fhkvdataiii`.
 
+
+## Increment 8 — telegrame OMS parțiale / protecție împotriva valorilor inventate (17.11.2026)
+
+- În `xmq_numeric_runtime.h`, formulele `calculate` cu variabile lipsă nu mai întrerup procesarea întregii telegrame. Câmpul derivat respectiv lipsește din rezultat; erorile reale ale expresiei (unități greșite, împărțire la zero, sintaxă nesuportată) rămân erori.
+- În `xmq_calendar_runtime.h`, câmpurile de dată nu se mai calculează dacă telegrama nu conține variabilele necesare. Nu se reutilizează valori dintr-o telegramă anterioară.
+- `test_xmq_oms_partial.cpp`: folosește payload-ul exact al fixture-ului original `fhkvdataiii` cu telegramă OMS de tip 0x08, verificând `current_consumption_hca=152` și `consumption_at_set_date_hca=1092` fără a fabrica `current_hca`, `previous_hca`, datele proprietare ori componentele lor. Testează și izolarea între o telegramă completă și una parțială.
+- Testul este adăugat la suita de host pentru **următoarea execuție autorizată**, fără un al doilea trigger GitHub Actions.
+
+**Stare de verificare:** modificările sunt publicate, însă compilarea locală nu a putut fi efectuată aici deoarece mediul de execuție nu are acces direct la sursele GitHub; testele noi nu sunt declarate PASS. Singura execuție GitHub Actions anterioară a eșuat la compilator și nu a fost relansată.
+
+**Limitări:** data OMS standard `426C` nu este încă interpretată de subsetul numeric, iar statusurile, AES, IXML complet, întreaga bibliotecă XMQ și integrarea ESPHome rămân nefinalizate. Nu înlocuiți decodoarele actuale pe hardware.
+
