@@ -116,3 +116,27 @@ jobs:
           esphome config "$dir/heltec-xmq-shadow-build.yaml"
           esphome compile "$dir/heltec-xmq-shadow-build.yaml"
           echo "PASS: actual ESPHome firmware links the XMQ engine with existing Heltec radio, probe disabled"
+      - name: Validate and compile canary connectivity with temporary CI-only credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=experimental/xmq-runtime-stage-a
+          trap 'rm -f "$dir/secrets.yaml"' EXIT
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          p=Path("experimental/xmq-runtime-stage-a/secrets.yaml")
+          assert not p.exists(), "CI must not overwrite existing credentials"
+          dummy_key=base64.b64encode(bytes(range(32))).decode("ascii")
+          p.write_text(
+              "wifi_ssid: xmq-ci-only\\n"
+              "wifi_password: ci-placeholder-do-not-use\\n"
+              f"heltec_api_key: {dummy_key}\\n"
+              "heltec_ota_password: ci-placeholder-ota-only\\n"
+          )
+          PY
+          grep -q 'enabled: false' "$dir/heltec-xmq-canary.yaml"
+          ! grep -E '(^|[[:space:]])(ssid|password|key): [^!]' "$dir/heltec-xmq-canary.yaml"
+          esphome config "$dir/heltec-xmq-canary.yaml"
+          esphome compile "$dir/heltec-xmq-canary.yaml"
+          echo "PASS: canary has Wi-Fi, encrypted API and OTA with local-secret references only; XMQ disabled"
