@@ -299,3 +299,16 @@ Valorile obținute din logul **imaginii minimale**:
 - Nu instalați încă imaginea ESP-IDF minimală pe Heltec; înainte sunt obligatorii integrarea controlată în ESPHome, comparație paralelă cu decodorul vechi și măsurarea consumului de heap.
 
 Validare: un singur workflow GitHub Actions cu teste host și compilare ESP32-S3 build-only pentru acest calup.
+
+
+### Rezultat confirmat — Incrementul 16
+
+[Workflow #12 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44105521193), commit `42ce903030cef37b1bd3426da5d8086bc9f9129c`: ambele joburi au trecut (host cu `frame_bridge` și ESP-IDF v5.5, `esp32s3`), inclusiv verificarea că toate componentele radio active au rămas nemodificate.
+
+Logul `idf.py size` pentru imaginea minimală care **referențiază și leagă acum efectiv bridge-ul XMQ**:
+- binar `xmq_stage_a_smoke.bin`: `0x85340` = 545600 octeți (aproximativ 532,8 KiB) dintr-o partiție app de 1 MiB;
+- imagine raportată de `idf.py size`: 545477 octeți;
+- DIRAM static utilizat: **60839 octeți** (17,8% din 341760), rămas raportat **280921 octeți**;
+- Flash Code: 340002 octeți; Flash Data: 135060 octeți.
+
+Față de smoke-ul precedent, includerea reală a motorului în linkare crește semnificativ imaginea flash (de la ~239 KiB), dar numai cu 4832 octeți DIRAM static raportat. **Nu reprezintă RAM de vârf, heap folosit în procesare, stocarea driverelor ori firmware-ul complet ESPHome**. Compatibilitatea excepțiilor C++ cu configurația finală și limitele RAM la decode rămân probleme deschise. Firmware-ul de test nu este instalabil ca receptor funcțional.
