@@ -65,9 +65,33 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
   const bool decoded = this->meter->handleTelegram(
       about, frame->data(), false, &adresses, &id_match, telegram.get());
 
-  // Lab-only observer, AFTER the existing AES/parser/field update path.
-  // No changes to old handled semantics, sensor output, or radio ownership.
-  xmq_shadow_probe::observe_legacy_telegram(*telegram, decoded);
+  // Read-only XMQ shadow, AFTER successful legacy decoding. Snapshot the
+  // just-updated legacy values only when the bounded probe requests them.
+  // No writes to meter state, frame dispatch, or Home Assistant sensors.
+  xmq_shadow_probe::LegacyReadings legacy;
+  if (decoded && xmq_shadow_probe::wants_legacy_readings()) {
+    auto capture = [this](const char *name,
+                          xmq_shadow_probe::LegacyNumeric &dest) {
+      const auto value = this->get_numeric_field(name);
+      if (value.has_value() && std::isfinite(*value)) {
+        dest.value = *value;
+        dest.present = true;
+      }
+    };
+    const std::string driver = this->get_driver();
+    if (driver == "mkradio4") {
+      capture("target_m3", legacy.target_m3);
+      capture("total_m3", legacy.total_m3);
+    } else if (driver == "fhkvdataiii") {
+      capture("current_hca", legacy.current_hca);
+      capture("previous_hca", legacy.previous_hca);
+      capture("temp_room_c", legacy.temp_room_c);
+      capture("temp_radiator_c", legacy.temp_radiator_c);
+    }
+  }
+  const std::string shadow_driver = this->get_driver();
+  xmq_shadow_probe::observe_legacy_telegram(
+      *telegram, decoded, shadow_driver.c_str(), legacy);
 
   if (id_match) {
     this->last_telegram = std::move(telegram);
