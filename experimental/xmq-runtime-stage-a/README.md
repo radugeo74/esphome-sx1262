@@ -236,3 +236,11 @@ Testul nou este inclus în **următoarea singură execuție GitHub Actions**, ca
 - Limite: selectarea funcționează doar pe identitatea MVT primită deja de la un apelant, nu extrage identitatea din telegramă; nu este încă adaptor ESPHome, nu gestionează prioritatea upstream, nu interpretează cadrele radio și nu decriptează AES. Alegerea explicită este momentan strictă la MVT.
 
 Testele vor fi validate împreună într-un singur workflow. Nu se modifică decodoarele de producție.
+
+## Increment 12 — registru încărcat din directorul upstream XMQ (17.11.2026)
+
+- Baza validată: [XMQ Stage A #6 — verde](https://github.com/radugeo74/esphome-sx1262/actions/runs/44096080728).
+- `xmq_driver_loader.h`: citește toate fișierele `.xmq` nemodificate dintr-un director local, validează limitele (maximum 128 drivere / 256 KiB per driver), interzice symlink-urile și numele ambigue, verifică potrivirea numelui din `driver.name` cu fișierul și construiește registrul comun. Nu introduce cod separat pentru fiecare driver.
+- `test_xmq_driver_loader.cpp`: testează încărcarea setului upstream `iperl`, `mkradio4a`, `mkradio4`, `fhkvdataiii`, selecția automată și decodarea unui exemplu clar, limitele de resurse, refuzul unui alias, al unui XMQ incomplet și al unui fișier symlink.
+- Modificarea este **strict experimentală**, independentă de ESPHome. Folosește sistemul de fișiere al hostului, nu încărcare din flash pe ESP32. Înlocuirea driverelor runtime fără recompilare și încărcarea unei biblioteci XMQ complete sunt obiective viitoare; nu sunt încă implementate.
+- Testul `driver_loader` este adăugat în suita host și se validează într-un singur workflow pentru acest calup.
