@@ -605,3 +605,8 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Abia apoi se poate evalua un prim flash pe placa de test. Canarul inițial verifică doar că vechiul decodor și radio continuă să funcționeze. Captura XMQ și măsurarea dinamică a heap-ului se activează într-un al doilea pas, după confirmarea revenirii la versiunea veche.
 
 **Nu am efectuat backupul hardware sau flash pe placa utilizatorului.**
+
+
+### Increment 26 — prima validare și corecție de test
+
+[Workflow #28](https://github.com/radugeo74/esphome-sx1262/actions/runs/44147774732): 21 de suite C++ XMQ și cele 17 scenarii preflight au trecut. Noul test `test_verify_rollback.py` a identificat o **eroare în aserțiunea de test pentru protecția manifestului existent**: `verify_rollback.py` a refuzat corect suprascrierea, dar testul verifica în mod greșit absența fișierului. Testul a fost corectat să verifice că manifestul preexistent **rămâne prezent și identic** după refuz. Cele trei joburi de compilare au fost sărite, conform condiției `needs`; acest rezultat nu demonstrează un eșec al firmware-ului. Se va rula o singură revalidare corectivă.
