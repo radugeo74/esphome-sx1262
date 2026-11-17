@@ -65,7 +65,10 @@ inline std::map<std::string, Number> evaluate_numeric_fields(
         dimension=Dimension::TemperatureC;
         suffix="_c";
       } else if (field.quantity=="Dimensionless") {
-        if (found->unit!="counter")
+        // A source-defined Dimensionless field may match a scaled physical
+        // VIF (e.g. mkradio4 raw volume). Its numeric magnitude is
+        // preserved while its logical XMQ unit is Counter.
+        if (found->unit!="counter" && found->unit!="m3")
           throw RuntimeError("XMQ counter unit mismatch");
       } else {
         // Date, status, text and other unsupported fields not fabricated.
