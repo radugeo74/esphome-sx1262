@@ -62,48 +62,68 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
   bool id_match = false;
   auto telegram = std::make_unique<Telegram>();
 
+  // Baseline values are observed BEFORE legacy decoding. Comparing before/after
+  // can prove a value changed, but equality cannot prove per-frame provenance.
+  // Keep the old decoder, radio dispatch and sensor updates unchanged.
+  xmq_shadow_probe::LegacyReadings before;
+  xmq_shadow_probe::LegacyReadings legacy;
+  const bool probe_requested = xmq_shadow_probe::wants_legacy_readings();
+  const std::string shadow_driver = probe_requested ? this->get_driver() : "";
+  auto capture = [this](const char *name,
+                        xmq_shadow_probe::LegacyNumeric &dest) {
+    const auto value = this->get_numeric_field(name);
+    if (value.has_value() && std::isfinite(*value)) {
+      dest.value = *value;
+      dest.present = true;
+    }
+  };
+  auto date = [this](const char *name) -> std::string {
+    auto *field = this->meter->findFieldInfo(name, Quantity::PointInTime);
+    if (!field) return {};
+    const std::string text = this->meter->getStringValue(field);
+    if (text.size() != 10 || text[4] != '-' || text[7] != '-') return {};
+    for (size_t i = 0; i < text.size(); ++i)
+      if (i != 4 && i != 7 && (text[i] < '0' || text[i] > '9')) return {};
+    return text;
+  };
+  auto snapshot = [&](xmq_shadow_probe::LegacyReadings &readings) {
+    if (shadow_driver == "mkradio4") {
+      capture("target_m3", readings.target_m3);
+      capture("total_m3", readings.total_m3);
+    } else if (shadow_driver == "fhkvdataiii") {
+      capture("current_hca", readings.current_hca);
+      capture("previous_hca", readings.previous_hca);
+      capture("temp_room_c", readings.temp_room_c);
+      capture("temp_radiator_c", readings.temp_radiator_c);
+      readings.current_date = date("current");
+      readings.previous_date = date("previous");
+    }
+  };
+  if (probe_requested) snapshot(before);
+
   const bool decoded = this->meter->handleTelegram(
       about, frame->data(), false, &adresses, &id_match, telegram.get());
 
-  // Read-only XMQ shadow, AFTER successful legacy decoding. Snapshot the
-  // just-updated legacy values only when the bounded probe requests them.
-  // No writes to meter state, frame dispatch, or Home Assistant sensors.
-  xmq_shadow_probe::LegacyReadings legacy;
-  if (decoded && xmq_shadow_probe::wants_legacy_readings()) {
-    auto capture = [this](const char *name,
-                          xmq_shadow_probe::LegacyNumeric &dest) {
-      const auto value = this->get_numeric_field(name);
-      if (value.has_value() && std::isfinite(*value)) {
-        dest.value = *value;
-        dest.present = true;
-      }
+  if (decoded && probe_requested) {
+    snapshot(legacy);
+    auto mark = [](xmq_shadow_probe::LegacyNumeric &after,
+                   const xmq_shadow_probe::LegacyNumeric &prior) {
+      after.changed = after.present &&
+                      (!prior.present || after.value != prior.value);
     };
-    const std::string driver = this->get_driver();
-    if (driver == "mkradio4") {
-      capture("target_m3", legacy.target_m3);
-      capture("total_m3", legacy.total_m3);
-    } else if (driver == "fhkvdataiii") {
-      capture("current_hca", legacy.current_hca);
-      capture("previous_hca", legacy.previous_hca);
-      capture("temp_room_c", legacy.temp_room_c);
-      capture("temp_radiator_c", legacy.temp_radiator_c);
-      // fhkvdataiii publishes PointInTime fields named "current" and
-      // "previous". Read strings only; never modify timestamps or meter state.
-      auto date = [this](const char *name) -> std::string {
-        auto *field = this->meter->findFieldInfo(name, Quantity::PointInTime);
-        if (!field) return {};
-        const std::string text = this->meter->getStringValue(field);
-        // Accept only an exact yyyy-mm-dd date as a verified reference.
-        if (text.size() != 10 || text[4] != '-' || text[7] != '-') return {};
-        for (size_t i = 0; i < text.size(); ++i)
-          if (i != 4 && i != 7 && (text[i] < '0' || text[i] > '9')) return {};
-        return text;
-      };
-      legacy.current_date = date("current");
-      legacy.previous_date = date("previous");
-    }
+    mark(legacy.target_m3, before.target_m3);
+    mark(legacy.total_m3, before.total_m3);
+    mark(legacy.current_hca, before.current_hca);
+    mark(legacy.previous_hca, before.previous_hca);
+    mark(legacy.temp_room_c, before.temp_room_c);
+    mark(legacy.temp_radiator_c, before.temp_radiator_c);
+    legacy.current_date_changed =
+        !legacy.current_date.empty() &&
+        legacy.current_date != before.current_date;
+    legacy.previous_date_changed =
+        !legacy.previous_date.empty() &&
+        legacy.previous_date != before.previous_date;
   }
-  const std::string shadow_driver = this->get_driver();
   xmq_shadow_probe::observe_legacy_telegram(
       *telegram, decoded, shadow_driver.c_str(), legacy);
 
