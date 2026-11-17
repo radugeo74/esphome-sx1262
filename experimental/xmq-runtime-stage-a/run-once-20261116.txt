@@ -11,3 +11,5 @@ Validation batch 2026-11-17 D: run once for source-driven standard-clear adapter
 Validation batch 2026-11-17 E: one workflow for strict source-driven MVT driver registry, auto/explicit selection and prior suites.
 
 Validation batch 2026-11-17 F: exactly one workflow for bounded directory-based original XMQ registry loader and all prior host tests.
+
+Validation batch 2026-11-17 G: one workflow for platform-neutral callback XMQ registry loader and prior tests.
