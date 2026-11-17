@@ -420,3 +420,12 @@ Cele două dimensiuni aparțin unor firmware-uri **diferite**: nu se însumează
 Corecție **strict de împachetare, fără modificarea motorului**: `tools/stage_shadow_headers.py` copiază toate fișierele `xmq_*.h` **nemodificate** lângă componenta experimentală înainte de compilarea YAML. Scriptul afișează SHA-256 prescurtat pentru fiecare sursă, iar `.gitignore` exclude copiile generate. Se rulează manual cu `python experimental/xmq-runtime-stage-a/tools/stage_shadow_headers.py` înainte de `esphome compile experimental/xmq-runtime-stage-a/heltec-xmq-shadow-build.yaml`. Workflow-ul face automat acest pas. Copiile nu sunt în Git și nu modifică sursele XMQ principale.
 
 Atenție: fișierele sunt incluse în imaginea **de test**, iar activarea excepțiilor C++ rămâne experimentală; nu folosiți acest flux pentru actualizarea Heltec de producție. O singură revalidare corectivă va testa compilarea combinată.
+
+
+### Increment 21 — a doua validare și coliziunea macro `error`
+
+[Workflow #20](https://github.com/radugeo74/esphome-sx1262/actions/runs/44123982013) a trecut toate testele host, smoke-ul ESP32-S3 și build-ul Heltec vechi. În primul build **combinat**, împachetarea headerelor s-a rezolvat, dar compilarea `main.cpp` generat de ESPHome a eșuat: `components/wmbus_common/util.h` definește macro-ul C/C++ `error(...)`, care interfera cu metoda `Parser::error(...)` din `xmq_reader.h`.
+
+Corecție de compatibilitate **strict la granița de includere**: `components/xmq_shadow_probe/xmq_compat_include.h` salvează macro-ul `error` (dacă există), îl dezactivează pe durata includerii headerelor originale XMQ și îl restaurează. Nici `wmbus_common`, nici parserul XMQ nu sunt modificate. Noul test `test_xmq_compat_macros.cpp` reproduce coliziunea și verifică restaurarea macro-ului, înainte de o singură revalidare a build-ului combinat.
+
+Acesta rămâne un test de **coexistență la compilare**, nu o implementare a capturii live sau un firmware recomandat pentru instalare pe Heltec.
