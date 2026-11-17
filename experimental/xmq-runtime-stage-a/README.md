@@ -630,3 +630,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Logurile emit doar `driver`, `disposition`, `compared`, `mismatches` și contori cumulați — **fără ID-uri, chei sau payload-uri**. Sunt maximum 128 de observații per boot, iar eșecurile XMQ nu afectează decodorul vechi. Cazurile nesuportate sunt distincte de diferențele dovedite.
 - **Stare:** cod publicat; CI pentru această schimbare a fost declanșat, dar încă nu există un rezultat de compilare confirmat aici. Nu recomandăm încă flash-ul acestei versiuni. Pentru rollback păstrați firmware-ul testat anterior.
 - Atenție: referințele sunt valorile existente în obiectul driverului după `handleTelegram`; unele câmpuri pot fi păstrate de la telegrame anterioare. Un `matched` parțial nu reprezintă dovadă de paritate completă a driverului și necesită validarea provenienței pe telegramă.
+
+## Increment AE — integritatea referinței și date calendaristice (17.11.2026)
+
+- `ShadowDisposition::IncompleteReference` împiedică numărarea unui `MATCH` dacă referința veche nu conține **toate** câmpurile numerice declarate pentru driver (2 la `mkradio4`, 4 la `fhkvdataiii`).
+- Pentru `fhkvdataiii`, adaptorul încearcă suplimentar să citească din vechiul driver câmpurile `current` și `previous` ca `Quantity::PointInTime`; dacă sunt șiruri ISO de 10 caractere, sunt comparate cu `current_date` și `previous_date` proiectate de XMQ. Dacă lipsesc, logul `calendar_refs=0` le marchează explicit ca **neverificate**, nu ca egalitate.
+- Testul de diagnostic verifică atât refuzul referinței numerice incomplete, cât și identificarea unei date diferite.
+- **Limitare importantă:** această versiune nu poate dovedi încă faptul că fiecare referință din obiectul vechi a fost actualizată exclusiv de telegrama curentă; deci `MATCH` semnifică doar paritate a valorilor verificate pe captură, nu paritate completă de driver.
+- Nu s-au schimbat receptorul SX126x/SX127x, telegramele recepționate, senzorii sau YAML-ul. Până la validare CI/compilare și analiză de loguri nu înlocuiți decodorul vechi.
