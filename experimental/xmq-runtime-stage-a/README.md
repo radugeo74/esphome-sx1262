@@ -343,3 +343,20 @@ Față de smoke-ul precedent, includerea reală a motorului în linkare crește 
 Logul `idf.py size` pentru imaginea **minimală** cu diagnostic: `xmq_stage_a_smoke.bin` = `0x86000` = 548864 octeți; dimensiune estimată 548741 octeți; DIRAM static 60839 octeți (17,8% din totalul raportat), rămas 280921 octeți. Nici acestea nu sunt măsurători de heap live și nici dimensiunea firmware-ului Heltec complet.
 
 **Următoarea limitare de rezolvat:** capturarea sigură a datelor deja decriptate din pipeline-ul existent și eliminarea/izolarea excepțiilor C++ înainte de activarea în ESPHome. Nu instalați încă imaginea minimală.
+
+
+## Increment 19 — gardă pentru capturarea sigură a payloadului din Telegram (17.11.2026)
+
+Am inspectat sursele active `components/wmbus_common/meters.cc`, `wmbus.cc`, `wmbus.h`, `address.h` și `components/wmbus_meter/wmbus_meter.cpp`:
+
+- `MeterCommonImplementation::handleTelegram()` setează `id_match=true` **înainte de** `Telegram::parse()`; un ID potrivit nu garantează decriptarea sau procesarea. Într-un eventual hook shadow trebuie păstrat și verificat explicit **bool-ul returnat de `handleTelegram`**, plus `!decryption_failed` și `!discard`.
+- După procesarea reușită, `Telegram::frame` conține cadrul potențial decriptat, iar `Telegram::extractPayload()` folosește intervalul `frame[header_size:frame.size()-suffix_size]`. Motorul XMQ are nevoie strict de acest interval.
+- `Telegram::addresses.back()` este identitatea interioară de referință (TPL, când există), nu neapărat cea de la DLL a convertorului radio.
+
+Noul `xmq_telegram_capture.h` realizează o copie temporară numai după confirmarea explicită a succesului decodorului existent, refuză date incomplete/criptate, limite sau adrese invalide, folosește adresa interioară și filtrează strict CI-urile suportate în subsetul actual (proprietar 0xA0/0xA2, OMS 0x72/0x7A). Nu tratează CI-uri suplimentare prin presupuneri și nu face decriptare secundară. Există o limită de 1024 octeți pentru aplicația clară.
+
+`test_xmq_telegram_capture.cpp` verifică limitele, CI, conversia producătorului, diferența dintre `id_match` și succesul real al decodorului, absența cheilor și respingerea datelor deja invalidate. Proiectul ESP32-S3 minimal compilează și instanțiază aceeași gardă într-un mock compatibil cu structura `Telegram`.
+
+**Limitări:** captura este încă izolată, nu este apelată din `wmbus_meter`. Testul folosind o structură `Telegram` simulată nu garantează că legarea la structura reală și compatibilitatea cu toate modurile TPL sunt validate. Pentru a nu schimba traseul activ și a nu cere excepții C++ în firmware-ul stabil, callback-ul live și YAML-ul opt-in se adaugă doar după un build complet ESPHome izolat și auditarea accesului la plaintext.
+
+Regula păstrată: **un singur workflow per calup**, fără modificări la componentele radio funcționale.
