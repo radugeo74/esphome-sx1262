@@ -494,3 +494,15 @@ Pentru un canary real urmează: build Heltec verde cu hook, configurație comple
 Workflow-ul **existent** compilează mai întâi imaginea combinată precedentă și apoi `heltec-xmq-canary.yaml` într-un job de validare, injectând temporar numai parole și o cheie API complet fictive generate în runner; le șterge imediat după test. Niciun secret de producție nu intră în CI. CI confirmă exclusiv generarea imaginii și configurația validă, nu conectivitatea reală, recepția radio, memoria heap sau disponibilitatea OTA în rețeaua utilizatorului.
 
 Pași rămași până la prima instalare canary: copierea locală a parametrilor legitimi din YAML-ul Heltec funcțional (nume, Wi-Fi, API/OTA, 12 contoare, chei AES, senzori), compilare pe țintă, salvarea firmware-ului vechi și validarea unei proceduri de revenire. Abia după verificare hardware se poate activa diagnosticul pentru maximum 128 de capturi, fără a publica date XMQ.
+
+
+### Increment 23 — validare completă a șablonului canary (workflow #24)
+
+[Workflow XMQ Stage A #24 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44133655465), commit `112f0ff8ec88146a6e63e612246bcfe2694b6907`. Toate **patru** joburile au trecut: host/clone parity, ESP32-S3 isolated, Heltec legacy baseline, Heltec cu XMQ plus configurația canary Wi-Fi/API/OTA. Cheile fictive au existat doar în runner și au fost șterse prin `trap`.
+
+- `heltec-xmq-canary.bin`: `0x124010` = **1.196.048 octeți**, 70% spațiu disponibil din partiția de aplicație raportată (3.932.160 octeți), adică utilizare circa 30%.
+- `idf.py size`: imagine estimată **1.195.931 octeți**; DIRAM static **106.855 octeți** (31,27% din 341.760), rămas raportat **234.905 octeți**. Acestea nu sunt măsurători de heap liber în runtime, iar Wi-Fi/API pot consuma heap suplimentar.
+- `esphome config` și `esphome compile`: ambele PASS cu `xmq_shadow_probe.enabled: false`.
+- Avertisment neblocant ESPHome: OTA pe bază de **parolă** consumă mai mult flash/RAM decât configurația OTA cu `encryption`; păstrăm deocamdată parola pentru compatibilitate cu vechiul flux, urmând migrare controlată dacă se dorește.
+
+**Nu instalați șablonul direct!** Nu conține setul real de 12 contoare, cheile lor, selecția completă T1/C1, numele actual al dispozitivului și nici configurația de senzori dorită. Pentru primul canary trebuie transplantate local din YAML-ul funcțional, fără expunere publică. Testarea pe hardware și confirmarea rollback-ului încă lipsesc.
