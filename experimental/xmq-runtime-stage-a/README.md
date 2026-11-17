@@ -580,3 +580,28 @@ Persistă avertismentul neblocant ESPHome privind costul OTA cu parolă. Testul 
 - Canary-ul de compilare cu 12 contoare + Wi-Fi/API/OTA, folosind exclusiv chei fictive CI: PASS. Dimensiuni estimate reconfirmate: **1.206.839 B imagine, 110.983 B DIRAM static folosit, 230.777 B DIRAM static rămas**. Acestea nu sunt măsurători de heap în funcționare.
 
 **Punct critic:** testele din CI verifică **instrumentul preflight cu date simulate**; nu au comparat încă cele două YAML-uri **reale** ale dispozitivului. Un `PREFLIGHT_OK` local este necesar, dar nu suficient: verificarea surselor componentelor, backup/rollback fizic și recepția RF cu XMQ dezactivat rămân pași separați. Nu instalați firmware-ul fixture cu ID-uri inventate. Pentru prima instalare trebuie folosit exclusiv canary-ul local obținut din YAML-ul funcțional al aceluiași Heltec.
+
+
+## Increment 26 — verificarea offline a firmware-ului de rollback, fără flash
+
+Noul \`tools/verify_rollback.py\` completează preflight-ul YAML cu o **poartă independentă pentru fișiere firmware**. Rulează local, fără USB, fără rețea și fără GitHub. Cere două fișiere distincte: un \`.bin\` al firmware-ului care **a funcționat efectiv** pe Heltec și un \`.bin\` canary compilat din YAML-ul privat verificat. Verifică existența și evită symlink-uri, semnătura de bază a imaginii ESP-IDF (\`0xE9\`), ID-ul cipului ESP32-S3 (= 9), numărul segmentelor, limita conservatoare a imaginii (\`0x3c0000\` octeți), faptul că imaginile diferă și SHA-256 complet. Creează exclusiv un manifest JSON local cu \`0600\`, fără chei AES/SSID/parole, fără suprascriere.
+
+**IMPORTANT:** verificarea semnăturii/chip-ID este doar un control de format, **NU o validare criptografică a originii firmware-ului**, a layoutului real de partiții sau a posibilității de boot. Un \`fallback.bin\` dintr-un CI anterior nu este prin definiție firmware-ul realmente funcțional. Este necesară și păstrarea configurației originale/secrets, procedura USB testată și accesul fizic la placă.
+
+Exemplu local (după preflight YAML și compilarea candidatului privat):
+\`\`\`bash
+python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
+  --fallback /cale/locala/last-known-good.bin \
+  --candidate /cale/locala/heltec-xmq-canary-private.bin \
+  --manifest /cale/locala/heltec-release-manifest.json
+\`\`\`
+**Nu furnizați niciunul dintre aceste fișiere CI sau în repository.** Nu rulați încă \`esphome run\`, \`upload\` sau flash. Noul \`test_verify_rollback.py\` folosește numai fișiere sintetice temporare pentru cazuri pozitive și negative și este executat în workflow-ul unic al etapei.
+
+### Condiții înaintea primei testări pe hardware
+
+- \`preflight_canary.py\` compară cu succes YAML-ul Heltec actual (cu date reale, numai local), iar sursele externe ale componentelor sunt auditate manual.
+- Un backup de **firmware funcțional și verificat** este salvat în afara Git împreună cu YAML/secrets. Se confirmă compatibilitatea layoutului flash și posibilitatea de recuperare USB.
+- Candidatul local folosește exact numele dispozitivului, configurația Wi-Fi/API/OTA, 12 contoare, toate cheile AES, senzori și modurile T1/C1 validate anterior; \`xmq_shadow_probe.enabled: false\`.
+- Abia apoi se poate evalua un prim flash pe placa de test. Canarul inițial verifică doar că vechiul decodor și radio continuă să funcționeze. Captura XMQ și măsurarea dinamică a heap-ului se activează într-un al doilea pas, după confirmarea revenirii la versiunea veche.
+
+**Nu am efectuat backupul hardware sau flash pe placa utilizatorului.**
