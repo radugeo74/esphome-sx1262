@@ -360,3 +360,12 @@ Noul `xmq_telegram_capture.h` realizează o copie temporară numai după confirm
 **Limitări:** captura este încă izolată, nu este apelată din `wmbus_meter`. Testul folosind o structură `Telegram` simulată nu garantează că legarea la structura reală și compatibilitatea cu toate modurile TPL sunt validate. Pentru a nu schimba traseul activ și a nu cere excepții C++ în firmware-ul stabil, callback-ul live și YAML-ul opt-in se adaugă doar după un build complet ESPHome izolat și auditarea accesului la plaintext.
 
 Regula păstrată: **un singur workflow per calup**, fără modificări la componentele radio funcționale.
+
+
+### Rezultat Increment 19 — GitHub Actions #15
+
+[Workflow XMQ Stage A #15 — SUCCESS](https://github.com/radugeo74/esphome-sx1262/actions/runs/44113266367) — ambele joburi au trecut, inclusiv testul `telegram_capture` și compilarea ESP-IDF v5.5 pentru `esp32s3`. Nu au fost modificate componentele active ale receptorului.
+
+Dimensiuni din `idf.py size` pentru smoke-ul minimal cu gardă: `xmq_stage_a_smoke.bin` = `0x866b0` = 550576 octeți; imagine totală raportată **550461 octeți**; DIRAM static **60839 octeți** (17,8% din 341760), rămas raportat **280921 octeți**. Aceste valori nu includ firmware-ul complet ESPHome și nici utilizarea de heap în timpul interpretării.
+
+**Nu este încă disponibil un firmware nou instalabil pe Heltec.** Acest increment asigură doar capturarea corectă dintr-o structură cu forma `Telegram` în build-ul izolat. Următorul pas trebuie să fie testul cu API-ul `Telegram` real din `wmbus_common` și introducerea unui callback `shadow` opt-in într-un build ESPHome izolat, fără a modifica traseul activ și fără a considera `id_match` echivalent cu succesul decodării.
