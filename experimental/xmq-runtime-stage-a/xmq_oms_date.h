@@ -30,7 +30,7 @@ inline std::map<std::string, std::string> project_oms_dates(
       if (selected) throw DateProjectionError("ambiguous OMS date field");
       selected=&r;
     }
-    if (selected && !out.emplace(field.name+"_date",selected->iso_date).second)
+    if (selected && !out.emplace(field.name,selected->iso_date).second)
       throw DateProjectionError("duplicate OMS date field");
   }
   return out;
