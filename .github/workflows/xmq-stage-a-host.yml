@@ -89,3 +89,26 @@ jobs:
           esphome config tests/sx126x-wmbus-bridge.yaml
           esphome compile tests/sx126x-wmbus-bridge.yaml
           echo "PASS: production-shaped Heltec fixture still compiles"
+
+  heltec-xmq-shadow-build:
+    name: Heltec SX1262 ESPHome with XMQ linked, probe disabled
+    needs: xmq-stage-a-host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned ESPHome
+        run: python -m pip install --disable-pip-version-check "esphome==2026.10.1"
+      - name: Audit opt-in shadow interface and compile combined Heltec image, NO FLASH
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=experimental/xmq-runtime-stage-a
+          grep -q 'enabled: false' "$dir/heltec-xmq-shadow-build.yaml"
+          ! grep -E '(add_frame_handler|add_meter_frame_handler|handleTelegram|mark_as_handled)' "$dir/components/xmq_shadow_probe/xmq_shadow_probe.cpp"
+          esphome config "$dir/heltec-xmq-shadow-build.yaml"
+          esphome compile "$dir/heltec-xmq-shadow-build.yaml"
+          echo "PASS: actual ESPHome firmware links the XMQ engine with existing Heltec radio, probe disabled"
