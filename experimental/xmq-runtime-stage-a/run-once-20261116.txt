@@ -31,3 +31,5 @@ Validation batch 2026-11-17 N: exactly one workflow for verified legacy Telegram
 Validation batch 2026-11-17 O: one workflow for real wmbus_common Telegram host and Xtensa smoke contract plus existing Heltec ESPHome build-only baseline.
 
 Validation batch 2026-11-17 P: one correction run for test-only real Telegram private unused parameter warning; host + ESP32-S3 + Heltec build.
+
+Validation batch 2026-11-17 Q: single correction validation for empty upstream NoDifVifKey header initializer isolated host and Xtensa fixture; Heltec legacy ESPHome build-only.
