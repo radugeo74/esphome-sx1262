@@ -429,3 +429,12 @@ Atenție: fișierele sunt incluse în imaginea **de test**, iar activarea excep�
 Corecție de compatibilitate **strict la granița de includere**: `components/xmq_shadow_probe/xmq_compat_include.h` salvează macro-ul `error` (dacă există), îl dezactivează pe durata includerii headerelor originale XMQ și îl restaurează. Nici `wmbus_common`, nici parserul XMQ nu sunt modificate. Noul test `test_xmq_compat_macros.cpp` reproduce coliziunea și verifică restaurarea macro-ului, înainte de o singură revalidare a build-ului combinat.
 
 Acesta rămâne un test de **coexistență la compilare**, nu o implementare a capturii live sau un firmware recomandat pentru instalare pe Heltec.
+
+
+### Increment 21 — corecția includerii automate ESPHome
+
+[Workflow #21](https://github.com/radugeo74/esphome-sx1262/actions/runs/44125233897): cele 21 de suite host, smoke-ul ESP32-S3 și build-ul Heltec de bază au trecut. Build-ul combinat a eșuat din nou deoarece **ESPHome include automat fiecare header .h al componentei în `esphome.h`**, iar includerea directă a lui `xmq_reader.h` avea loc înainte de wrapperul componentei. Macro-ul `error(...)` din `wmbus_common/util.h` afecta metoda `Parser::error(...)`.
+
+Soluția fără modificarea parserului original: scriptul de pregătire adaugă **numai copiei temporare pentru build** a lui `xmq_reader.h` un `#pragma push_macro("error")` / `#undef error` înainte de codul original și `#pragma pop_macro("error")` după el. Restul fișierului rămâne byte-for-byte identic cu originalul. `test_xmq_staged_reader.cpp` reproduce includerea directă ESPHome cu macro-ul deja definit; rulează după pregătirea headerelor. Nicio componentă radio nu este modificată.
+
+O singură revalidare corectivă, cu toate joburile în workflow-ul existent, urmează să confirme legarea binarului complet. Până la un rezultat verde, această etapă **nu** este pregătită pentru instalare.
