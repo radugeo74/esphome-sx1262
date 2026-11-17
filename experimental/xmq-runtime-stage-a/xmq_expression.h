@@ -57,7 +57,7 @@ class NumericExpression {
     return false;
   }
   void guard(unsigned depth) {
-    if (depth > 32 || ++budget_ > 2048) throw ExpressionError("expression complexity limit");
+    if (depth > 192 || ++budget_ > 2048) throw ExpressionError("expression complexity limit");
   }
   static Number counter(double v) {
     if (!std::isfinite(v)) throw ExpressionError("nonfinite arithmetic");
