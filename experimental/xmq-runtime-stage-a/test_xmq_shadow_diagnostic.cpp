@@ -35,6 +35,31 @@ int main() {
             disabled.counters().min_free_heap==120000,
             "matched counters / heap sample incorrect");
 
+    // A snapshot containing only one of two required readings must never
+    // be counted as a successful live parity comparison.
+    ShadowReference incomplete;
+    incomplete.numeric={{"target_m3",16.1}};
+    ShadowDiagnostic strict(2);
+    strict.set_enabled(true);
+    require(strict.inspect(registry,{"HYD",0xFE,0x06},
+                           ApplicationEncoding::StandardDv,valid,incomplete,
+                           0,false,"",{"target_m3","total_m3"})==
+            ShadowDisposition::IncompleteReference,
+            "partial legacy field reference misreported as MATCH");
+    require(strict.counters().matched==0 && strict.counters().skipped==1,
+            "incomplete parity counters incorrect");
+
+    // Calendar parity is checked by the same comparator, not silently
+    // reduced to numeric equality.
+    auto bad_date=old;
+    bad_date.dates["target_date"]="2022-01-01";
+    ShadowDiagnostic strict_date(1);
+    strict_date.set_enabled(true);
+    require(strict_date.inspect(registry,{"HYD",0xFE,0x06},
+                                ApplicationEncoding::StandardDv,valid,bad_date)==
+            ShadowDisposition::Difference,
+            "incorrect legacy calendar value was not detected");
+
     auto wrong=old;
     wrong.numeric["target_m3"]=25.0;
     require(disabled.inspect(registry,{"HYD",0xFE,0x06},
