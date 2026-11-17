@@ -23,7 +23,7 @@ assert len(re.findall(r"^  - platform: wmbus_meter$", overlay, re.M)) == 50
 assert "0x12345678" not in overlay
 for prefix, name in all_meters:
     key = prefix + "_" + name
-    assert overlay.count("id: " + key + "\n") == 1, key
+    assert len(re.findall(r"^  - id: " + re.escape(key) + r"$", overlay, re.M)) == 1, key
     assert overlay.count("meter_id: !secret " + key + "_id") == 1, key
     assert overlay.count("key: !secret " + key + "_key") == 1, key
     assert overlay.count("parent_id: " + key + "\n") == (5 if prefix == "heat" else 3), key
