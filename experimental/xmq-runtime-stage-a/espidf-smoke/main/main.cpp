@@ -9,9 +9,22 @@
 #include "../../../../components/wmbus_common/wmbus.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <exception>
 #include <string>
 #include <vector>
+
+// This standalone build does not link legacy dvparser.cc. Its header has
+// a static NoDifVifKey("") that needs extractDV during initialization.
+// Fixture-only empty-key implementation: MUST NOT be used for real decoding.
+void extractDV(std::string &key, uchar *dif, int *vif,
+               bool *has_difes, bool *has_vifes) {
+  if (!key.empty()) std::abort();
+  if (dif) *dif=0;
+  if (vif) *vif=0;
+  if (has_difes) *has_difes=false;
+  if (has_vifes) *has_vifes=false;
+}
 
 extern "C" void app_main(void) {
   // Exercise symbol/type/link compilation in an actual ESP-IDF target.
