@@ -87,3 +87,5 @@ Validation batch AP 2026-11-19: ONE gated workflow; g++ -c real isolated instrum
 Validation batch AQ 2026-11-19: ONE gated CI for relocatable host link of isolated instrumented meters.o with standalone journal contract object; legacy external symbols remain intentionally unresolved, no live changes.
 
 Validation batch AR 2026-11-19: ONE gated CI for aggregate-only per-frame heat/water setter write masks and opt-in observer in isolated staged meters.cc, no production changes or sensor writes.
+
+Validation batch AS 2026-11-19: ONE gated CI tests executable isolated observer callback with synthetic heat/water per-frame writes and staged decoder dispatch; no production changes.
