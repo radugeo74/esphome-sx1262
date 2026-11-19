@@ -802,3 +802,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Indicatorii raportați sunt separați: `REAL_LEGACY_PARSER_LINK_OK` dovedește numai legarea+execuția programului; `REAL_LEGACY_FRAME_PARSE_OK` apare numai dacă headerul este acceptat, `parse()` reușește și `dv_entries` conține cel puțin un câmp. În caz contrar, `REAL_LEGACY_FRAME_PARSE_PENDING` nu reprezintă o validare.
 - Dacă încă lipsesc dependențe, `REAL_LEGACY_PARSER_LINK_PENDING` enumeră simbolurile nerezolvate. Toți indicatorii sunt în continuare **diagnostici** până la testul integrat cu `MeterCommonImplementation::handleTelegram()` și driver XMQ; niciun `OK` din această probă nu autorizează instalarea.
 - Nu sunt folosite ID-uri, chei sau capturi private, nu se schimbă componente active, firmware SX1262, YAML ori senzori Home Assistant.
+
+## Increment BF — legarea strictă a registrului legacy real (19.11.2026)
+
+- Workflow #60 a trecut jobul host, dar proba de link strict a raportat `REAL_LEGACY_PARSER_LINK_PENDING` cu **un simbol nerezolvat**: `detectMeterDrivers(int,int,int,std::vector<std::string>*)`. Acesta este definit în `components/wmbus_common/meters.cc`.
+- Proba host compilează acum **o copie instrumentată** a sursei originale `meters.cc` (prin funcția existentă `instrument()`) cu `-ffunction-sections -fdata-sections` și o adaugă la legarea strictă a parserului real.
+- Programul sintetic apelează `verifyDriverLookupCreated()` din implementarea originală pentru a inițializa registrul înainte de `Telegram::parse()`; nu avem mock pentru registry și nu se schimbă componenta activă.
+- `--gc-sections` poate elimina funcțiile nefolosite, inclusiv `handleTelegram`. Un eventual `REAL_LEGACY_PARSER_LINK_OK` va demonstra numai execuția parserului și existența registrului legacy necesar acestui traseu; nu încă execuția setterelor prin `handleTelegram` sau un firmware testat pe SX1262.
+- Statusurile `REAL_LEGACY_FRAME_PARSE_OK` / `PENDING` rămân distincte de link. Nicio modificare la configurarea celor 12 contoare, drivere RF sau date private.
