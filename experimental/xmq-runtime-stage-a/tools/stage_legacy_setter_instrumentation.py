@@ -65,7 +65,7 @@ def instrument(source: str) -> str:
         '                                                Unit u, double v) {',
         'void MeterCommonImplementation::setNumericValue(FieldInfo *fi, DVEntry *dve,\n'
         '                                                Unit u, double v) {\n'
-        '  if (lab_journal) lab_journal->numeric_write(fi->vname());'
+        '  if (lab_journal) (void)lab_journal->try_numeric_write(fi->vname());'
     )
     source = replace_exact(
         source,
@@ -73,9 +73,9 @@ def instrument(source: str) -> str:
         '                                               DVEntry *dve) {',
         'void MeterCommonImplementation::setStringValue(FieldInfo *fi, std::string v,\n'
         '                                               DVEntry *dve) {\n'
-        '  if (lab_journal) lab_journal->string_write(fi->vname());'
+        '  if (lab_journal) (void)lab_journal->try_string_write(fi->vname());'
     )
-    if source.count('lab_journal->numeric_write(') != 1 or source.count('lab_journal->string_write(') != 1:
+    if source.count('lab_journal->try_numeric_write(') != 1 or source.count('lab_journal->try_string_write(') != 1:
         raise ValueError("unexpected instrumented setter count")
     return source
 
