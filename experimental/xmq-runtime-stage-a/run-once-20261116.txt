@@ -109,3 +109,5 @@ Validation batch BA 2026-11-19: ONE CI compiles util, units, wmbus_utils, transl
 Validation batch BB 2026-11-19: ONE workflow runs strict standalone HOST executable linker diagnostic using real unmodified legacy Telegram parser sources and synthetic header, reports unresolved symbols as PENDING (not success). No active firmware changes.
 
 Validation batch BC 2026-11-19: ONE gated recovery run after adding the existing host-only ESPHome log include path to synthetic strict-link probe compilation. No changes to active components.
+
+Validation batch BD 2026-11-19: ONE gated CI adds original upstream address.cc, aes.cc and aescmac.cc to strict Telegram real-parser host executable probe, based on exactly six unresolved symbols from run #58; no production changes.
