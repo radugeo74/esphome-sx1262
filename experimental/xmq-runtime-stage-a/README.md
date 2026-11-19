@@ -810,3 +810,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Programul sintetic apelează `verifyDriverLookupCreated()` din implementarea originală pentru a inițializa registrul înainte de `Telegram::parse()`; nu avem mock pentru registry și nu se schimbă componenta activă.
 - `--gc-sections` poate elimina funcțiile nefolosite, inclusiv `handleTelegram`. Un eventual `REAL_LEGACY_PARSER_LINK_OK` va demonstra numai execuția parserului și existența registrului legacy necesar acestui traseu; nu încă execuția setterelor prin `handleTelegram` sau un firmware testat pe SX1262.
 - Statusurile `REAL_LEGACY_FRAME_PARSE_OK` / `PENDING` rămân distincte de link. Nicio modificare la configurarea celor 12 contoare, drivere RF sau date private.
+
+## Increment BG — parserul real devine condiție obligatorie CI (19.11.2026)
+
+- În workflow **#61**, jobul host a raportat simultan `REAL_LEGACY_PARSER_LINK_OK` și `REAL_LEGACY_FRAME_PARSE_OK`: executabilul a inclus parserul original, registry-ul legacy din copia instrumentată și a decodat o telegramă DV necriptată **sintetică**. Nu înseamnă că `handleTelegram()` a fost deja apelat cu parserul real.
+- Proba `tools/test_real_legacy_parser_host_link.py` este acum **fail-closed**: un link strict cu simboluri nerezolvate sau eșecul de a găsi câmpuri DV provoacă `exit != 0` și CI roșu, în loc de un `PENDING` care putea trece verde.
+- Atenție la interpretare: aceasta este o poartă de regresie pentru parserul host și o telegramă sintetică, **nu** o autorizare pentru flash, AES sau comparație XMQ cu telegrama reală. Pentru un SX1262 canary, păstrăm decodorul legacy și dezactivăm explicit `xmq_shadow_probe` la prima instalare, cu preflight local și imagine verificată de rollback.
+- După această poartă, prioritățile pentru activarea XMQ sunt: (1) traseu complet `handleTelegram()` cu parserul real și raportarea efectivă a setterelor; (2) comparații *read-only* pe `fhkvdataiii` și `mkradio4` cu telegrame de test, fără chei/ID-uri în repo; (3) validare recepție/heap T1/C1 pe Heltec; (4) abia apoi activare graduală, cu rollback.
