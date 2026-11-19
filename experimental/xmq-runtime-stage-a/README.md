@@ -768,3 +768,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - `nm -C` verifică implementările parserului, iar `g++ -r` încearcă să le unească cu obiectul contorului într-un singur obiect relocabil. Verificăm că în acesta există atât `handleTelegram()`, cât și cele două etape de parsare.
 - **Important:** legarea `-r` permite dependențe nerezolvate; acest pas nu produce un executabil complet, nu testează decodarea unei telegrame prin parserul real și nu validează AES, telegramele sau memoria ESP32-S3. Testul cu `handleTelegram()` din calupul anterior rămâne separat și folosește parser simulat.
 - Acest pas oferă un inventar de compatibilitate înainte să construim executabilul integral cu dependențele legacy și fixture-uri sintetice, fără modificarea firmware-ului folosit.
+
+## Increment BA — extinderea legării host cu nucleul legacy real (19.11.2026)
+
+- CI compilează încă șase unități de traducere originale, **fără modificări**: `util.cc`, `units.cc`, `wmbus_utils.cc`, `translatebits.cc`, `formula.cc` și `manufacturer_specificities.cc`.
+- Se combină cu parserul real `wmbus.cc`/`dvparser.cc` și copia instrumentată `meters.cc` într-un obiect relocabil comun. Se verifică prezența `handleTelegram`, `parseHeader` și `parse`.
+- Testul enumeră numai *numărul* referințelor externe rămase nerezolvate înainte/după extindere și confirmă că cel puțin una dintre dependențele parserului/contorului a fost rezolvată de noile obiecte.
+- Testul `g++ -r` permite în continuare simboluri nerezolvate, **nu** reprezintă un executabil linkat complet și nu demonstrează decodarea reală OMS. Nu modificăm componente active, firmware SX1262, YAML sau senzorii HA.
