@@ -711,3 +711,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - `g++ -r` creează un obiect relocabil comun, iar `nm -C` verifică păstrarea simbolurilor celor două setter-e, `handleTelegram` și a intrării de test a jurnalului. Sunt respinse dependențele externe cu prefixul `xmq_stage_a_` care rămân nerezolvate.
 - **Limita exactă a testului:** `-r` permite în continuare dependențe nerezolvate din biblioteca legacy. Testul nu produce un executabil, nu exercită efectiv `setNumericValue` pe un contor și nu demonstrează proveniența câmpurilor din telegrame reale. Nu autorizează instalarea pe Heltec sau eliminarea decodorului vechi.
 - Următoarea etapă va necesita legarea completă împreună cu dependențele legacy și un test de integrare cu telegramă sintetică, fără senzori Home Assistant.
+
+## Increment AR — raport agregat de scrieri per telegramă (19.11.2026)
+
+- `xmq_legacy_write_report.h` construiește din jurnal un raport fără valori, identificatori sau payload: mască numerică, mască de date, numărul scrierilor și numărul observațiilor pierdute.
+- `fhkvdataiii`: biții numerici 0–3 corespund `current_hca`, `previous_hca`, `temp_room_c`, `temp_radiator_c`; biții pentru date 0–1 corespund `current_date` și `previous_date`. `mkradio4`: biții numerici 0–1 sunt `target_m3` și `total_m3`.
+- Testul `test_xmq_legacy_write_report.cpp` acoperă măștile pentru ambele drivere, scrieri repetate cu valoare neschimbată, resetarea la telegrama următoare și absența atribuirii pentru driver necunoscut.
+- Copia instrumentată a `meters.cc` poate raporta sumarul după `processFieldExtractors`, `processContent` și `processFieldCalculators`, înainte de `triggerUpdate`, numai când un observator **experimental** a fost înregistrat explicit. Callback-ul primește exclusiv numere agregate, iar orice excepție este izolată.
+- CI verifică poziția punctului de raportare, compilează obiectul real instrumentat și inspectează simbolurile după legarea relocabilă. **Nu este un executabil legacy complet și nu execută încă setterele reale asupra unei telegrame în runtime.** Firmware-ul și senzorii Home Assistant rămân nemodificate; indicatorul live `provenance=not_proven` se păstrează.
