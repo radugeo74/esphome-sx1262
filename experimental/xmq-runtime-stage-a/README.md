@@ -740,3 +740,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - În locul numelui șablonului `fi->vname()`, jurnalul primește `field_name_no_unit`, exact cheia calculată și folosită la stocare (inclusiv `generateFieldNameNoUnit(this, dve)` când există DVEntry).
 - `tools/test_legacy_setter_staging.py` verifică patru puncte de raportare după scriere, numele stocat, poziția lor în fiecare setter și faptul că sursa de producție este neatinsă.
 - Dacă numele generat diferă de câmpurile urmărite explicit în raportul pentru `fhkvdataiii`/`mkradio4`, raportul rămâne conservator: nu atribuie un bit nejustificat. Acesta este un test structural și de compilare, nu încă o dovadă a execuției setterelor pe o telegramă live.
+
+## Increment AW — execuția setterelor reale în harness C++ sintetic (19.11.2026)
+
+- `tools/test_legacy_setter_execution.py` generează un executabil C++ de test din **corpurile exacte**, extrase din copia instrumentată a `MeterCommonImplementation::setNumericValue(FieldInfo*, DVEntry*, Unit, double)` și `setStringValue(FieldInfo*, std::string, DVEntry*)`. Nu rescrie algoritmii setterelor.
+- Tipurile asociate (`FieldInfo`, `DVEntry`, `NumericField`, `StringField` și mapările de stocare) sunt simulate minimal, doar pentru acest test; compilarea și execuția au `-fsanitize=address,undefined`.
+- Se verifică patru cazuri importante: nume de câmp fără DV, nume generat pentru DV, stocarea efectivă în mapa numerică/text și înregistrarea **după** stocare. Testul acoperă repetarea unei valori identice într-o nouă telegramă, lipsa contaminării între telegrame și lipsa observării când jurnalul este dezactivat.
+- Este o probă de execuție mai puternică decât verificările structurale precedente, dar **nu este** un executabil complet al decodorului legacy și **nu** decodează încă o telegramă `fhkvdataiii`/`mkradio4` prin `handleTelegram`. Nu autorizează flash pe Heltec și nu schimbă senzorii existenți.
