@@ -783,3 +783,9 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Dacă link-ul strict e blocat, emite explicit `REAL_LEGACY_PARSER_LINK_PENDING` și enumeră limitat simbolurile nerezolvate, fără să pretindă trecerea probei; CI continuă fiindcă această etapă este **diagnostică**, nu o condiție de release.
 - Dacă link-ul reușește, execută programul și raportează separat dacă parserul a acceptat headerul sintetic. Acceptarea headerului rămâne informativă până la definirea unui fixture complet garantat valid.
 - Acest executabil de probă include doar parserul real și bibliotecile necesare lui, **nu** decodorul instrumentat integral. Chiar și un `REAL_LEGACY_PARSER_LINK_OK` nu autorizează flash și nu dovedește proveniența per telegramă pe ESP32-S3.
+
+## Increment BC — reparare antete probei de link strict (19.11.2026)
+
+- Workflow #57 s-a oprit **înainte de testul de linker**: fișierul sintetic `probe.cc` include `wmbus.h`, iar din comanda lui `g++ -c` lipsea `-Iexperimental/xmq-runtime-stage-a/host-stubs`. Eroarea exactă: `fatal error: esphome/core/log.h: No such file or directory`.
+- Acum aceeași cale către antetele host-only este transmisă atât la compilarea surselor legacy reale, cât și la compilarea probei. Nu se schimbă antetele active sau sursele parserului.
+- **Criteriu de citire a următorului CI:** `REAL_LEGACY_PARSER_LINK_PENDING` semnalează în continuare dependențe externe și nu validează un executabil. Numai `REAL_LEGACY_PARSER_LINK_OK` cu executabilul rulat validează efectiv această etapă.
