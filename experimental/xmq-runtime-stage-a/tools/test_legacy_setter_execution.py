@@ -45,10 +45,10 @@ def main() -> None:
     )
     # Use the ACTUAL injected scope and C callback registration, not a
     # separately rewritten approximation of the RAII lifecycle.
-    scope_begin = "namespace {\\nthread_local xmq_runtime::LegacyWriteJournal *lab_journal"
+    scope_begin = "namespace {\nthread_local xmq_runtime::LegacyWriteJournal *lab_journal"
     start = staged.find(scope_begin)
     callback_pos = staged.find("  lab_observer = callback;", start)
-    scope_end = staged.find("\\n}", callback_pos)
+    scope_end = staged.find("\n}", callback_pos)
     if start < 0 or callback_pos < 0 or scope_end < 0:
         raise ValueError("instrumented lab scope/registration anchor changed")
     scope = staged[start:scope_end + 2]
