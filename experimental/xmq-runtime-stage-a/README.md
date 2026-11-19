@@ -775,3 +775,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Se combină cu parserul real `wmbus.cc`/`dvparser.cc` și copia instrumentată `meters.cc` într-un obiect relocabil comun. Se verifică prezența `handleTelegram`, `parseHeader` și `parse`.
 - Testul enumeră numai *numărul* referințelor externe rămase nerezolvate înainte/după extindere și confirmă că cel puțin una dintre dependențele parserului/contorului a fost rezolvată de noile obiecte.
 - Testul `g++ -r` permite în continuare simboluri nerezolvate, **nu** reprezintă un executabil linkat complet și nu demonstrează decodarea reală OMS. Nu modificăm componente active, firmware SX1262, YAML sau senzorii HA.
+
+## Increment BB — probă de link strict pentru parserul real (19.11.2026)
+
+- `tools/test_real_legacy_parser_host_link.py` compilează în fișiere obiect surse legacy **nemodificate** `wmbus.cc`, `dvparser.cc`, `util.cc`, `units.cc`, `wmbus_utils.cc`, `translatebits.cc`, `formula.cc`, `manufacturer_specificities.cc`, cu secțiuni ELF individuale (`-ffunction-sections -fdata-sections`).
+- Încearcă să creeze un **executabil host real**, fără funcții parser simulate, prin `-Wl,--gc-sections -Wl,--no-undefined`, care apelează `Telegram::parseHeader` pe un header necriptat sintetic (niciun ID/secret real).
+- Dacă link-ul strict e blocat, emite explicit `REAL_LEGACY_PARSER_LINK_PENDING` și enumeră limitat simbolurile nerezolvate, fără să pretindă trecerea probei; CI continuă fiindcă această etapă este **diagnostică**, nu o condiție de release.
+- Dacă link-ul reușește, execută programul și raportează separat dacă parserul a acceptat headerul sintetic. Acceptarea headerului rămâne informativă până la definirea unui fixture complet garantat valid.
+- Acest executabil de probă include doar parserul real și bibliotecile necesare lui, **nu** decodorul instrumentat integral. Chiar și un `REAL_LEGACY_PARSER_LINK_OK` nu autorizează flash și nu dovedește proveniența per telegramă pe ESP32-S3.
