@@ -726,3 +726,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - `test_xmq_legacy_write_observer.cpp` rulează efectiv pe host, folosind capturi sintetice pentru `fhkvdataiii` și `mkradio4`, și verifică atât callback-ul înregistrat, cât și lipsa apelurilor când acesta este nul ori driverul este necunoscut.
 - Copia instrumentată a `meters.cc` folosește exact același dispatcher după completarea extractoarelor, a decodării proprietare și a calculelor; verificările structurale urmăresc această poziție.
 - **Limită:** testul execută dispatcherul, nu un contor legacy real și nu o telegramă de producție. Legarea unui executabil cu metodele reale `MeterCommonImplementation` și dovada scrierilor din telegrama curentă rămân etape separate. Nu schimbăm driverul de producție și nu instalăm pe Heltec.
+
+## Increment AU — compatibilitate cu API-ul legacy (19.11.2026)
+
+- CI compilează în același job două obiecte din exact același `meters.cc`: **baseline nemodificat** și **copie instrumentată**, cu aceleași opțiuni `g++ -std=c++17 -O0 -c` și aceleași antete host.
+- Enumeră funcțiile globale definite puternic (tip ELF `T`) cu `nm -P -g --defined-only` și oprește CI dacă instrumentarea elimină oricare dintre funcțiile definite de baseline. Verificarea este complementară celor de simboluri `setNumericValue`, `setStringValue`, `handleTelegram` și observator.
+- Este o poartă de compatibilitate pentru exporturile C++ ale acestei unități de compilare; nu înlocuiește analiza ABI completă, link-ul executabilului cu întregul decodor, testele cu telegrame ori validarea pe dispozitiv.
+- Nu schimbă fișierele de producție, componentele RF, configurația celor 12 contoare sau senzorii Home Assistant.
