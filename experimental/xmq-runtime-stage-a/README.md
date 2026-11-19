@@ -754,3 +754,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Verificările includ intrarea/ieșirea RAII, reactivarea corectă a jurnalului exterior după un scope imbricat, absența atribuirii scrierilor din scope-ul interior către cel exterior, și raportul agregat primit de callback.
 - Este un test executabil al instrumentării și al interfeței de raportare, cu tipuri sintetice în locul modelului de contor. **Nu reprezintă un link complet al wmbus_common și nu execută încă `handleTelegram()` pe telegramă reală sau sintetică.**
 - Acest calup nu modifică `components/wmbus_common`, recepția radio, firmware-ul Heltec, YAML-ul activ ori entitățile Home Assistant.
+
+## Increment AY — execuția fluxului real `handleTelegram()` cu parser simulat (19.11.2026)
+
+- `tools/test_legacy_handle_flow.py` extrage din copia instrumentată **corpul exact** al `MeterCommonImplementation::handleTelegram()`, cele două settere și implementarea `LabWriteScope`/înregistrare callback, apoi le compilează și execută împreună pe host cu ASan/UBSan.
+- Numai dependențele externe, parsarea headerului/telegramelor și modelul de contor sunt simulate. Verificăm respingerea headerului/payloadului invalid fără notificări, fluxul complet extractor → procesare proprietară → calculator → raport → update, scrieri repetate, schimbarea `fhkvdataiii`/`mkradio4`, lipsa contaminării între telegrame și dezactivarea explicită a callback-ului.
+- **Limitare importantă:** acesta este un test de execuție al orchestrării **reale** din `handleTelegram()`, dar NU al parserului wM-Bus/O​MS real și nu realizează un link complet al bibliotecii `wmbus_common`. Telegramele din test sunt numai marcatori sintetici de 2 octeți, nu trame radio valide. Proveniența firmware rămâne `not_proven`, fără autorizare pentru flash sau înlocuirea driverului.
+- Modificări numai în `experimental/xmq-runtime-stage-a` și workflow-ul dedicat; nimic în componentele active sau YAML-ul celor 12 contoare.
