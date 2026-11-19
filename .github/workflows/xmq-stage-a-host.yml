@@ -98,6 +98,17 @@ jobs:
             exit 1
           fi
           echo "PASS: instrumented decoder preserves all baseline strong exported functions"
+          # Inventory unresolved external dependencies before attempting a complete host link.
+          # Keep output aggregate-only: no payloads, meter IDs, or values.
+          nm -P -u "$scratch/meters-baseline.o" \
+            | awk '$2 == "U" {print $1}' | LC_ALL=C sort -u > "$scratch/baseline-undefined.txt"
+          nm -P -u "$scratch/meters.o" \
+            | awk '$2 == "U" {print $1}' | LC_ALL=C sort -u > "$scratch/instrumented-undefined.txt"
+          comm -13 "$scratch/baseline-undefined.txt" "$scratch/instrumented-undefined.txt" \
+            > "$scratch/added-undefined.txt"
+          echo "Legacy baseline unresolved externals: $(wc -l < "$scratch/baseline-undefined.txt")"
+          echo "Instrumented unresolved externals: $(wc -l < "$scratch/instrumented-undefined.txt")"
+          echo "Additional unresolved externals: $(wc -l < "$scratch/added-undefined.txt")"
           nm -C --defined-only "$scratch/meters.o" > "$scratch/symbols.txt"
           grep -Fq 'MeterCommonImplementation::setNumericValue(' "$scratch/symbols.txt"
           grep -Fq 'MeterCommonImplementation::setStringValue(' "$scratch/symbols.txt"
