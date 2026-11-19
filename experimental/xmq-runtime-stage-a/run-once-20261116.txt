@@ -97,3 +97,5 @@ Validation batch AU 2026-11-19: ONE gated CI comparing unchanged legacy meters.c
 Validation batch AV 2026-11-19: ONE gated CI validates instrumented setter journaling after committed storage using actual generated DV field key in both numeric/string paths, against unchanged legacy baseline; no live components changed.
 
 Validation batch AW 2026-11-19: ONE CI compiles and executes exact staged legacy numeric/string setter bodies using synthetic FieldInfo/DVEntry and map storage, checks post-write attribution, no production changes.
+
+Validation batch AX 2026-11-19: ONE CI exercising exact staged LabWriteScope RAII nested restore, actual extracted legacy setters and opt-in aggregate observer callback with synthetic field types. Production RF and ESPHome components untouched.
