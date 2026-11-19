@@ -67,6 +67,11 @@ jobs:
         run: |
           set -euo pipefail
           python experimental/xmq-runtime-stage-a/tools/test_legacy_setter_execution.py
+      - name: Execute exact legacy handleTelegram orchestration with synthetic parser and staged setters
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experimental/xmq-runtime-stage-a/tools/test_legacy_handle_flow.py
       - name: Compile real instrumented legacy C++ object and verify setter symbols on host
         shell: bash
         run: |
