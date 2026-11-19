@@ -155,6 +155,29 @@ jobs:
             echo "::error::Unexpected unresolved XMQ Stage A hook"
             exit 1
           fi
+          # Add ACTUAL legacy wM-Bus parser translation units to the host
+          # relocatable link. This does not substitute parser mocks for production code.
+          for parser in wmbus dvparser; do
+            g++ -std=c++17 -O0 -g0 -c -Wall -Wextra -Wno-unused-parameter \
+              -Icomponents/wmbus_common \
+              -Iexperimental/xmq-runtime-stage-a/host-stubs \
+              -Iexperimental/xmq-runtime-stage-a \
+              "components/wmbus_common/${parser}.cc" -o "$scratch/${parser}.o"
+            test -s "$scratch/${parser}.o"
+          done
+          nm -C --defined-only "$scratch/wmbus.o" > "$scratch/parser-symbols.txt"
+          grep -Fq 'Telegram::parseHeader(' "$scratch/parser-symbols.txt"
+          grep -Fq 'Telegram::parse(' "$scratch/parser-symbols.txt"
+          g++ -r "$scratch/combined.o" "$scratch/wmbus.o" "$scratch/dvparser.o" \
+            -o "$scratch/legacy-parser-linked.o"
+          test -s "$scratch/legacy-parser-linked.o"
+          nm -C --defined-only "$scratch/legacy-parser-linked.o" \
+            > "$scratch/legacy-parser-linked-symbols.txt"
+          grep -Fq 'MeterCommonImplementation::handleTelegram(' "$scratch/legacy-parser-linked-symbols.txt"
+          grep -Fq 'Telegram::parseHeader(' "$scratch/legacy-parser-linked-symbols.txt"
+          grep -Fq 'Telegram::parse(' "$scratch/legacy-parser-linked-symbols.txt"
+          echo "PASS: real parser wmbus.cc/dvparser.cc and staged legacy meters.cc link as one relocatable object"
+          echo "NOTE: remaining legacy dependencies unresolved, not an executable and no real telegram decoded"
           echo "PASS: relocatable combined object retains legacy setters and journal contract; unresolved legacy library dependencies remain expected"
           echo "NOTE: -r does not prove full link or execute real meter decoding; NO FLASH"
       - name: Ensure 12-meter canary never contains private IDs or AES keys
