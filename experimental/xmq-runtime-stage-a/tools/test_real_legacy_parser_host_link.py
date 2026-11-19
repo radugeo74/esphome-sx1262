@@ -16,6 +16,7 @@ COMMON = ROOT / "components" / "wmbus_common"
 UNITS = (
     "wmbus", "dvparser", "util", "units", "wmbus_utils",
     "translatebits", "formula", "manufacturer_specificities",
+    "address", "aes", "aescmac",
 )
 PROBE = r"""
 #include "wmbus.h"
