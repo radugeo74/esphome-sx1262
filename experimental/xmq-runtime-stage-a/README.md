@@ -704,3 +704,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - `nm -C --defined-only` trebuie să identifice `MeterCommonImplementation::handleTelegram`, ambele overload-uri ale `setNumericValue` și `setStringValue`, precum și `LegacyWriteJournal::try_numeric_write` / `try_string_write`.
 - Se păstrează testul separat al ciclului per-telegramă, al limitelor de observație și al sursei neschimbate. Verificarea de mai sus demonstrează **compilare în cod obiect**, nu link cu restul bibliotecii și nici proveniență dovedită în firmware.
 - Niciun fișier din `components/wmbus_common`, `wmbus_meter`, `sx126x` ori YAML-ul instalat nu se schimbă; imaginea Heltec continuă să folosească decodorul existent.
+
+## Increment AQ — link parțial verificabil al obiectelor (19.11.2026)
+
+- CI compilează `meters.cc` instrumentat într-un obiect separat și un mic obiect C++ de verificare a API-ului `LegacyWriteJournal`.
+- `g++ -r` creează un obiect relocabil comun, iar `nm -C` verifică păstrarea simbolurilor celor două setter-e, `handleTelegram` și a intrării de test a jurnalului. Sunt respinse dependențele externe cu prefixul `xmq_stage_a_` care rămân nerezolvate.
+- **Limita exactă a testului:** `-r` permite în continuare dependențe nerezolvate din biblioteca legacy. Testul nu produce un executabil, nu exercită efectiv `setNumericValue` pe un contor și nu demonstrează proveniența câmpurilor din telegrame reale. Nu autorizează instalarea pe Heltec sau eliminarea decodorului vechi.
+- Următoarea etapă va necesita legarea completă împreună cu dependențele legacy și un test de integrare cu telegramă sintetică, fără senzori Home Assistant.
