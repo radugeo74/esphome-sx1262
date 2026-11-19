@@ -15,8 +15,8 @@ baseline_hash = hashlib.sha256(original).hexdigest()
 result = instrument(original.decode())
 assert result != original.decode()
 assert result.count("LabWriteScope lab_write_scope(lab_writes);") == 1
-assert result.count("lab_journal->numeric_write(fi->vname());") == 1
-assert result.count("lab_journal->string_write(fi->vname());") == 1
+assert result.count("lab_journal->try_numeric_write(fi->vname());") == 1
+assert result.count("lab_journal->try_string_write(fi->vname());") == 1
 assert result.index("LabWriteScope lab_write_scope") < result.index("processFieldExtractors(&t);")
 assert result.index("processFieldExtractors(&t);") < result.index("processContent(&t);")
 assert result.index("processContent(&t);") < result.index("processFieldCalculators();")
@@ -26,8 +26,8 @@ assert "thread_local xmq_runtime::LegacyWriteJournal *lab_journal" in result
 assert result.count("processFieldExtractors(&t);") == 1
 assert result.count("processFieldCalculators();") == 1
 assert result.count("  triggerUpdate(&t);") == 1
-assert "lab_journal->numeric_write" not in original.decode()
-assert "lab_journal->string_write" not in original.decode()
+assert "lab_journal->try_numeric_write" not in original.decode()
+assert "lab_journal->try_string_write" not in original.decode()
 assert hashlib.sha256(SOURCE.read_bytes()).hexdigest() == baseline_hash
 
 for fragment in (
