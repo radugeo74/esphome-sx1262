@@ -101,3 +101,5 @@ Validation batch AW 2026-11-19: ONE CI compiles and executes exact staged legacy
 Validation batch AX 2026-11-19: ONE CI exercising exact staged LabWriteScope RAII nested restore, actual extracted legacy setters and opt-in aggregate observer callback with synthetic field types. Production RF and ESPHome components untouched.
 
 Validation batch AY 2026-11-19: ONE gated workflow executing exact staged legacy handleTelegram() C++ orchestration and actual setter bodies with mock parsing outcomes, field-extractor and update behavior. Not real OMS frame decoding; no active firmware changes.
+
+Validation batch AZ 2026-11-19: ONE CI compiling actual wmbus.cc and dvparser.cc and relocatable-linking real Telegram::parse/parseHeader with separately instrumented meters.cc; no executable, no flash, active components untouched.
