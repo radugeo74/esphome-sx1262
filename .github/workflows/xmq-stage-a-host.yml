@@ -62,6 +62,11 @@ jobs:
         run: python experimental/xmq-runtime-stage-a/tools/check_shadow_lab_meter.py
       - name: Verify future isolated legacy setter instrumentation staging without patching active common
         run: python experimental/xmq-runtime-stage-a/tools/test_legacy_setter_staging.py
+      - name: Execute verbatim instrumented legacy setter methods on synthetic fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experimental/xmq-runtime-stage-a/tools/test_legacy_setter_execution.py
       - name: Compile real instrumented legacy C++ object and verify setter symbols on host
         shell: bash
         run: |
