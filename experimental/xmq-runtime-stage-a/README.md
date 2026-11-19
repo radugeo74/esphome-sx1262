@@ -690,3 +690,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Run-urile #41 și #42 au eșuat exclusiv la verificarea nouă `g++ -fsyntax-only`, deoarece `util.h` include `esphome/core/log.h`, iar compilarea host nu indica directorul cu shim-ul deja existent `host-stubs/esphome/core/log.h`.
 - Am adăugat numai ruta `-Iexperimental/xmq-runtime-stage-a/host-stubs` în invocarea acestui test, fără să modificăm biblioteca `wmbus_common`, codul radio, ESPHome sau instrumentarea setterelor.
 - Validarea următoare execută testul real de sintaxă al copiei izolate, apoi verificările de compatibilitate Heltec. Shim-ul rămâne exclusiv pentru host; firmware-ul folosește antetele reale ESPHome.
+
+## Increment AO — corecția stub-ului de logging host (19.11.2026)
+
+- Run #43 ajunge la compilarea C++ reală a copiei instrumentate, dar oprește la simbolurile `esph_log_d/v/i/w/e`, invocate prin macro-urile `trace/verbose/debug/notice/warning/error` din `components/wmbus_common/util.h`.
+- Fișierul de test `host-stubs/esphome/core/log.h` definește acum cele cinci funcții no-op pentru verificarea sintactică C++ pe host, fără link sau efecte în firmware.
+- Toate modificările rămân în `experimental/xmq-runtime-stage-a`; biblioteca comună activă și radio-ul nu se schimbă.
+- Acest pas testează doar sintaxa copiei instrumentate; **nu** demonstrează încă integrarea completă a unui decodor instrumentat pe Heltec.
