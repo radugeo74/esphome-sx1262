@@ -83,3 +83,5 @@ Validation batch AN 2026-11-19: ONE CI after fixing syntax-compile host include 
 Validation batch AO 2026-11-19: ONE CI after host-only esph_log_{d,v,i,w,e} no-op syntax declarations fix #43; no changes to production firmware components.
 
 Validation batch AP 2026-11-19: ONE gated workflow; g++ -c real isolated instrumented legacy meters.cc and nm -C setter/fail-open journal symbols, plus prior host and Heltec CI; production unchanged.
+
+Validation batch AQ 2026-11-19: ONE gated CI for relocatable host link of isolated instrumented meters.o with standalone journal contract object; legacy external symbols remain intentionally unresolved, no live changes.
