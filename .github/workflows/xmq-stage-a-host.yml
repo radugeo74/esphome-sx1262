@@ -62,19 +62,26 @@ jobs:
         run: python experimental/xmq-runtime-stage-a/tools/check_shadow_lab_meter.py
       - name: Verify future isolated legacy setter instrumentation staging without patching active common
         run: python experimental/xmq-runtime-stage-a/tools/test_legacy_setter_staging.py
-      - name: Syntax compile actual lab-instrumented legacy common decoder on host
+      - name: Compile real instrumented legacy C++ object and verify setter symbols on host
         shell: bash
         run: |
           set -euo pipefail
           scratch="$(mktemp -d)"
           trap 'rm -rf "$scratch"' EXIT
           python experimental/xmq-runtime-stage-a/tools/stage_legacy_setter_instrumentation.py --output "$scratch/meters.cc"
-          g++ -std=c++17 -fsyntax-only -Wall -Wextra -Wno-unused-parameter \
+          g++ -std=c++17 -O0 -g0 -c -Wall -Wextra -Wno-unused-parameter \
             -Icomponents/wmbus_common \
             -Iexperimental/xmq-runtime-stage-a/host-stubs \
             -Iexperimental/xmq-runtime-stage-a \
-            "$scratch/meters.cc"
-          echo "PASS: real legacy meters.cc syntax-checks with isolated per-telegram write journal"
+            "$scratch/meters.cc" -o "$scratch/meters.o"
+          test -s "$scratch/meters.o"
+          nm -C --defined-only "$scratch/meters.o" > "$scratch/symbols.txt"
+          grep -Fq 'MeterCommonImplementation::setNumericValue(' "$scratch/symbols.txt"
+          grep -Fq 'MeterCommonImplementation::setStringValue(' "$scratch/symbols.txt"
+          grep -Fq 'MeterCommonImplementation::handleTelegram(' "$scratch/symbols.txt"
+          grep -Fq 'xmq_runtime::LegacyWriteJournal::try_numeric_write(' "$scratch/symbols.txt"
+          grep -Fq 'xmq_runtime::LegacyWriteJournal::try_string_write(' "$scratch/symbols.txt"
+          echo "PASS: instrumented real meters.cc generated an object with actual legacy setters and fail-open journal; no link, no firmware flash"
       - name: Ensure 12-meter canary never contains private IDs or AES keys
         run: python experimental/xmq-runtime-stage-a/tools/check_canary_12.py
       - name: Ensure radio implementation stays unchanged from baseline
