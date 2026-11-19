@@ -77,3 +77,5 @@ Validation batch AK 2026-11-17: ONE recovery CI after YAML syntax correction; ve
 Validation batch AL 2026-11-17: single CI validates syntax compilation of real instrumented legacy meters.cc in temporary directory plus existing host and Heltec baseline; never changes active wmbus_common.
 
 Validation batch AM 2026-11-19: ONE gated CI, fail-open no-throw numeric/string legacy setter write journal and syntax-check of isolated meters.cc copy; no change to production components.
+
+Validation batch AN 2026-11-19: ONE CI after fixing syntax-compile host include for existing esphome/core/log.h stub; #41/#42 failed before Heltec jobs; active components untouched.
