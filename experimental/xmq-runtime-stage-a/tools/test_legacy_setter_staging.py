@@ -20,7 +20,7 @@ assert result.count("lab_journal->try_string_write(fi->vname());") == 1
 assert result.count("xmq_stage_a_register_legacy_write_observer(") == 1
 assert result.count("xmq_runtime::dispatch_legacy_write_report(") == 1
 assert result.index("processFieldCalculators();") < result.index("xmq_runtime::dispatch_legacy_write_report(")
-assert result.index("summarize_legacy_writes(lab_writes, kind)") < result.index("triggerUpdate(&t);")
+assert result.index("xmq_runtime::dispatch_legacy_write_report(") < result.index("triggerUpdate(&t);")
 assert result.count('#include "xmq_legacy_write_report.h"') == 1
 assert result.count('#include "xmq_legacy_write_observer.h"') == 1
 assert "summarize_legacy_writes" not in original.decode()
