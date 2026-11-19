@@ -71,6 +71,7 @@ jobs:
           python experimental/xmq-runtime-stage-a/tools/stage_legacy_setter_instrumentation.py --output "$scratch/meters.cc"
           g++ -std=c++17 -fsyntax-only -Wall -Wextra -Wno-unused-parameter \
             -Icomponents/wmbus_common \
+            -Iexperimental/xmq-runtime-stage-a/host-stubs \
             -Iexperimental/xmq-runtime-stage-a \
             "$scratch/meters.cc"
           echo "PASS: real legacy meters.cc syntax-checks with isolated per-telegram write journal"
