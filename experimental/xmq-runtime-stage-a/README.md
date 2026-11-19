@@ -733,3 +733,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Enumeră funcțiile globale definite puternic (tip ELF `T`) cu `nm -P -g --defined-only` și oprește CI dacă instrumentarea elimină oricare dintre funcțiile definite de baseline. Verificarea este complementară celor de simboluri `setNumericValue`, `setStringValue`, `handleTelegram` și observator.
 - Este o poartă de compatibilitate pentru exporturile C++ ale acestei unități de compilare; nu înlocuiește analiza ABI completă, link-ul executabilului cu întregul decodor, testele cu telegrame ori validarea pe dispozitiv.
 - Nu schimbă fișierele de producție, componentele RF, configurația celor 12 contoare sau senzorii Home Assistant.
+
+## Increment AV — proveniență după scriere, cu nume DV real (19.11.2026)
+
+- În copia instrumentată, am mutat jurnalizarea numerică/text **după** inserarea în `numeric_values_` / `string_values_`, pentru ambele ramuri: `DVEntry == nullptr` și `DVEntry != nullptr`.
+- În locul numelui șablonului `fi->vname()`, jurnalul primește `field_name_no_unit`, exact cheia calculată și folosită la stocare (inclusiv `generateFieldNameNoUnit(this, dve)` când există DVEntry).
+- `tools/test_legacy_setter_staging.py` verifică patru puncte de raportare după scriere, numele stocat, poziția lor în fiecare setter și faptul că sursa de producție este neatinsă.
+- Dacă numele generat diferă de câmpurile urmărite explicit în raportul pentru `fhkvdataiii`/`mkradio4`, raportul rămâne conservator: nu atribuie un bit nejustificat. Acesta este un test structural și de compilare, nu încă o dovadă a execuției setterelor pe o telegramă live.
