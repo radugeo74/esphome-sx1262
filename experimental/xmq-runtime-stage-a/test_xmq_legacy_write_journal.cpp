@@ -57,6 +57,24 @@ int main() {
             "total write bound ignored");
     require(throws([&] { xmq_runtime::LegacyWriteJournal invalid(0, 1); }),
             "zero field capacity accepted");
+
+    xmq_runtime::LegacyWriteJournal safe(1, 1);
+    require(!safe.try_numeric_write("out_of_frame") && safe.dropped_writes() == 1,
+            "fail-open recorder must absorb writes outside a telegram");
+    safe.begin_telegram();
+    require(safe.dropped_writes() == 0, "dropped counter leaked across frames");
+    require(safe.try_numeric_write("current_hca") &&
+                safe.wrote_numeric("current_hca"),
+            "fail-open recorder dropped a valid write");
+    require(!safe.try_string_write("date") &&
+                !safe.try_numeric_write("current_hca") &&
+                safe.dropped_writes() == 2,
+            "fail-open recorder must absorb field and write limits");
+    safe.end_telegram();
+    require(!safe.try_numeric_write("after_frame") &&
+                safe.dropped_writes() == 3,
+            "closed frame must not throw into legacy decoder");
+
     std::cout << "LEGACY_WRITE_JOURNAL_OK: isolated frame lifecycle, duplicate writes, "
                  "unchanged-value writes, numeric/string separation and bounds\n";
     return 0;
