@@ -85,7 +85,19 @@ def instrument(source: str) -> str:
         '                                                Unit u, double v) {',
         'void MeterCommonImplementation::setNumericValue(FieldInfo *fi, DVEntry *dve,\n'
         '                                                Unit u, double v) {\n'
-        '  if (lab_journal) (void)lab_journal->try_numeric_write(fi->vname());'
+        '  // Record only AFTER the original storage operation succeeds.'
+    )
+    source = replace_exact(
+        source,
+        '        field_name_no_unit, fi->displayUnit())] = NumericField(u, v, fi);',
+        '        field_name_no_unit, fi->displayUnit())] = NumericField(u, v, fi);\n'
+        '    if (lab_journal) (void)lab_journal->try_numeric_write(field_name_no_unit);'
+    )
+    source = replace_exact(
+        source,
+        '        field_name_no_unit, fi->displayUnit())] = NumericField(u, v, fi, *dve);',
+        '        field_name_no_unit, fi->displayUnit())] = NumericField(u, v, fi, *dve);\n'
+        '    if (lab_journal) (void)lab_journal->try_numeric_write(field_name_no_unit);'
     )
     source = replace_exact(
         source,
@@ -93,9 +105,23 @@ def instrument(source: str) -> str:
         '                                               DVEntry *dve) {',
         'void MeterCommonImplementation::setStringValue(FieldInfo *fi, std::string v,\n'
         '                                               DVEntry *dve) {\n'
-        '  if (lab_journal) (void)lab_journal->try_string_write(fi->vname());'
+        '  // Observe the committed dynamic field name, never a template name.'
     )
-    if source.count('lab_journal->try_numeric_write(') != 1 or source.count('lab_journal->try_string_write(') != 1:
+    source = replace_exact(
+        source,
+        '    string_values_[field_name_no_unit] = StringField(v, fi);',
+        '    string_values_[field_name_no_unit] = StringField(v, fi);\n'
+        '    if (lab_journal) (void)lab_journal->try_string_write(field_name_no_unit);'
+    )
+    source = replace_exact(
+        source,
+        '    field_name_no_unit = fi->generateFieldNameNoUnit(this, dve);\n'
+        '    string_values_[field_name_no_unit] = StringField(v, fi);',
+        '    field_name_no_unit = fi->generateFieldNameNoUnit(this, dve);\n'
+        '    string_values_[field_name_no_unit] = StringField(v, fi);\n'
+        '    if (lab_journal) (void)lab_journal->try_string_write(field_name_no_unit);'
+    )
+    if source.count('lab_journal->try_numeric_write(') != 2 or source.count('lab_journal->try_string_write(') != 2:
         raise ValueError("unexpected instrumented setter count")
     return source
 
