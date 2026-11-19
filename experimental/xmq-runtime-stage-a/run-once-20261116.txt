@@ -93,3 +93,5 @@ Validation batch AS 2026-11-19: ONE gated CI tests executable isolated observer 
 Validation batch AT 2026-11-19: ONE CI for correcting the stale Python assertion after observer dispatch refactor; C++ observer suites already passed in #48. Production components unchanged.
 
 Validation batch AU 2026-11-19: ONE gated CI comparing unchanged legacy meters.cc strong exported functions with instrumented build, plus aggregate unresolved-link inventory; production radio/HA untouched.
+
+Validation batch AV 2026-11-19: ONE gated CI validates instrumented setter journaling after committed storage using actual generated DV field key in both numeric/string paths, against unchanged legacy baseline; no live components changed.
