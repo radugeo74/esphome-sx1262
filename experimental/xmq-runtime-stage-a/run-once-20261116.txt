@@ -75,3 +75,5 @@ Validation batch AJ 2026-11-17: one gated CI for fail-closed laboratory-only leg
 Validation batch AK 2026-11-17: ONE recovery CI after YAML syntax correction; verify isolated setter instrumentation staging and prior full XMQ/Heltec suites.
 
 Validation batch AL 2026-11-17: single CI validates syntax compilation of real instrumented legacy meters.cc in temporary directory plus existing host and Heltec baseline; never changes active wmbus_common.
+
+Validation batch AM 2026-11-19: ONE gated CI, fail-open no-throw numeric/string legacy setter write journal and syntax-check of isolated meters.cc copy; no change to production components.
