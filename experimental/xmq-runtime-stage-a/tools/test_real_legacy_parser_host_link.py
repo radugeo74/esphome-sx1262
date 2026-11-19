@@ -54,7 +54,8 @@ int main() {
   if (header_ok && frame_ok && dv_found) {
     std::cout << "REAL_LEGACY_FRAME_PARSE_OK: cleartext synthetic DV frame decoded\n";
   } else {
-    std::cout << "REAL_LEGACY_FRAME_PARSE_PENDING: synthetic fixture did not meet full parse criteria\n";
+    std::cerr << "REAL_LEGACY_FRAME_PARSE_FAILED: synthetic cleartext DV fixture regression\n";
+    return 3;
   }
   return 0;
 }
@@ -117,13 +118,13 @@ def main():
             if not unresolved:
                 raise RuntimeError("real-parser strict link failed unexpectedly: " +
                                    result.stderr[-2000:])
-            print("REAL_LEGACY_PARSER_LINK_PENDING: strict executable link incomplete")
+            print("REAL_LEGACY_PARSER_LINK_FAILED: strict executable link incomplete")
             print("Unresolved symbol count:", len(unresolved))
             # Dump only symbol names, never meter IDs, payloads or keys.
             for symbol in unresolved[:24]:
                 print("  unresolved:", symbol[:220])
             print("More unresolved names not displayed:", max(0, len(unresolved) - 24))
-            return
+            raise SystemExit("REAL_LEGACY_PARSER_LINK_FAILED: real-parser release gate failed")
 
         test = run([str(binary)], capture_output=True)
         if test.returncode != 0:
