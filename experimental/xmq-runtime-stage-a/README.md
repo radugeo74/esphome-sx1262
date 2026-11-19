@@ -697,3 +697,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Fișierul de test `host-stubs/esphome/core/log.h` definește acum cele cinci funcții no-op pentru verificarea sintactică C++ pe host, fără link sau efecte în firmware.
 - Toate modificările rămân în `experimental/xmq-runtime-stage-a`; biblioteca comună activă și radio-ul nu se schimbă.
 - Acest pas testează doar sintaxa copiei instrumentate; **nu** demonstrează încă integrarea completă a unui decodor instrumentat pe Heltec.
+
+## Increment AP — compilarea obiectului instrumentat, izolat (19.11.2026)
+
+- Testul CI nu se mai limitează la `g++ -fsyntax-only`: compilează cu `g++ -c -O0` o **copie temporară** a `meters.cc` instrumentat și verifică existența obiectului binar `meters.o`.
+- `nm -C --defined-only` trebuie să identifice `MeterCommonImplementation::handleTelegram`, ambele overload-uri ale `setNumericValue` și `setStringValue`, precum și `LegacyWriteJournal::try_numeric_write` / `try_string_write`.
+- Se păstrează testul separat al ciclului per-telegramă, al limitelor de observație și al sursei neschimbate. Verificarea de mai sus demonstrează **compilare în cod obiect**, nu link cu restul bibliotecii și nici proveniență dovedită în firmware.
+- Niciun fișier din `components/wmbus_common`, `wmbus_meter`, `sx126x` ori YAML-ul instalat nu se schimbă; imaginea Heltec continuă să folosească decodorul existent.
