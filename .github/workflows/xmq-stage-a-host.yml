@@ -176,6 +176,45 @@ jobs:
           grep -Fq 'MeterCommonImplementation::handleTelegram(' "$scratch/legacy-parser-linked-symbols.txt"
           grep -Fq 'Telegram::parseHeader(' "$scratch/legacy-parser-linked-symbols.txt"
           grep -Fq 'Telegram::parse(' "$scratch/legacy-parser-linked-symbols.txt"
+          # Resolve more of the actual upstream legacy dependency graph, keeping
+          # the original component files unmodified. This is an incremental
+          # relocatable link and does not perform real OMS decode.
+          for unit in util units wmbus_utils translatebits formula manufacturer_specificities; do
+            g++ -std=c++17 -O0 -g0 -c -Wall -Wextra -Wno-unused-parameter \
+              -Icomponents/wmbus_common \
+              -Iexperimental/xmq-runtime-stage-a/host-stubs \
+              -Iexperimental/xmq-runtime-stage-a \
+              "components/wmbus_common/${unit}.cc" -o "$scratch/${unit}.o"
+            test -s "$scratch/${unit}.o"
+          done
+          nm -P -u "$scratch/legacy-parser-linked.o" \
+            | awk '$2 == "U" {print $1}' | LC_ALL=C sort -u > "$scratch/parser-undefined.txt"
+          g++ -r "$scratch/legacy-parser-linked.o" \
+            "$scratch/util.o" "$scratch/units.o" "$scratch/wmbus_utils.o" \
+            "$scratch/translatebits.o" "$scratch/formula.o" \
+            "$scratch/manufacturer_specificities.o" \
+            -o "$scratch/legacy-core-linked.o"
+          test -s "$scratch/legacy-core-linked.o"
+          nm -P -u "$scratch/legacy-core-linked.o" \
+            | awk '$2 == "U" {print $1}' | LC_ALL=C sort -u > "$scratch/core-undefined.txt"
+          comm -23 "$scratch/parser-undefined.txt" "$scratch/core-undefined.txt" \
+            > "$scratch/resolved-symbols.txt"
+          printf 'Parser/meter unresolved symbol count: %s\n' \
+            "$(wc -l < "$scratch/parser-undefined.txt")"
+          printf 'Expanded legacy core unresolved symbol count: %s\n' \
+            "$(wc -l < "$scratch/core-undefined.txt")"
+          printf 'Resolved symbols by additional upstream units: %s\n' \
+            "$(wc -l < "$scratch/resolved-symbols.txt")"
+          test -s "$scratch/resolved-symbols.txt" || {
+            echo "::error::No parser/meter references resolved by extra upstream legacy units"
+            exit 1
+          }
+          nm -C --defined-only "$scratch/legacy-core-linked.o" \
+            > "$scratch/core-linked-symbols.txt"
+          grep -Fq 'MeterCommonImplementation::handleTelegram(' "$scratch/core-linked-symbols.txt"
+          grep -Fq 'Telegram::parseHeader(' "$scratch/core-linked-symbols.txt"
+          grep -Fq 'Telegram::parse(' "$scratch/core-linked-symbols.txt"
+          echo "PASS: expanded REAL legacy core sources link with parser and instrumented meter as relocatable object; full executable and OMS decode not yet proven"
           echo "PASS: real parser wmbus.cc/dvparser.cc and staged legacy meters.cc link as one relocatable object"
           echo "NOTE: remaining legacy dependencies unresolved, not an executable and no real telegram decoded"
           echo "PASS: relocatable combined object retains legacy setters and journal contract; unresolved legacy library dependencies remain expected"
