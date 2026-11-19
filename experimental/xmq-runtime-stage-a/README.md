@@ -795,3 +795,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - În execuția #58, testul host a ajuns la linker și a raportat `REAL_LEGACY_PARSER_LINK_PENDING` cu **șase simboluri nerezolvate**: `AES_CBC_decrypt_buffer`, `AES_CMAC`, `AES_ECB_encrypt`, `Address::decodeIdFirst`, `Address::decodeMfctFirst` și `manufacturerFlag`.
 - Acest calup adaugă la proba strictă sursele originale `address.cc`, `aes.cc` și `aescmac.cc`, unde sunt implementate aceste funcții; nu adaugă simulări sau chei criptografice.
 - Criteriul rămâne explicit: **`REAL_LEGACY_PARSER_LINK_OK`** numai după construirea și execuția programului host; `PENDING` nu este o validare, chiar dacă workflow-ul e verde. Nu modifică firmware-ul SX1262, componentele de producție sau configurația contoarelor.
+
+## Increment BE — decodare DV prin parserul legacy real (19.11.2026)
+
+- Extindem executabilul diagnostic `tools/test_real_legacy_parser_host_link.py` pentru a apela atât `Telegram::parseHeader()`, cât și `Telegram::parse()` **din sursa originală**, cu `MeterKeys` gol și o telegramă cleartext CI=`0x78` **integral sintetică** care include un singur câmp `DIF=0x02`, `VIF=0x13`, date `0x34 0x12`.
+- Indicatorii raportați sunt separați: `REAL_LEGACY_PARSER_LINK_OK` dovedește numai legarea+execuția programului; `REAL_LEGACY_FRAME_PARSE_OK` apare numai dacă headerul este acceptat, `parse()` reușește și `dv_entries` conține cel puțin un câmp. În caz contrar, `REAL_LEGACY_FRAME_PARSE_PENDING` nu reprezintă o validare.
+- Dacă încă lipsesc dependențe, `REAL_LEGACY_PARSER_LINK_PENDING` enumeră simbolurile nerezolvate. Toți indicatorii sunt în continuare **diagnostici** până la testul integrat cu `MeterCommonImplementation::handleTelegram()` și driver XMQ; niciun `OK` din această probă nu autorizează instalarea.
+- Nu sunt folosite ID-uri, chei sau capturi private, nu se schimbă componente active, firmware SX1262, YAML ori senzori Home Assistant.
