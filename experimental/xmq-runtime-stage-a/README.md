@@ -684,3 +684,9 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Setterele din copia experimentală a `meters.cc` invocă exclusiv aceste două metode `noexcept`. Jurnalul este reinițializat la fiecare telegramă; eșecurile nu contaminează următoarea captură.
 - Testele host verifică explicit pierderile de observații, scrierile invalide și continuarea după limită. Verificările de staging confirmă punctele reale de apel și integritatea sursei originale.
 - **Nu este activat pe Heltec.** Testul de compilare a copiei instrumentate rămâne o poartă obligatorie, iar comparația live actuală continuă să raporteze `provenance=not_proven`.
+
+## Increment AN — remediere compilare sintactică host (19.11.2026)
+
+- Run-urile #41 și #42 au eșuat exclusiv la verificarea nouă `g++ -fsyntax-only`, deoarece `util.h` include `esphome/core/log.h`, iar compilarea host nu indica directorul cu shim-ul deja existent `host-stubs/esphome/core/log.h`.
+- Am adăugat numai ruta `-Iexperimental/xmq-runtime-stage-a/host-stubs` în invocarea acestui test, fără să modificăm biblioteca `wmbus_common`, codul radio, ESPHome sau instrumentarea setterelor.
+- Validarea următoare execută testul real de sintaxă al copiei izolate, apoi verificările de compatibilitate Heltec. Shim-ul rămâne exclusiv pentru host; firmware-ul folosește antetele reale ESPHome.
