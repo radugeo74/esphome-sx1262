@@ -677,3 +677,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Testul verifică **întregul translation unit**, inclusiv metodele proprietare; nu înlocuiește biblioteca activă și nu face link în firmware.
 - Separat, verificările preexistente continuă să compileze imaginile ESPHome Heltec și firmware-ul ESP-IDF standard, fără instrumentare live.
 - Următoarea poartă de validare: un build experimental izolat și o metodă fail-open de colectare, urmate de export agregat și observație pe telegrame reale.
+
+## Increment AM — jurnalizarea fail-open (19.11.2026)
+
+- `LegacyWriteJournal::try_numeric_write()` și `try_string_write()` nu propagă excepții: în cazul limitelor, numelor invalide sau al unei probleme de alocare, incrementăm numai `dropped_writes` și lăsăm decodarea activă neatinsă.
+- Setterele din copia experimentală a `meters.cc` invocă exclusiv aceste două metode `noexcept`. Jurnalul este reinițializat la fiecare telegramă; eșecurile nu contaminează următoarea captură.
+- Testele host verifică explicit pierderile de observații, scrierile invalide și continuarea după limită. Verificările de staging confirmă punctele reale de apel și integritatea sursei originale.
+- **Nu este activat pe Heltec.** Testul de compilare a copiei instrumentate rămâne o poartă obligatorie, iar comparația live actuală continuă să raporteze `provenance=not_proven`.
