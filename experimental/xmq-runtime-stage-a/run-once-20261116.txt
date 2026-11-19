@@ -115,3 +115,5 @@ Validation batch BD 2026-11-19: ONE gated CI adds original upstream address.cc, 
 Validation batch BE 2026-11-19: ONE gated CI checking strict original Telegram parser link and actual parseHeader/parse of fully synthetic cleartext CI=0x78/DIF/VIF field; status distinguishes LINK_OK and FRAME_PARSE_OK from PENDING. No firmware changes.
 
 Validation batch BF 2026-11-19: ONE workflow links staged original meters.cc with real legacy Telegram parser to resolve detectMeterDrivers, initializes original driver registry, distinguishes strict link success from actual synthetic-DV parse. No production changes.
+
+Validation batch BG 2026-11-19: ONE gated CI upgrades the real original Telegram parser executable link and synthetic cleartext DV decode from informational PENDING to mandatory fail-closed checks, following host success in run #61. No active firmware changes.
