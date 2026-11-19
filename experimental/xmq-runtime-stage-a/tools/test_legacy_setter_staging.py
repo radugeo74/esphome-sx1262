@@ -18,10 +18,11 @@ assert result.count("LabWriteScope lab_write_scope(lab_writes);") == 1
 assert result.count("lab_journal->try_numeric_write(fi->vname());") == 1
 assert result.count("lab_journal->try_string_write(fi->vname());") == 1
 assert result.count("xmq_stage_a_register_legacy_write_observer(") == 1
-assert result.count("lab_observer(xmq_runtime::summarize_legacy_writes(lab_writes, kind))") == 1
-assert result.index("processFieldCalculators();") < result.index("summarize_legacy_writes(lab_writes, kind)")
+assert result.count("xmq_runtime::dispatch_legacy_write_report(") == 1
+assert result.index("processFieldCalculators();") < result.index("xmq_runtime::dispatch_legacy_write_report(")
 assert result.index("summarize_legacy_writes(lab_writes, kind)") < result.index("triggerUpdate(&t);")
 assert result.count('#include "xmq_legacy_write_report.h"') == 1
+assert result.count('#include "xmq_legacy_write_observer.h"') == 1
 assert "summarize_legacy_writes" not in original.decode()
 
 assert result.index("LabWriteScope lab_write_scope") < result.index("processFieldExtractors(&t);")
