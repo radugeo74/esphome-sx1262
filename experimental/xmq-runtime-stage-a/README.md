@@ -719,3 +719,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Testul `test_xmq_legacy_write_report.cpp` acoperă măștile pentru ambele drivere, scrieri repetate cu valoare neschimbată, resetarea la telegrama următoare și absența atribuirii pentru driver necunoscut.
 - Copia instrumentată a `meters.cc` poate raporta sumarul după `processFieldExtractors`, `processContent` și `processFieldCalculators`, înainte de `triggerUpdate`, numai când un observator **experimental** a fost înregistrat explicit. Callback-ul primește exclusiv numere agregate, iar orice excepție este izolată.
 - CI verifică poziția punctului de raportare, compilează obiectul real instrumentat și inspectează simbolurile după legarea relocabilă. **Nu este un executabil legacy complet și nu execută încă setterele reale asupra unei telegrame în runtime.** Firmware-ul și senzorii Home Assistant rămân nemodificate; indicatorul live `provenance=not_proven` se păstrează.
+
+## Increment AS — test de execuție al observatorului (19.11.2026)
+
+- `xmq_legacy_write_observer.h` definește un dispatcher comun cu callback explicit opt-in, care transmite doar `LegacyWriteReport` (măști de câmpuri și contoare), fără identificatori sau valori.
+- `test_xmq_legacy_write_observer.cpp` rulează efectiv pe host, folosind capturi sintetice pentru `fhkvdataiii` și `mkradio4`, și verifică atât callback-ul înregistrat, cât și lipsa apelurilor când acesta este nul ori driverul este necunoscut.
+- Copia instrumentată a `meters.cc` folosește exact același dispatcher după completarea extractoarelor, a decodării proprietare și a calculelor; verificările structurale urmăresc această poziție.
+- **Limită:** testul execută dispatcherul, nu un contor legacy real și nu o telegramă de producție. Legarea unui executabil cu metodele reale `MeterCommonImplementation` și dovada scrierilor din telegrama curentă rămân etape separate. Nu schimbăm driverul de producție și nu instalăm pe Heltec.
