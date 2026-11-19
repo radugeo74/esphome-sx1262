@@ -99,3 +99,5 @@ Validation batch AV 2026-11-19: ONE gated CI validates instrumented setter journ
 Validation batch AW 2026-11-19: ONE CI compiles and executes exact staged legacy numeric/string setter bodies using synthetic FieldInfo/DVEntry and map storage, checks post-write attribution, no production changes.
 
 Validation batch AX 2026-11-19: ONE CI exercising exact staged LabWriteScope RAII nested restore, actual extracted legacy setters and opt-in aggregate observer callback with synthetic field types. Production RF and ESPHome components untouched.
+
+Validation batch AY 2026-11-19: ONE gated workflow executing exact staged legacy handleTelegram() C++ orchestration and actual setter bodies with mock parsing outcomes, field-extractor and update behavior. Not real OMS frame decoding; no active firmware changes.
