@@ -81,7 +81,36 @@ jobs:
           grep -Fq 'MeterCommonImplementation::handleTelegram(' "$scratch/symbols.txt"
           grep -Fq 'xmq_runtime::LegacyWriteJournal::try_numeric_write(' "$scratch/symbols.txt"
           grep -Fq 'xmq_runtime::LegacyWriteJournal::try_string_write(' "$scratch/symbols.txt"
-          echo "PASS: instrumented real meters.cc generated an object with actual legacy setters and fail-open journal; no link, no firmware flash"
+          # This is a relocatable link, not a complete executable link:
+          # verify journal API survives object linking and inspect outstanding dependencies.
+          cat > "$scratch/journal-probe.cpp" <<'CPP'
+          #include "xmq_legacy_write_journal.h"
+          extern "C" int xmq_stage_a_journal_probe() {
+            xmq_runtime::LegacyWriteJournal journal;
+            journal.begin_telegram();
+            const bool recorded = journal.try_numeric_write("current_hca");
+            journal.end_telegram();
+            return recorded && journal.wrote_numeric("current_hca")
+                       && journal.dropped_writes() == 0 ? 1 : 0;
+          }
+          CPP
+          g++ -std=c++17 -O0 -g0 -c \
+            -Iexperimental/xmq-runtime-stage-a \
+            "$scratch/journal-probe.cpp" -o "$scratch/journal-probe.o"
+          g++ -r "$scratch/meters.o" "$scratch/journal-probe.o" -o "$scratch/combined.o"
+          test -s "$scratch/combined.o"
+          nm -C --defined-only "$scratch/combined.o" > "$scratch/linked-symbols.txt"
+          grep -Fq 'MeterCommonImplementation::handleTelegram(' "$scratch/linked-symbols.txt"
+          grep -Fq 'MeterCommonImplementation::setNumericValue(' "$scratch/linked-symbols.txt"
+          grep -Fq 'MeterCommonImplementation::setStringValue(' "$scratch/linked-symbols.txt"
+          grep -Fq 'xmq_stage_a_journal_probe' "$scratch/linked-symbols.txt"
+          nm -C --undefined-only "$scratch/combined.o" > "$scratch/unresolved.txt"
+          if grep -E '^.*[[:space:]]U[[:space:]]+xmq_stage_a_' "$scratch/unresolved.txt"; then
+            echo "::error::Unexpected unresolved XMQ Stage A hook"
+            exit 1
+          fi
+          echo "PASS: relocatable combined object retains legacy setters and journal contract; unresolved legacy library dependencies remain expected"
+          echo "NOTE: -r does not prove full link or execute real meter decoding; NO FLASH"
       - name: Ensure 12-meter canary never contains private IDs or AES keys
         run: python experimental/xmq-runtime-stage-a/tools/check_canary_12.py
       - name: Ensure radio implementation stays unchanged from baseline
