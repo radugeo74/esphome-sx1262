@@ -105,3 +105,5 @@ Validation batch AY 2026-11-19: ONE gated workflow executing exact staged legacy
 Validation batch AZ 2026-11-19: ONE CI compiling actual wmbus.cc and dvparser.cc and relocatable-linking real Telegram::parse/parseHeader with separately instrumented meters.cc; no executable, no flash, active components untouched.
 
 Validation batch BA 2026-11-19: ONE CI compiles util, units, wmbus_utils, translatebits, formula and manufacturer_specificities real legacy units, performs relocatable link with actual wmbus parser/dvparser and staged meters, counts resolved externals; no production firmware changes.
+
+Validation batch BB 2026-11-19: ONE workflow runs strict standalone HOST executable linker diagnostic using real unmodified legacy Telegram parser sources and synthetic header, reports unresolved symbols as PENDING (not success). No active firmware changes.
