@@ -761,3 +761,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Numai dependențele externe, parsarea headerului/telegramelor și modelul de contor sunt simulate. Verificăm respingerea headerului/payloadului invalid fără notificări, fluxul complet extractor → procesare proprietară → calculator → raport → update, scrieri repetate, schimbarea `fhkvdataiii`/`mkradio4`, lipsa contaminării între telegrame și dezactivarea explicită a callback-ului.
 - **Limitare importantă:** acesta este un test de execuție al orchestrării **reale** din `handleTelegram()`, dar NU al parserului wM-Bus/O​MS real și nu realizează un link complet al bibliotecii `wmbus_common`. Telegramele din test sunt numai marcatori sintetici de 2 octeți, nu trame radio valide. Proveniența firmware rămâne `not_proven`, fără autorizare pentru flash sau înlocuirea driverului.
 - Modificări numai în `experimental/xmq-runtime-stage-a` și workflow-ul dedicat; nimic în componentele active sau YAML-ul celor 12 contoare.
+
+## Increment AZ — parserele legacy reale în legarea relocabilă (19.11.2026)
+
+- În CI, alături de copia instrumentată `meters.cc`, compilăm **sursele reale** `components/wmbus_common/wmbus.cc` (implementările `Telegram::parseHeader()` și `Telegram::parse()`) și `components/wmbus_common/dvparser.cc`.
+- `nm -C` verifică implementările parserului, iar `g++ -r` încearcă să le unească cu obiectul contorului într-un singur obiect relocabil. Verificăm că în acesta există atât `handleTelegram()`, cât și cele două etape de parsare.
+- **Important:** legarea `-r` permite dependențe nerezolvate; acest pas nu produce un executabil complet, nu testează decodarea unei telegrame prin parserul real și nu validează AES, telegramele sau memoria ESP32-S3. Testul cu `handleTelegram()` din calupul anterior rămâne separat și folosește parser simulat.
+- Acest pas oferă un inventar de compatibilitate înainte să construim executabilul integral cu dependențele legacy și fixture-uri sintetice, fără modificarea firmware-ului folosit.
