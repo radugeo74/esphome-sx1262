@@ -9,6 +9,8 @@ from pathlib import Path
 import subprocess
 import tempfile
 
+from stage_legacy_setter_instrumentation import SOURCE, instrument
+
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parents[1]
 COMMON = ROOT / "components" / "wmbus_common"
@@ -21,6 +23,8 @@ PROBE = r"""
 #include "wmbus.h"
 #include <vector>
 #include <iostream>
+#include "meters.h"
+void verifyDriverLookupCreated();
 int main() {
   // Fully synthetic, cleartext CI=0x78 DLL+DV telegram:
   // 2-byte DIF=0x02 / VIF=0x13 / value bytes 0x34,0x12.
@@ -36,6 +40,9 @@ int main() {
   Telegram parsed;
   parsed.about = AboutTelegram("synthetic-host-fixture", -60, FrameType::WMBUS);
   MeterKeys no_keys;
+  // The upstream decoder's registry normally initializes before parsing.
+  // This function is defined by the real staged meters.cc, not a mock.
+  verifyDriverLookupCreated();
   const bool frame_ok = parsed.parse(frame, &no_keys, false);
   const bool dv_found = !parsed.dv_entries.empty();
 
@@ -73,6 +80,20 @@ def main():
                 str(source), "-o", str(obj),
             ], check=True)
             objects.append(str(obj))
+        # Link the REAL legacy registry and driver detection from an instrumented
+        # COPY. No changes to components/wmbus_common/meters.cc or live firmware.
+        staged = temp / "meters-staged.cc"
+        staged.write_text(instrument(SOURCE.read_text()))
+        staged_obj = temp / "meters-staged.o"
+        run([
+            "g++", "-std=c++17", "-O0", "-g0", "-ffunction-sections",
+            "-fdata-sections", "-Wno-unused-parameter", "-c",
+            "-I" + str(COMMON),
+            "-I" + str(HERE / "host-stubs"),
+            "-I" + str(HERE),
+            str(staged), "-o", str(staged_obj),
+        ], check=True)
+        objects.append(str(staged_obj))
         src = temp / "probe.cc"
         src.write_text(PROBE)
         obj = temp / "probe.o"
@@ -109,7 +130,8 @@ def main():
             raise RuntimeError("real parser probe executable failed to run: " +
                                (test.stderr or "")[:500])
         print(test.stdout.strip())
-        print("REAL_LEGACY_PARSER_LINK_OK: complete host parser probe executable linked and ran")
+        print("REAL_LEGACY_PARSER_LINK_OK: executable includes actual upstream parser and staged legacy driver registry")
+        print("NOTE: garbage-collection of unused sections may omit full handleTelegram; it is NOT executed by this probe")
 
 if __name__ == "__main__":
     main()
