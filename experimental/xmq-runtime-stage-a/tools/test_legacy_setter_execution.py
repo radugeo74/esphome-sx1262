@@ -43,6 +43,18 @@ def main() -> None:
         staged,
         "void MeterCommonImplementation::setStringValue(FieldInfo *fi, std::string v,",
     )
+    # Use the ACTUAL injected scope and C callback registration, not a
+    # separately rewritten approximation of the RAII lifecycle.
+    scope_begin = "namespace {\\nthread_local xmq_runtime::LegacyWriteJournal *lab_journal"
+    start = staged.find(scope_begin)
+    callback_pos = staged.find("  lab_observer = callback;", start)
+    scope_end = staged.find("\\n}", callback_pos)
+    if start < 0 or callback_pos < 0 or scope_end < 0:
+        raise ValueError("instrumented lab scope/registration anchor changed")
+    scope = staged[start:scope_end + 2]
+    if scope.count("struct LabWriteScope") != 1:
+        raise ValueError("unexpected number of real scoped journal implementations")
+
     if numeric.count("try_numeric_write(field_name_no_unit)") != 2:
         raise ValueError("numeric setter instrumentation drift")
     if string.count("try_string_write(field_name_no_unit)") != 2:
@@ -58,6 +70,7 @@ def main() -> None:
 #include <stdexcept>
 #include "xmq_legacy_write_journal.h"
 #include "xmq_legacy_write_report.h"
+#include "xmq_legacy_write_observer.h"
 
 enum class Unit { Unknown, Unitless };
 struct DVEntry {};
@@ -92,12 +105,17 @@ struct MeterCommonImplementation {
   void setStringValue(FieldInfo *fi, std::string v, DVEntry *dve);
 };
 
-thread_local xmq_runtime::LegacyWriteJournal *lab_journal = nullptr;
 static void require(bool yes, const char *msg) {
   if (!yes) throw std::runtime_error(msg);
 }
 """
     tests = r"""
+static xmq_runtime::LegacyWriteReport scope_report{};
+static unsigned scope_callbacks = 0;
+static void scope_capture(xmq_runtime::LegacyWriteReport r) noexcept {
+  scope_report = r;
+  ++scope_callbacks;
+}
 int main() {
   try {
     MeterCommonImplementation meter;
@@ -139,6 +157,50 @@ int main() {
     meter.setNumericValue(&heat, nullptr, Unit::Unitless, 44);
     require(journal.counts().numeric_writes == 1,
             "unregistered writer still changed journal");
+
+    // Exercise the EXACT staged LabWriteScope constructor/destructor
+    // against the verbatim numeric/string setter methods.
+    xmq_stage_a_register_legacy_write_observer(scope_capture);
+    {
+      xmq_runtime::LegacyWriteJournal outer(10, 20);
+      {
+        LabWriteScope guard(outer);
+        require(outer.active() && lab_journal == &outer,
+                "actual scope did not activate journal");
+        meter.setNumericValue(&heat, nullptr, Unit::Unitless, 44);
+        meter.setStringValue(&date, "scope", nullptr);
+        {
+          xmq_runtime::LegacyWriteJournal inner(10, 20);
+          {
+            LabWriteScope nested(inner);
+            require(inner.active() && lab_journal == &inner,
+                    "nested scope did not install its journal");
+            meter.setNumericValue(&water, nullptr, Unit::Unitless, 91.3);
+          }
+          require(!inner.active() && lab_journal == &outer,
+                  "nested destructor failed to restore outer journal");
+          require(inner.wrote_numeric("total_m3") &&
+                  !outer.wrote_numeric("total_m3"),
+                  "nested write attributed to wrong telegram");
+        }
+        meter.setNumericValue(&heat, nullptr, Unit::Unitless, 44);
+      }
+      require(!outer.active() && lab_journal == nullptr,
+              "outer scope failed to release journal");
+      require(outer.counts().numeric_writes == 2 &&
+              outer.counts().string_writes == 1,
+              "real scope recorded incorrect setter counts");
+      require(xmq_runtime::dispatch_legacy_write_report(
+                  outer, xmq_runtime::LegacyReportDriver::Fhkvdataiii,
+                  lab_observer),
+              "registered observer was not dispatched");
+      require(scope_callbacks == 1 && scope_report.numeric_field_mask == 1 &&
+              scope_report.date_field_mask == 2 &&
+              scope_report.numeric_writes == 2 && scope_report.string_writes == 1,
+              "real scope produced incorrect aggregate callback");
+    }
+    xmq_stage_a_register_legacy_write_observer(nullptr);
+    require(lab_observer == nullptr, "callback unregister failed");
     std::cout << "LEGACY_SETTER_EXECUTION_OK exact setter bodies, committed DV keys, "
                  "both value types, frame isolation and disabled observer\n";
     return 0;
@@ -151,7 +213,7 @@ int main() {
     with tempfile.TemporaryDirectory(prefix="xmq-setters-") as directory:
         src = Path(directory) / "exact-setters.cpp"
         binary = Path(directory) / "exact-setters"
-        src.write_text(header + "\n" + numeric + "\n" + string + "\n" + tests)
+        src.write_text(header + "\n" + scope + "\n" + numeric + "\n" + string + "\n" + tests)
         subprocess.run(
             ["g++", "-std=c++17", "-O1", "-g", "-Wall", "-Wextra", "-Werror",
              "-pedantic", "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
