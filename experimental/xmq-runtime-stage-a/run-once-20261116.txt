@@ -89,3 +89,5 @@ Validation batch AQ 2026-11-19: ONE gated CI for relocatable host link of isolat
 Validation batch AR 2026-11-19: ONE gated CI for aggregate-only per-frame heat/water setter write masks and opt-in observer in isolated staged meters.cc, no production changes or sensor writes.
 
 Validation batch AS 2026-11-19: ONE gated CI tests executable isolated observer callback with synthetic heat/water per-frame writes and staged decoder dispatch; no production changes.
+
+Validation batch AT 2026-11-19: ONE CI for correcting the stale Python assertion after observer dispatch refactor; C++ observer suites already passed in #48. Production components unchanged.
