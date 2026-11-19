@@ -25,9 +25,12 @@ def instrument(source: str) -> str:
         source, '#include "meters_common_implementation.h"',
         '#include "meters_common_implementation.h"\n'
         '#include "xmq_legacy_write_journal.h"\n'
+        '#include "xmq_legacy_write_report.h"\n'
         '// Lab-only. One journal per setter-processing scope, no sensor writes.\n'
         'namespace {\n'
         'thread_local xmq_runtime::LegacyWriteJournal *lab_journal = nullptr;\n'
+        'using LabObserver = void (*)(xmq_runtime::LegacyWriteReport) noexcept;\n'
+        'thread_local LabObserver lab_observer = nullptr;\n'
         'struct LabWriteScope {\n'
         '  xmq_runtime::LegacyWriteJournal &journal;\n'
         '  xmq_runtime::LegacyWriteJournal *previous;\n'
@@ -37,7 +40,11 @@ def instrument(source: str) -> str:
         '  }\n'
         '  ~LabWriteScope() { lab_journal = previous; journal.end_telegram(); }\n'
         '};\n'
-        '}  // namespace'
+        '}  // namespace\n'
+        'extern "C" void xmq_stage_a_register_legacy_write_observer(\n'
+        '    void (*callback)(xmq_runtime::LegacyWriteReport) noexcept) noexcept {\n'
+        '  lab_observer = callback;\n'
+        '}'
     )
     source = replace_exact(
         source,
@@ -56,7 +63,19 @@ def instrument(source: str) -> str:
         '  }\n'
         '  // The journal can be consumed here in an isolated test adapter;\n'
         '  // no values, IDs, payloads or keys are logged.\n'
-        '  (void)lab_writes.counts();\n\n'
+        '  (void)lab_writes.counts();\n'
+        '  // Isolated lab hook only: aggregate masks/counts, no IDs or values.\n'
+        '  if (lab_observer) {\n'
+        '    try {\n'
+        '      const auto kind = driverName().str() == "fhkvdataiii"\n'
+        '          ? xmq_runtime::LegacyReportDriver::Fhkvdataiii\n'
+        '          : (driverName().str() == "mkradio4"\n'
+        '                 ? xmq_runtime::LegacyReportDriver::Mkradio4\n'
+        '                 : xmq_runtime::LegacyReportDriver::Unknown);\n'
+        '      if (kind != xmq_runtime::LegacyReportDriver::Unknown)\n'
+        '        lab_observer(xmq_runtime::summarize_legacy_writes(lab_writes, kind));\n'
+        '    } catch (...) { /* legacy decoding always continues */ }\n'
+        '  }\n\n'
         '  // All done....'
     )
     source = replace_exact(
