@@ -789,3 +789,9 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Workflow #57 s-a oprit **înainte de testul de linker**: fișierul sintetic `probe.cc` include `wmbus.h`, iar din comanda lui `g++ -c` lipsea `-Iexperimental/xmq-runtime-stage-a/host-stubs`. Eroarea exactă: `fatal error: esphome/core/log.h: No such file or directory`.
 - Acum aceeași cale către antetele host-only este transmisă atât la compilarea surselor legacy reale, cât și la compilarea probei. Nu se schimbă antetele active sau sursele parserului.
 - **Criteriu de citire a următorului CI:** `REAL_LEGACY_PARSER_LINK_PENDING` semnalează în continuare dependențe externe și nu validează un executabil. Numai `REAL_LEGACY_PARSER_LINK_OK` cu executabilul rulat validează efectiv această etapă.
+
+## Increment BD — rezolvare simboluri reale observate în #58 (19.11.2026)
+
+- În execuția #58, testul host a ajuns la linker și a raportat `REAL_LEGACY_PARSER_LINK_PENDING` cu **șase simboluri nerezolvate**: `AES_CBC_decrypt_buffer`, `AES_CMAC`, `AES_ECB_encrypt`, `Address::decodeIdFirst`, `Address::decodeMfctFirst` și `manufacturerFlag`.
+- Acest calup adaugă la proba strictă sursele originale `address.cc`, `aes.cc` și `aescmac.cc`, unde sunt implementate aceste funcții; nu adaugă simulări sau chei criptografice.
+- Criteriul rămâne explicit: **`REAL_LEGACY_PARSER_LINK_OK`** numai după construirea și execuția programului host; `PENDING` nu este o validare, chiar dacă workflow-ul e verde. Nu modifică firmware-ul SX1262, componentele de producție sau configurația contoarelor.
