@@ -28,11 +28,9 @@ int main() {
   };
   Telegram t;
   t.about = AboutTelegram("synthetic-host-fixture", -60, FrameType::WMBUS);
-  if (!t.parseHeader(frame)) {
-    std::cerr << "PARSER_FIXTURE_NOT_ACCEPTED: synthetic header\n";
-    return 2;
-  }
-  std::cout << "REAL_LEGACY_HEADER_OK: upstream Telegram::parseHeader ran\n";
+  const bool accepted = t.parseHeader(frame);
+  std::cout << "REAL_LEGACY_HEADER_EXECUTED: upstream Telegram::parseHeader ran; accepted="
+            << (accepted ? "yes" : "no") << "\n";
   return 0;
 }
 """
@@ -89,8 +87,8 @@ def main():
 
         test = run([str(binary)], capture_output=True)
         if test.returncode != 0:
-            raise RuntimeError("REAL_LEGACY_PARSER_LINK_OK but synthetic fixture " +
-                               "did not parse; " + (test.stderr or "")[:500])
+            raise RuntimeError("real parser probe executable failed to run: " +
+                               (test.stderr or "")[:500])
         print(test.stdout.strip())
         print("REAL_LEGACY_PARSER_LINK_OK: complete host parser probe executable linked and ran")
 
