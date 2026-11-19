@@ -30,7 +30,7 @@ jobs:
           dir=experimental/xmq-runtime-stage-a
           python "$dir/tools/stage_shadow_headers.py"
           failures=0
-          for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime hca_numeric calendar oms_partial clear_runtime driver_registry driver_loader source_registry mounted_vfs frame_bridge shadow_compare shadow_diagnostic legacy_write_journal telegram_capture real_telegram_contract compat_macros staged_reader; do
+          for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime hca_numeric calendar oms_partial clear_runtime driver_registry driver_loader source_registry mounted_vfs frame_bridge shadow_compare shadow_diagnostic legacy_write_journal legacy_write_report telegram_capture real_telegram_contract compat_macros staged_reader; do
             echo "::group::XMQ suite: $suite"
             if g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
               -fsanitize=address,undefined -fno-omit-frame-pointer \
@@ -104,6 +104,8 @@ jobs:
           grep -Fq 'MeterCommonImplementation::setNumericValue(' "$scratch/linked-symbols.txt"
           grep -Fq 'MeterCommonImplementation::setStringValue(' "$scratch/linked-symbols.txt"
           grep -Fq 'xmq_stage_a_journal_probe' "$scratch/linked-symbols.txt"
+          grep -Fq 'xmq_stage_a_register_legacy_write_observer' "$scratch/linked-symbols.txt"
+          grep -Fq 'xmq_runtime::summarize_legacy_writes(' "$scratch/linked-symbols.txt"
           nm -C --undefined-only "$scratch/combined.o" > "$scratch/unresolved.txt"
           if grep -E '^.*[[:space:]]U[[:space:]]+xmq_stage_a_' "$scratch/unresolved.txt"; then
             echo "::error::Unexpected unresolved XMQ Stage A hook"
