@@ -59,7 +59,8 @@ def main():
         src.write_text(PROBE)
         obj = temp / "probe.o"
         run(["g++", "-std=c++17", "-O0", "-ffunction-sections",
-             "-I" + str(COMMON), str(src), "-c", "-o", str(obj)], check=True)
+             "-I" + str(COMMON), "-I" + str(HERE / "host-stubs"),
+             str(src), "-c", "-o", str(obj)], check=True)
 
         binary = temp / "probe"
         command = ["g++", "-Wl,--gc-sections", "-Wl,--no-undefined",
