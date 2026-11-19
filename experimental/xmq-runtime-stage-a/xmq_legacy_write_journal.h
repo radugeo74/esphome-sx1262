@@ -28,6 +28,7 @@ struct LegacyWriteJournal {
     numeric_.clear();
     strings_.clear();
     counts_ = {};
+    dropped_writes_ = 0;
     active_ = true;
   }
 
@@ -42,6 +43,31 @@ struct LegacyWriteJournal {
     record(name, strings_, counts_.string_writes,
            counts_.distinct_string);
   }
+
+  // For future decoder integration: recording must NEVER interrupt the
+  // original legacy setter, even if journal bounds/allocation fail.
+  // false means observation was dropped; decoded values are untouched.
+  bool try_numeric_write(const std::string &name) noexcept {
+    try {
+      numeric_write(name);
+      return true;
+    } catch (...) {
+      ++dropped_writes_;
+      return false;
+    }
+  }
+
+  bool try_string_write(const std::string &name) noexcept {
+    try {
+      string_write(name);
+      return true;
+    } catch (...) {
+      ++dropped_writes_;
+      return false;
+    }
+  }
+
+  std::size_t dropped_writes() const noexcept { return dropped_writes_; }
 
   // A per-telegram write is observable even if the written value is
   // numerically equal to the previous telegram's value.
@@ -78,6 +104,7 @@ private:
   const std::size_t max_writes_;
   bool active_{false};
   Counts counts_{};
+  std::size_t dropped_writes_{0};
   std::map<std::string, bool> numeric_;
   std::map<std::string, bool> strings_;
 };
