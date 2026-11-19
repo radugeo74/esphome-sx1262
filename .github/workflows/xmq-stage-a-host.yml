@@ -219,6 +219,11 @@ jobs:
           echo "NOTE: remaining legacy dependencies unresolved, not an executable and no real telegram decoded"
           echo "PASS: relocatable combined object retains legacy setters and journal contract; unresolved legacy library dependencies remain expected"
           echo "NOTE: -r does not prove full link or execute real meter decoding; NO FLASH"
+      - name: Attempt strict real legacy Telegram parser HOST executable link
+        shell: bash
+        run: |
+          set -euo pipefail
+          python experimental/xmq-runtime-stage-a/tools/test_real_legacy_parser_host_link.py
       - name: Ensure 12-meter canary never contains private IDs or AES keys
         run: python experimental/xmq-runtime-stage-a/tools/check_canary_12.py
       - name: Ensure radio implementation stays unchanged from baseline
