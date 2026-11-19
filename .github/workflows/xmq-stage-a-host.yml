@@ -75,6 +75,29 @@ jobs:
             -Iexperimental/xmq-runtime-stage-a \
             "$scratch/meters.cc" -o "$scratch/meters.o"
           test -s "$scratch/meters.o"
+          # Independently compile the untouched production source with identical flags.
+          # Fail if instrumentation removes any externally visible strong function.
+          g++ -std=c++17 -O0 -g0 -c -Wall -Wextra -Wno-unused-parameter \
+            -Icomponents/wmbus_common \
+            -Iexperimental/xmq-runtime-stage-a/host-stubs \
+            -Iexperimental/xmq-runtime-stage-a \
+            components/wmbus_common/meters.cc -o "$scratch/meters-baseline.o"
+          nm -P -g --defined-only "$scratch/meters-baseline.o" \
+            | awk '$2 == "T" {print $1}' | LC_ALL=C sort -u > "$scratch/baseline-functions.txt"
+          nm -P -g --defined-only "$scratch/meters.o" \
+            | awk '$2 == "T" {print $1}' | LC_ALL=C sort -u > "$scratch/instrumented-functions.txt"
+          test -s "$scratch/baseline-functions.txt"
+          if ! comm -23 "$scratch/baseline-functions.txt" "$scratch/instrumented-functions.txt" \
+              > "$scratch/missing-functions.txt"; then
+            echo "::error::Cannot compare instrumented and baseline function symbols"
+            exit 1
+          fi
+          if test -s "$scratch/missing-functions.txt"; then
+            echo "::error::Instrumented legacy decoder lost exported strong functions"
+            cat "$scratch/missing-functions.txt"
+            exit 1
+          fi
+          echo "PASS: instrumented decoder preserves all baseline strong exported functions"
           nm -C --defined-only "$scratch/meters.o" > "$scratch/symbols.txt"
           grep -Fq 'MeterCommonImplementation::setNumericValue(' "$scratch/symbols.txt"
           grep -Fq 'MeterCommonImplementation::setStringValue(' "$scratch/symbols.txt"
