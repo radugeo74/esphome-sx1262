@@ -6,7 +6,6 @@ A missing dependency is recorded as PENDING, never claimed as parser parity.
 Original source files are not modified; no radio frames or credentials used.
 """
 from pathlib import Path
-import os
 import subprocess
 import tempfile
 
@@ -23,15 +22,33 @@ PROBE = r"""
 #include <vector>
 #include <iostream>
 int main() {
-  // Synthetic unencrypted DLL addressing. No real meter ID or AES key.
+  // Fully synthetic, cleartext CI=0x78 DLL+DV telegram:
+  // 2-byte DIF=0x02 / VIF=0x13 / value bytes 0x34,0x12.
+  // Never publish actual meter IDs, RF captures or AES keys.
   std::vector<uchar> frame = {
-    0x0A, 0x44, 0x33, 0x30, 0x01, 0x02, 0x03, 0x04, 0x01, 0x07, 0x7A
+    0x0E, 0x44, 0x33, 0x30, 0x01, 0x02, 0x03, 0x04,
+    0x01, 0x07, 0x78, 0x02, 0x13, 0x34, 0x12
   };
-  Telegram t;
-  t.about = AboutTelegram("synthetic-host-fixture", -60, FrameType::WMBUS);
-  const bool accepted = t.parseHeader(frame);
-  std::cout << "REAL_LEGACY_HEADER_EXECUTED: upstream Telegram::parseHeader ran; accepted="
-            << (accepted ? "yes" : "no") << "\n";
+  Telegram header;
+  header.about = AboutTelegram("synthetic-host-fixture", -60, FrameType::WMBUS);
+  const bool header_ok = header.parseHeader(frame);
+
+  Telegram parsed;
+  parsed.about = AboutTelegram("synthetic-host-fixture", -60, FrameType::WMBUS);
+  MeterKeys no_keys;
+  const bool frame_ok = parsed.parse(frame, &no_keys, false);
+  const bool dv_found = !parsed.dv_entries.empty();
+
+  std::cout << "REAL_LEGACY_HEADER_EXECUTED: accepted="
+            << (header_ok ? "yes" : "no") << "\n";
+  std::cout << "REAL_LEGACY_FRAME_PARSE_EXECUTED: accepted="
+            << (frame_ok ? "yes" : "no")
+            << " dv_fields_present=" << (dv_found ? "yes" : "no") << "\n";
+  if (header_ok && frame_ok && dv_found) {
+    std::cout << "REAL_LEGACY_FRAME_PARSE_OK: cleartext synthetic DV frame decoded\n";
+  } else {
+    std::cout << "REAL_LEGACY_FRAME_PARSE_PENDING: synthetic fixture did not meet full parse criteria\n";
+  }
   return 0;
 }
 """
