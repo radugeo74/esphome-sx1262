@@ -747,3 +747,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Tipurile asociate (`FieldInfo`, `DVEntry`, `NumericField`, `StringField` și mapările de stocare) sunt simulate minimal, doar pentru acest test; compilarea și execuția au `-fsanitize=address,undefined`.
 - Se verifică patru cazuri importante: nume de câmp fără DV, nume generat pentru DV, stocarea efectivă în mapa numerică/text și înregistrarea **după** stocare. Testul acoperă repetarea unei valori identice într-o nouă telegramă, lipsa contaminării între telegrame și lipsa observării când jurnalul este dezactivat.
 - Este o probă de execuție mai puternică decât verificările structurale precedente, dar **nu este** un executabil complet al decodorului legacy și **nu** decodează încă o telegramă `fhkvdataiii`/`mkradio4` prin `handleTelegram`. Nu autorizează flash pe Heltec și nu schimbă senzorii existenți.
+
+## Increment AX — exercițiu end-to-end al scope-ului real de jurnal (19.11.2026)
+
+- Extindem `tools/test_legacy_setter_execution.py`: în același executabil cu **corpurile exacte ale setterelor legacy** sunt extrase și compilate **`LabWriteScope` și `xmq_stage_a_register_legacy_write_observer`**, așa cum le injectează scriptul în `meters.cc`.
+- Verificările includ intrarea/ieșirea RAII, reactivarea corectă a jurnalului exterior după un scope imbricat, absența atribuirii scrierilor din scope-ul interior către cel exterior, și raportul agregat primit de callback.
+- Este un test executabil al instrumentării și al interfeței de raportare, cu tipuri sintetice în locul modelului de contor. **Nu reprezintă un link complet al wmbus_common și nu execută încă `handleTelegram()` pe telegramă reală sau sintetică.**
+- Acest calup nu modifică `components/wmbus_common`, recepția radio, firmware-ul Heltec, YAML-ul activ ori entitățile Home Assistant.
