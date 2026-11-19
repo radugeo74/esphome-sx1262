@@ -109,7 +109,9 @@ def instrument(source: str) -> str:
     )
     source = replace_exact(
         source,
+        '    std::string field_name_no_unit = fi->vname();\n'
         '    string_values_[field_name_no_unit] = StringField(v, fi);',
+        '    std::string field_name_no_unit = fi->vname();\n'
         '    string_values_[field_name_no_unit] = StringField(v, fi);\n'
         '    if (lab_journal) (void)lab_journal->try_string_write(field_name_no_unit);'
     )
