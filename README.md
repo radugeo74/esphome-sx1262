@@ -154,3 +154,11 @@ The successful Heltec XMQ field-test observations on the newer experimental bran
 Derived from [SzczepanLeon/esphome-components](https://github.com/SzczepanLeon/esphome-components), with SX1262/ESP-IDF adaptations.
 
 > **ESPHome compatibility:** Do **not** copy an `esp32` folder into a local `components` directory. ESPHome already supplies the official ESP32 integration, and a duplicate component can cause configuration or build conflicts.
+
+## ESPHome 2026.11.0 compatibility (November 2026)
+
+In ESPHome 2026.11.0 the older `format_hex()` helper is no longer available to this component; `components/wmbus_radio/packet.cpp` previously failed with `'format_hex' was not declared in this scope`. `Frame::as_hex()` now converts bytes locally to the same compact lowercase hexadecimal output and `as_rtlwmbus()` continues using it. No RF, driver or AES parsing algorithms were changed.
+
+`tests/heltec-2026-11-compile.yaml` is a **synthetic, build-only** Heltec ESP32-S3 SX1262 fixture. The dedicated `native-espidf-2026-11.yml` workflow runs just once when its gate file is updated and compiles the fixture with `esphome==2026.11.0`. It never flashes a device and contains no Wi-Fi credentials or real meter IDs.
+
+When testing your private YAML, keep your last known-good firmware for rollback. A successful fixture compile does not prove your exact board pinout or the full private configuration. The ESPHome OTA password warning is separate and not a compiler error.
