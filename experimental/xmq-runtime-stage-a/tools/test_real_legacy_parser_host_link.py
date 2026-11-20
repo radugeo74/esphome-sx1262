@@ -139,8 +139,15 @@ int main() {
             << " matched=" << matched
             << " reports=" << reports
             << " updates=" << meter.numUpdates() << "\n";
-  // No actual XMQ driver fields are configured here, so zero writes is not a
-  // parity result. An actual report is required at a later integration gate.
+  // No real driver-specific extractor is configured, so no field-value parity
+  // is implied. Still require one actual observer dispatch for the accepted
+  // synthetic telegram, one legacy update and a positive meter ID match.
+  if (!handled || !matched || reports != 1 || meter.numUpdates() != 1) {
+    std::cerr << "REAL_LEGACY_HANDLE_FLOW_FAILED: parser/update/observer contract\n";
+    return 11;
+  }
+  std::cout << "REAL_LEGACY_HANDLE_FLOW_OK: original parser, handleTelegram,"
+               " observer dispatch and update executed together\n";
   return 0;
 }
 """
