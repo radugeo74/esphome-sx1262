@@ -910,3 +910,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Noua verificare cere aceleași rezultate concrete pe care le verifică deja varianta `0x69`: `current=312 HCA`, `previous=1250 HCA`, `temp_room=22.44 °C`, `temp_radiator=25.51 °C`, `previous_date=2024-05-15`, `current_date=2024-06-16`; observer `numeric_mask=0x0f`, `date_mask=0x03`, 4 scrieri numerice, 2 stringuri, 0 drop-uri, un callback și o actualizare.
 - Marker nou obligatoriu: `REAL_FHKVDATAIII_V94_OK`. Eșecul oricărei condiții face jobul host roșu. Cadrul, datele și valorile sunt inventate, nu provin de la contoarele private.
 - Limitare: aceste teste nu validează încă AES, T1/C1 pe RF, nici paritatea pe capturi reale; nicio modificare la `components/`, YAML sau firmware.
+
+## Increment BT — respingerea telegramelor altui contor în decodorul real (20.11.2026)
+
+- În **workflow #78**, testul host a trecut, inclusiv `REAL_FHKVDATAIII_V94_OK` pentru driverul upstream `fhkvdataiii`, versiunea DLL `0x94`. Compilările firmware se verifică separat.
+- Am adăugat un scenariu **negativ** în `tools/test_real_legacy_parser_host_link.py` pentru **ambele drivere upstream originale** `mkradio4` și `fhkvdataiii`: un contor cu adresă explicită fictivă `99999999` primește o telegramă sintetică validă din fixture-urile deja folosite, cu altă adresă DLL.
+- Testul apelează direct `Meter::handleTelegram()` din driverul original și verifică **`handled=false`, `id_match=false`, `reports=0`, `updates=0`** și nicio scriere în raport; nu modifică `isTelegramForMeter()` și nu folosește un parser mock.
+- Marker obligatoriu în CI: `REAL_LEGACY_FOREIGN_METER_OK`. O telegramă străină nu trebuie să modifice proveniența, nici să actualizeze senzorii contorului configurat.
+- **Limitare:** acesta este un test host pentru filtrele de adresă ale driverelor, nu recepție RF T1/C1, AES sau telegramă privată. Sursa de producție, receptorul, YAML-ul și firmware-ul rămân neschimbate.
