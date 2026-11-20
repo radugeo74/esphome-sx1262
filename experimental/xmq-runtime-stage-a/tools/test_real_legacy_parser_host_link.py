@@ -454,6 +454,46 @@ int main() {
   }
   std::cout << "REAL_FHKVDATAIII_V94_OK: original driver v0x94"
                " extra-byte temperature offset verified\n";
+
+  // Reject a correctly formed telegram when the original driver's configured
+  // address is NOT the synthetic DLL address. No parser bypass or manual
+  // mocking of isTelegramForMeter() is allowed.
+  AddressExpression foreign_only;
+  if (!foreign_only.parse("99999999")) return 23;
+  for (const char *driver_name : {"mkradio4", "fhkvdataiii"}) {
+    MeterInfo foreign_mi;
+    foreign_mi.name = "synthetic-foreign-address-filter";
+    foreign_mi.driver_name = DriverName(driver_name);
+    foreign_mi.poll_interval = 0;
+    foreign_mi.address_expressions.push_back(foreign_only);
+    auto filtered_meter = createMeter(&foreign_mi);
+    if (!filtered_meter) return 24;
+    const auto &foreign_frame = std::string(driver_name) == "mkradio4"
+        ? vendor_frame : proprietary_heat_frame;
+    reports = 0;
+    last_report = {};
+    addresses.clear();
+    matched = false;
+    xmq_stage_a_register_legacy_write_observer(record_report);
+    const bool accepted = filtered_meter->handleTelegram(
+        about, foreign_frame, false, &addresses, &matched, nullptr);
+    xmq_stage_a_register_legacy_write_observer(nullptr);
+    const bool blocked = !accepted && !matched && reports == 0 &&
+        filtered_meter->numUpdates() == 0 &&
+        last_report.numeric_writes == 0 &&
+        last_report.string_writes == 0;
+    std::cout << "REAL_LEGACY_FOREIGN_METER_EXECUTED: driver="
+              << driver_name << " blocked=" << blocked
+              << " reports=" << reports
+              << " updates=" << filtered_meter->numUpdates() << "\n";
+    if (!blocked) {
+      std::cerr << "REAL_LEGACY_FOREIGN_METER_FAILED: foreign DLL address"
+                   " reached original decoder/observer/update\n";
+      return 25;
+    }
+  }
+  std::cout << "REAL_LEGACY_FOREIGN_METER_OK: original heat and water"
+               " drivers reject foreign addresses before any writes\n";
   return 0;
 }
 """
@@ -594,6 +634,7 @@ def main():
             "REAL_MKRADIO4_PROCESS_CONTENT_OK:",
             "REAL_FHKVDATAIII_PROCESS_CONTENT_OK:",
             "REAL_FHKVDATAIII_V94_OK:",
+            "REAL_LEGACY_FOREIGN_METER_OK:",
         )
         for marker in required_markers:
             if marker not in handle_result.stdout:
