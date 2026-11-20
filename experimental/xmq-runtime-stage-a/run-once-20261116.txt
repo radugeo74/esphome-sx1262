@@ -125,3 +125,5 @@ Validation batch BI 2026-11-20: ONE gated CI validates local hex encoder replaci
 Recovery #65: allow only exact local Frame::as_hex replacement in legacy radio protection gate; all other production files must remain identical; run ESPHome 2026.11 build.
 
 Recovery 2026-11-20: single XMQ CI validation after removing malformed duplicated workflow tail and permitting ONLY the audited format_hex packet.cpp change; keep 2026.11.0 Heltec compatibility compilation.
+
+Validation BJ 2026-11-20: ONE gated CI requires exact numeric 0x1234 extraction via original DVEntry::extractLong on synthetic CI=0x78 frame and rejection of truncated synthetic DLL by real parseHeader/parse; no RF or production changes.
