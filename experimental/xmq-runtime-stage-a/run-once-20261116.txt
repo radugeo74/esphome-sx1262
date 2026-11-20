@@ -135,3 +135,5 @@ Validation BL 2026-11-20: ONE gated workflow promotes confirmed real parser-to-h
 Validation BM 2026-11-20: ONE gated CI asserts real upstream Volume DV extractor -> exact 4.660 m3 original numeric setter -> real XMQ observer total_m3 field mask and one update, synthetic-only host. No production changes.
 
 Validation BN 2026-11-20: ONE gated CI runs two independent synthetic upstream original extractors: volume 4.660 m3 into total_m3 observer mask=2, and HCA VIF=0x6E integer 4660 into current_hca observer mask=1. Original parser, handleTelegram, setters, no RF/production changes.
+
+Validation BO 2026-11-20: ONE gated CI compiles upstream original driver_mkradio4.cc and driver_fhkvdataiii.cc, registers and constructs real legacy drivers, checks expected original field schemas alongside existing synthetic DV parity. No production component changes.
