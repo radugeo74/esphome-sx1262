@@ -117,3 +117,5 @@ Validation batch BE 2026-11-19: ONE gated CI checking strict original Telegram p
 Validation batch BF 2026-11-19: ONE workflow links staged original meters.cc with real legacy Telegram parser to resolve detectMeterDrivers, initializes original driver registry, distinguishes strict link success from actual synthetic-DV parse. No production changes.
 
 Validation batch BG 2026-11-19: ONE gated CI upgrades the real original Telegram parser executable link and synthetic cleartext DV decode from informational PENDING to mandatory fail-closed checks, following host success in run #61. No active firmware changes.
+
+Validation batch BH 2026-11-20: ONE CI tests privacy-safe local canary release gate ordering and fail-closed behavior, documents first SX1262 canary installation with disabled shadow, exact YAML parity and rollback. No active RF, meter, firmware or secret changes.
