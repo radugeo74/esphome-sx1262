@@ -121,7 +121,7 @@ int main() {
   mi.address_expressions.push_back(matcher);
   DriverInfo driver;
   driver.setName("mkradio4");
-  driver.setMeterType(MeterType::Water);
+  driver.setMeterType(MeterType::WaterMeter);
   SyntheticMeter meter(mi, driver);
 
   std::vector<uchar> frame = {
