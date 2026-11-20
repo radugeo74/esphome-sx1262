@@ -824,3 +824,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - `tools/canary_release_gate.py` combină în ordine verificarea `preflight_canary.py` cu `verify_rollback.py`. Nu face flash, nu tipărește ID-uri/chei și nu validează automat reviziile Git sau recuperarea fizică prin USB.
 - `tools/test_canary_release_gate.py` testează cu fixture-uri sintetice că verificarea configurației se execută **înainte** de cea a imaginilor, iar o neconcordanță blochează restul operației; testul face parte din același workflow CI cu un singur trigger.
 - În #62 toate cele patru joburi CI au trecut; imaginea cu 12 contoare compilată în GitHub este exclusiv un fixture sintetic. Instalarea reală este permisă doar după validarea locală a configurației și a binarelor și aprobare manuală.
+
+## Increment BI — compatibilitate ESPHome 2026.11.0 (`format_hex`, 20.11.2026)
+
+- Compilarea reală a utilizatorului pentru `heltec-stick-lite-8mb.yaml` cu **ESPHome 2026.11.0** s-a oprit în `components/wmbus_radio/packet.cpp:20`: `format_hex` nu mai este declarată de `esphome/core/helpers.h`.
+- `Frame::as_hex()` folosește acum un encoder local simplu, cu două caractere hex (litere mici) per octet, fără să depindă de un API intern ESPHome. `Frame::as_rtlwmbus()` reutilizează aceeași metodă. Nu se schimbă funcțiile de recepție RF, decodare XMQ sau publicarea senzorilor.
+- Workflow-ul existent are **un job suplimentar ESPHome 2026.11.0**, care validează și compilează `tests/sx126x-wmbus-bridge.yaml` fără flash; joburile existente cu ESPHome 2026.10.1 rămân intacte.
+- **Nu instala doar pentru că trece CI:** fixture-ul GitHub este sintetic; YAML-ul privat nu poate fi verificat din GitHub. La instalare păstrează un firmware rollback și confirmă separat recepția T1/C1, componentele externe și cei 12 senzori/contori.
+- Avertismentul privind parola `ota` este separat de eroarea de compilare și **nu** constituie motiv pentru a schimba acum mecanismul OTA din YAML.
