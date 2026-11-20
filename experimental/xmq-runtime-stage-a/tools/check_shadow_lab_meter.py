@@ -54,6 +54,31 @@ assert "matched_numeric_dv" in probe
 assert "unmatched_numeric_dv" in probe
 assert "matched_date_dv" in probe
 assert "observe_legacy_telegram" in probe
+# The opt-in observer may inspect a successfully decoded Telegram, but must
+# never become another receiver, invoke legacy decoding, or publish sensors.
+# This guard is source-level contract checking, not an RF/runtime test.
+for forbidden in (
+    "add_frame_handler(", "add_meter_frame_handler(",
+    "handleTelegram(", "mark_as_handled(", "publish_state(",
+    "sensor->publish_state(", "sensor::Sensor", "set_radio(",
+):
+    assert forbidden not in probe, "shadow probe gained an unsafe sink: " + forbidden
+assert "if (!wants_readings()) return;" in probe
+assert "if (!enabled_)" in probe
+assert "active_probe = this;" in probe
+assert "capture_verified_payload(" in probe
+assert "diagnostic_.inspect(" in probe
+header=(lab.parent/"xmq_shadow_probe/xmq_shadow_probe.h").read_text()
+assert "bool enabled_{false};" in header
+assert "enabled_ && registry_" in header
+assert "kMaxObservations = 128" in header
+assert "set_enabled(bool enabled)" in header
+enabled_yaml=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-enabled-lab.yaml").read_text()
+assert enabled_yaml.count("enabled: true") == 1
+assert "!include heltec-xmq-shadow-build.yaml" in enabled_yaml
+for unsafe in ("wifi:", "api:", "ota:", "mqtt:", "!secret", "password:", "key:"):
+    assert unsafe not in enabled_yaml, "unsafe enabled shadow lab: " + unsafe
+print("SHADOW_READ_ONLY_CONTRACT_OK: post-decode capture only, no radio ownership, sensor writes or network; bounded opt-in")
 yaml=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-build.yaml").read_text()
 assert "enabled: false" in yaml
 assert "components: [wmbus_meter, xmq_shadow_probe]" in yaml
