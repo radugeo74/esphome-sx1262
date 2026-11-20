@@ -45,14 +45,20 @@ int main() {
   verifyDriverLookupCreated();
   const bool frame_ok = parsed.parse(frame, &no_keys, false);
   const bool dv_found = !parsed.dv_entries.empty();
+  // Check the decoded *number*, not merely the presence of a DV entry.
+  // The synthetic 16-bit value bytes 0x34 0x12 must decode as 0x1234.
+  uint64_t raw_numeric = 0;
+  const bool dv_numeric_ok = dv_found && parsed.dv_entries.size() == 1 &&
+      parsed.dv_entries.begin()->second.second.extractLong(&raw_numeric) &&
+      raw_numeric == 0x1234;
 
   std::cout << "REAL_LEGACY_HEADER_EXECUTED: accepted="
             << (header_ok ? "yes" : "no") << "\n";
   std::cout << "REAL_LEGACY_FRAME_PARSE_EXECUTED: accepted="
             << (frame_ok ? "yes" : "no")
             << " dv_fields_present=" << (dv_found ? "yes" : "no") << "\n";
-  if (header_ok && frame_ok && dv_found) {
-    std::cout << "REAL_LEGACY_FRAME_PARSE_OK: cleartext synthetic DV frame decoded\n";
+  if (header_ok && frame_ok && dv_numeric_ok) {
+    std::cout << "REAL_LEGACY_FRAME_PARSE_OK: cleartext synthetic DV integer value 0x1234 decoded\n";
   } else {
     std::cerr << "REAL_LEGACY_FRAME_PARSE_FAILED: synthetic cleartext DV fixture regression\n";
     return 3;
