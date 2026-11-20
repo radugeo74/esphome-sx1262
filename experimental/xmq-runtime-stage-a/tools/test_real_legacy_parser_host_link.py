@@ -104,13 +104,21 @@ class SyntheticMeter : public MeterCommonImplementation {
  public:
   SyntheticMeter(MeterInfo &mi, DriverInfo &di)
       : MeterCommonImplementation(mi, di) {
-    // Register a real upstream DV extractor over the synthetic Volume VIF.
-    // This is NOT the upstream mkradio4 driver: only a one-field host fixture.
-    addNumericFieldWithExtractor(
-        "total_m3", "synthetic cleartext volume",
-        PrintProperties(DEFAULT_PRINT_PROPERTIES),
-        Quantity::Volume, VifScaling::Auto, DifSignedness::Unsigned,
-        FieldMatcher::build().set(VIFRange::Volume), Unit::M3);
+    // Two independent one-field host fixtures through upstream extractors.
+    // These are NOT the original mkradio4 / fhkvdataiii driver definitions.
+    if (di.name().str() == "fhkvdataiii") {
+      addNumericFieldWithExtractor(
+          "current_hca", "synthetic cleartext allocation",
+          PrintProperties(DEFAULT_PRINT_PROPERTIES),
+          Quantity::HCA, VifScaling::Auto, DifSignedness::Unsigned,
+          FieldMatcher::build().set(VIFRange::HeatCostAllocation), Unit::HCA);
+    } else {
+      addNumericFieldWithExtractor(
+          "total_m3", "synthetic cleartext volume",
+          PrintProperties(DEFAULT_PRINT_PROPERTIES),
+          Quantity::Volume, VifScaling::Auto, DifSignedness::Unsigned,
+          FieldMatcher::build().set(VIFRange::Volume), Unit::M3);
+    }
   }
   using MeterCommonImplementation::handleTelegram;
   using MeterCommonImplementation::getNumericValue;
@@ -172,6 +180,47 @@ int main() {
   }
   std::cout << "REAL_LEGACY_HANDLE_FLOW_OK: original parser, real DV"
                " extractor, numeric setter, observer and update executed\n";
+
+  // A second fixture exercises real upstream HCA VIF (0x6E) extraction.
+  // No measurement is copied from a real heat-cost allocator.
+  DriverInfo heat_driver;
+  heat_driver.setName("fhkvdataiii");
+  heat_driver.setMeterType(MeterType::HeatCostAllocationMeter);
+  SyntheticMeter heat_meter(mi, heat_driver);
+  std::vector<uchar> heat_frame = {
+    0x0E, 0x44, 0x33, 0x30, 0x01, 0x02, 0x03, 0x04,
+    0x01, 0x07, 0x78, 0x02, 0x6E, 0x34, 0x12
+  };
+  reports = 0;
+  last_report = {};
+  addresses.clear();
+  matched = false;
+  xmq_stage_a_register_legacy_write_observer(record_report);
+  const bool heat_handled = heat_meter.handleTelegram(
+      about, heat_frame, false, &addresses, &matched, nullptr);
+  xmq_stage_a_register_legacy_write_observer(nullptr);
+  const double hca_value = heat_meter.getNumericValue("current_hca", Unit::HCA);
+  const bool hca_ok = std::isfinite(hca_value) &&
+      std::fabs(hca_value - 4660.0) < 0.000001;
+  const bool heat_observer_ok = reports == 1 &&
+      last_report.numeric_field_mask == 1 &&
+      last_report.numeric_writes == 1 &&
+      last_report.string_writes == 0 &&
+      last_report.dropped_writes == 0;
+  std::cout << "REAL_LEGACY_HCA_EXECUTED: handled=" << heat_handled
+            << " matched=" << matched
+            << " reports=" << reports
+            << " updates=" << heat_meter.numUpdates()
+            << " numeric_field_mask=" << last_report.numeric_field_mask
+            << " hca_ok=" << hca_ok << "\n";
+  if (!heat_handled || !matched || !heat_observer_ok || !hca_ok ||
+      heat_meter.numUpdates() != 1) {
+    std::cerr << "REAL_LEGACY_HCA_FLOW_FAILED: original HCA DV extraction or"
+                 " numeric setter attribution differs\n";
+    return 12;
+  }
+  std::cout << "REAL_LEGACY_HCA_FLOW_OK: 0x6E HCA VIF decoded with original"
+               " field extractor and attributed to current_hca\n";
   return 0;
 }
 """
