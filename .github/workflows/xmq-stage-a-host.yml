@@ -317,6 +317,18 @@ jobs:
           esphome config tests/sx126x-wmbus-bridge.yaml
           esphome compile tests/sx126x-wmbus-bridge.yaml
           echo "PASS: ESPHome 2026.11.0 SX1262 wmbus_radio packet.cpp compiles without format_hex"
+      - name: Validate enabled read-only XMQ Heltec lab on ESPHome 2026.11.0 (NO FLASH)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=experimental/xmq-runtime-stage-a
+          python "$dir/tools/stage_shadow_headers.py"
+          python "$dir/tools/check_shadow_lab_meter.py"
+          grep -q 'enabled: false' "$dir/heltec-xmq-shadow-build.yaml"
+          grep -q 'enabled: true' "$dir/heltec-xmq-shadow-enabled-lab.yaml"
+          esphome config "$dir/heltec-xmq-shadow-enabled-lab.yaml" > /dev/null
+          esphome compile "$dir/heltec-xmq-shadow-enabled-lab.yaml"
+          echo "SHADOW_ENABLED_2026_11_COMPILE_OK: read-only XMQ enabled lab image compiles with ESPHome 2026.11.0; NO FLASH, NOT RF validation"
 
   heltec-xmq-shadow-build:
     name: Heltec SX1262 ESPHome with XMQ linked, probe disabled
