@@ -155,3 +155,5 @@ Validation BV 2026-11-20: ONE gated CI for deterministic synthetic AES-128-CBC-I
 Validation BW 2026-11-20: ONE gated CI validates synthetic positive AES-CBC-IV HCA VIF=0x6E 4660 via actual legacy parser, numeric setter and XMQ observer bit=1; retains volume AES, same ciphertext negative controls and full upstream proprietary driver tests. No radio/YAML/flash changes.
 
 Validation BX 2026-11-20: ONE gated CI compiles both disabled baseline and ENABLED read-only XMQ shadow on SX1262 in a dedicated offline synthetic no-network lab YAML, preserving original 12-meter canary disabled, all real AES host gates, no production radio or firmware changes.
+
+Validation BY 2026-11-20: ONE gated CI adds ESPHome 2026.11.0 combined Heltec read-only enabled-XMQ shadow lab compile, plus static fail-closed radio-dispatch/sensor-write/credential guard and observation bounds; no live radio, YAML credentials, real meter changes or flash.
