@@ -143,7 +143,18 @@ int8_t Frame::rssi() { return this->rssi_; }
 std::string Frame::format() { return this->format_; }
 
 std::vector<uint8_t> Frame::as_raw() { return this->data_; }
-std::string Frame::as_hex() { return format_hex(this->data_); }
+std::string Frame::as_hex() {
+  // ESPHome 2026.11.0 no longer provides format_hex() in core helpers.
+  // Preserve the prior compact lowercase hexadecimal representation.
+  static constexpr char HEX_DIGITS[] = "0123456789abcdef";
+  std::string output;
+  output.reserve(this->data_.size() * 2);
+  for (uint8_t byte : this->data_) {
+    output.push_back(HEX_DIGITS[byte >> 4]);
+    output.push_back(HEX_DIGITS[byte & 0x0F]);
+  }
+  return output;
+}
 std::string Frame::as_rtlwmbus() {
   const size_t time_repr_size = sizeof("YYYY-MM-DD HH:MM:SS.00Z");
   char time_buffer[time_repr_size];
