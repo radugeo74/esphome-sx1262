@@ -92,6 +92,7 @@ int main() {
 HANDLE_PROBE = r"""
 #include "meters_common_implementation.h"
 #include "xmq_legacy_write_observer.h"
+#include "aes.h"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -546,6 +547,101 @@ int main() {
   }
   std::cout << "REAL_LEGACY_AES_NEGATIVE_OK: no-key and wrong-key"
                " synthetic mode-5 frames rejected before upstream fields\n";
+
+  // Positive, deterministic AES-CBC-IV fixture. Encrypt exactly one synthetic
+  // DV data block with the original bundled AES implementation at runtime.
+  // No external crypto service, user secret or real meter frame is involved.
+  const unsigned char fixture_key[16] = {
+    0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+    0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
+  };
+  const unsigned char fixture_iv[16] = {
+    0x33, 0x30, 0x01, 0x02, 0x03, 0x04, 0x01, 0x07,
+    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01
+  };
+  unsigned char clear_block[16] = {
+    0x2F, 0x2F, 0x02, 0x13, 0x34, 0x12, 0x2F, 0x2F,
+    0x2F, 0x2F, 0x2F, 0x2F, 0x2F, 0x2F, 0x2F, 0x2F
+  };
+  unsigned char cipher_block[16] = {};
+  AES_CBC_encrypt_buffer(cipher_block, clear_block, 16,
+                         fixture_key, fixture_iv);
+  std::vector<uchar> encrypted_fixture = {
+    0x1E, 0x44, 0x33, 0x30, 0x01, 0x02, 0x03, 0x04,
+    0x01, 0x07, 0x7A, 0x01, 0x00, 0x10, 0x05
+  };
+  encrypted_fixture.insert(encrypted_fixture.end(), cipher_block,
+                           cipher_block + 16);
+  if (encrypted_fixture.size() != 31) return 28;
+
+  MeterInfo positive_mi;
+  positive_mi.name = "synthetic-positive-aes-fixture";
+  positive_mi.poll_interval = 0;
+  positive_mi.key = "00112233445566778899AABBCCDDEEFF";
+  positive_mi.address_expressions.push_back(matcher);
+  DriverInfo positive_di;
+  positive_di.setName("mkradio4");
+  positive_di.setMeterType(MeterType::WaterMeter);
+  SyntheticMeter positive_meter(positive_mi, positive_di);
+  reports = 0;
+  last_report = {};
+  addresses.clear();
+  matched = false;
+  xmq_stage_a_register_legacy_write_observer(record_report);
+  const bool positive_handled = positive_meter.handleTelegram(
+      about, encrypted_fixture, false, &addresses, &matched, nullptr);
+  xmq_stage_a_register_legacy_write_observer(nullptr);
+  const double positive_total =
+      positive_meter.getNumericValue("total_m3", Unit::M3);
+  const bool positive_value_ok = std::isfinite(positive_total) &&
+      std::fabs(positive_total - 4.660) < 0.000001;
+  const bool positive_observer_ok = reports == 1 &&
+      last_report.numeric_field_mask == 0x02 &&
+      last_report.numeric_writes == 1 &&
+      last_report.string_writes == 0 &&
+      last_report.dropped_writes == 0;
+  std::cout << "REAL_LEGACY_AES_POSITIVE_EXECUTED: handled="
+            << positive_handled << " matched=" << matched
+            << " reports=" << reports << " updates=" << positive_meter.numUpdates()
+            << " volume_ok=" << positive_value_ok
+            << " observer_ok=" << positive_observer_ok << "\n";
+  if (!positive_handled || !matched || !positive_value_ok ||
+      !positive_observer_ok || positive_meter.numUpdates() != 1) {
+    std::cerr << "REAL_LEGACY_AES_POSITIVE_FAILED: original AES parser"
+                 " decrypted value or write observer mismatch\n";
+    return 29;
+  }
+  std::cout << "REAL_LEGACY_AES_POSITIVE_OK: synthetic encrypted block"
+               " decrypted into 4.660 m3 by original parser and DV extractor\n";
+
+  // Reuse the *same valid encrypted frame* for negative controls, so a
+  // no-key/wrong-key pass cannot merely exploit malformed ciphertext.
+  for (bool wrong_key : {false, true}) {
+    MeterInfo negative_mi;
+    negative_mi.name = "synthetic-positive-aes-negative-control";
+    negative_mi.poll_interval = 0;
+    negative_mi.address_expressions.push_back(matcher);
+    if (wrong_key)
+      negative_mi.key = "102132435465768798A9BACBDCEDFE0F";
+    SyntheticMeter negative_meter(negative_mi, positive_di);
+    reports = 0;
+    last_report = {};
+    addresses.clear();
+    matched = false;
+    xmq_stage_a_register_legacy_write_observer(record_report);
+    const bool negative_handled = negative_meter.handleTelegram(
+        about, encrypted_fixture, false, &addresses, &matched, nullptr);
+    xmq_stage_a_register_legacy_write_observer(nullptr);
+    const bool rejected = !negative_handled && matched && reports == 0 &&
+        negative_meter.numUpdates() == 0 &&
+        last_report.numeric_writes == 0;
+    std::cout << "REAL_LEGACY_AES_CONTROL_EXECUTED: key="
+              << (wrong_key ? "wrong" : "missing")
+              << " rejected=" << rejected << "\n";
+    if (!rejected) return 30;
+  }
+  std::cout << "REAL_LEGACY_AES_CONTROLS_OK: correct key works,"
+               " missing/wrong keys reject the same ciphertext\n";
   return 0;
 }
 """
@@ -688,6 +784,8 @@ def main():
             "REAL_FHKVDATAIII_V94_OK:",
             "REAL_LEGACY_FOREIGN_METER_OK:",
             "REAL_LEGACY_AES_NEGATIVE_OK:",
+            "REAL_LEGACY_AES_POSITIVE_OK:",
+            "REAL_LEGACY_AES_CONTROLS_OK:",
         )
         for marker in required_markers:
             if marker not in handle_result.stdout:
