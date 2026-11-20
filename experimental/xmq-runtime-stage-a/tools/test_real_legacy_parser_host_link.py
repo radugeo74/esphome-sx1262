@@ -334,11 +334,20 @@ def main():
                                "parser/observer/update execution regressed; "
                                "exit status=" + str(handle_result.returncode))
         print(handle_result.stdout.strip())
-        if "REAL_LEGACY_HANDLE_FLOW_OK:" not in handle_result.stdout:
-            raise RuntimeError("REAL_LEGACY_HANDLE_FLOW_FAILED: missing expected "
-                               "parser/observer/update success marker")
-        print("REAL_LEGACY_HANDLE_LINK_OK: genuine handleTelegram and parser "
-              "executed with observer; driver-field parity NOT proven")
+        required_markers = (
+            "REAL_LEGACY_HANDLE_FLOW_OK:",
+            "REAL_LEGACY_HCA_FLOW_OK:",
+            "numeric_field_mask=2 numeric_writes=1 volume_ok=1",
+            "numeric_field_mask=1 hca_ok=1",
+        )
+        for marker in required_markers:
+            if marker not in handle_result.stdout:
+                raise RuntimeError("REAL_LEGACY_HANDLE_FLOW_FAILED: missing "
+                                   "expected volume/HCA numeric extraction "
+                                   "or write-observer success marker")
+        print("REAL_LEGACY_HANDLE_LINK_OK: genuine parser, handleTelegram, "
+              "synthetic volume/HCA extractors and write observer executed; "
+              "original driver-field parity NOT proven")
 
 
 if __name__ == "__main__":
