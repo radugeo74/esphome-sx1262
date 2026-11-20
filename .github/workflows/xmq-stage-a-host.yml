@@ -50,6 +50,8 @@ jobs:
           done
           echo "XMQ suite failures: $failures"
           exit "$((failures>0))"
+      - name: Verify privacy-safe local XMQ shadow log summarizer with synthetic fixtures
+        run: python experimental/xmq-runtime-stage-a/tools/test_summarize_shadow_log.py
       - name: Check confidential local canary preflight regression fixtures
         shell: bash
         run: |
