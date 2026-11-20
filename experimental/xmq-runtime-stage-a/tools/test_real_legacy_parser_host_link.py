@@ -221,6 +221,44 @@ int main() {
   }
   std::cout << "REAL_LEGACY_HCA_FLOW_OK: 0x6E HCA VIF decoded with original"
                " field extractor and attributed to current_hca\n";
+
+  // Load and instantiate the ORIGINAL upstream driver source translation units,
+  // not the hand-authored single-field SyntheticMeter used above.
+  // This is a registry/constructor/field-schema check, NOT driver payload
+  // parity: CI=0xA0 / CI=0xA2 encrypted or vendor payloads come later.
+  auto has_field = [](Meter &m, const char *field) {
+    for (auto &fi : m.fieldInfos())
+      if (fi.vname() == field) return true;
+    return false;
+  };
+  for (const char *name : {"mkradio4", "fhkvdataiii"}) {
+    DriverInfo *di = lookupDriver(name);
+    if (di == nullptr || !di->hasProcessContent()) {
+      std::cerr << "REAL_LEGACY_DRIVER_REGISTRY_FAILED: upstream definition missing\n";
+      return 13;
+    }
+    MeterInfo driver_mi;
+    driver_mi.name = "synthetic-upstream-driver";
+    driver_mi.driver_name = DriverName(name);
+    driver_mi.poll_interval = 0;
+    driver_mi.address_expressions.push_back(matcher);
+    auto original_driver = createMeter(&driver_mi);
+    if (!original_driver ||
+        (std::string(name) == "mkradio4" &&
+         (!has_field(*original_driver, "total") ||
+          !has_field(*original_driver, "target"))) ||
+        (std::string(name) == "fhkvdataiii" &&
+         (!has_field(*original_driver, "current") ||
+          !has_field(*original_driver, "previous") ||
+          !has_field(*original_driver, "temp_room") ||
+          !has_field(*original_driver, "temp_radiator")))) {
+      std::cerr << "REAL_LEGACY_DRIVER_CONSTRUCTOR_FAILED: expected original"
+                   " fields absent\n";
+      return 14;
+    }
+    std::cout << "REAL_LEGACY_DRIVER_CONSTRUCTED_OK: "
+              << name << " upstream constructor and field definitions\n";
+  }
   return 0;
 }
 """
@@ -259,6 +297,19 @@ def main():
             str(staged), "-o", str(staged_obj),
         ], check=True)
         objects.append(str(staged_obj))
+        # Compile genuine upstream manufacturer drivers; their static
+        # registrars and original constructors must run in the handle probe.
+        driver_objects = []
+        for driver_unit in ("driver_mkradio4", "driver_fhkvdataiii"):
+            source = COMMON / (driver_unit + ".cc")
+            target = temp / (driver_unit + ".o")
+            run([
+                "g++", "-std=c++17", "-O0", "-g0", "-ffunction-sections",
+                "-fdata-sections", "-Wno-unused-parameter", "-c",
+                "-I" + str(COMMON), "-I" + str(HERE / "host-stubs"),
+                str(source), "-o", str(target),
+            ], check=True)
+            driver_objects.append(str(target))
         src = temp / "probe.cc"
         src.write_text(PROBE)
         obj = temp / "probe.o"
@@ -309,7 +360,7 @@ def main():
         handle_bin = temp / "handle-probe"
         handle_link = run([
             "g++", "-Wl,--gc-sections", "-Wl,--no-undefined",
-            str(handle_obj), *objects, "-o", str(handle_bin)
+            str(handle_obj), *objects, *driver_objects, "-o", str(handle_bin)
         ], capture_output=True)
         if handle_link.returncode:
             missing = sorted({
@@ -339,6 +390,8 @@ def main():
             "REAL_LEGACY_HCA_FLOW_OK:",
             "numeric_field_mask=2 numeric_writes=1 volume_ok=1",
             "numeric_field_mask=1 hca_ok=1",
+            "REAL_LEGACY_DRIVER_CONSTRUCTED_OK: mkradio4",
+            "REAL_LEGACY_DRIVER_CONSTRUCTED_OK: fhkvdataiii",
         )
         for marker in required_markers:
             if marker not in handle_result.stdout:
