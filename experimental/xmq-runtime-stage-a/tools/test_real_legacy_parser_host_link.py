@@ -248,21 +248,24 @@ def main():
                 raise RuntimeError(
                     "unexpected complete-handle linker failure: " +
                     handle_link.stderr[-2000:])
-            print("REAL_LEGACY_HANDLE_LINK_PENDING: full decoder executable "
+            print("REAL_LEGACY_HANDLE_LINK_FAILED: full decoder executable "
                   "has unresolved legacy dependencies:", len(missing))
             for symbol in missing[:20]:
                 print("  handle-unresolved:", symbol[:220])
             print("Unlisted additional symbols:", max(0, len(missing) - 20))
-            return
+            raise SystemExit("REAL_LEGACY_HANDLE_LINK_FAILED: real handleTelegram gate failed")
         handle_result = run([str(handle_bin)], capture_output=True)
         if handle_result.returncode:
-            print("REAL_LEGACY_HANDLE_EXECUTION_PENDING: linked but synthetic "
-                  "meter is not yet a verified driver fixture")
-            print("  exit status:", handle_result.returncode)
-            return
+            # Keep private payload and meter IDs out of diagnostic logs.
+            raise RuntimeError("REAL_LEGACY_HANDLE_FLOW_FAILED: synthetic "
+                               "parser/observer/update execution regressed; "
+                               "exit status=" + str(handle_result.returncode))
         print(handle_result.stdout.strip())
+        if "REAL_LEGACY_HANDLE_FLOW_OK:" not in handle_result.stdout:
+            raise RuntimeError("REAL_LEGACY_HANDLE_FLOW_FAILED: missing expected "
+                               "parser/observer/update success marker")
         print("REAL_LEGACY_HANDLE_LINK_OK: genuine handleTelegram and parser "
-              "are present in one executable; driver-field parity NOT proven")
+              "executed with observer; driver-field parity NOT proven")
 
 
 if __name__ == "__main__":
