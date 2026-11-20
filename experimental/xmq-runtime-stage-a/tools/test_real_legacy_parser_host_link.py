@@ -259,6 +259,62 @@ int main() {
     std::cout << "REAL_LEGACY_DRIVER_CONSTRUCTED_OK: "
               << name << " upstream constructor and field definitions\n";
   }
+
+  // Exercise the ORIGINAL mkradio4 proprietary processContent() in the same
+  // strict executable. Assemble an entirely artificial CI=0xA2 telegram:
+  // synthetic DLL identity, synthetic target=12.3 m3, delta=4.5 m3.
+  // This is a host fixture, not a copied meter capture.
+  MeterInfo vendor_mi;
+  vendor_mi.name = "synthetic-a2-driver-fixture";
+  vendor_mi.driver_name = DriverName("mkradio4");
+  vendor_mi.poll_interval = 0;
+  vendor_mi.address_expressions.push_back(matcher);
+  auto vendor_water = createMeter(&vendor_mi);
+  if (!vendor_water) return 15;
+  std::vector<uchar> vendor_frame = {
+    0x2F, 0x44, 0x68, 0x50, 0x01, 0x02, 0x03, 0x04,
+    0x95, 0x62, 0xA2
+  };
+  vendor_frame.resize(48, 0);
+  // Proprietary content offsets in the untouched upstream mkradio4 driver:
+  // bytes 3/4 = target * 10; bytes 7/8 = additional volume * 10.
+  vendor_frame[11 + 3] = 0x7B; // 123 => 12.3 m3
+  vendor_frame[11 + 4] = 0x00;
+  vendor_frame[11 + 7] = 0x2D; // 45 => 4.5 m3
+  vendor_frame[11 + 8] = 0x00;
+  reports = 0;
+  last_report = {};
+  addresses.clear();
+  matched = false;
+  xmq_stage_a_register_legacy_write_observer(record_report);
+  const bool vendor_handled = vendor_water->handleTelegram(
+      about, vendor_frame, false, &addresses, &matched, nullptr);
+  xmq_stage_a_register_legacy_write_observer(nullptr);
+  const double target = vendor_water->getNumericValue("target", Unit::M3);
+  const double total = vendor_water->getNumericValue("total", Unit::M3);
+  const bool vendor_values_ok = std::isfinite(target) &&
+      std::isfinite(total) &&
+      std::fabs(target - 12.3) < 0.000001 &&
+      std::fabs(total - 16.8) < 0.000001;
+  const bool vendor_observer_ok = reports == 1 &&
+      last_report.numeric_field_mask == 3 &&
+      last_report.numeric_writes == 2 &&
+      last_report.string_writes == 0 &&
+      last_report.dropped_writes == 0;
+  std::cout << "REAL_MKRADIO4_PROCESS_CONTENT_EXECUTED: handled=" << vendor_handled
+            << " matched=" << matched
+            << " reports=" << reports
+            << " updates=" << vendor_water->numUpdates()
+            << " mask=" << last_report.numeric_field_mask
+            << " values_ok=" << vendor_values_ok << "\n";
+  if (!vendor_handled || !matched || !vendor_values_ok ||
+      !vendor_observer_ok || vendor_water->numUpdates() != 1) {
+    std::cerr << "REAL_MKRADIO4_PROCESS_CONTENT_FAILED:"
+                 " upstream A2 numeric fields/observer mismatch\n";
+    return 16;
+  }
+  std::cout << "REAL_MKRADIO4_PROCESS_CONTENT_OK:"
+               " target_m3=12.3 total_m3=16.8 via original driver\n";
   return 0;
 }
 """
@@ -392,6 +448,7 @@ def main():
             "numeric_field_mask=1 hca_ok=1",
             "REAL_LEGACY_DRIVER_CONSTRUCTED_OK: mkradio4",
             "REAL_LEGACY_DRIVER_CONSTRUCTED_OK: fhkvdataiii",
+            "REAL_MKRADIO4_PROCESS_CONTENT_OK:",
         )
         for marker in required_markers:
             if marker not in handle_result.stdout:
