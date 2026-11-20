@@ -386,6 +386,74 @@ int main() {
   std::cout << "REAL_FHKVDATAIII_PROCESS_CONTENT_OK:"
                " original proprietary HCA/date/temperature fields and"
                " XMQ observer agree on synthetic fixture\n";
+
+  // Version 0x94 has an extra manufacturer byte before temperature fields.
+  // Preserve the independent 0x69 test above; assert 0x94 reads temperature
+  // bytes from offset 10, not offset 9.
+  MeterInfo version94_mi;
+  version94_mi.name = "synthetic-a0-v94-driver-fixture";
+  version94_mi.driver_name = DriverName("fhkvdataiii");
+  version94_mi.poll_interval = 0;
+  version94_mi.address_expressions.push_back(matcher);
+  auto version94 = createMeter(&version94_mi);
+  if (!version94) return 20;
+  std::vector<uchar> version94_frame = {
+    0x19, 0x44, 0x68, 0x50, 0x01, 0x02, 0x03, 0x04,
+    0x94, 0x80, 0xA0,
+    0x00, 0xAF, 0x30, 0xE2, 0x04, 0x00, 0x0D, 0x38, 0x01,
+    0xEE, // Version 0x94-only extra byte before temperatures.
+    0xC4, 0x08, 0xF7, 0x09, 0x00
+  };
+  if (version94_frame.size() != 26) return 21;
+  reports = 0;
+  last_report = {};
+  addresses.clear();
+  matched = false;
+  xmq_stage_a_register_legacy_write_observer(record_report);
+  const bool handled94 = version94->handleTelegram(
+      about, version94_frame, false, &addresses, &matched, nullptr);
+  xmq_stage_a_register_legacy_write_observer(nullptr);
+  const double hca94 = version94->getNumericValue("current", Unit::HCA);
+  const double prev94 = version94->getNumericValue("previous", Unit::HCA);
+  const double room94 = version94->getNumericValue("temp_room", Unit::C);
+  const double radiator94 = version94->getNumericValue("temp_radiator", Unit::C);
+  std::string previous_date94;
+  std::string current_date94;
+  for (auto &field : version94->fieldInfos()) {
+    if (field.vname() == "previous_date")
+      previous_date94 = version94->getStringValue(&field);
+    if (field.vname() == "current_date")
+      current_date94 = version94->getStringValue(&field);
+  }
+  const bool values94_ok =
+      std::isfinite(hca94) && std::fabs(hca94 - 312.0) < 0.000001 &&
+      std::isfinite(prev94) && std::fabs(prev94 - 1250.0) < 0.000001 &&
+      std::isfinite(room94) && std::fabs(room94 - 22.44) < 0.000001 &&
+      std::isfinite(radiator94) && std::fabs(radiator94 - 25.51) < 0.000001 &&
+      previous_date94 == "2024-05-15T02:00:00Z" &&
+      current_date94 == "2024-06-16T02:00:00Z";
+  const bool observer94_ok = reports == 1 &&
+      last_report.numeric_field_mask == 0x0F &&
+      last_report.date_field_mask == 0x03 &&
+      last_report.numeric_writes == 4 &&
+      last_report.string_writes == 2 &&
+      last_report.dropped_writes == 0;
+  std::cout << "REAL_FHKVDATAIII_V94_EXECUTED: handled=" << handled94
+            << " matched=" << matched << " reports=" << reports
+            << " updates=" << version94->numUpdates()
+            << " numeric_mask=" << last_report.numeric_field_mask
+            << " date_mask=" << last_report.date_field_mask
+            << " numeric_writes=" << last_report.numeric_writes
+            << " string_writes=" << last_report.string_writes
+            << " values_ok=" << values94_ok << "\n";
+  if (!handled94 || !matched || !values94_ok || !observer94_ok ||
+      version94->numUpdates() != 1) {
+    std::cerr << "REAL_FHKVDATAIII_V94_FAILED: offset 10 proprietary"
+                 " temperature, HCA, date or observer mismatch\n";
+    return 22;
+  }
+  std::cout << "REAL_FHKVDATAIII_V94_OK: original driver v0x94"
+               " extra-byte temperature offset verified\n";
   return 0;
 }
 """
@@ -525,6 +593,7 @@ def main():
             "REAL_LEGACY_DRIVER_CONSTRUCTED_OK: fhkvdataiii",
             "REAL_MKRADIO4_PROCESS_CONTENT_OK:",
             "REAL_FHKVDATAIII_PROCESS_CONTENT_OK:",
+            "REAL_FHKVDATAIII_V94_OK:",
         )
         for marker in required_markers:
             if marker not in handle_result.stdout:
