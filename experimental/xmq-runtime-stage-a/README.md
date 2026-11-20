@@ -943,3 +943,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Blocul este criptat în memorie cu AES-ul original din proiect și este decriptat de `Telegram::parse()` original prin `MeterCommonImplementation::handleTelegram()`. Extracția `HCA` folosește `DVEntry` și `FieldInfo` upstream, iar setterul instrumentat trebuie să atribuie o singură scriere câmpului `current_hca` (`numeric_field_mask=1`) cu **un callback și o actualizare**, zero scrieri pierdute.
 - Marker obligatoriu în poarta host: `REAL_LEGACY_AES_HCA_OK`.
 - **Atenție:** acesta este un *extractor de host creat pentru fixture*, nu procesarea proprietară a driverului complet `fhkvdataiii` pentru `CI=A0`, nici AES confirmat pe hardware. Codul ESPHome `xmq_shadow_probe` rămâne opțional și read-only, iar YAML-urile de laborator/canary păstrează `enabled: false`. Nu recomandăm flash în baza acestui test.
+
+## Increment BX — XMQ shadow pornit doar în configurație izolată de compilare (20.11.2026)
+
+- **#82 complet verde**, toate cinci joburile. În host au trecut `REAL_LEGACY_AES_POSITIVE_OK` (4.660 m³), `REAL_LEGACY_AES_HCA_OK` (4660 HCA), precum și controalele pentru chei lipsă/incorecte. Testele AES sunt în continuare pe mesaje sintetice standard `CI=0x7A`, nu pe protocolul proprietar al contoarelor sau pe RF.
+- Am creat `heltec-xmq-shadow-enabled-lab.yaml`, un **YAML separat de laborator**, care preia configurația build-only Heltec SX1262, setează `xmq_shadow_probe.enabled: true` și un **nume de nod separat**. Nu include Wi-Fi, API, OTA, MQTT, parole, chei sau ID-uri private; contorul din fișierul de bază rămâne exclusiv sintetic.
+- Workflow-ul existent validează explicit constrângerile acestui fișier și cere `esphome config` + `esphome compile` ale **ambelor** variante: shadow `enabled: false` (implicită) și `enabled: true` (exclusiv laborator offline).
+- Această compilare **nu execută firmware-ul pe SX1262** și nu dovedește telegramele RF sau paritatea XMQ. `xmq_shadow_probe` funcționează numai ca observator read-only; senzorii rămân actualizați de decodorul legacy. Activarea pe dispozitiv nu este autorizată de un build verde.
+- Nu modificăm sursa radio, driverele de producție `components/`, cele 12 contoare sau firmware-ul instalat. Nu instalați YAML-ul de laborator.
