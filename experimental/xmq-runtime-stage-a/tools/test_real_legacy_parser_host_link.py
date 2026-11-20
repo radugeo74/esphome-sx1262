@@ -57,6 +57,24 @@ int main() {
     std::cerr << "REAL_LEGACY_FRAME_PARSE_FAILED: synthetic cleartext DV fixture regression\n";
     return 3;
   }
+
+  // This truncated, inconsistent L-field must not be accepted. Exercise the
+  // same real production parser without a mock or any private payload.
+  std::vector<uchar> truncated = {
+    0x20, 0x44, 0x33, 0x30, 0x01, 0x02, 0x03
+  };
+  Telegram bad_header;
+  bad_header.about = AboutTelegram("synthetic-invalid", -60, FrameType::WMBUS);
+  const bool invalid_header_accepted = bad_header.parseHeader(truncated);
+  Telegram bad_frame;
+  bad_frame.about = AboutTelegram("synthetic-invalid", -60, FrameType::WMBUS);
+  const bool invalid_frame_accepted = bad_frame.parse(truncated, &no_keys, false);
+  if (invalid_header_accepted || invalid_frame_accepted ||
+      !bad_frame.dv_entries.empty()) {
+    std::cerr << "REAL_LEGACY_INVALID_FRAME_FAILED: truncated DLL was accepted\n";
+    return 4;
+  }
+  std::cout << "REAL_LEGACY_INVALID_FRAME_OK: truncated DLL rejected by real parser\n";
   return 0;
 }
 """
