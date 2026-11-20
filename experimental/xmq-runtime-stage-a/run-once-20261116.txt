@@ -147,3 +147,5 @@ Validation BR 2026-11-20: ONE gated CI executes the original fhkvdataiii proprie
 Validation BS 2026-11-20: ONE gated CI for original fhkvdataiii vendor processContent DLL version 0x94 offset 10 (synthetic extra marker), exact HCA/date/temperature and XMQ observer masks; retains 0x69 and mkradio4 tests, no live component changes.
 
 Validation BT 2026-11-20: ONE gated CI confirms both original upstream mkradio4 and fhkvdataiii handleTelegram reject valid but FOREIGN synthetic DLL addresses with handled=false matched=false reports=0 updates=0, while preserving proprietary CI A2/A0 positive tests. No production/radio/YAML changes.
+
+Validation BU 2026-11-20: ONE gated CI tests actual original Telegram parser and both upstream drivers rejecting a synthetic mode-5 AES-CBC-IV declared frame with missing key or deliberately wrong public synthetic key, without writes, observer callbacks or updates. No live components/YAML/flash changes.
