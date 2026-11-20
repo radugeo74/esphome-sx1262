@@ -878,3 +878,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Noul test caută driverul după numele original, verifică `hasProcessContent()`, creează instanța prin `createMeter()` și inspectează `fieldInfos()`: `mkradio4` trebuie să aibă `total` și `target`; `fhkvdataiii` trebuie să aibă `current`, `previous`, `temp_room`, `temp_radiator`. Markerul obligatoriu pentru fiecare este `REAL_LEGACY_DRIVER_CONSTRUCTED_OK`.
 - **Limita exactă:** construcția driverelor originale nu înseamnă că protocolul proprietar `CI=A2` sau `CI=A0`, cheile AES ori telegrama de pe SX1262 sunt deja validate. Testele precedente cu câte un extractor *manual* rămân distincte; pasul următor este un fixture complet sintetic pentru `processContent()` al fiecărui driver.
 - Niciun ID/secret real, niciun fișier `components/` sau YAML activ nu a fost modificat; testul nu face flash.
+
+## Increment BP — primul test al procesării proprietare originale mkradio4 (20.11.2026)
+
+- **Workflow #74 este complet verde**, inclusiv ESPHome 2026.11.0; host a confirmat încărcarea și constructorii originali pentru `mkradio4` și `fhkvdataiii` cu câmpurile upstream așteptate.
+- Noul scenariu host apelează acum `createMeter("mkradio4")` și **`Meter::handleTelegram()` al driverului original**, deci trece prin `processContent()` proprietar original, nu prin extractorul artificial din testele anterioare.
+- Telegrama de intrare este construită sintetic pentru `CI=0xA2`, cu identitate fictivă și valori fictive: volum la începutul intervalului **12.3 m³** și increment **4.5 m³**, pentru `target_m3=12.3` și `total_m3=16.8`.
+- Cerem exact o actualizare, un callback al observatorului instrumentat, `numeric_field_mask=3` (`target_m3` și `total_m3`), două scrieri numerice, zero erori de jurnal și valorile corespunzătoare prin getterul upstream original. Marker obligatoriu: `REAL_MKRADIO4_PROCESS_CONTENT_OK`.
+- Acesta este un **test host pentru o telegramă proprietară sintetică**, nu validare AES, RF T1/C1, date private sau paritate cu toate variantele de firmware Techem. Fără schimbări în componentele de producție, firmware sau YAML.
