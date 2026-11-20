@@ -151,3 +151,5 @@ Validation BT 2026-11-20: ONE gated CI confirms both original upstream mkradio4 
 Validation BU 2026-11-20: ONE gated CI tests actual original Telegram parser and both upstream drivers rejecting a synthetic mode-5 AES-CBC-IV declared frame with missing key or deliberately wrong public synthetic key, without writes, observer callbacks or updates. No live components/YAML/flash changes.
 
 Validation BV 2026-11-20: ONE gated CI for deterministic synthetic AES-128-CBC-IV mode-5 positive frame encrypted by bundled AES, decrypted by genuine legacy parser, exact 4.660 m3 DV and total_m3 XMQ observer, plus same ciphertext missing/wrong key negative controls; no radio/live/YAML changes.
+
+Validation BW 2026-11-20: ONE gated CI validates synthetic positive AES-CBC-IV HCA VIF=0x6E 4660 via actual legacy parser, numeric setter and XMQ observer bit=1; retains volume AES, same ciphertext negative controls and full upstream proprietary driver tests. No radio/YAML/flash changes.
