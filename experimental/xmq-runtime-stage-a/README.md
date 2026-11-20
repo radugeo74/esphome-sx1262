@@ -817,3 +817,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Proba `tools/test_real_legacy_parser_host_link.py` este acum **fail-closed**: un link strict cu simboluri nerezolvate sau eșecul de a găsi câmpuri DV provoacă `exit != 0` și CI roșu, în loc de un `PENDING` care putea trece verde.
 - Atenție la interpretare: aceasta este o poartă de regresie pentru parserul host și o telegramă sintetică, **nu** o autorizare pentru flash, AES sau comparație XMQ cu telegrama reală. Pentru un SX1262 canary, păstrăm decodorul legacy și dezactivăm explicit `xmq_shadow_probe` la prima instalare, cu preflight local și imagine verificată de rollback.
 - După această poartă, prioritățile pentru activarea XMQ sunt: (1) traseu complet `handleTelegram()` cu parserul real și raportarea efectivă a setterelor; (2) comparații *read-only* pe `fhkvdataiii` și `mkradio4` cu telegrame de test, fără chei/ID-uri în repo; (3) validare recepție/heap T1/C1 pe Heltec; (4) abia apoi activare graduală, cu rollback.
+
+## Increment BH — traseu canary SX1262 cu rollback (20.11.2026)
+
+- Avem [procedura de instalare canary](CANARY_INSTALL.md) pentru configurarea **privată** a dispozitivului: referință care funcționează, candidat cu `xmq_shadow_probe.enabled: false`, confirmarea acelorași contoare/senzori/radio și imagine rollback reală.
+- `tools/canary_release_gate.py` combină în ordine verificarea `preflight_canary.py` cu `verify_rollback.py`. Nu face flash, nu tipărește ID-uri/chei și nu validează automat reviziile Git sau recuperarea fizică prin USB.
+- `tools/test_canary_release_gate.py` testează cu fixture-uri sintetice că verificarea configurației se execută **înainte** de cea a imaginilor, iar o neconcordanță blochează restul operației; testul face parte din același workflow CI cu un singur trigger.
+- În #62 toate cele patru joburi CI au trecut; imaginea cu 12 contoare compilată în GitHub este exclusiv un fixture sintetic. Instalarea reală este permisă doar după validarea locală a configurației și a binarelor și aprobare manuală.
