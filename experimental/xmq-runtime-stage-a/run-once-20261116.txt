@@ -153,3 +153,5 @@ Validation BU 2026-11-20: ONE gated CI tests actual original Telegram parser and
 Validation BV 2026-11-20: ONE gated CI for deterministic synthetic AES-128-CBC-IV mode-5 positive frame encrypted by bundled AES, decrypted by genuine legacy parser, exact 4.660 m3 DV and total_m3 XMQ observer, plus same ciphertext missing/wrong key negative controls; no radio/live/YAML changes.
 
 Validation BW 2026-11-20: ONE gated CI validates synthetic positive AES-CBC-IV HCA VIF=0x6E 4660 via actual legacy parser, numeric setter and XMQ observer bit=1; retains volume AES, same ciphertext negative controls and full upstream proprietary driver tests. No radio/YAML/flash changes.
+
+Validation BX 2026-11-20: ONE gated CI compiles both disabled baseline and ENABLED read-only XMQ shadow on SX1262 in a dedicated offline synthetic no-network lab YAML, preserving original 12-meter canary disabled, all real AES host gates, no production radio or firmware changes.
