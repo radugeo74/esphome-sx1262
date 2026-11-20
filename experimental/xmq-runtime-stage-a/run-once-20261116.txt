@@ -139,3 +139,5 @@ Validation BN 2026-11-20: ONE gated CI runs two independent synthetic upstream o
 Validation BO 2026-11-20: ONE gated CI compiles upstream original driver_mkradio4.cc and driver_fhkvdataiii.cc, registers and constructs real legacy drivers, checks expected original field schemas alongside existing synthetic DV parity. No production component changes.
 
 Validation BP 2026-11-20: ONE gated CI drives original upstream mkradio4 proprietary processContent on a fully synthetic CI=A2 frame; require target=12.3 m3, total=16.8 m3, exact two setter writes and XMQ observer field mask=3. No active component, RF, YAML or device changes.
+
+Validation BQ 2026-11-20: ONE gated CI fixes original upstream field setter names total/target/current/previous/temp_room/temp_radiator matching XMQ canonical masks, extends pure host regression checks and sanitized synthetic failure statuses. Rerun strict mkradio4 processContent fixture; no production source changes.
