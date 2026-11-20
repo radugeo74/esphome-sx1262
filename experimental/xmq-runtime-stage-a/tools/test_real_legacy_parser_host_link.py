@@ -494,6 +494,58 @@ int main() {
   }
   std::cout << "REAL_LEGACY_FOREIGN_METER_OK: original heat and water"
                " drivers reject foreign addresses before any writes\n";
+
+  // Host negative tests for *declared* TPL mode-5 AES-CBC-IV frames.
+  // Deliberately artificial ciphertext: never a captured or real encrypted
+  // telegram, and not evidence of a successful decryption implementation.
+  // Check the real parser+handleTelegram fail closed on no key and on a
+  // deliberately incorrect synthetic key, before any driver field writes.
+  const std::vector<uchar> guarded_encrypted_frame = {
+    0x1E, 0x44, 0x33, 0x30, 0x01, 0x02, 0x03, 0x04,
+    0x01, 0x07, 0x7A, 0x01, 0x00, 0x10, 0x05,
+    0x6B, 0x91, 0xD4, 0x37, 0x82, 0xC6, 0x19, 0xE0,
+    0x74, 0x2B, 0xA8, 0x53, 0x9F, 0x05, 0xE2, 0x3C
+  };
+  for (const char *driver_name : {"mkradio4", "fhkvdataiii"}) {
+    for (bool wrong_key : {false, true}) {
+      MeterInfo secret_mi;
+      secret_mi.name = "synthetic-encryption-rejection";
+      secret_mi.driver_name = DriverName(driver_name);
+      secret_mi.poll_interval = 0;
+      secret_mi.address_expressions.push_back(matcher);
+      if (wrong_key) {
+        // Made-up 128-bit test key, not sourced from a meter or YAML file.
+        secret_mi.key = "00112233445566778899AABBCCDDEEFF";
+      }
+      auto guarded_meter = createMeter(&secret_mi);
+      if (!guarded_meter) return 26;
+      reports = 0;
+      last_report = {};
+      addresses.clear();
+      matched = false;
+      xmq_stage_a_register_legacy_write_observer(record_report);
+      const bool accepted = guarded_meter->handleTelegram(
+          about, guarded_encrypted_frame, false, &addresses, &matched, nullptr);
+      xmq_stage_a_register_legacy_write_observer(nullptr);
+      const bool safely_rejected = !accepted && matched &&
+          reports == 0 && guarded_meter->numUpdates() == 0 &&
+          last_report.numeric_writes == 0 &&
+          last_report.string_writes == 0;
+      std::cout << "REAL_LEGACY_AES_NEGATIVE_EXECUTED: driver="
+                << driver_name << " key=" << (wrong_key ? "wrong" : "missing")
+                << " rejected=" << safely_rejected
+                << " matched=" << matched
+                << " reports=" << reports
+                << " updates=" << guarded_meter->numUpdates() << "\n";
+      if (!safely_rejected) {
+        std::cerr << "REAL_LEGACY_AES_NEGATIVE_FAILED:"
+                     " declared encryption reached fields/update\n";
+        return 27;
+      }
+    }
+  }
+  std::cout << "REAL_LEGACY_AES_NEGATIVE_OK: no-key and wrong-key"
+               " synthetic mode-5 frames rejected before upstream fields\n";
   return 0;
 }
 """
@@ -635,6 +687,7 @@ def main():
             "REAL_FHKVDATAIII_PROCESS_CONTENT_OK:",
             "REAL_FHKVDATAIII_V94_OK:",
             "REAL_LEGACY_FOREIGN_METER_OK:",
+            "REAL_LEGACY_AES_NEGATIVE_OK:",
         )
         for marker in required_markers:
             if marker not in handle_result.stdout:
