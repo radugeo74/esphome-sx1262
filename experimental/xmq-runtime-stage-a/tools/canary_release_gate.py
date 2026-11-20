@@ -7,7 +7,10 @@ meter IDs, AES keys or device addresses. Final human approval is mandatory.
 """
 import argparse
 from pathlib import Path
+import subprocess
 import sys
+
+import yaml
 
 from preflight_canary import check, validate_and_read
 from verify_rollback import GateError, verify
@@ -49,7 +52,8 @@ def main():
         release_gate(args.reference, args.candidate, args.fallback_bin,
                      args.canary_bin, args.manifest,
                      resolved_fixtures=args.resolved_fixtures)
-    except (ValueError, GateError, OSError, UnicodeError, TimeoutError) as exc:
+    except (ValueError, GateError, OSError, UnicodeError,
+            subprocess.TimeoutExpired, yaml.YAMLError):
         # Error details from ESPHome, operating system, and YAML can contain
         # private paths/values. Print only an invariant error marker.
         print("CANARY_RELEASE_BLOCKED: preflight or offline rollback verification failed",
