@@ -315,6 +315,77 @@ int main() {
   }
   std::cout << "REAL_MKRADIO4_PROCESS_CONTENT_OK:"
                " target_m3=12.3 total_m3=16.8 via original driver\n";
+
+  // Drive ORIGINAL fhkvdataiii manufacturer-specific CI=A0 processing
+  // through a wholly synthetic, CRC-stripped DLL telegram (v0x69).
+  // Dates: previous 2024-05-15; current 2024-06-16.
+  // Consumption: previous 1250 HCA, current 312 HCA.
+  // Temperatures: room 22.44 C, radiator 25.51 C.
+  MeterInfo proprietary_heat_mi;
+  proprietary_heat_mi.name = "synthetic-a0-driver-fixture";
+  proprietary_heat_mi.driver_name = DriverName("fhkvdataiii");
+  proprietary_heat_mi.poll_interval = 0;
+  proprietary_heat_mi.address_expressions.push_back(matcher);
+  auto proprietary_heat = createMeter(&proprietary_heat_mi);
+  if (!proprietary_heat) return 17;
+  std::vector<uchar> proprietary_heat_frame = {
+    0x18, 0x44, 0x68, 0x50, 0x01, 0x02, 0x03, 0x04,
+    0x69, 0x80, 0xA0,
+    0x00, 0xAF, 0x30, 0xE2, 0x04, 0x00, 0x0D, 0x38, 0x01,
+    0xC4, 0x08, 0xF7, 0x09, 0x00
+  };
+  if (proprietary_heat_frame.size() != 25) return 18;
+  reports = 0;
+  last_report = {};
+  addresses.clear();
+  matched = false;
+  xmq_stage_a_register_legacy_write_observer(record_report);
+  const bool proprietary_heat_handled = proprietary_heat->handleTelegram(
+      about, proprietary_heat_frame, false, &addresses, &matched, nullptr);
+  xmq_stage_a_register_legacy_write_observer(nullptr);
+  const double current_hca = proprietary_heat->getNumericValue("current", Unit::HCA);
+  const double previous_hca = proprietary_heat->getNumericValue("previous", Unit::HCA);
+  const double temp_room = proprietary_heat->getNumericValue("temp_room", Unit::C);
+  const double temp_radiator = proprietary_heat->getNumericValue("temp_radiator", Unit::C);
+  std::string previous_date;
+  std::string current_date;
+  for (auto &field : proprietary_heat->fieldInfos()) {
+    if (field.vname() == "previous_date")
+      previous_date = proprietary_heat->getStringValue(&field);
+    if (field.vname() == "current_date")
+      current_date = proprietary_heat->getStringValue(&field);
+  }
+  const bool heat_values_ok =
+      std::isfinite(current_hca) && std::fabs(current_hca - 312.0) < 0.000001 &&
+      std::isfinite(previous_hca) && std::fabs(previous_hca - 1250.0) < 0.000001 &&
+      std::isfinite(temp_room) && std::fabs(temp_room - 22.44) < 0.000001 &&
+      std::isfinite(temp_radiator) && std::fabs(temp_radiator - 25.51) < 0.000001 &&
+      previous_date == "2024-05-15T02:00:00Z" &&
+      current_date == "2024-06-16T02:00:00Z";
+  const bool proprietary_heat_observer_ok = reports == 1 &&
+      last_report.numeric_field_mask == 0x0F &&
+      last_report.date_field_mask == 0x03 &&
+      last_report.numeric_writes == 4 &&
+      last_report.string_writes == 2 &&
+      last_report.dropped_writes == 0;
+  std::cout << "REAL_FHKVDATAIII_PROCESS_CONTENT_EXECUTED: handled="
+            << proprietary_heat_handled << " matched=" << matched
+            << " reports=" << reports
+            << " updates=" << proprietary_heat->numUpdates()
+            << " numeric_mask=" << last_report.numeric_field_mask
+            << " date_mask=" << last_report.date_field_mask
+            << " numeric_writes=" << last_report.numeric_writes
+            << " string_writes=" << last_report.string_writes
+            << " values_ok=" << heat_values_ok << "\n";
+  if (!proprietary_heat_handled || !matched || !heat_values_ok ||
+      !proprietary_heat_observer_ok || proprietary_heat->numUpdates() != 1) {
+    std::cerr << "REAL_FHKVDATAIII_PROCESS_CONTENT_FAILED:"
+                 " original A0 HCA/date/temperature or observer mismatch\n";
+    return 19;
+  }
+  std::cout << "REAL_FHKVDATAIII_PROCESS_CONTENT_OK:"
+               " original proprietary HCA/date/temperature fields and"
+               " XMQ observer agree on synthetic fixture\n";
   return 0;
 }
 """
@@ -453,6 +524,7 @@ def main():
             "REAL_LEGACY_DRIVER_CONSTRUCTED_OK: mkradio4",
             "REAL_LEGACY_DRIVER_CONSTRUCTED_OK: fhkvdataiii",
             "REAL_MKRADIO4_PROCESS_CONTENT_OK:",
+            "REAL_FHKVDATAIII_PROCESS_CONTENT_OK:",
         )
         for marker in required_markers:
             if marker not in handle_result.stdout:
