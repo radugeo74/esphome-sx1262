@@ -1,0 +1,46 @@
+# Build-only ESPHome 2026.11.0 regression fixture for native-espidf.
+# Synthetic ID; no Wi-Fi, API, OTA, hardware flash or private credentials.
+esphome:
+  name: sx1262-native-202611-test
+
+esp32:
+  board: heltec_wifi_lora_32_V3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [wmbus_radio, wmbus_meter, wmbus_common]
+
+spi:
+  clk_pin: GPIO9
+  mosi_pin: GPIO10
+  miso_pin: GPIO11
+
+wmbus_radio:
+  id: radio
+  radio_type: SX1262
+  cs_pin: GPIO8
+  reset_pin: GPIO12
+  irq_pin: GPIO14
+
+wmbus_meter:
+  - id: synthetic_heat
+    radio_id: radio
+    meter_id: 0x12345678
+    type: fhkvdataiii
+    mode: [T1]
+
+sensor:
+  - platform: wmbus_meter
+    parent_id: synthetic_heat
+    name: "Synthetic HCA"
+    field: current_hca
+    unit_of_measurement: HCA
+    accuracy_decimals: 0
