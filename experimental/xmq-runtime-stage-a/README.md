@@ -862,3 +862,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Telegrama sintetică `CI=78, DIF=02, VIF=13, valoare=0x1234` trebuie să producă **`4.660 m³`** prin calea originală `DVEntry::extractDouble` → `FieldInfo::extractNumeric` → `MeterCommonImplementation::setNumericValue`. Testul citește valoarea prin getterul original, cu toleranță numerică.
 - Același test cere exact **un** callback al observatorului, `numeric_field_mask=2` (bitul `total_m3` pentru raportul `Mkradio4`), `numeric_writes=1`, `dropped_writes=0`, `string_writes=0`, `handled=1`, `matched=1`, `updates=1`. Orice abatere returnează cod nenul și eșuează poarta obligatorie.
 - **Limitare:** nu afirmăm paritate cu telegrama reală `mkradio4`, nici decodare AES ori driver `fhkvdataiii`; câmpul și identificatorul au fost create exclusiv sintetic. Nu au fost schimbate componentele radio active, YAML-ul, identificatorii privați sau publicarea Home Assistant.
+
+## Increment BN — extracție HCA și volum prin codul legacy original (20.11.2026)
+
+- **#72 a fost complet verde**, cu toate cele 5 joburi, inclusiv ESPHome 2026.11.0. Testul host a confirmat `numeric_field_mask=2 numeric_writes=1 volume_ok=1` pentru un volum **sintetic de 4.660 m³**, trecut prin `DVEntry`, extractor, setter și observatorul XMQ.
+- Programul host `tools/test_real_legacy_parser_host_link.py` conține acum și un **al doilea contor sintetic independent** cu numele logic `fhkvdataiii`, `VIF=0x6E` (HCA), `DIF=0x02`, valoare `0x1234` și extractorul upstream `addNumericFieldWithExtractor` configurat pentru `VIFRange::HeatCostAllocation`, `Unit::HCA`.
+- Testul cere **4660 HCA** prin getterul original `getNumericValue("current_hca", Unit::HCA)`; observatorul instrumentat trebuie să confirme `numeric_field_mask=1`, o singură scriere numerică, niciun drop, niciun string, un singur callback și o singură actualizare.
+- Ambele scenarii (volum și HCA) sunt fail-closed cu markere distincte `REAL_LEGACY_HANDLE_FLOW_OK` și `REAL_LEGACY_HCA_FLOW_OK`. Nu se introduc capturi, identificatori, chei ori valori ale contoarelor private.
+- **Atenție:** aceste două contoare sunt fixture-uri construite manual cu câte **un extractor upstream**; nu sunt instanțe ale driverelor originale complete `mkradio4`/`fhkvdataiii`. Acestea, plus criptarea AES și comportamentul RF T1/C1, rămân nevalidate de acest test.
