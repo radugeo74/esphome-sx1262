@@ -228,13 +228,40 @@ jobs:
           python experimental/xmq-runtime-stage-a/tools/test_real_legacy_parser_host_link.py
       - name: Ensure 12-meter canary never contains private IDs or AES keys
         run: python experimental/xmq-runtime-stage-a/tools/check_canary_12.py
-      - name: Ensure radio implementation stays unchanged from baseline
+      - name: Ensure live components differ only by the audited hex compatibility fix
         shell: bash
         run: |
           set -euo pipefail
           git fetch --no-tags --depth=1 origin experimental/dual-radio-sx126x-sx127x-sync54
-          changes=$(git diff --name-only FETCH_HEAD HEAD -- components/sx126x components/sx127x components/wmbus_radio components/wmbus_common components/wmbus_meter)
-          unexpected=$(printf '%s\n' "$changes" | sed '/^$/d' | grep -v '^components/wmbus_radio/packet.cpp
+          git diff --exit-code FETCH_HEAD HEAD -- components/sx126x components/sx127x components/wmbus_common components/wmbus_meter
+          git diff --exit-code FETCH_HEAD HEAD -- components/wmbus_radio/ ':!components/wmbus_radio/packet.cpp'
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          old = subprocess.check_output(
+              ["git", "show", "FETCH_HEAD:components/wmbus_radio/packet.cpp"], text=True)
+          new = Path("components/wmbus_radio/packet.cpp").read_text()
+          old_line = "std::string Frame::as_hex() { return format_hex(this->data_); }"
+          replacement = """std::string Frame::as_hex() {
+            // ESPHome 2026.11 removed format_hex() from core helpers. Encode locally
+            // to keep the same contiguous, lowercase, two-digits-per-byte representation
+            // on ESPHome 2026.10 and newer releases without depending on core internals.
+            static constexpr char HEX_DIGITS[] = "0123456789abcdef";
+            std::string output;
+            output.reserve(this->data_.size() * 2);
+            for (uint8_t byte : this->data_) {
+              output.push_back(HEX_DIGITS[byte >> 4]);
+              output.push_back(HEX_DIGITS[byte & 0x0F]);
+            }
+            return output;
+          }"""
+          replacement = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in replacement.split("\n"))
+          if old.count(old_line) != 1 or new != old.replace(old_line, replacement):
+              raise SystemExit("BLOCKED: packet.cpp changed beyond approved hex compatibility patch")
+          print("PASS: only approved packet.cpp hex compatibility change")
+          PY
 
   esp32s3-xmq-build:
     name: ESP32-S3 XMQ isolated ESP-IDF build-only
