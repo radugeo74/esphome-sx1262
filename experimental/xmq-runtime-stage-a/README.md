@@ -951,3 +951,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Workflow-ul existent validează explicit constrângerile acestui fișier și cere `esphome config` + `esphome compile` ale **ambelor** variante: shadow `enabled: false` (implicită) și `enabled: true` (exclusiv laborator offline).
 - Această compilare **nu execută firmware-ul pe SX1262** și nu dovedește telegramele RF sau paritatea XMQ. `xmq_shadow_probe` funcționează numai ca observator read-only; senzorii rămân actualizați de decodorul legacy. Activarea pe dispozitiv nu este autorizată de un build verde.
 - Nu modificăm sursa radio, driverele de producție `components/`, cele 12 contoare sau firmware-ul instalat. Nu instalați YAML-ul de laborator.
+
+## Increment BY — shadow activat și ESPHome 2026.11.0, contract read-only consolidat (20.11.2026)
+
+- **#83 complet verde**, toate cinci joburile. Etapa `SHADOW_ENABLED_LAB_COMPILE_OK` confirmă că executabilul ESP32-S3 de laborator se **compilează și leagă** cu `xmq_shadow_probe.enabled=true` pe versiunea ESPHome 2026.10.1 fixată pentru laborator. Nu există dovadă de recepție RF, execuție pe placa fizică sau paritate live.
+- Noul test de compatibilitate CI pentru **ESPHome 2026.11.0** compilează *suplimentar* `heltec-xmq-shadow-enabled-lab.yaml`, nu doar configurația radio legacy `tests/sx126x-wmbus-bridge.yaml`. Markerul obligatoriu este `SHADOW_ENABLED_2026_11_COMPILE_OK`, fără flash sau credențiale.
+- `tools/check_shadow_lab_meter.py` verifică acum explicit **contractul read-only**: sursa observatorului nu poate înregistra callbackuri radio, nu poate invoca direct `handleTelegram()`, nu poate prelua marcajul `mark_as_handled()`, nu poate publica senzori, iar instanța implicită rămâne dezactivată (`enabled_=false`). Sunt impuse limita de **128 observații**, bufferul opțional `registry_` și formatul de laborator offline fără Wi-Fi/API/OTA/MQTT, chei sau parole.
+- Marker nou: `SHADOW_READ_ONLY_CONTRACT_OK`. Acesta este un **audit static fail-closed**; nu înlocuiește un test hardware sau instrumentarea pe telegrama reală.
+- Fișierele `components/` de producție, pinii și parametrii SX1262, configurația celor 12 contoare și firmware-ul instalat rămân neschimbate.
