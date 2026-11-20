@@ -642,6 +642,61 @@ int main() {
   }
   std::cout << "REAL_LEGACY_AES_CONTROLS_OK: correct key works,"
                " missing/wrong keys reject the same ciphertext\n";
+
+  // Independent positive encrypted HCA DV fixture. This exercises the same
+  // genuine parser and AES module using a VIF=0x6E signedness-neutral HCA
+  // field, without claiming vendor CI=A0 proprietary encryption parity.
+  unsigned char hca_clear_block[16] = {
+    0x2F, 0x2F, 0x02, 0x6E, 0x34, 0x12, 0x2F, 0x2F,
+    0x2F, 0x2F, 0x2F, 0x2F, 0x2F, 0x2F, 0x2F, 0x2F
+  };
+  unsigned char hca_cipher_block[16] = {};
+  AES_CBC_encrypt_buffer(hca_cipher_block, hca_clear_block, 16,
+                         fixture_key, fixture_iv);
+  std::vector<uchar> encrypted_hca_fixture(
+      encrypted_fixture.begin(), encrypted_fixture.begin() + 15);
+  encrypted_hca_fixture.insert(encrypted_hca_fixture.end(),
+                               hca_cipher_block, hca_cipher_block + 16);
+  MeterInfo hca_positive_mi;
+  hca_positive_mi.name = "synthetic-positive-aes-hca";
+  hca_positive_mi.poll_interval = 0;
+  hca_positive_mi.key = "00112233445566778899AABBCCDDEEFF";
+  hca_positive_mi.address_expressions.push_back(matcher);
+  DriverInfo hca_positive_di;
+  hca_positive_di.setName("fhkvdataiii");
+  hca_positive_di.setMeterType(MeterType::HeatCostAllocationMeter);
+  SyntheticMeter hca_positive_meter(hca_positive_mi, hca_positive_di);
+  reports = 0;
+  last_report = {};
+  addresses.clear();
+  matched = false;
+  xmq_stage_a_register_legacy_write_observer(record_report);
+  const bool hca_aes_handled = hca_positive_meter.handleTelegram(
+      about, encrypted_hca_fixture, false, &addresses, &matched, nullptr);
+  xmq_stage_a_register_legacy_write_observer(nullptr);
+  const double encrypted_hca =
+      hca_positive_meter.getNumericValue("current_hca", Unit::HCA);
+  const bool encrypted_hca_ok = std::isfinite(encrypted_hca) &&
+      std::fabs(encrypted_hca - 4660.0) < 0.000001;
+  const bool encrypted_hca_observer_ok = reports == 1 &&
+      last_report.numeric_field_mask == 0x01 &&
+      last_report.numeric_writes == 1 &&
+      last_report.string_writes == 0 &&
+      last_report.dropped_writes == 0;
+  std::cout << "REAL_LEGACY_AES_HCA_EXECUTED: handled=" << hca_aes_handled
+            << " matched=" << matched
+            << " reports=" << reports
+            << " updates=" << hca_positive_meter.numUpdates()
+            << " hca_ok=" << encrypted_hca_ok
+            << " observer_ok=" << encrypted_hca_observer_ok << "\n";
+  if (!hca_aes_handled || !matched || !encrypted_hca_ok ||
+      !encrypted_hca_observer_ok || hca_positive_meter.numUpdates() != 1) {
+    std::cerr << "REAL_LEGACY_AES_HCA_FAILED: original parser AES/DV"
+                 " HCA write and observer provenance mismatch\n";
+    return 31;
+  }
+  std::cout << "REAL_LEGACY_AES_HCA_OK: synthetic AES block"
+               " decrypted into 4660 HCA by original parser and DV extractor\n";
   return 0;
 }
 """
@@ -786,6 +841,7 @@ def main():
             "REAL_LEGACY_AES_NEGATIVE_OK:",
             "REAL_LEGACY_AES_POSITIVE_OK:",
             "REAL_LEGACY_AES_CONTROLS_OK:",
+            "REAL_LEGACY_AES_HCA_OK:",
         )
         for marker in required_markers:
             if marker not in handle_result.stdout:
