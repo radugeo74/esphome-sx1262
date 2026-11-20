@@ -121,3 +121,5 @@ Validation batch BG 2026-11-19: ONE gated CI upgrades the real original Telegram
 Validation batch BH 2026-11-20: ONE CI tests privacy-safe local canary release gate ordering and fail-closed behavior, documents first SX1262 canary installation with disabled shadow, exact YAML parity and rollback. No active RF, meter, firmware or secret changes.
 
 Validation batch BI 2026-11-20: ONE gated CI validates local hex encoder replacing removed ESPHome format_hex in wmbus_radio packet.cpp; adds dedicated 2026.11.0 Heltec SX1262 build while preserving 2026.10.1 jobs; no flash or private YAML changes.
+
+Recovery #65: allow only exact local Frame::as_hex replacement in legacy radio protection gate; all other production files must remain identical; run ESPHome 2026.11 build.
