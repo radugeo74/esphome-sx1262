@@ -149,3 +149,5 @@ Validation BS 2026-11-20: ONE gated CI for original fhkvdataiii vendor processCo
 Validation BT 2026-11-20: ONE gated CI confirms both original upstream mkradio4 and fhkvdataiii handleTelegram reject valid but FOREIGN synthetic DLL addresses with handled=false matched=false reports=0 updates=0, while preserving proprietary CI A2/A0 positive tests. No production/radio/YAML changes.
 
 Validation BU 2026-11-20: ONE gated CI tests actual original Telegram parser and both upstream drivers rejecting a synthetic mode-5 AES-CBC-IV declared frame with missing key or deliberately wrong public synthetic key, without writes, observer callbacks or updates. No live components/YAML/flash changes.
+
+Validation BV 2026-11-20: ONE gated CI for deterministic synthetic AES-128-CBC-IV mode-5 positive frame encrypted by bundled AES, decrypted by genuine legacy parser, exact 4.660 m3 DV and total_m3 XMQ observer, plus same ciphertext missing/wrong key negative controls; no radio/live/YAML changes.
