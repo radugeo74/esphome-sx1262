@@ -92,6 +92,7 @@ int main() {
 HANDLE_PROBE = r"""
 #include "meters_common_implementation.h"
 #include "xmq_legacy_write_observer.h"
+#include <cmath>
 #include <iostream>
 #include <vector>
 
@@ -102,13 +103,24 @@ extern "C" void xmq_stage_a_register_legacy_write_observer(
 class SyntheticMeter : public MeterCommonImplementation {
  public:
   SyntheticMeter(MeterInfo &mi, DriverInfo &di)
-      : MeterCommonImplementation(mi, di) {}
+      : MeterCommonImplementation(mi, di) {
+    // Register a real upstream DV extractor over the synthetic Volume VIF.
+    // This is NOT the upstream mkradio4 driver: only a one-field host fixture.
+    addNumericFieldWithExtractor(
+        "total_m3", "synthetic cleartext volume",
+        PrintProperties(DEFAULT_PRINT_PROPERTIES),
+        Quantity::Volume, VifScaling::Auto, DifSignedness::Unsigned,
+        FieldMatcher::build().set(VIFRange::Volume), Unit::M3);
+  }
   using MeterCommonImplementation::handleTelegram;
+  using MeterCommonImplementation::getNumericValue;
 };
 
 static unsigned reports = 0;
-static void record_report(xmq_runtime::LegacyWriteReport) noexcept {
+static xmq_runtime::LegacyWriteReport last_report{};
+static void record_report(xmq_runtime::LegacyWriteReport r) noexcept {
   ++reports;
+  last_report = r;
 }
 
 int main() {
@@ -135,19 +147,31 @@ int main() {
   const bool handled = meter.handleTelegram(
       about, frame, false, &addresses, &matched, nullptr);
   xmq_stage_a_register_legacy_write_observer(nullptr);
+  const double volume_m3 = meter.getNumericValue("total_m3", Unit::M3);
+  const bool volume_ok = std::isfinite(volume_m3) &&
+      std::fabs(volume_m3 - 4.660) < 0.000001;
+  const bool observer_field_ok = reports == 1 &&
+      last_report.numeric_field_mask == 2 &&
+      last_report.numeric_writes == 1 &&
+      last_report.dropped_writes == 0 &&
+      last_report.string_writes == 0;
   std::cout << "REAL_LEGACY_HANDLE_EXECUTED: handled=" << handled
             << " matched=" << matched
             << " reports=" << reports
-            << " updates=" << meter.numUpdates() << "\n";
+            << " updates=" << meter.numUpdates()
+            << " numeric_field_mask=" << last_report.numeric_field_mask
+            << " numeric_writes=" << last_report.numeric_writes
+            << " volume_ok=" << volume_ok << "\n";
   // No real driver-specific extractor is configured, so no field-value parity
   // is implied. Still require one actual observer dispatch for the accepted
   // synthetic telegram, one legacy update and a positive meter ID match.
-  if (!handled || !matched || reports != 1 || meter.numUpdates() != 1) {
+  if (!handled || !matched || !observer_field_ok || !volume_ok ||
+      meter.numUpdates() != 1) {
     std::cerr << "REAL_LEGACY_HANDLE_FLOW_FAILED: parser/update/observer contract\n";
     return 11;
   }
-  std::cout << "REAL_LEGACY_HANDLE_FLOW_OK: original parser, handleTelegram,"
-               " observer dispatch and update executed together\n";
+  std::cout << "REAL_LEGACY_HANDLE_FLOW_OK: original parser, real DV"
+               " extractor, numeric setter, observer and update executed\n";
   return 0;
 }
 """
