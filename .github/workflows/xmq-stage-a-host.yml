@@ -276,6 +276,26 @@ jobs:
           esphome compile tests/sx126x-wmbus-bridge.yaml
           echo "PASS: production-shaped Heltec fixture still compiles"
 
+  heltec-esphome-2026-11-compat:
+    name: Heltec SX1262 ESPHome 2026.11.0 radio compile compatibility
+    needs: xmq-stage-a-host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install ESPHome 2026.11.0 (user-reported failing version)
+        run: python -m pip install --disable-pip-version-check "esphome==2026.11.0"
+      - name: Compile SX1262 radio and wM-Bus components on ESPHome 2026.11.0 (NO FLASH)
+        shell: bash
+        run: |
+          set -euo pipefail
+          esphome config tests/sx126x-wmbus-bridge.yaml
+          esphome compile tests/sx126x-wmbus-bridge.yaml
+          echo "PASS: ESPHome 2026.11.0 SX1262 wmbus_radio packet.cpp compiles without format_hex"
+
   heltec-xmq-shadow-build:
     name: Heltec SX1262 ESPHome with XMQ linked, probe disabled
     needs: xmq-stage-a-host
