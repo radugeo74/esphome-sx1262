@@ -85,6 +85,66 @@ int main() {
 }
 """
 
+# This SECOND executable references the complete original handleTelegram()
+# implementation. Unlike the parser-only probe, it cannot pass by silently
+# discarding the decoder via --gc-sections. Missing dependencies are reported
+# without falsely declaring the runtime complete.
+HANDLE_PROBE = r"""
+#include "meters_common_implementation.h"
+#include "xmq_legacy_write_observer.h"
+#include <iostream>
+#include <vector>
+
+void verifyDriverLookupCreated();
+extern "C" void xmq_stage_a_register_legacy_write_observer(
+    void (*)(xmq_runtime::LegacyWriteReport) noexcept) noexcept;
+
+class SyntheticMeter : public MeterCommonImplementation {
+ public:
+  SyntheticMeter(MeterInfo &mi, DriverInfo &di)
+      : MeterCommonImplementation(mi, di) {}
+  using MeterCommonImplementation::handleTelegram;
+};
+
+static unsigned reports = 0;
+static void record_report(xmq_runtime::LegacyWriteReport) noexcept {
+  ++reports;
+}
+
+int main() {
+  verifyDriverLookupCreated();
+  MeterInfo mi;
+  mi.name = "synthetic-host-meter";
+  mi.poll_interval = 0;
+  AddressExpression matcher;
+  if (!matcher.parse("*")) return 10;
+  mi.address_expressions.push_back(matcher);
+  DriverInfo driver;
+  driver.setName("mkradio4");
+  driver.setMeterType(MeterType::Water);
+  SyntheticMeter meter(mi, driver);
+
+  std::vector<uchar> frame = {
+    0x0E, 0x44, 0x33, 0x30, 0x01, 0x02, 0x03, 0x04,
+    0x01, 0x07, 0x78, 0x02, 0x13, 0x34, 0x12
+  };
+  AboutTelegram about("synthetic-handle-probe", -60, FrameType::WMBUS);
+  std::vector<Address> addresses;
+  bool matched = false;
+  xmq_stage_a_register_legacy_write_observer(record_report);
+  const bool handled = meter.handleTelegram(
+      about, frame, false, &addresses, &matched, nullptr);
+  xmq_stage_a_register_legacy_write_observer(nullptr);
+  std::cout << "REAL_LEGACY_HANDLE_EXECUTED: handled=" << handled
+            << " matched=" << matched
+            << " reports=" << reports
+            << " updates=" << meter.numUpdates() << "\n";
+  // No actual XMQ driver fields are configured here, so zero writes is not a
+  // parity result. An actual report is required at a later integration gate.
+  return 0;
+}
+"""
+
 def run(argv, **kwargs):
     return subprocess.run(argv, text=True, **kwargs)
 
@@ -157,6 +217,46 @@ def main():
         print(test.stdout.strip())
         print("REAL_LEGACY_PARSER_LINK_OK: executable includes actual upstream parser and staged legacy driver registry")
         print("NOTE: garbage-collection of unused sections may omit full handleTelegram; it is NOT executed by this probe")
+        # Separate strict executable forces references to the original
+        # handleTelegram implementation and real parser in the same binary.
+        handle_src = temp / "handle-probe.cc"
+        handle_src.write_text(HANDLE_PROBE)
+        handle_obj = temp / "handle-probe.o"
+        run(["g++", "-std=c++17", "-O0", "-ffunction-sections",
+             "-I" + str(COMMON), "-I" + str(HERE / "host-stubs"),
+             "-I" + str(HERE), str(handle_src), "-c", "-o", str(handle_obj)],
+            check=True)
+        handle_bin = temp / "handle-probe"
+        handle_link = run([
+            "g++", "-Wl,--gc-sections", "-Wl,--no-undefined",
+            str(handle_obj), *objects, "-o", str(handle_bin)
+        ], capture_output=True)
+        if handle_link.returncode:
+            missing = sorted({
+                ln.split("undefined reference to ", 1)[1].strip()
+                for ln in handle_link.stderr.splitlines()
+                if "undefined reference to " in ln
+            })
+            if not missing:
+                raise RuntimeError(
+                    "unexpected complete-handle linker failure: " +
+                    handle_link.stderr[-2000:])
+            print("REAL_LEGACY_HANDLE_LINK_PENDING: full decoder executable "
+                  "has unresolved legacy dependencies:", len(missing))
+            for symbol in missing[:20]:
+                print("  handle-unresolved:", symbol[:220])
+            print("Unlisted additional symbols:", max(0, len(missing) - 20))
+            return
+        handle_result = run([str(handle_bin)], capture_output=True)
+        if handle_result.returncode:
+            print("REAL_LEGACY_HANDLE_EXECUTION_PENDING: linked but synthetic "
+                  "meter is not yet a verified driver fixture")
+            print("  exit status:", handle_result.returncode)
+            return
+        print(handle_result.stdout.strip())
+        print("REAL_LEGACY_HANDLE_LINK_OK: genuine handleTelegram and parser "
+              "are present in one executable; driver-field parity NOT proven")
+
 
 if __name__ == "__main__":
     main()
