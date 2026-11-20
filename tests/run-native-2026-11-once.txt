@@ -1,0 +1,1 @@
+2026-11-20: one gated CI for native-espidf ESPHome 2026.11.0 compile using synthetic SX1262 fixture; packet.cpp hex helper replacement, no flash.
