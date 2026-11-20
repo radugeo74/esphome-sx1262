@@ -1,0 +1,14 @@
+# EXPERIMENTAL / CI BUILD ONLY - DO NOT FLASH.
+# Exercises the enabled, read-only XMQ observation branch with a synthetic
+# meter and no API, Wi-Fi, MQTT, secrets, private IDs or key material.
+# The legacy radio/decoder remains the sole owner of sensor updates.
+packages:
+  base: !include heltec-xmq-shadow-build.yaml
+
+esphome:
+  name: sx126x-xmq-shadow-enabled-lab
+  friendly_name: SX126x XMQ Read-only Enabled Lab
+
+xmq_shadow_probe:
+  id: xmq_lab_probe
+  enabled: true
