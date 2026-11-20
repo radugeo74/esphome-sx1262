@@ -131,3 +131,5 @@ Validation BJ 2026-11-20: ONE gated CI requires exact numeric 0x1234 extraction 
 Validation BK 2026-11-20: ONE gated CI extends strict parser probe with a separate executable explicitly calling REAL instrumented MeterCommonImplementation::handleTelegram and original Telegram parser; unresolved linker symbols remain PENDING, never misreported as full functional parity. NO FLASH.
 
 Validation BL 2026-11-20: ONE gated workflow promotes confirmed real parser-to-handleTelegram-to-observer host flow (handled=1 matched=1 reports=1 updates=1 from #70) into mandatory fail-closed CI; driver-field parity remains separate; no firmware changes.
+
+Validation BM 2026-11-20: ONE gated CI asserts real upstream Volume DV extractor -> exact 4.660 m3 original numeric setter -> real XMQ observer total_m3 field mask and one update, synthetic-only host. No production changes.
