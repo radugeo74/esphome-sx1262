@@ -436,7 +436,11 @@ def main():
             raise SystemExit("REAL_LEGACY_HANDLE_LINK_FAILED: real handleTelegram gate failed")
         handle_result = run([str(handle_bin)], capture_output=True)
         if handle_result.returncode:
-            # Keep private payload and meter IDs out of diagnostic logs.
+            # The probe contains synthetic bytes/IDs only. Surface only its
+            # structured status lines, never raw payloads or private secrets.
+            for line in handle_result.stdout.splitlines():
+                if line.startswith(("REAL_LEGACY_", "REAL_MKRADIO4_")):
+                    print(line, flush=True)
             raise RuntimeError("REAL_LEGACY_HANDLE_FLOW_FAILED: synthetic "
                                "parser/observer/update execution regressed; "
                                "exit status=" + str(handle_result.returncode))
