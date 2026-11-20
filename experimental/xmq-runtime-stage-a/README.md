@@ -832,3 +832,10 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Workflow-ul existent are **un job suplimentar ESPHome 2026.11.0**, care validează și compilează `tests/sx126x-wmbus-bridge.yaml` fără flash; joburile existente cu ESPHome 2026.10.1 rămân intacte.
 - **Nu instala doar pentru că trece CI:** fixture-ul GitHub este sintetic; YAML-ul privat nu poate fi verificat din GitHub. La instalare păstrează un firmware rollback și confirmă separat recepția T1/C1, componentele externe și cei 12 senzori/contori.
 - Avertismentul privind parola `ota` este separat de eroarea de compilare și **nu** constituie motiv pentru a schimba acum mecanismul OTA din YAML.
+
+## Increment BJ — verificare numerică exactă și respingerea cadrelor trunchiate (20.11.2026)
+
+- În `tools/test_real_legacy_parser_host_link.py` am întărit **executabilul host cu parser legacy real**, fără alte mock-uri de parser: telegrama sintetică `CI=0x78`, `DIF=0x02`, `VIF=0x13`, bytes `34 12` trebuie să producă exact un câmp DV, iar `DVEntry::extractLong()` trebuie să returneze **`0x1234` (4660)**. Simpla existență a câmpului nu mai este suficientă.
+- O a doua telegramă sintetică cu `L` inconsistent (`0x20`) și payload trunchiat trebuie respinsă atât de `Telegram::parseHeader()`, cât și de `Telegram::parse()`, fără câmpuri DV reziduale.
+- Ambele verificări sunt **fail-closed** în jobul host. Nu a fost introdusă nicio schimbare la firmware-ul activ, radio, YAML sau la cele 12 contoare.
+- Limitarea importantă rămâne: deși se compilează `meters.cc` instrumentat în executabil, `--gc-sections` poate elimina `MeterCommonImplementation::handleTelegram()`; această probă nu dovedește încă execuția completă a setterelor și observatorului pe aceeași telegramă real parsată.
