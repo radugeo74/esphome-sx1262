@@ -1,0 +1,30 @@
+name: native-espidf ESPHome 2026.11 compatibility (single gated run)
+on:
+  push:
+    branches: [native-espidf]
+    paths:
+      - tests/run-native-2026-11-once.txt
+permissions:
+  contents: read
+concurrency:
+  group: native-espidf-2026-11-one-validation
+  cancel-in-progress: false
+jobs:
+  native-espidf-2026-11-build:
+    name: Compile Heltec SX1262 with ESPHome 2026.11.0 (NO FLASH)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install ESPHome version from user failure report
+        run: python -m pip install --disable-pip-version-check "esphome==2026.11.0"
+      - name: Validate and compile native ESP-IDF SX1262 wM-Bus
+        shell: bash
+        run: |
+          set -euo pipefail
+          esphome config tests/heltec-2026-11-compile.yaml
+          esphome compile tests/heltec-2026-11-compile.yaml
+          echo "PASS native-espidf ESPHome 2026.11.0 compile; no flash"
