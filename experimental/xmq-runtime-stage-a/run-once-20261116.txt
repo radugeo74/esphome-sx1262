@@ -119,3 +119,5 @@ Validation batch BF 2026-11-19: ONE workflow links staged original meters.cc wit
 Validation batch BG 2026-11-19: ONE gated CI upgrades the real original Telegram parser executable link and synthetic cleartext DV decode from informational PENDING to mandatory fail-closed checks, following host success in run #61. No active firmware changes.
 
 Validation batch BH 2026-11-20: ONE CI tests privacy-safe local canary release gate ordering and fail-closed behavior, documents first SX1262 canary installation with disabled shadow, exact YAML parity and rollback. No active RF, meter, firmware or secret changes.
+
+Validation batch BI 2026-11-20: ONE gated CI validates local hex encoder replacing removed ESPHome format_hex in wmbus_radio packet.cpp; adds dedicated 2026.11.0 Heltec SX1262 build while preserving 2026.10.1 jobs; no flash or private YAML changes.
