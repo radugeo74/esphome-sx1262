@@ -341,6 +341,26 @@ jobs:
           esphome config "$dir/heltec-xmq-shadow-build.yaml"
           esphome compile "$dir/heltec-xmq-shadow-build.yaml"
           echo "PASS: actual ESPHome firmware links the XMQ engine with existing Heltec radio, probe disabled"
+      - name: Compile XMQ read-only probe ENABLED in isolated no-network Heltec lab (NO FLASH)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=experimental/xmq-runtime-stage-a
+          lab="$dir/heltec-xmq-shadow-enabled-lab.yaml"
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("experimental/xmq-runtime-stage-a/heltec-xmq-shadow-enabled-lab.yaml")
+          source=p.read_text()
+          assert source.count("enabled: true") == 1
+          assert "!include heltec-xmq-shadow-build.yaml" in source
+          for forbidden in ("wifi:", "api:", "ota:", "mqtt:", "!secret", "password:", "key:"):
+              assert forbidden not in source, f"unsafe enabled-shadow lab: {forbidden}"
+          assert "sx126x-xmq-shadow-enabled-lab" in source
+          print("SHADOW_ENABLED_LAB_GUARD_OK: synthetic only, offline build-only fixture")
+          PY
+          esphome config "$lab"
+          esphome compile "$lab"
+          echo "SHADOW_ENABLED_LAB_COMPILE_OK: ESP32-S3 links enabled XMQ observer; RF/runtime behavior not proven"
       - name: Validate and compile canary connectivity with temporary CI-only credentials
         shell: bash
         run: |
