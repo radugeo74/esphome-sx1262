@@ -870,3 +870,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Testul cere **4660 HCA** prin getterul original `getNumericValue("current_hca", Unit::HCA)`; observatorul instrumentat trebuie să confirme `numeric_field_mask=1`, o singură scriere numerică, niciun drop, niciun string, un singur callback și o singură actualizare.
 - Ambele scenarii (volum și HCA) sunt fail-closed cu markere distincte `REAL_LEGACY_HANDLE_FLOW_OK` și `REAL_LEGACY_HCA_FLOW_OK`. Nu se introduc capturi, identificatori, chei ori valori ale contoarelor private.
 - **Atenție:** aceste două contoare sunt fixture-uri construite manual cu câte **un extractor upstream**; nu sunt instanțe ale driverelor originale complete `mkradio4`/`fhkvdataiii`. Acestea, plus criptarea AES și comportamentul RF T1/C1, rămân nevalidate de acest test.
+
+## Increment BO — instanțierea driverelor upstream complete (20.11.2026)
+
+- **#73** a trecut toate cele cinci joburi, inclusiv ESPHome 2026.11.0 și executorul host. Host-ul a confirmat `REAL_LEGACY_HCA_FLOW_OK` (`0x6E` → 4660 HCA → `current_hca`, mască 1) și `REAL_LEGACY_HANDLE_FLOW_OK` (volum 4.660 m³ → `total_m3`, mască 2).
+- În `tools/test_real_legacy_parser_host_link.py` sunt compilate acum în obiecte host chiar **sursele upstream originale** `components/wmbus_common/driver_mkradio4.cc` și `driver_fhkvdataiii.cc`. Aceste obiecte sunt legate în executabilul `handle-probe`, astfel încât inițializatorii statici `registerDriver()` și constructorii originali sunt testați real.
+- Noul test caută driverul după numele original, verifică `hasProcessContent()`, creează instanța prin `createMeter()` și inspectează `fieldInfos()`: `mkradio4` trebuie să aibă `total` și `target`; `fhkvdataiii` trebuie să aibă `current`, `previous`, `temp_room`, `temp_radiator`. Markerul obligatoriu pentru fiecare este `REAL_LEGACY_DRIVER_CONSTRUCTED_OK`.
+- **Limita exactă:** construcția driverelor originale nu înseamnă că protocolul proprietar `CI=A2` sau `CI=A0`, cheile AES ori telegrama de pe SX1262 sunt deja validate. Testele precedente cu câte un extractor *manual* rămân distincte; pasul următor este un fixture complet sintetic pentru `processContent()` al fiecărui driver.
+- Niciun ID/secret real, niciun fișier `components/` sau YAML activ nu a fost modificat; testul nu face flash.
