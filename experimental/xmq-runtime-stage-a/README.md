@@ -918,3 +918,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Testul apelează direct `Meter::handleTelegram()` din driverul original și verifică **`handled=false`, `id_match=false`, `reports=0`, `updates=0`** și nicio scriere în raport; nu modifică `isTelegramForMeter()` și nu folosește un parser mock.
 - Marker obligatoriu în CI: `REAL_LEGACY_FOREIGN_METER_OK`. O telegramă străină nu trebuie să modifice proveniența, nici să actualizeze senzorii contorului configurat.
 - **Limitare:** acesta este un test host pentru filtrele de adresă ale driverelor, nu recepție RF T1/C1, AES sau telegramă privată. Sursa de producție, receptorul, YAML-ul și firmware-ul rămân neschimbate.
+
+## Increment BU — scenarii negative AES pe parserul original (20.11.2026)
+
+- **#79 este complet verde**, toate cinci joburile. Ambele drivere originale `mkradio4` și `fhkvdataiii` resping identități DLL străine, cu `reports=0` și `updates=0`.
+- În `tools/test_real_legacy_parser_host_link.py` am adăugat un cadru **exclusiv sintetic** care declară `TPL CI=0x7A`, `TPL CFG=0x0510` (AES-CBC-IV, modul 5, un bloc) și conține 16 octeți artificiali, **nu o telegramă AES autentică de la contor**.
+- Pentru **fiecare driver original**, scenariile cu **cheie absentă** și **cheie de test intenționat greșită** (inventată, fără relație cu utilizatorul) trebuie să eșueze în `handleTelegram()`, deși adresa sintetică este acceptată: `handled=false`, `id_match=true`, `reports=0`, `updates=0`, fără scrieri de câmpuri.
+- Marker obligatoriu `REAL_LEGACY_AES_NEGATIVE_OK`; eșecul unuia dintre cele patru scenarii face roșu testul host. Aceste teste sunt o **verificare negativă fail-closed**, **nu** probează decriptarea corectă a unui cadru criptat autentic, confirmarea cheii corecte, autentificarea criptografică ori suportul AES în firmware-ul activ.
+- Nicio modificare în `components/`, YAML, receptorul radio, chei private sau firmware-ul instalat.
