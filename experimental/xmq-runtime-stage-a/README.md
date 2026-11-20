@@ -902,3 +902,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Valorile sintetice verificate prin getterele upstream sunt: `previous_hca=1250`, `current_hca=312`, `temp_room_c=22.44`, `temp_radiator_c=25.51`, `previous_date=2024-05-15T02:00:00Z`, `current_date=2024-06-16T02:00:00Z`.
 - Observatorul XMQ trebuie să primească exact un raport cu **4 scrieri numerice, 2 scrieri string, numeric mask `0x0f`, date mask `0x03`, dropped=0** și o actualizare. Markerul `REAL_FHKVDATAIII_PROCESS_CONTENT_OK` este obligatoriu; orice abatere face testul host roșu.
 - Aceasta este o **verificare sintetică a driverului original**, nu o confirmare a AES, formelor C1, versiunii DLL `0x94`, datelor reale ori recepției RF. Nu se modifică niciun fișier `components/`, configurație privată sau firmware instalat.
+
+## Increment BS — test proprietar fhkvdataiii DLL 0x94 (20.11.2026)
+
+- **#77 complet verde**: toate cinci joburile, inclusiv ESPHome 2026.11.0 și procesarea originală `fhkvdataiii` cu DLL `0x69` (`numeric_mask=15`, `date_mask=3`, `numeric_writes=4`, `string_writes=2`, `values_ok=1`).
+- Am adăugat în `tools/test_real_legacy_parser_host_link.py` un **al doilea cadru sintetic CI=A0** procesat de **driverul upstream original** `fhkvdataiii`, acum cu `dll_version=0x94`. Între valorile HCA și temperaturi există octetul artificial suplimentar `0xEE`: offsetul este **10** în loc de 9, conform implementării upstream `processContent()`.
+- Noua verificare cere aceleași rezultate concrete pe care le verifică deja varianta `0x69`: `current=312 HCA`, `previous=1250 HCA`, `temp_room=22.44 °C`, `temp_radiator=25.51 °C`, `previous_date=2024-05-15`, `current_date=2024-06-16`; observer `numeric_mask=0x0f`, `date_mask=0x03`, 4 scrieri numerice, 2 stringuri, 0 drop-uri, un callback și o actualizare.
+- Marker nou obligatoriu: `REAL_FHKVDATAIII_V94_OK`. Eșecul oricărei condiții face jobul host roșu. Cadrul, datele și valorile sunt inventate, nu provin de la contoarele private.
+- Limitare: aceste teste nu validează încă AES, T1/C1 pe RF, nici paritatea pe capturi reale; nicio modificare la `components/`, YAML sau firmware.
