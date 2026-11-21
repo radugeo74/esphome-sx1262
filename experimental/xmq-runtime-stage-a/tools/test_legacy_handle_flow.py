@@ -152,6 +152,14 @@ struct MeterCommonImplementation {
     tests = r"""
 static unsigned callbacks{};
 static xmq_runtime::LegacyWriteReport last{};
+static const void *bound_owner{};
+static unsigned bound_callbacks{};
+static xmq_runtime::LegacyWriteReport bound_last{};
+static void on_bound(const void *owner, xmq_runtime::LegacyWriteReport report) noexcept {
+  ++bound_callbacks;
+  bound_owner = owner;
+  bound_last = report;
+}
 static void on_report(xmq_runtime::LegacyWriteReport r) noexcept {
   ++callbacks;
   last = r;
@@ -167,11 +175,12 @@ int main() {
     bool matched = false;
     Telegram analyzed{};
     xmq_stage_a_register_legacy_write_observer(on_report);
+    xmq_stage_a_register_legacy_write_observer_bound(on_bound);
     // Early parseHeader failure: no callback, extractor or update.
     require(!meter.handleTelegram(about, {0x00, 0x01}, false,
                                   &addresses, &matched, &analyzed),
             "header failure accepted");
-    require(callbacks == 0 && meter.updates == 0 && meter.extractor_calls == 0,
+    require(callbacks == 0 && bound_callbacks == 0 && meter.updates == 0 && meter.extractor_calls == 0,
             "header failure polluted provenance");
     // Parsed header but failed payload: no callback.
     require(!meter.handleTelegram(about, {0xA1, 0x00}, true,
@@ -185,6 +194,9 @@ int main() {
     require(meter.handleTelegram(about, {0xA1, 0x01}, false,
                                  &addresses, &matched, &analyzed),
             "heat frame rejected");
+    require(bound_callbacks == 1 && bound_owner == &meter &&
+            bound_last.numeric_field_mask == 1 && bound_last.date_field_mask == 2,
+            "bound heat report was not attributed to the actual meter instance");
     require(matched && callbacks == 1 && last.numeric_field_mask == 1 &&
             last.date_field_mask == 2 && last.numeric_writes == 1 &&
             last.string_writes == 1 && meter.updates == 1,
@@ -200,6 +212,9 @@ int main() {
     require(meter.handleTelegram(about, {0xA1, 0x01}, false,
                                  &addresses, &matched, &analyzed),
             "water frame rejected");
+    require(bound_callbacks == 3 && bound_owner == &meter &&
+            bound_last.numeric_field_mask == 2 && bound_last.date_field_mask == 0,
+            "bound water report leaked heat fields");
     require(callbacks == 3 && last.numeric_field_mask == 2 &&
             last.date_field_mask == 0 && last.numeric_writes == 1 &&
             last.string_writes == 0 && meter.updates == 3,
@@ -210,6 +225,23 @@ int main() {
             "frame with disabled observer rejected");
     require(callbacks == 3 && meter.updates == 4,
             "disabled observer changed decoding/update flow");
+    // An unrelated meter may use the same driver, but cannot inherit the
+    // first meter's identity. Disabled original observer must stay disabled.
+    MeterCommonImplementation other;
+    require(other.handleTelegram(about, {0xA1, 0x01}, false,
+                                 &addresses, &matched, &analyzed),
+            "second meter frame rejected");
+    require(bound_callbacks == 5 && bound_owner == &other &&
+            bound_last.numeric_field_mask == 1 &&
+            bound_last.date_field_mask == 2 &&
+            callbacks == 3 && other.updates == 1,
+            "bound report was attributed to previous meter");
+    xmq_stage_a_register_legacy_write_observer_bound(nullptr);
+    require(other.handleTelegram(about, {0xA1, 0x01}, false,
+                                 &addresses, &matched, &analyzed),
+            "second meter with disabled bound observer rejected");
+    require(bound_callbacks == 5 && other.updates == 2,
+            "disabled bound callback changed legacy update flow");
     require(meter.extractor_calls == 4 && meter.content_calls == 4 &&
             meter.calculator_calls == 4, "decode call sequence incorrect");
     std::cout << "LEGACY_HANDLE_FLOW_OK: exact handleTelegram body and setter bodies, "
