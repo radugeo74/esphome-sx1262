@@ -41,6 +41,41 @@ int main() {
             observed.date_field_mask == 0 && observed.numeric_writes == 1 &&
             observed.string_writes == 0,
             "prior telegram leaked into water callback");
+    // Evidence must be per telegram, not reconstructed from cached values.
+    require(legacy_write_evidence_complete(observed, LegacyReportDriver::Mkradio4,
+                                            0b10),
+            "observed water total write was not accepted");
+    require(!legacy_write_evidence_complete(observed, LegacyReportDriver::Mkradio4,
+                                             0b11),
+            "missing water target falsely accepted");
+    require(!legacy_write_evidence_complete(observed, LegacyReportDriver::Mkradio4,
+                                             0),
+            "zero-field evidence falsely accepted");
+    require(!legacy_write_evidence_complete(observed, LegacyReportDriver::Mkradio4,
+                                             0b100),
+            "unknown water bit accepted");
+    require(!legacy_write_evidence_complete(observed, LegacyReportDriver::Mkradio4,
+                                             0b10, 0b01),
+            "water date bit accepted");
+    require(!legacy_write_evidence_complete(observed, LegacyReportDriver::Unknown,
+                                             0b10),
+            "unknown driver falsely accepted");
+    LegacyWriteReport dropped = observed;
+    dropped.dropped_writes = 1;
+    require(!legacy_write_evidence_complete(dropped, LegacyReportDriver::Mkradio4,
+                                             0b10),
+            "incomplete write journal falsely accepted");
+    LegacyWriteReport heat_evidence{};
+    heat_evidence.numeric_field_mask = 0b0011;
+    heat_evidence.date_field_mask = 0b10;
+    require(legacy_write_evidence_complete(heat_evidence,
+                                            LegacyReportDriver::Fhkvdataiii,
+                                            0b0011, 0b10),
+            "valid partial heat evidence rejected");
+    require(!legacy_write_evidence_complete(heat_evidence,
+                                             LegacyReportDriver::Fhkvdataiii,
+                                             0b1111, 0b10),
+            "missing heat fields falsely accepted");
     std::cout << "LEGACY_WRITE_OBSERVER_OK: opt-in callback executed, "
                  "per-frame summary isolated, values never passed\n";
     return 0;
