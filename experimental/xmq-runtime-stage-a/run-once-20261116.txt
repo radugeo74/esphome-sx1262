@@ -221,3 +221,5 @@ Validation 2026-11-21 XMQ CI provenance routing: one existing Stage A CI for CI 
 Validation 2026-11-21 upstream Telegram CI routing proof: ONE existing Stage A workflow tests actual unmodified Telegram struct CI A2 proprietary, CI7A standard, unknown CI rejection, DLL CRC and verified legacy provenance, and all 4 ESP32/Heltec compile gates. Host-only synthetic instance; no private meter IDs, no AES keys, NO FLASH.
 
 Validation 2026-11-21 #115 private Telegram copy fixture fix + privacy-safe CI/TPL security census: ONE Stage A workflow tests original Telegram type no copy, CI A2/7A routing, aggregate buckets CI A0/A2/72/7A + security 0/5/7/other, reject failed decrypt/parse; host and 4 ESP32/Heltec compilation jobs. No keys, IDs, payloads or firmware flash.
+
+Validation 2026-11-21 opt-in privacy-safe CI/TPL census integration: ONE existing Stage A CI checks host census tests and the FULL Heltec probe enabled and disabled ESPHome 2026.11 compile, ESP32 isolated and legacy baseline. Shadow-only callback, bounded hourly 128 observations, aggregated 5x4 CI/TPL counts only, no per-meter identifiers, no AES keys, NO FLASH.
