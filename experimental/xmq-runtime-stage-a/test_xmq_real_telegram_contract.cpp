@@ -1,5 +1,6 @@
 #include "xmq_telegram_capture.h"
 #include "xmq_ci_route_contract.h"
+#include "xmq_ci_security_census.h"
 // This is the ACTUAL existing production Telegram declaration, not a mock.
 // The unchanged upstream Telegram declares a private constructor with an
 // intentionally unused argument; contain its warning, keep -Werror for tests.
@@ -125,6 +126,27 @@ int main() {
                 ApplicationEncoding::OriginalIxml, true, true, false) ==
                 XmqTelegramRoute::Reject,
             "unrecognized real Telegram CI reached XMQ");
+    // Aggregate real upstream Telegram metadata without retaining any
+    // M/A identity, ACC, raw data, decrypted values or meter secrets.
+    CiSecurityCensus census;
+    original.tpl_sec_mode = TPLSecurityMode::NoSecurity;
+    require(census.observe_telegram(original, true) &&
+            census.accepted[1][0] == 1,
+            "real Telegram proprietary CI/security census failed");
+    standard.tpl_sec_mode = TPLSecurityMode::AES_CBC_IV;
+    require(census.observe_telegram(standard, true) &&
+            census.accepted[3][1] == 1,
+            "real Telegram standard CI mode-5 census failed");
+    standard.tpl_sec_mode = TPLSecurityMode::AES_CBC_NO_IV;
+    require(census.observe_telegram(standard, true) &&
+            census.accepted[3][2] == 1,
+            "real Telegram mode-7 census failed");
+    require(!census.observe_telegram(unknown, false) &&
+            census.rejected == 1,
+            "unsuccessful legacy parser observed as valid CI evidence");
+    require(!census.observe(0x72, 5, true, true, false) &&
+            census.rejected == 2,
+            "decryption-failed telegram entered metadata census");
     const auto preserved=original.frame;
     require(!capture_verified_payload(original,false,
             ApplicationEncoding::OriginalIxml,snapshot) &&
