@@ -61,6 +61,13 @@ int main() {
     reference.numeric["target_m3"] = 0.1;
     require(diagnostic.counters().observations == 1,
             "bad reference-to-mask contract invoked XMQ decoder");
+    reference.absent_numeric.push_back("total_m3");
+    require(inspect(writes) == ShadowDisposition::IncompleteReference,
+            "unproven absence contradicted same-frame water write");
+    reference.absent_numeric.clear();
+    require(diagnostic.counters().observations == 1,
+            "unproven absence consumed XMQ comparison budget");
+
     reference.numeric["total_m3"] = 0.5;
     require(inspect(writes) == ShadowDisposition::Difference,
             "a real numeric mismatch was hidden by write evidence");
