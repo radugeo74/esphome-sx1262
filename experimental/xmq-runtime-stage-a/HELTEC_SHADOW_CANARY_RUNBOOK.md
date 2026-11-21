@@ -236,6 +236,29 @@ public, already-clear fixture payloads plus synthetic evidence flags,
 so a passing test does not establish live AES correctness.
 Production `wmbus_common` still owns decryption and sensors.
 
+## Experimental TPL5 AES-CBC primitive — HOST ONLY
+
+The host-only `xmq_tpl5_cbc.h` now executes actual AES-128-CBC block
+decryption using the repository's existing public-domain tiny-AES source
+`components/wmbus_common/aes.cc`, without invoking legacy
+`Telegram::parse` or touching Home Assistant sensors. Tests compile and
+link that original AES implementation, verify the independent NIST SP
+800-38A CBC known-answer vector, and exercise a synthetic two-block
+TPL5 payload with CBC `2F2F` check bytes, wrong key, wrong IV and
+strict block lengths. This is **not yet the full TPL5 decryptor**:
+the supplied 16-byte IV and key are test inputs, not extracted from a
+real frame. The caller must still parse the exact TPL header, derive the
+correct IV and encrypted-block count, retain any unencrypted tail,
+and explicitly handle mode 7's KDF/MAC separately.
+
+CBC check bytes are a sanity check, **not cryptographic
+authentication**. The reused tiny-AES code has process-global cipher
+state and is not independently audited as thread-safe; never run it
+concurrently or claim that this host helper is production-ready.
+A future ESP32 integration must review reentrancy, memory/stack usage,
+malformed-frame handling and plaintext lifetime before allowing it to
+consume radio traffic. No live firmware, meter keys or HA data changed.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
