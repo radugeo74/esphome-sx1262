@@ -259,6 +259,31 @@ A future ESP32 integration must review reentrancy, memory/stack usage,
 malformed-frame handling and plaintext lifetime before allowing it to
 consume radio traffic. No live firmware, meter keys or HA data changed.
 
+## TPL 5 IV and encrypted-prefix handling (host only)
+
+The new `make_tpl5_iv()` and `decrypt_tpl5_application()` in
+`xmq_tpl5_cbc.h` mirror the IV construction found in the repository's
+`components/wmbus_common/wmbus_utils.cc`:
+
+- 2 bytes of manufacturer M field (little-endian)
+- 6 bytes of the matching A field from **TPL when available**, otherwise DLL
+- 8 repetitions of the telegram's TPL access number
+
+The caller must establish and validate these fields for the **same received
+telegram**; this helper does not parse or authenticate a full TPL header.
+TPL configuration bits 4–7 supply a block count, and count zero means
+decrypt the entire remaining application (which therefore must be block-
+aligned). An explicit count decrypts only that exact prefix; any trailing
+unencrypted bytes remain unchanged. Missing blocks, nonaligned encrypted
+data and lengths outside the strict bound are rejected, not truncated.
+
+Tests include synthetic encrypted two-block TPL 5 data with a clear tail,
+an invalid access byte and inner address, mismatched encrypted-block
+counts, and all-block mode. This is not yet an independently verified
+end-to-end encrypted meter telegram. Mode 7 KDF/MAC and live radio/TPL
+header extraction are still separate work. No changes to current HA
+sensor ownership, runtime secrets or Heltec firmware.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
