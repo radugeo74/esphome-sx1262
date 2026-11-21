@@ -284,6 +284,35 @@ end-to-end encrypted meter telegram. Mode 7 KDF/MAC and live radio/TPL
 header extraction are still separate work. No changes to current HA
 sensor ownership, runtime secrets or Heltec firmware.
 
+## Strict direct DLL to TPL5 header subset — host only
+
+`xmq_tpl5_direct_header.h` now parses an already DLL-CRC-verified,
+CRC-stripped frame with an unambiguous direct TPL CI: 0x7A (short TPL,
+DLL M/A) or 0x72 (long TPL with INNER M/A). The parser extracts the
+TPL ACC, STS, little-endian configuration word, mode-5 block count,
+the application offset, and derives the correct IV field inputs. It
+rejects invalid lengths, unknown/manufacturer-specific CI, ELL, NWL,
+AFL and mode 7 (not yet independently authenticated). The host-only
+adapter passes only the strictly isolated encrypted application region
+into the previously implemented CBC primitive; explicit clear tails
+are preserved. Tests use synthetic frames with deliberately distinct
+DLL and inner TPL addresses, and never include production keys/IDs.
+
+**Security correction from Stage A #107:** the earlier test that
+assumed a wrong TPL access number must always invalidate CBC `2F2F`
+was wrong. CBC IV positions 8–15 change plaintext positions 8–15,
+so `2F2F` at the start may remain unchanged. The test now checks the
+result differs instead. Such a decryption result is NOT authenticated;
+future live mode-5 support must validate expected frame semantics
+and provenance. Never use the mere `2F2F` sentinel as proof of
+correct access number or a secure MAC.
+
+These tests only exercise direct DLL-to-TPL CI 72/7A, not the full
+wM-Bus header chain (ELL, AFL, other CI) or security mode 7. The
+SX1262 receiver, Home Assistant sensor state and OTA image have not
+been modified. No flash until real-device proven end-to-end parity
+and a tested rollback.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
