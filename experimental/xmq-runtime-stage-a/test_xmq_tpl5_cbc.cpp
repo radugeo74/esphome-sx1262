@@ -46,8 +46,9 @@ int main() {
     clear[16] = 0x33;
     clear[31] = 0x44;
     std::vector<std::uint8_t> encrypted(32);
-    AES_CBC_encrypt_buffer(encrypted.data(), clear.data(),
-                           static_cast<std::uint32_t>(clear.size()),
+    auto mutable_input = clear;  // tiny-AES CBC encryption XORs input in place
+    AES_CBC_encrypt_buffer(encrypted.data(), mutable_input.data(),
+                           static_cast<std::uint32_t>(mutable_input.size()),
                            key.data(), iv.data());
     const auto first = decrypt_tpl5_cbc_blocks(encrypted, key, iv);
     require(first.accepted && first.plaintext == clear,
