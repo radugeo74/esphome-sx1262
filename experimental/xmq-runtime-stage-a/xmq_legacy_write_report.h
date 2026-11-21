@@ -77,6 +77,20 @@ inline bool legacy_write_evidence_complete(
       (required_numeric_mask & ~allowed_numeric) != 0 ||
       (required_date_mask & ~allowed_dates) != 0)
     return false;
+  // Every distinct reported field requires at least one completed setter
+  // call. A manually inconsistent mask without matching write counts is not
+  // evidence, even if the numeric snapshot happens to match XMQ.
+  auto bit_count = [](std::uint32_t mask) noexcept {
+    std::uint32_t count = 0;
+    while (mask != 0) {
+      count += mask & 1U;
+      mask >>= 1U;
+    }
+    return count;
+  };
+  if (bit_count(report.numeric_field_mask) > report.numeric_writes ||
+      bit_count(report.date_field_mask) > report.string_writes)
+    return false;
   return (report.numeric_field_mask & required_numeric_mask) ==
              required_numeric_mask &&
          (report.date_field_mask & required_date_mask) == required_date_mask;
