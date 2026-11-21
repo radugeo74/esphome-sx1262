@@ -26,6 +26,11 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
   if (!wants_readings()) return;
   try {
     ++inspected_;
+    // One aggregate status line when the bounded session uses its final slot.
+    // There is no log on every suppressed frame and no meter identification.
+    if (inspected_ == kMaxObservations)
+      ESP_LOGI(TAG, "XMQ shadow hourly observation budget exhausted (max %u, read-only)",
+               static_cast<unsigned>(kMaxObservations));
     const auto heap = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT));
     if (heap < min_free_heap_) min_free_heap_ = heap;
     xmq_runtime::ShadowReference old;
