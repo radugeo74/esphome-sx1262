@@ -82,12 +82,18 @@ budget=(lab.parent/"xmq_shadow_probe/xmq_shadow_budget.h").read_text()
 assert "kShadowWindowMillis = 3600000UL" in budget
 assert "kShadowWindowMaxObservations = 128" in budget
 assert "static_cast<uint32_t>(now_ms - started_ms) >= kShadowWindowMillis" in budget
+assert "class ShadowObservationBudget" in budget
+assert "bool consume() noexcept" in budget
+assert "bool renew_if_elapsed(uint32_t now_ms) noexcept" in budget
+assert "used_ < kShadowWindowMaxObservations" in budget
 assert '#include "xmq_shadow_budget.h"' in header
-assert "shadow_window_elapsed(now, window_started_ms_)" in header
+assert "budget_.renew_if_elapsed(now)" in header
+assert "ShadowObservationBudget budget_{};" in header
 assert "inspected_ = 0;" in header
 assert "diagnostic_ = xmq_runtime::ShadowDiagnostic(kMaxObservations, 0.051);" in header
 assert "diagnostic_.set_enabled(true);" in header
-assert "return inspected_ < kMaxObservations;" in header
+assert "return budget_.may_observe();" in header
+assert "if (!budget_.consume()) return;" in probe
 assert "if (!enabled_ || !registry_) return false;" in header
 assert "hourly observation budget renewed" in header
 print("SHADOW_HOURLY_BUDGET_CONTRACT_OK: 128 observations/hour, uint32 rollover-safe renewal, no sensor writes")
