@@ -179,6 +179,26 @@ decryption, subscribe to `wmbus_radio`, or publish any Home Assistant
 state. It must not be installed as a legacy replacement based only on
 host test success. The existing Heltec OTA image remains unchanged.
 
+## Single-pass live XMQ field-production diagnostic — pre-install candidate
+
+The next staged firmware source adds read-only aggregate counters
+`xmq_fields_ready`, `xmq_fields_present`, and
+`xmq_fields_required` to the existing shadow line. It computes
+these from the **same XMQ parser result** already used for the
+legacy-shadow comparison; it does not execute a second XMQ parser.
+For proprietary `fhkvdataiii` it requires four numeric values and
+two valid calendar dates. For `mkradio4` it requires two numeric
+values. A failed parse resets the readiness report rather than
+reusing a prior telegram's output. The log explicitly includes
+`primary_transport=legacy_verified` to prevent mistaking this
+for independent decryption or radio dispatch.
+
+The code is not installed until a separate, reviewed Heltec firmware
+flash. It must not become the Home Assistant sensor writer yet.
+Before any installation confirm the existing full CI, a proven USB
+fallback, and a private compile of the exact 12-meter T1_C1 YAML.
+Do not upload real configs, AES keys, IDs or telegram bytes.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
