@@ -199,6 +199,24 @@ Before any installation confirm the existing full CI, a proven USB
 fallback, and a private compile of the exact 12-meter T1_C1 YAML.
 Do not upload real configs, AES keys, IDs or telegram bytes.
 
+## Direct T1/C1 radio boundary — host-only prerequisite for legacy removal
+
+`xmq_primary_transport_contract.h` defines a separate input contract for
+a future direct radio-to-XMQ adapter. It requires an already DLL-CRC-verified
+T1/C1 frame **and** verified cleartext with the correct inner meter MVT and
+application encoding. A CRC-valid ciphertext frame, unknown link mode, missing
+CRC evidence, empty payload or failed decode is rejected and produces no
+retained candidate sensor values. Tests use only public upstream fixture
+payloads; test-supplied cleartext metadata is not proof of a live decryptor.
+
+The working `wmbus_radio` already validates T1/C1 DLL CRC before dispatch,
+so the SX1262 radio does **not** need replacement. The missing real work is
+an independently audited TPL security-mode / AES decryption and application
+extraction adapter. Until it supplies the verified-cleartext contract, XMQ
+cannot safely replace legacy for encrypted meters. No private AES keys,
+meter IDs or payloads should be placed in CI, and this host-only contract
+does not change the Heltec image or HA writer.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
