@@ -205,3 +205,5 @@ Validation 2026-11-21 isolated real TPL5 AES CBC: ONE existing Stage A workflow 
 Validation 2026-11-21 TPL5-IV-blocks-and-clear-tail: ONE Stage A workflow checks exact legacy M-field/A-field/ACC x8 IV composition, CBC encrypted prefix from TPL config count, strict bounds, clear tail preservation, wrong access/address and all-block mode; runs existing NIST AES-CBC and Heltec/ESP32 build gates. No live firmware or keys; NO FLASH.
 
 Validation 2026-11-21 direct TPL5 CI 7A/72 extraction: ONE Stage A workflow validates corrected CBC wrong-ACC sentinel semantics (previous #107 failed), short DLL vs long inner M/A/ACC IV, decrypted prefix and clear tail, CRC, DLL length, encrypted block count, CI rejection and legacy/XMQ build gates; synthetic only, NO FLASH.
+
+Validation 2026-11-21 synthetic CBC to actual XMQ driver: ONE existing Stage A workflow checks corrected wrong-access and wrong-inner-address CBC sentinel assumptions; CI7A/72 TPL5 direct headers, AES-128 CBC, original upstream mkradio4 application numeric total=0.4 target=0.1, CRC fail and key fail; host and 4 firmware compile jobs. Synthetic public key only. No real meter keys or firmware flashing.
