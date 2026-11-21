@@ -72,11 +72,15 @@ header=(lab.parent/"xmq_shadow_probe/xmq_shadow_probe.h").read_text()
 assert "bool enabled_{false};" in header
 assert "if (!enabled_ || !registry_) return false;" in header
 assert "return inspected_ < kMaxObservations;" in header
-assert "kMaxObservations = 128" in header
+assert "kMaxObservations = kShadowWindowMaxObservations" in header
 # Budget must renew at most once per hour, without unbounded observations
 # or permanent silence after 128 successful meter telegrams.
-assert "kWindowMillis = 3600000UL" in header
-assert "static_cast<uint32_t>(now - window_started_ms_) >= kWindowMillis" in header
+budget=(lab.parent/"xmq_shadow_probe/xmq_shadow_budget.h").read_text()
+assert "kShadowWindowMillis = 3600000UL" in budget
+assert "kShadowWindowMaxObservations = 128" in budget
+assert "static_cast<uint32_t>(now_ms - started_ms) >= kShadowWindowMillis" in budget
+assert '#include "xmq_shadow_budget.h"' in header
+assert "shadow_window_elapsed(now, window_started_ms_)" in header
 assert "inspected_ = 0;" in header
 assert "diagnostic_ = xmq_runtime::ShadowDiagnostic(kMaxObservations, 0.051);" in header
 assert "diagnostic_.set_enabled(true);" in header
