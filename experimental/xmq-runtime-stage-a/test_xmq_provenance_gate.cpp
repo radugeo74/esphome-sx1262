@@ -55,10 +55,10 @@ int main() {
     require(diagnostic.counters().different == 1,
             "difference counter not recorded");
     std::cout << "XMQ_PROVENANCE_GATE_OK: same-frame write mask required, "
-                 "dropped writes rejected, XMQ mismatch detected; HOST ONLY\\n";
+                 "dropped writes rejected, XMQ mismatch detected; HOST ONLY\n";
     return 0;
   } catch (const std::exception &e) {
-    std::cerr << "FAIL: " << e.what() << '\\n';
+    std::cerr << "FAIL: " << e.what() << '\n';
     return 1;
   }
 }
