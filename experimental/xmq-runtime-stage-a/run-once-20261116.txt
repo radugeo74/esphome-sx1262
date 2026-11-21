@@ -223,3 +223,5 @@ Validation 2026-11-21 upstream Telegram CI routing proof: ONE existing Stage A w
 Validation 2026-11-21 #115 private Telegram copy fixture fix + privacy-safe CI/TPL security census: ONE Stage A workflow tests original Telegram type no copy, CI A2/7A routing, aggregate buckets CI A0/A2/72/7A + security 0/5/7/other, reject failed decrypt/parse; host and 4 ESP32/Heltec compilation jobs. No keys, IDs, payloads or firmware flash.
 
 Validation 2026-11-21 opt-in privacy-safe CI/TPL census integration: ONE existing Stage A CI checks host census tests and the FULL Heltec probe enabled and disabled ESPHome 2026.11 compile, ESP32 isolated and legacy baseline. Shadow-only callback, bounded hourly 128 observations, aggregated 5x4 CI/TPL counts only, no per-meter identifiers, no AES keys, NO FLASH.
+
+Validation 2026-11-21 GitHub-installable CI/TPL census fix: ONE Stage A run checks exact host vs bundled header equality before staging, privacy-safe census host tests, ESPHome 2026.11.0 linked Heltec, 2026.10.1 disabled/enabled Heltec, and critically direct GitHub external_components install smoke with NO staging, plus legacy and isolated ESP32. No flash and no keys.
