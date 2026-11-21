@@ -146,6 +146,23 @@ token synchronously; caching a pointer or relying on the numeric
 snapshot alone is not acceptable. Never report `provenance=proven`
 merely because a token or a field mask exists.
 
+## XMQ-only decode readiness (host-only, no sensor writes)
+
+The new `xmq_primary_readiness.h` evaluates **only XMQ's own decoded
+`XmqFrameResult`**, without reading existing legacy meter values.
+For original upstream proprietary fixture frames, it requires all four
+heat numeric fields plus two dates, or both water numeric fields. Unknown
+drivers, incomplete field sets, duplicate required names and nonfinite
+numeric output fail closed.
+
+This proves a *field-production contract on specific offline fixtures*,
+not an OTA-ready replacement: live XMQ still receives already-verified
+application bytes from the legacy parser, which currently performs the
+decryption. Production radio/T1_C1, meter keys, HA sensor ownership, and
+fallback remain unchanged. A new independent transport/decryption adapter
+and live end-to-end parity are required before the legacy decoder can be
+disabled. Never publish XMQ outputs into HA from this host-only gate.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
