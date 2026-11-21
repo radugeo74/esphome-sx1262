@@ -191,3 +191,5 @@ Validation 2026-11-21 host-frame-correlation-sequence: ONE gated Stage A workflo
 Validation 2026-11-21 XMQ-independent-output-readiness: exactly ONE Stage A workflow validates new host-only fail-closed XMQ primary field production contract against upstream HCA + water fixtures; missing fields, duplicate names, driver mismatch; no HA writes or radio changes, NO FLASH.
 
 Validation 2026-11-21 XMQ-independent-readiness CI retry: one grouped Stage A workflow after correcting host-only C++17 unused lab_frame_sequence in exact-setter-body test; prior #99 failed host build, no RF or HA changes; validate XMQ-only output readiness fixtures and all builds. NO FLASH.
+
+Validation 2026-11-21 XMQ-only decoder candidate: one Stage A workflow tests strict valid-calendar dates, nonfinite/missing fields, independent original XMQ HCA and water fixture decode, fail-closed no-stale-results, plus all existing host/ESP-IDF/Heltec build jobs; no production radio, keys, legacy sensor updates or HA publishing touched; NO FLASH.
