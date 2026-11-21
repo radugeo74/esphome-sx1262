@@ -217,3 +217,5 @@ Validation 2026-11-21 strict CI/encoding admission: SINGLE Stage A run confirms 
 Validation 2026-11-21 fix CI host-only transitive TPL5 includes: ONE existing Stage A run checks four excluded host-only headers xmq_tpl5_{cbc,direct_header,identity_gate,live_admission}.h, clean/stale ESPHome staging regression, synthetic CI/encoding XMQ checks, 4 firmware host/ESPHome compilation jobs, NO FLASH.
 
 Validation 2026-11-21 XMQ CI provenance routing: one existing Stage A CI for CI A0/A2 OriginalIxml legacy-verified-only vs CI72/7A StandardDv verified legacy or nonpublishable direct candidate, reject unknown CI/mismatched format/no DLL CRC/ambiguous origin; retain crypto host tests and 4 Heltec/ESP32 compile jobs. No flash.
+
+Validation 2026-11-21 upstream Telegram CI routing proof: ONE existing Stage A workflow tests actual unmodified Telegram struct CI A2 proprietary, CI7A standard, unknown CI rejection, DLL CRC and verified legacy provenance, and all 4 ESP32/Heltec compile gates. Host-only synthetic instance; no private meter IDs, no AES keys, NO FLASH.
