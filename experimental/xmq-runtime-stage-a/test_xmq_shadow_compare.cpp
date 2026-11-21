@@ -143,6 +143,13 @@ int main() {
     PrimaryRadioApplication radio_frame;
     radio_frame.dll_crc_verified = true;
     radio_frame.link_mode = PrimaryLinkMode::T1;
+    radio_frame.security.mode = PrimaryTplSecurity::None;
+    require(primary_security_from_tpl_cfg(0x0000) == PrimaryTplSecurity::None &&
+            primary_security_from_tpl_cfg(0x0500) == PrimaryTplSecurity::AesCbcIv &&
+            primary_security_from_tpl_cfg(0x0700) == PrimaryTplSecurity::AesCbcNoIv &&
+            primary_security_from_tpl_cfg(0x0800) == PrimaryTplSecurity::Unknown &&
+            primary_security_from_tpl_cfg(0x1F00) == PrimaryTplSecurity::Unknown,
+            "TPL security mode parsing failed closed");
     radio_frame.payload_trust = PrimaryPayloadTrust::Ciphertext;
     radio_frame.inner_mvt = {"TCH", 0x95, 0x62};
     radio_frame.encoding = ApplicationEncoding::OriginalIxml;
@@ -175,6 +182,38 @@ int main() {
               from_radio.numeric.count("total_m3") == 1,
               "trusted verified T1/C1 cleartext was rejected");
     }
+    // The same decrypted-looking bytes must NOT pass a false mode 5/7
+    // assertion: validated CBC sentinel (and mode 7 MAC) are required.
+    radio_frame.security.mode = PrimaryTplSecurity::AesCbcIv;
+    require(!decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio),
+            "AES-CBC IV accepted without completed decrypt check");
+    radio_frame.security.decrypt_succeeded = true;
+    require(!decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio),
+            "AES-CBC IV accepted without validated check bytes");
+    radio_frame.security.cbc_check_bytes_valid = true;
+    require(decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio),
+            "audited mode 5 evidence rejected");
+    radio_frame.security.mode = PrimaryTplSecurity::AesCbcNoIv;
+    require(!decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio),
+            "AES-CBC mode 7 accepted without authenticated MAC");
+    radio_frame.security.mac_authenticated = true;
+    require(decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio),
+            "audited mode 7 evidence rejected");
+    radio_frame.security.mode = PrimaryTplSecurity::Unknown;
+    require(!decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio),
+            "unknown TPL security mode accepted");
     radio_frame.payload_trust = PrimaryPayloadTrust::Ciphertext;
     require(!decode_primary_radio_application(
                 registry, radio_frame, "mkradio4",
