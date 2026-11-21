@@ -37,8 +37,10 @@ inline LegacyWriteReport summarize_legacy_writes(
         journal.wrote_numeric(upstream_field))
       report.numeric_field_mask |= (std::uint32_t{1} << bit);
   };
-  auto date = [&](const char *field, unsigned bit) {
-    if (journal.wrote_string(field))
+  auto date = [&](const char *public_field, const char *upstream_field,
+                  unsigned bit) {
+    if (journal.wrote_string(public_field) ||
+        journal.wrote_string(upstream_field))
       report.date_field_mask |= (std::uint32_t{1} << bit);
   };
   switch (driver) {
@@ -47,8 +49,8 @@ inline LegacyWriteReport summarize_legacy_writes(
       number("previous_hca", "previous", 1);
       number("temp_room_c", "temp_room", 2);
       number("temp_radiator_c", "temp_radiator", 3);
-      date("current_date", 0);
-      date("previous_date", 1);
+      date("current_date", "current", 0);
+      date("previous_date", "previous", 1);
       break;
     case LegacyReportDriver::Mkradio4:
       number("target_m3", "target", 0);
