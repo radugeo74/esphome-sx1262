@@ -103,6 +103,32 @@ The original 12-meter fixture is only a synthetic compile regression.
   one window**. Do not sum them across log lines; the local script counts
   individual `disposition` events. Snapshot equality is not setter provenance.
 
+## First physical Heltec shadow observation (2026-11-21)
+
+A private ~4-minute capture on ESPHome 2026.11.0 with XMQ enabled
+showed 11 XMQ snapshot matches out of 11 comparisons: 7 heat observations
+at four numeric fields each and 4 water observations at two numeric
+fields each (36 numeric comparisons, zero mismatches). Legacy Home
+Assistant sensor updates continued, and both T1/A and C1/A frames were
+observed. A subset of configured water meters had C1 frames rejected by
+the meter's existing T1-only mode; do not change meter modes to conceal
+that warning. No private meter identifiers or payloads are included here.
+
+**Do not interpret these 11 matches as independent XMQ decoder parity.**
+Every observation reported `provenance=not_proven`; all reported numeric
+DV attribution counters were `matched_numeric_dv=0`, and
+`calendar_refs=0`. Snapshot equality, even with changing values, is
+not a confirmed same-frame setter journal. The live firmware does not
+yet connect the host-tested `LegacyWriteJournal` to actual legacy setter
+calls. It is unsafe to change the production sensor writer on this
+evidence.
+
+The capture is far shorter than an hour, so it does not verify
+128-observation exhaustion, hourly renewal, long-run heap stability,
+or an actual full 12-meter equality set. Leave the enabled canary
+read-only; a later host-only journal gate must not be labelled
+`proven` until actual firmware setter hooks are safely audited.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
