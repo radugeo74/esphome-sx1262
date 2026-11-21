@@ -1,5 +1,6 @@
 #include "xmq_shadow_compare.h"
 #include "xmq_primary_readiness.h"
+#include "xmq_primary_transport_contract.h"
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -137,6 +138,50 @@ int main() {
             ready_output.numeric.count("target_m3") == 1 &&
             ready_output.numeric.count("total_m3") == 1,
             "independent XMQ water decoder failed to produce both sensors");
+    // Future direct-radio path: CRC alone must NEVER authorize decoding
+    // ciphertext. Tested on original XMQ water fixture in T1 and C1.
+    PrimaryRadioApplication radio_frame;
+    radio_frame.dll_crc_verified = true;
+    radio_frame.link_mode = PrimaryLinkMode::T1;
+    radio_frame.payload_trust = PrimaryPayloadTrust::Ciphertext;
+    radio_frame.inner_mvt = {"TCH", 0x95, 0x62};
+    radio_frame.encoding = ApplicationEncoding::OriginalIxml;
+    radio_frame.application = parse_hex(
+        "06702901006017030004000300000000000000000000000000000000000000000000");
+    XmqFrameResult from_radio;
+    require(!decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio) &&
+            from_radio.numeric.empty(),
+            "CRC-only ciphertext was accepted as XMQ plaintext");
+    radio_frame.payload_trust = PrimaryPayloadTrust::VerifiedCleartext;
+    radio_frame.dll_crc_verified = false;
+    require(!decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio),
+            "unchecked DLL CRC was accepted");
+    radio_frame.dll_crc_verified = true;
+    radio_frame.link_mode = PrimaryLinkMode::Unknown;
+    require(!decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio),
+            "unknown radio link mode was accepted");
+    for (auto mode : {PrimaryLinkMode::T1, PrimaryLinkMode::C1}) {
+      radio_frame.link_mode = mode;
+      require(decode_primary_radio_application(
+                  registry, radio_frame, "mkradio4",
+                  {"target_m3", "total_m3"}, {}, from_radio) &&
+              from_radio.numeric.count("target_m3") == 1 &&
+              from_radio.numeric.count("total_m3") == 1,
+              "trusted verified T1/C1 cleartext was rejected");
+    }
+    radio_frame.payload_trust = PrimaryPayloadTrust::Ciphertext;
+    require(!decode_primary_radio_application(
+                registry, radio_frame, "mkradio4",
+                {"target_m3", "total_m3"}, {}, from_radio) &&
+            from_radio.numeric.empty() && from_radio.dates.empty(),
+            "encrypted frame retained stale previously decoded values");
+
     ShadowReference mk4_expected;
     mk4_expected.numeric={{"total_m3",0.4},{"target_m3",0.1}};
     report=compare_shadow_reference(water,mk4_expected);
