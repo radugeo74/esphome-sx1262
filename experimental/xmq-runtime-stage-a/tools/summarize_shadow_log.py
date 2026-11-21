@@ -24,6 +24,12 @@ def summarize(lines):
     counts = collections.Counter()
     drivers = collections.defaultdict(collections.Counter)
     for line in lines:
+        counts["shadow_budget_exhausted"] += (
+            "XMQ shadow hourly observation budget exhausted" in line
+        )
+        counts["shadow_budget_renewed"] += (
+            "XMQ shadow hourly observation budget renewed" in line
+        )
         verified = VERIFIED.search(line)
         if verified:
             counts["verified_" + verified.group(1).replace("/", "_")] += 1
@@ -70,6 +76,8 @@ def format_summary(counts, drivers):
             ("verified_T1_A", "verified_C1_A", "crc_c1_rejected",
              "t1_symbols_rejected", "c1_link_rejected", "handled", "unhandled")),
     ]
+    out.append("shadow_budget: exhausted={} renewed={}".format(
+        counts["shadow_budget_exhausted"], counts["shadow_budget_renewed"]))
     if not drivers:
         out.append("shadow: no observed comparisons")
     for driver in sorted(drivers):
