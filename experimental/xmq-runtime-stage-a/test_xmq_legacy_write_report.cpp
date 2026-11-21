@@ -48,12 +48,25 @@ int main() {
     j.try_numeric_write("previous");
     j.try_numeric_write("temp_room");
     j.try_numeric_write("temp_radiator");
-    j.try_string_write("current_date");
+    j.try_string_write("current");
+    j.try_string_write("previous");
     auto upstream_heat = summarize_legacy_writes(j, LegacyReportDriver::Fhkvdataiii);
     require(upstream_heat.numeric_field_mask == 0b1111 &&
-            upstream_heat.date_field_mask == 0b01 &&
-            upstream_heat.numeric_writes == 4,
+            upstream_heat.date_field_mask == 0b11 &&
+            upstream_heat.numeric_writes == 4 &&
+            upstream_heat.string_writes == 2,
             "upstream heat internal field names not attributed");
+    j.end_telegram();
+    // Mixed public/upstream aliases for one logical calendar field
+    // must never count as separate date mask bits.
+    j.begin_telegram();
+    j.try_string_write("previous_date");
+    j.try_string_write("previous");
+    auto date_alias = summarize_legacy_writes(
+        j, LegacyReportDriver::Fhkvdataiii);
+    require(date_alias.date_field_mask == 0b10 &&
+            date_alias.string_writes == 2,
+            "upstream calendar alias counted as a second date field");
     j.end_telegram();
     j.begin_telegram();
     j.try_numeric_write("total_m3");
