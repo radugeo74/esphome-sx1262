@@ -36,6 +36,9 @@ assert string.index("generateFieldNameNoUnit(this, dve)") < string.rindex("try_s
 assert result.count("xmq_stage_a_register_legacy_write_observer(") == 1
 assert result.count("xmq_stage_a_register_legacy_write_observer_bound(") == 1
 assert result.count("lab_bound_observer(static_cast<const void *>(this),") == 1
+assert result.count("const auto seq = ++lab_frame_sequence;") == 1
+assert result.index("processFieldCalculators();") < result.index("const auto seq = ++lab_frame_sequence;")
+assert result.count("thread_local unsigned long long lab_frame_sequence = 0;") == 1
 assert result.index("processFieldCalculators();") < result.index(
     "lab_bound_observer(static_cast<const void *>(this),")
 assert result.index("lab_bound_observer(static_cast<const void *>(this),") < result.index(
