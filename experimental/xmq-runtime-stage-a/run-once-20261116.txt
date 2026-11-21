@@ -173,3 +173,5 @@ Validation CE 2026-11-21: ONE gated CI verifies firmware-shared allocation-free 
 Validation CF 2026-11-21: ONE gated CI reruns C++ host sanitizer 128/129/hourly rollover budget test and all Heltec ESPHome builds after removing obsolete inspected-counter static assertion; retain fail-closed budget may_observe/consume checks. No private telemetry or hardware flash.
 
 Validation batch 2026-11-21 log-window: ONE Stage A workflow validates hourly rollover reset in local privacy-safe shadow log summary; RF and production firmware unchanged; NO FLASH.
+
+Validation batch 2026-11-21 empty-reference: ONE Stage A workflow tests fail-closed zero-field XMQ comparison plus existing local log-window regression; no radio/legacy changes, NO FLASH.
