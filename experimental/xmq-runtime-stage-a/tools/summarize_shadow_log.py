@@ -17,7 +17,7 @@ COUNTERS = (
     "compared", "mismatches", "observed", "captured", "rejected",
     "changed_numeric", "unchanged_numeric",
     "matched_numeric_dv", "unmatched_numeric_dv",
-    "matched_date_dv", "unmatched_date_dv",
+    "matched_date_dv", "unmatched_date_dv", "calendar_refs",
 )
 
 def summarize(lines):
@@ -72,6 +72,12 @@ def summarize(lines):
             stats["other_dispositions"] += 1
         if fields.get("provenance") == "not_proven":
             stats["unproven_observations"] += 1
+        # A successful numeric snapshot comparison is NOT proof of
+        # same-telegram writes. Track missing DV attribution separately.
+        if int(fields.get("compared", "0")) > 0 and (
+            fields.get("provenance") != "proven"
+        ):
+            stats["comparison_without_provenance"] += 1
     return counts, drivers
 
 def format_summary(counts, drivers):
@@ -95,6 +101,21 @@ def format_summary(counts, drivers):
             f"unmatched_numeric_dv={stats['unmatched_numeric_dv']} "
             f"unproven_observations={stats['unproven_observations']}"
         )
+    total_matches = sum(s["matches"] for s in drivers.values())
+    total_differences = sum(s["differences"] for s in drivers.values())
+    compared = sum(s["compared"] for s in drivers.values())
+    calendar_refs = sum(s["calendar_refs"] for s in drivers.values())
+    unproven = sum(s["comparison_without_provenance"] for s in drivers.values())
+    out.append(
+        f"live_evidence: matches={total_matches} differences={total_differences} "
+        f"numeric_and_date_fields_compared={compared} "
+        f"calendar_refs={calendar_refs} "
+        f"comparisons_without_setter_provenance={unproven}"
+    )
+    if total_matches and calendar_refs == 0:
+        out.append("GAP: no calendar references compared in this capture")
+    if unproven:
+        out.append("GAP: legacy setter-level attribution NOT established in live capture")
     out.append("VERDICT: snapshot match is NOT proof of per-telegram setter provenance or XMQ replacement readiness")
     return "\n".join(out)
 
