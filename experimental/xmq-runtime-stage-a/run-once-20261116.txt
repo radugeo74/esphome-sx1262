@@ -197,3 +197,5 @@ Validation 2026-11-21 XMQ-only decoder candidate: one Stage A workflow tests str
 Validation 2026-11-21 single-pass-live-XMQ-field-readiness: one Stage A workflow for same-pass XMQ numeric/calendar completeness, clean rejection on failure, privacy-safe local status counters, synced bundled ESPHome headers and four Heltec/ESP32 builds. No private YAML or firmware flash; legacy remains only sensor writer.
 
 Validation 2026-11-21 direct-T1-C1-XMQ-trust-boundary: one Stage A gated run for host-only direct radio frame contract, requiring DLL CRC and verified cleartext, rejecting ciphertext, bad/unknown mode and stale decoded values; original public water fixture only. No live AES implementation, production radio changes, private keys or flash.
+
+Validation 2026-11-21 TPL-security-fail-closed: exactly ONE Stage A run verifies host-only mode 0/5/7 classification, mode 5 CBC sentinel evidence, mode 7 MAC and decrypt evidence, rejection of mode 8/unknown and encrypted data without proof, prior direct T1/C1 tests; no production decoder, AES keys or firmware flash changes.
