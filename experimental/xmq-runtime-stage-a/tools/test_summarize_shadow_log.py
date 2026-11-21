@@ -88,4 +88,24 @@ malformed = module.summarize([
 ])
 assert "comparisons_without_setter_provenance=0" in module.format_summary(*malformed)
 
+# New on-device single-pass XMQ field readiness is NOT proof of fully
+# independent transport or AES. Aggregate only, never leak IDs or data.
+ready_logs = [
+    "[I] Live XMQ shadow: driver=fhkvdataiii disposition=1 "
+    "compared=4 mismatches=0 xmq_fields_ready=1 xmq_fields_present=6 "
+    "xmq_fields_required=6 primary_transport=legacy_verified "
+    "provenance=not_proven",
+    "[I] Live XMQ shadow: driver=mkradio4 disposition=1 "
+    "compared=2 mismatches=0 xmq_fields_ready=0 xmq_fields_present=1 "
+    "xmq_fields_required=2 primary_transport=legacy_verified "
+    "provenance=not_proven",
+]
+ready_counts, ready_drivers = module.summarize(ready_logs)
+ready_report = module.format_summary(ready_counts, ready_drivers)
+assert ready_drivers["fhkvdataiii"]["xmq_independent_fields_ready"] == 1
+assert ready_drivers["mkradio4"]["xmq_independent_fields_incomplete"] == 1
+assert "legacy_verified_transport=1" in ready_report
+assert "xmq_fields_ready=1" in ready_report
+assert "xmq_fields_incomplete=1" in ready_report
+
 print("SHADOW_LOCAL_LOG_SUMMARY_OK: aggregated synthetic T1/C1 and XMQ diagnostics; IDs/payload never printed")
