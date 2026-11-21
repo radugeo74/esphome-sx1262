@@ -23,7 +23,7 @@ def main():
     string = extract_method(
         staged, "void MeterCommonImplementation::setStringValue(FieldInfo *fi, std::string v,")
     start = staged.index("namespace {\nthread_local xmq_runtime::LegacyWriteJournal *lab_journal")
-    callback = staged.index("  lab_observer = callback;", start)
+    callback = staged.index("  lab_bound_observer = callback;", start)
     end = staged.index("\n}", callback)
     scope = staged[start:end + 2]
     for anchor in ("LabWriteScope lab_write_scope(lab_writes);",
