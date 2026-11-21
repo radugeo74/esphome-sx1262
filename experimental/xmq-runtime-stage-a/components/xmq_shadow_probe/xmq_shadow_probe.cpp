@@ -100,13 +100,19 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
       return;
     }
     ++captured_;
+    // Reuse the existing XMQ projection; do not parse twice or write sensors.
+    xmq_runtime::PrimaryReadiness xmq_fields;
     const auto disposition = diagnostic_.inspect(
         *registry_, snapshot.inner_mvt, snapshot.encoding,
         snapshot.payload, old, heap, true, name,
         name == "mkradio4" ?
             std::vector<std::string>{"target_m3", "total_m3"} :
             std::vector<std::string>{"current_hca", "previous_hca",
-                                     "temp_room_c", "temp_radiator_c"});
+                                     "temp_room_c", "temp_radiator_c"},
+        &xmq_fields,
+        name == "fhkvdataiii" ?
+            std::vector<std::string>{"current_date", "previous_date"} :
+            std::vector<std::string>{});
     const auto &stats = diagnostic_.counters();
     // Log only aggregates, never IDs, raw payloads, keys or old/new values.
     ESP_LOGI(TAG,
@@ -116,7 +122,9 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
              "changed_dates=%u unchanged_dates=%u "
              "matched_numeric_dv=%u unmatched_numeric_dv=%u "
              "matched_date_dv=%u unmatched_date_dv=%u "
-             "provenance=not_proven min_free_heap=%u",
+             "provenance=not_proven xmq_fields_ready=%u "
+             "xmq_fields_present=%u xmq_fields_required=%u "
+             "primary_transport=legacy_verified min_free_heap=%u",
              name.c_str(), static_cast<unsigned>(disposition),
              static_cast<unsigned>(stats.last_compared),
              static_cast<unsigned>(stats.last_mismatches),
@@ -125,7 +133,9 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
              inspected_, captured_, rejected_, changed_numeric, unchanged_numeric,
              changed_dates, unchanged_dates, matched_numeric_dv,
              unmatched_numeric_dv, matched_date_dv, unmatched_date_dv,
-             min_free_heap_);
+             static_cast<unsigned>(xmq_fields.ready),
+             static_cast<unsigned>(xmq_fields.available),
+             static_cast<unsigned>(xmq_fields.required), min_free_heap_);
   } catch (const std::exception &) {
     ++unsupported_;
     ESP_LOGW(TAG, "Live XMQ shadow unsupported/error; legacy decoder unaffected");
