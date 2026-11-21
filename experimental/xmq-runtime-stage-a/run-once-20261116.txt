@@ -219,3 +219,5 @@ Validation 2026-11-21 fix CI host-only transitive TPL5 includes: ONE existing St
 Validation 2026-11-21 XMQ CI provenance routing: one existing Stage A CI for CI A0/A2 OriginalIxml legacy-verified-only vs CI72/7A StandardDv verified legacy or nonpublishable direct candidate, reject unknown CI/mismatched format/no DLL CRC/ambiguous origin; retain crypto host tests and 4 Heltec/ESP32 compile jobs. No flash.
 
 Validation 2026-11-21 upstream Telegram CI routing proof: ONE existing Stage A workflow tests actual unmodified Telegram struct CI A2 proprietary, CI7A standard, unknown CI rejection, DLL CRC and verified legacy provenance, and all 4 ESP32/Heltec compile gates. Host-only synthetic instance; no private meter IDs, no AES keys, NO FLASH.
+
+Validation 2026-11-21 #115 private Telegram copy fixture fix + privacy-safe CI/TPL security census: ONE Stage A workflow tests original Telegram type no copy, CI A2/7A routing, aggregate buckets CI A0/A2/72/7A + security 0/5/7/other, reject failed decrypt/parse; host and 4 ESP32/Heltec compilation jobs. No keys, IDs, payloads or firmware flash.
