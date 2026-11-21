@@ -72,6 +72,18 @@ header=(lab.parent/"xmq_shadow_probe/xmq_shadow_probe.h").read_text()
 assert "bool enabled_{false};" in header
 assert "enabled_ && registry_" in header
 assert "kMaxObservations = 128" in header
+# Budget must renew at most once per hour, without unbounded observations
+# or permanent silence after 128 successful meter telegrams.
+assert "kWindowMillis = 3600000UL" in header
+assert "static_cast<uint32_t>(now - window_started_ms_) >= kWindowMillis" in header
+assert "inspected_ = 0;" in header
+assert "diagnostic_ = xmq_runtime::ShadowDiagnostic(kMaxObservations, 0.051);" in header
+assert "diagnostic_.set_enabled(true);" in header
+assert "return inspected_ < kMaxObservations;" in header
+assert "if (!enabled_ || !registry_) return false;" in header
+assert "hourly observation budget renewed" in header
+print("SHADOW_HOURLY_BUDGET_CONTRACT_OK: 128 observations/hour, uint32 rollover-safe renewal, no sensor writes")
+
 assert "set_enabled(bool enabled)" in header
 enabled_yaml=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-enabled-lab.yaml").read_text()
 assert enabled_yaml.count("enabled: true") == 1
