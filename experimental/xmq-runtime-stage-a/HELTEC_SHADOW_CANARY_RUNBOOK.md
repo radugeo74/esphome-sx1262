@@ -359,6 +359,26 @@ meter the right to publish from XMQ, change T1/C1 RF, update HA,
 or install firmware. A successful next CI must confirm all five
 jobs before attempting further on-device work.
 
+## Exact inner meter identity gate for direct TPL5 XMQ candidates
+
+`xmq_tpl5_identity_gate.h` now checks that the **same parsed
+TPL5 frame** has the configured manufacturer's two raw bytes and all
+six A-field bytes (four ID bytes, version, type). For CI 0x72 the
+identity comes from the inner TPL address; for CI 0x7A it comes
+from DLL. No fallback to the outer DLL address is allowed if the
+inner identity does not match. The XMQ `Mvt` is derived from
+these checked bytes, not supplied as an unrelated caller literal.
+Synthetic short/long TPL5 → XMQ tests reject a different ID,
+manufacturer, version or media type before decoding.
+
+**This is routing identity only, not authentication.** Mode-5
+CBC check bytes `2F2F` do not authenticate the sender or
+ACC/IV; a forged or malformed header could still pass the weak
+sanity check. The live radio/AES-to-XMQ path remains disabled.
+Any future sensor-publishing gate must separately establish
+payload provenance, security mode and field semantics, then
+validate the expected 12-meter contract in the real environment.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
