@@ -35,6 +35,20 @@ int main() {
             disabled.counters().min_free_heap==120000,
             "matched counters / heap sample incorrect");
 
+    // A caller that provides no reference fields must never report MATCH.
+    // Zero comparisons are not independent evidence of parser parity.
+    ShadowReference empty_reference;
+    ShadowDiagnostic empty_probe(1);
+    empty_probe.set_enabled(true);
+    require(empty_probe.inspect(registry,{"HYD",0xFE,0x06},
+                                ApplicationEncoding::StandardDv,valid,
+                                empty_reference)==ShadowDisposition::IncompleteReference,
+            "empty shadow reference falsely reported parity");
+    require(empty_probe.counters().matched==0 &&
+            empty_probe.counters().last_compared==0 &&
+            empty_probe.counters().skipped==1,
+            "empty shadow reference counters incorrect");
+
     // A snapshot containing only one of two required readings must never
     // be counted as a successful live parity comparison.
     ShadowReference incomplete;
