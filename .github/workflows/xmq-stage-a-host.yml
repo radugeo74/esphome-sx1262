@@ -83,6 +83,8 @@ jobs:
             "$dir/test_xmq_tpl5_to_xmq.cpp" components/wmbus_common/aes.cc \
             -o "$RUNNER_TEMP/xmq-tpl5-to-xmq"
           "$RUNNER_TEMP/xmq-tpl5-to-xmq"
+      - name: Ensure host-only AES headers never enter the ESPHome shadow component
+        run: python experimental/xmq-runtime-stage-a/tools/test_shadow_staging_allowlist.py
       - name: Verify privacy-safe local XMQ shadow log summarizer with synthetic fixtures
         run: python experimental/xmq-runtime-stage-a/tools/test_summarize_shadow_log.py
       - name: Check confidential local canary preflight regression fixtures
