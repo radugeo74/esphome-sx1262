@@ -15,6 +15,8 @@ lines = [
     "[W][wmbus_meter:053]: Frame link mode C1 not supported by meter mkradio4-" + fake_id,
     "[W][wmbus:125]: Unhandled meter address: " + fake_id,
     "[W][wmbus:127]: https://wmbusmeters.org/analyze/" + fake_payload,
+    "[I][xmq_shadow_probe:125]: XMQ shadow hourly observation budget exhausted (max 128, read-only)",
+    "[I][xmq_shadow_probe:124]: XMQ shadow hourly observation budget renewed (max 128, read-only)",
     "[I][xmq_shadow_probe:106]: Live XMQ shadow: driver=mkradio4 "
     "disposition=1 compared=2 mismatches=0 matched=1 different=0 "
     "observed=1 captured=1 rejected=0 changed_numeric=2 "
@@ -30,6 +32,8 @@ counts, drivers = module.summarize(lines)
 assert counts["verified_T1_A"] == 1
 assert counts["verified_C1_A"] == 1
 assert counts["c1_link_rejected"] == 1
+assert counts["shadow_budget_exhausted"] == 1
+assert counts["shadow_budget_renewed"] == 1
 assert drivers["mkradio4"]["matches"] == 1
 assert drivers["mkradio4"]["compared"] == 2
 assert drivers["mkradio4"]["unmatched_numeric_dv"] == 2
@@ -40,5 +44,6 @@ summary = module.format_summary(counts, drivers)
 assert fake_id not in summary and fake_payload not in summary
 assert "provenance" in summary and "NOT proof" in summary
 assert "matched_numeric_dv=0" in summary
+assert "shadow_budget: exhausted=1 renewed=1" in summary
 assert "no observed comparisons" in module.format_summary(*module.summarize([]))
 print("SHADOW_LOCAL_LOG_SUMMARY_OK: aggregated synthetic T1/C1 and XMQ diagnostics; IDs/payload never printed")
