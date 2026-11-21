@@ -22,6 +22,7 @@ jobs:
           set -euo pipefail
           dir=experimental/xmq-runtime-stage-a
           cmp "$dir/xmq_shadow_diagnostic.h" "$dir/components/xmq_shadow_probe/xmq_shadow_diagnostic.h"
+          cmp "$dir/xmq_ci_security_census.h" "$dir/components/xmq_shadow_probe/xmq_ci_security_census.h"
           echo "PASS: GitHub-installable shadow API matches host source"
       - name: Compile and run isolated XMQ tests
         shell: bash
