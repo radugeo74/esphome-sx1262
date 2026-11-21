@@ -1007,3 +1007,9 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - `test_xmq_shadow_window.cpp` verifică C++ real: **observațiile 1–128 acceptate**, a **129-a respinsă**, rămâne suspendat la 3.599.999 ms, reia după 3.600.000 ms, prima observație din fereastra nouă este acceptată și testul repetă reînnoirea la overflow `uint32_t`. Marker suplimentar `XMQ_SHADOW_BUDGET_OK`, sub ASan/UBSan în testele host.
 - `check_shadow_lab_meter.py` se asigură că firmware-ul folosește exact acest buget testat (nu o implementare separată). Mesajele agregate de epuizare/reînnoire rămân, iar decodorul legacy, senzorii, parametrii radio și firmware-ul instalat nu sunt modificate.
 - Nu pretindem validare de execuție hardware înainte de flash și log nou; rămâne un modul **read-only**.
+
+## Increment CF — remediere aserțiune învechită în CI #90 (21.11.2026)
+
+- **#89** este complet verde, toate cinci joburile. **#90** a eșuat numai în testul host `tools/check_shadow_lab_meter.py`, la expresia veche `assert "return inspected_ < kMaxObservations;" in header`; compilările dependente nu au rulat.
+- Firmware-ul experimental folosește acum `return budget_.may_observe();` și `if (!budget_.consume()) return;`, deja verificate de același test static și de noul test C++ `test_xmq_shadow_window.cpp`, inclusiv 128/129 și overflow `millis()`.
+- Am eliminat doar aserțiunea redundantă rămasă din vechea structură. Nu am schimbat bugetul, radio-ul, driverele legacy, senzorii, configurația privată ori firmware-ul instalat. Validarea compilării pentru modificările din #90 va fi refăcută prin **un singur** workflow pe commitul de relansare.
