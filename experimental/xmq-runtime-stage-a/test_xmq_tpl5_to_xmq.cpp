@@ -75,7 +75,7 @@ int main() {
       require(parsed.valid, "fixture TPL5 header rejected");
       const ExpectedTpl5Identity expected{fields.mfct_le, fields.address_a};
       const auto identity = inspect_tpl5_routing_identity(parsed, expected);
-      require(identity.accepted && identity.inner_mvt.mfct == "TCH" &&
+      require(identity.accepted && identity.inner_mvt.manufacturer == "TCH" &&
               identity.inner_mvt.version == 0x95 &&
               identity.inner_mvt.type == 0x62,
               "configured inner meter routing identity failed");
