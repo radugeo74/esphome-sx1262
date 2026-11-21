@@ -163,6 +163,22 @@ fallback remain unchanged. A new independent transport/decryption adapter
 and live end-to-end parity are required before the legacy decoder can be
 disabled. Never publish XMQ outputs into HA from this host-only gate.
 
+## XMQ-only verified application decode (host-only candidate API)
+
+`decode_primary_candidate()` in `xmq_primary_readiness.h` now
+decodes an already verified/decrypted application through XMQ and emits
+a candidate result **only when all caller-required fields are valid**.
+The destination is cleared on rejection, preventing a later telegram
+from reusing stale sensor values. Offline original heat/water fixture
+tests cover complete outputs, malformed payload, absent required
+fields, and zero retained fields after failure. The calendar check
+requires a real YYYY-MM-DD date including leap-year validity.
+
+The API does **not** yet accept raw radio ciphertext, implement AES
+decryption, subscribe to `wmbus_radio`, or publish any Home Assistant
+state. It must not be installed as a legacy replacement based only on
+host test success. The existing Heltec OTA image remains unchanged.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
