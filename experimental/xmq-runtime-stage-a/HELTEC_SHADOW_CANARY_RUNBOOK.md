@@ -502,6 +502,29 @@ Before enabling this read-only probe, review the whole firmware
 configuration, log-level behavior, radio memory budget and rollback.
 The installed SX1262 remains on its existing decoder.
 
+## GitHub-sourced shadow probe CI census header fix (#116/#117)
+
+Two previous Stage A runs compiled the host CI/security census and the
+staged ESPHome probe, but failed the **direct GitHub external_components**
+smoke compile. This is a packaging gap: the standalone
+`xmq_ci_security_census.h` was present under the experiment root and
+staged by the local build script, but absent from
+`components/xmq_shadow_probe/`, which ESPHome downloads when using the
+GitHub-sourced external component.
+
+The header is now bundled byte-for-byte with the GitHub-installable
+component, and the existing host job compares the source and bundled
+copy *before staging*. The direct GitHub smoke job remains part of
+the SAME single Stage A workflow and must complete green before
+claiming the probe is installable. This fix makes no changes to
+production radio framing, meter drivers, or Home Assistant sensors.
+
+The census is still **opt-in**, read-only, and scoped to the existing
+post-decode shadow callback. It does not yet prove coverage for
+`mkradio4a`; no claim about its on-air CI/security mode may be made
+until that coverage is established. No firmware flash is authorized
+by the CI result alone.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
