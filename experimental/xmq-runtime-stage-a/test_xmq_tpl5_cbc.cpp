@@ -67,6 +67,51 @@ int main() {
     require(!bad_key.accepted && bad_key.plaintext.empty(),
             "invalid key accepted");
 
+    // Construct mode-5 IV from on-frame manufacturer M, address A and
+    // the TPL access byte exactly as wmbus_utils.cc does (8+8 bytes).
+    Tpl5HeaderFields header;
+    header.mfct_le = {0x34, 0x12};
+    header.address_a = {0x78, 0x56, 0x34, 0x12, 0x94, 0x80};
+    header.access = 0x5B;
+    const auto derived_iv = make_tpl5_iv(header);
+    require(derived_iv[0] == 0x34 && derived_iv[1] == 0x12 &&
+            derived_iv[2] == 0x78 && derived_iv[7] == 0x80 &&
+            std::all_of(derived_iv.begin() + 8, derived_iv.end(),
+                        [](std::uint8_t b) { return b == 0x5B; }),
+            "TPL5 M/A/ACC IV derivation does not match legacy implementation");
+    const auto synth_clear = first.plaintext;
+    auto synth_input = synth_clear;
+    std::vector<std::uint8_t> synth_cipher(synth_input.size());
+    AES_CBC_encrypt_buffer(synth_cipher.data(), synth_input.data(),
+                           static_cast<std::uint32_t>(synth_input.size()),
+                           key.data(), derived_iv.data());
+    // Two encrypted blocks followed by a clear application tail.
+    const std::vector<std::uint8_t> tail = {0xA0, 0xB1, 0xC2};
+    auto full_payload = synth_cipher;
+    full_payload.insert(full_payload.end(), tail.begin(), tail.end());
+    auto clear_with_tail = synth_clear;
+    clear_with_tail.insert(clear_with_tail.end(), tail.begin(), tail.end());
+    auto complete = decrypt_tpl5_application(full_payload, key, header, 2);
+    require(complete.accepted && complete.plaintext == clear_with_tail,
+            "TPL5 explicit 2-block payload / clear tail corrupted");
+    require(!decrypt_tpl5_application(full_payload, key, header, 0).accepted,
+            "TPL5 implicit all-blocks accepted clear misaligned tail");
+    require(!decrypt_tpl5_application(full_payload, key, header, 3).accepted,
+            "TPL5 encrypted block count larger than frame accepted");
+    require(!decrypt_tpl5_application(full_payload, key, header, 16).accepted,
+            "TPL5 out-of-range encrypted block count accepted");
+    auto wrong_access = header;
+    wrong_access.access ^= 0x01;
+    require(!decrypt_tpl5_application(full_payload, key, wrong_access, 2).accepted,
+            "TPL5 wrong access number accepted");
+    auto wrong_address = header;
+    wrong_address.address_a[0] ^= 0x01;
+    require(!decrypt_tpl5_application(full_payload, key, wrong_address, 2).accepted,
+            "TPL5 wrong inner address accepted");
+    const auto all_blocks = decrypt_tpl5_application(synth_cipher, key, header, 0);
+    require(all_blocks.accepted && all_blocks.plaintext == synth_clear,
+            "TPL5 zero block count should decrypt complete aligned payload");
+
     for (std::size_t len : {std::size_t{0}, std::size_t{1},
                             std::size_t{15}, std::size_t{17},
                             std::size_t{513}}) {
