@@ -434,6 +434,27 @@ synthetic inputs. This is an isolation rule, not a claim that
 actual private meter frames use a particular CI; complete live
 telegram samples must establish that before selecting the direct route.
 
+## CI evidence verified against actual production Telegram declaration
+
+`test_xmq_real_telegram_contract.cpp` now includes the host-only
+`xmq_ci_route_contract.h` and executes classification using the
+**actual unmodified upstream `Telegram` type** and its
+`tpl_ci` member (the telegram instance is a synthetic fixture).
+The tests check A2 proprietary XMQ via successful legacy parsing,
+7A standard DV via verified legacy parsing, a direct-standard
+candidate that remains untrusted, unknown CI rejection, and
+mandatory DLL CRC. The same frame must never be treated as both
+a proprietary and a standard application.
+
+This verifies type/API compatibility and routing logic, not actual
+on-air CI distribution. The repository's HCA and water application
+fixtures were captured after processing by `wmbus_common`;
+these samples do **not** establish the full radio/TPL/AFL security
+envelope for each physical meter. Before enabling independent
+decryption, obtain privacy-safe live CI, link-security mode and
+header category evidence on the Heltec *without keys, IDs or raw
+payloads*; do not infer live formats from synthetic fixture CI.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
