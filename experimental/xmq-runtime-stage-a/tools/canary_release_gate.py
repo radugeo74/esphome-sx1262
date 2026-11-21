@@ -16,6 +16,28 @@ from preflight_canary import check, validate_and_read
 from verify_rollback import GateError, verify
 
 
+def require_live_t1_c1_profile(config):
+    """Strict private release guard; never print meter IDs or credentials."""
+    radio = config.get("wmbus_radio")
+    if not isinstance(radio, dict) or radio.get("native_stream_mode") != "T1_C1":
+        raise ValueError("live radio profile must retain T1_C1")
+    meters = config.get("wmbus_meter")
+    if not isinstance(meters, list) or len(meters) != 12:
+        raise ValueError("live canary must contain twelve meters")
+    heat = sum(isinstance(m, dict) and m.get("type") == "fhkvdataiii"
+               for m in meters)
+    water = sum(isinstance(m, dict) and m.get("type") == "mkradio4"
+                for m in meters)
+    if (heat, water) != (7, 5):
+        raise ValueError("live canary meter driver distribution changed")
+    if any(not isinstance(m, dict) or "T1" not in m.get("mode", [])
+           for m in meters):
+        raise ValueError("live canary meter mode missing T1")
+    # C1 is accepted only for supported entries: compare full resolved
+    # meter modes against the known-good YAML with preflight.check().
+    # The gate does not force unsupported C1 onto a meter.
+
+
 def release_gate(reference, candidate, fallback_bin, canary_bin, manifest,
                  *, resolved_fixtures=False):
     # Never read or expose raw config details in a log. Both YAML inputs must
@@ -26,6 +48,8 @@ def release_gate(reference, candidate, fallback_bin, canary_bin, manifest,
         raise ValueError("fallback and canary firmware must be separate files")
     original = validate_and_read(reference, resolved_fixtures)
     updated = validate_and_read(candidate, resolved_fixtures)
+    require_live_t1_c1_profile(original)
+    require_live_t1_c1_profile(updated)
     check(original, updated)
     print("CANARY_CONFIG_PARITY_OK: confidential fields and operational topology unchanged")
     verify(fallback_bin, canary_bin, manifest)
