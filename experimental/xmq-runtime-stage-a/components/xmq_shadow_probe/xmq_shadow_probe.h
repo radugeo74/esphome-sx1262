@@ -24,8 +24,7 @@ class ShadowProbe : public Component {
     // A bounded budget PER hour, not one permanent budget per boot.
     // Subtraction remains valid across the uint32_t millis() wraparound.
     const uint32_t now = millis();
-    if (shadow_window_elapsed(now, window_started_ms_)) {
-      window_started_ms_ = now;
+    if (budget_.renew_if_elapsed(now)) {
       inspected_ = 0;
       captured_ = 0;
       rejected_ = 0;
@@ -37,12 +36,12 @@ class ShadowProbe : public Component {
                "XMQ shadow hourly observation budget renewed (max %u, read-only)",
                static_cast<unsigned>(kMaxObservations));
     }
-    return inspected_ < kMaxObservations;
+    return budget_.may_observe();
   }
 
  private:
   bool enabled_{false};
-  uint32_t window_started_ms_{0};
+  ShadowObservationBudget budget_{};
   uint32_t inspected_{0};
   uint32_t captured_{0};
   uint32_t rejected_{0};
