@@ -102,8 +102,14 @@ int main() {
             "TPL5 out-of-range encrypted block count accepted");
     auto wrong_access = header;
     wrong_access.access ^= 0x01;
-    require(!decrypt_tpl5_application(full_payload, key, wrong_access, 2).accepted,
-            "TPL5 wrong access number accepted");
+    // CBC IV bytes 8..15 affect plaintext bytes 8..15, not the 2F2F
+    // sentinel at offsets 0..1. Wrong ACC can therefore PASS this weak
+    // framing check: never treat success as cryptographic authentication.
+    const auto wrong_access_result =
+        decrypt_tpl5_application(full_payload, key, wrong_access, 2);
+    require(wrong_access_result.accepted &&
+            wrong_access_result.plaintext != clear_with_tail,
+            "TPL5 wrong access unexpectedly preserved complete plaintext");
     auto wrong_address = header;
     wrong_address.address_a[0] ^= 0x01;
     require(!decrypt_tpl5_application(full_payload, key, wrong_address, 2).accepted,
