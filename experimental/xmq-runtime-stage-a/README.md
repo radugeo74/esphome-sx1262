@@ -999,3 +999,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Analizorul privat `tools/summarize_shadow_log.py` adaugă linia `shadow_budget: exhausted=N renewed=M`. Valorile sunt numărul evenimentelor efectiv prezente în fișierul furnizat, **nu** numărul ferestrelor reale ale dispozitivului dacă logul a fost conectat numai parțial.
 - `tools/test_summarize_shadow_log.py` verifică ambele marcaje cu loguri exclusiv sintetice, iar `tools/check_shadow_lab_meter.py` verifică jurnalizarea numai la atingerea limitei; decodorul legacy, senzorii, radio-ul și configurația privată nu sunt modificate.
 - Aceste mesaje diagnostice devin disponibile **numai după flash-ul firmware-ului nou**. Nu dovedesc în sine proveniența setterelor sau echivalența tuturor driverelor XMQ.
+
+## Increment CE — bugetul de observații exercitat integral în C++ (21.11.2026)
+
+- **#88 complet verde (5/5)**: a validat predicatul real de expirare la 3.600.000 ms, inclusiv overflow-ul `millis()`, și compilările ESPHome Heltec. **#89** era încă în execuție la momentul inițierii calupului; rezultatul final trebuie verificat separat.
+- Am extins `xmq_shadow_budget.h` cu o clasă fără alocări dinamice, `ShadowObservationBudget`, folosită **direct de componenta ESPHome**. `wants_readings()` doar verifică admiterea și, dacă este cazul, resetează fereastra; `observe()` consumă exact o intrare prin `budget_.consume()`. Astfel, cele două interogări (înainte și după decodarea legacy) **nu consumă două locuri**.
+- `test_xmq_shadow_window.cpp` verifică C++ real: **observațiile 1–128 acceptate**, a **129-a respinsă**, rămâne suspendat la 3.599.999 ms, reia după 3.600.000 ms, prima observație din fereastra nouă este acceptată și testul repetă reînnoirea la overflow `uint32_t`. Marker suplimentar `XMQ_SHADOW_BUDGET_OK`, sub ASan/UBSan în testele host.
+- `check_shadow_lab_meter.py` se asigură că firmware-ul folosește exact acest buget testat (nu o implementare separată). Mesajele agregate de epuizare/reînnoire rămân, iar decodorul legacy, senzorii, parametrii radio și firmware-ul instalat nu sunt modificate.
+- Nu pretindem validare de execuție hardware înainte de flash și log nou; rămâne un modul **read-only**.
