@@ -161,3 +161,5 @@ Validation BY 2026-11-20: ONE gated CI adds ESPHome 2026.11.0 combined Heltec re
 Validation BZ 2026-11-20: ONE gated CI verifies offline aggregate-only XMQ shadow log summarization on synthetic fixtures, no meter ID/payload leakage, and preserves the live-readonly ESPHome 2026.11 firmware build gates. Real user logs stay LOCAL and are NOT added to git.
 
 Validation CA 2026-11-21: ONE gated CI verifies hourly (128 per hour) opt-in XMQ shadow observation budget renewal and diagnostic reset after long hardware uptime, preserves read-only legacy-owned sensor path and 2026.11.0 Heltec enabled lab compile. No real logs, private meter IDs/keys, RF radio changes or flash.
+
+Validation CB 2026-11-21: ONE gated CI reruns unchanged hourly read-only XMQ shadow 128 observations/hour patch with corrected stale static assertion (enabled/registry checks split). Four previously skipped ESPHome and ESP-IDF compile jobs must run. No RF, YAML or firmware changes.
