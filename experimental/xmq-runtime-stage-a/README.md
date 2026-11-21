@@ -991,3 +991,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - Noul `test_xmq_shadow_window.cpp` exercită C++-ul real al intervalului cu `g++ -fsanitize=address,undefined`: limita cu 1 ms înainte și exact la o oră, valori după limită, **overflow real al contorului `millis()`**, și o a doua fereastră după resetare. Marker: `XMQ_SHADOW_WINDOW_OK`.
 - Verificarea statică `check_shadow_lab_meter.py` impune utilizarea helperului în observatorul de firmware; nu permitem validarea unui algoritm de test diferit față de cel instalabil.
 - Aceasta nu dovedește că firmware-ul existent pe Heltec s-a actualizat sau că un timer de pe dispozitiv a declanșat logul de reînnoire; implementarea continuă să reînnoiască doar la prima telegramă ulterioară unei ferestre expirate. Nu se modifică radio, senzori, credențiale, YAML privat sau firmware-ul instalat.
+
+## Increment CD — diagnostic agregat al bugetului shadow după 128 observații (21.11.2026)
+
+- **#87** este complet verde (5/5), inclusiv firmware Heltec cu XMQ shadow. **#88** avea jobul host în desfășurare la ultima verificare înainte de incrementul curent; rezultatul trebuie confirmat separat, fără presupuneri.
+- La observarea cu numărul 128 din fiecare fereastră, `xmq_shadow_probe.cpp` scrie **o singură** linie `XMQ shadow hourly observation budget exhausted (max 128, read-only)`. Nu produce mesaje repetitive pentru telegramele suprimate; nu include ID, payload, cheie sau valori. Reluarea după o oră rămâne notificată de mesajul existent `XMQ shadow hourly observation budget renewed`.
+- Analizorul privat `tools/summarize_shadow_log.py` adaugă linia `shadow_budget: exhausted=N renewed=M`. Valorile sunt numărul evenimentelor efectiv prezente în fișierul furnizat, **nu** numărul ferestrelor reale ale dispozitivului dacă logul a fost conectat numai parțial.
+- `tools/test_summarize_shadow_log.py` verifică ambele marcaje cu loguri exclusiv sintetice, iar `tools/check_shadow_lab_meter.py` verifică jurnalizarea numai la atingerea limitei; decodorul legacy, senzorii, radio-ul și configurația privată nu sunt modificate.
+- Aceste mesaje diagnostice devin disponibile **numai după flash-ul firmware-ului nou**. Nu dovedesc în sine proveniența setterelor sau echivalența tuturor driverelor XMQ.
