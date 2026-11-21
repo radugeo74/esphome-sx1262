@@ -27,9 +27,14 @@ def summarize(lines):
         counts["shadow_budget_exhausted"] += (
             "XMQ shadow hourly observation budget exhausted" in line
         )
-        counts["shadow_budget_renewed"] += (
-            "XMQ shadow hourly observation budget renewed" in line
-        )
+        renewed = "XMQ shadow hourly observation budget renewed" in line
+        counts["shadow_budget_renewed"] += renewed
+        if renewed:
+            # These three firmware counters restart at every hourly window.
+            # Preserve event totals but clear window-scoped snapshots.
+            for stats in drivers.values():
+                for key in ("observed", "captured", "rejected"):
+                    stats[key] = 0
         verified = VERIFIED.search(line)
         if verified:
             counts["verified_" + verified.group(1).replace("/", "_")] += 1
@@ -52,8 +57,8 @@ def summarize(lines):
                 value = int(fields.get(key, "0"))
             except ValueError:
                 continue
-            # Cumulative counters for observations/captured/rejected are
-            # snapshots; use the last value, not their sum.
+            # observed/captured/rejected are firmware-wide snapshots for
+            # the current window, not per-driver or lifetime totals.
             if key in ("observed", "captured", "rejected"):
                 stats[key] = max(stats[key], value)
             else:
