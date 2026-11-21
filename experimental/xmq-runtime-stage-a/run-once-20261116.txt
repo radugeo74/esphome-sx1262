@@ -181,3 +181,5 @@ Validation 2026-11-21 provenance-gates: exactly ONE gated Stage A host workflow 
 Validation 2026-11-21 live-T1-C1-canary: exactly ONE existing Stage A workflow checks private release gate rejects T1-only synthetic lab configs and requires 7 fhkvdataiii + 5 mkradio4 meters, while preserving source-of-truth YAML parity and rollback checks; NO FLASH, no secret data, no live RF changes.
 
 Validation 2026-11-21 physical-shadow-evidence-gap: ONE Stage A host workflow for synthetic-only 11-match-equivalent evidence labels, non-proven setter provenance, zero calendar references, privacy-safe aggregate summary and malformed counters; no private logs or IDs, no radio source changes, NO FLASH.
+
+Validation 2026-11-21 calendar-setter-alias: ONE Stage A workflow validates host-only exact upstream `current`/`previous` calendar setter names, mixed alias deduplication, and verbatim staged setter execution; no live radio, firmware, keys, or flash changes.
