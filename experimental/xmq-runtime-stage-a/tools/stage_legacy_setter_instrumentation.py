@@ -34,7 +34,7 @@ def instrument(source: str) -> str:
         'thread_local LabObserver lab_observer = nullptr;\n'
         'using LabBoundObserver = void (*)(const void *, unsigned long long, xmq_runtime::LegacyWriteReport) noexcept;\n'
         'thread_local LabBoundObserver lab_bound_observer = nullptr;\n'
-        'thread_local unsigned long long lab_frame_sequence = 0;\n'
+        '[[maybe_unused]] thread_local unsigned long long lab_frame_sequence = 0;\n'
         'struct LabWriteScope {\n'
         '  xmq_runtime::LegacyWriteJournal &journal;\n'
         '  xmq_runtime::LegacyWriteJournal *previous;\n'
