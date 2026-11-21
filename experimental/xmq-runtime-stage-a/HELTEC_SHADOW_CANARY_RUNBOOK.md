@@ -129,6 +129,23 @@ or an actual full 12-meter equality set. Leave the enabled canary
 read-only; a later host-only journal gate must not be labelled
 `proven` until actual firmware setter hooks are safely audited.
 
+## Host-only correlation token — not yet deployable
+
+The staged legacy setter callback now attaches both the original legacy
+meter-instance pointer and a monotonically increasing *per-thread* successful
+frame sequence to an aggregate write report. Host tests reject stale tokens,
+mix-ups between two meters, and callbacks for failed header/payload parses.
+These tokens are ephemeral correlation aids, **not** meter identifiers, and
+a per-thread sequence is not globally unique across tasks or restarts.
+
+This staging is generated into a **copy** of `meters.cc` for host CI. The
+live `components/wmbus_common` file and deployed Heltec firmware still
+do not emit this evidence. A future integration must explicitly correlate
+the report with the active `handleTelegram()` invocation and consume the
+token synchronously; caching a pointer or relying on the numeric
+snapshot alone is not acceptable. Never report `provenance=proven`
+merely because a token or a field mask exists.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
