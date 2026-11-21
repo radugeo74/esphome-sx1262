@@ -154,10 +154,13 @@ static unsigned callbacks{};
 static xmq_runtime::LegacyWriteReport last{};
 static const void *bound_owner{};
 static unsigned bound_callbacks{};
+static unsigned long long bound_frame_sequence{};
 static xmq_runtime::LegacyWriteReport bound_last{};
-static void on_bound(const void *owner, xmq_runtime::LegacyWriteReport report) noexcept {
+static void on_bound(const void *owner, unsigned long long seq,
+                     xmq_runtime::LegacyWriteReport report) noexcept {
   ++bound_callbacks;
   bound_owner = owner;
+  bound_frame_sequence = seq;
   bound_last = report;
 }
 static void on_report(xmq_runtime::LegacyWriteReport r) noexcept {
@@ -194,7 +197,8 @@ int main() {
     require(meter.handleTelegram(about, {0xA1, 0x01}, false,
                                  &addresses, &matched, &analyzed),
             "heat frame rejected");
-    require(bound_callbacks == 1 && bound_owner == &meter &&
+    require(bound_callbacks == 1 && bound_frame_sequence == 1 &&
+            bound_owner == &meter &&
             bound_last.numeric_field_mask == 1 && bound_last.date_field_mask == 2,
             "bound heat report was not attributed to the actual meter instance");
     require(matched && callbacks == 1 && last.numeric_field_mask == 1 &&
@@ -205,6 +209,8 @@ int main() {
     require(meter.handleTelegram(about, {0xA1, 0x01}, false,
                                  &addresses, &matched, &analyzed),
             "repeated heat frame rejected");
+    require(bound_callbacks == 2 && bound_frame_sequence == 2,
+            "repeated frame reused an old provenance token");
     require(callbacks == 2 && last.numeric_writes == 1 &&
             last.string_writes == 1, "repeated heat frame was not observed");
     // Water: no heat date allowed to carry over.
@@ -212,7 +218,8 @@ int main() {
     require(meter.handleTelegram(about, {0xA1, 0x01}, false,
                                  &addresses, &matched, &analyzed),
             "water frame rejected");
-    require(bound_callbacks == 3 && bound_owner == &meter &&
+    require(bound_callbacks == 3 && bound_frame_sequence == 3 &&
+            bound_owner == &meter &&
             bound_last.numeric_field_mask == 2 && bound_last.date_field_mask == 0,
             "bound water report leaked heat fields");
     require(callbacks == 3 && last.numeric_field_mask == 2 &&
@@ -223,6 +230,8 @@ int main() {
     require(meter.handleTelegram(about, {0xA1, 0x01}, false,
                                  &addresses, &matched, &analyzed),
             "frame with disabled observer rejected");
+    require(bound_callbacks == 4 && bound_frame_sequence == 4,
+            "disabled unbound callback broke bound frame sequencing");
     require(callbacks == 3 && meter.updates == 4,
             "disabled observer changed decoding/update flow");
     // An unrelated meter may use the same driver, but cannot inherit the
@@ -231,7 +240,8 @@ int main() {
     require(other.handleTelegram(about, {0xA1, 0x01}, false,
                                  &addresses, &matched, &analyzed),
             "second meter frame rejected");
-    require(bound_callbacks == 5 && bound_owner == &other &&
+    require(bound_callbacks == 5 && bound_frame_sequence == 5 &&
+            bound_owner == &other &&
             bound_last.numeric_field_mask == 1 &&
             bound_last.date_field_mask == 2 &&
             callbacks == 3 && other.updates == 1,
