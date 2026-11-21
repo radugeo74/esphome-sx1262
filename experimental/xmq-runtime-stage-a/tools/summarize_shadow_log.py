@@ -63,6 +63,12 @@ def summarize(lines):
                 stats[key] = max(stats[key], value)
             else:
                 stats[key] += value
+        if fields.get("xmq_fields_ready") == "1":
+            stats["xmq_independent_fields_ready"] += 1
+        elif fields.get("xmq_fields_ready") == "0":
+            stats["xmq_independent_fields_incomplete"] += 1
+        if fields.get("primary_transport") == "legacy_verified":
+            stats["legacy_verified_transport"] += 1
         disposition = fields.get("disposition", "")
         if disposition == "1":
             stats["matches"] += 1
@@ -99,7 +105,10 @@ def format_summary(counts, drivers):
             f"compared_fields={stats['compared']} mismatches={stats['mismatches']} "
             f"matched_numeric_dv={stats['matched_numeric_dv']} "
             f"unmatched_numeric_dv={stats['unmatched_numeric_dv']} "
-            f"unproven_observations={stats['unproven_observations']}"
+            f"unproven_observations={stats['unproven_observations']} "
+            f"xmq_fields_ready={stats['xmq_independent_fields_ready']} "
+            f"xmq_fields_incomplete={stats['xmq_independent_fields_incomplete']} "
+            f"legacy_verified_transport={stats['legacy_verified_transport']}"
         )
     total_matches = sum(s["matches"] for s in drivers.values())
     total_differences = sum(s["differences"] for s in drivers.values())
