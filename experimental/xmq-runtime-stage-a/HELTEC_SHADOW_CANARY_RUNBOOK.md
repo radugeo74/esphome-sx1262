@@ -455,6 +455,27 @@ decryption, obtain privacy-safe live CI, link-security mode and
 header category evidence on the Heltec *without keys, IDs or raw
 payloads*; do not infer live formats from synthetic fixture CI.
 
+## CI/TPL security metadata census — host-only first
+
+The isolated `xmq_ci_security_census.h` records only aggregate counts
+per CI bucket A0/A2/72/7A/other and TPL security bucket 0/5/7/other.
+It reads `tpl_ci` and `tpl_sec_mode` from a successfully parsed
+legacy `Telegram`, rejecting failed, discarded or undecrypted inputs.
+No meter IDs, manufacturer identity, raw payload, values, access number,
+AES key, timestamps or per-meter counters are retained.
+
+`test_xmq_real_telegram_contract.cpp` validates the census against
+the real upstream Telegram declaration and tests all three security
+bucket examples with synthetic objects. No radio hook is registered:
+observations from *actual radio frames* are still uncollected.
+An opt-in, privacy-reviewed on-device diagnostic is required before
+concluding which CI/security modes the 12 deployed meters transmit.
+
+Stage A #115 failed compilation because a test tried to copy the real
+`Telegram` object; its copy constructor is private. The fixture now
+constructs independent `Telegram` objects and copies only fields
+explicitly needed by the test. This does not modify the legacy class.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
