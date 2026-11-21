@@ -27,11 +27,34 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
   try {
     if (!budget_.consume()) return;
     ++inspected_;
-    // One aggregate status line when the bounded session uses its final slot.
-    // There is no log on every suppressed frame and no meter identification.
-    if (inspected_ == kMaxObservations)
-      ESP_LOGI(TAG, "XMQ shadow hourly observation budget exhausted (max %u, read-only)",
+    // Observe only legacy post-decode callback metadata. The callback is
+    // scoped to the shadow-integrated legacy drivers, NOT all radio frames.
+    // No IDs, ACC, manufacturer, ciphertext or sensor values are retained.
+    ci_census_.observe_telegram(telegram, decoded);
+    // Emit one bounded aggregate per full observation window, never raw
+    // frames or per-meter metadata. Fields are grouped by CI and TPL mode.
+    if (inspected_ == kMaxObservations) {
+      ESP_LOGI(TAG,
+               "XMQ CI/TPL census scoped=legacy_shadow_callback "
+               "A0=[%u,%u,%u,%u] A2=[%u,%u,%u,%u] "
+               "72=[%u,%u,%u,%u] 7A=[%u,%u,%u,%u] "
+               "other=[%u,%u,%u,%u] rejected=%u "
+               "mode_order=none,5,7,other privacy=aggregate",
+               ci_census_.accepted[0][0], ci_census_.accepted[0][1],
+               ci_census_.accepted[0][2], ci_census_.accepted[0][3],
+               ci_census_.accepted[1][0], ci_census_.accepted[1][1],
+               ci_census_.accepted[1][2], ci_census_.accepted[1][3],
+               ci_census_.accepted[2][0], ci_census_.accepted[2][1],
+               ci_census_.accepted[2][2], ci_census_.accepted[2][3],
+               ci_census_.accepted[3][0], ci_census_.accepted[3][1],
+               ci_census_.accepted[3][2], ci_census_.accepted[3][3],
+               ci_census_.accepted[4][0], ci_census_.accepted[4][1],
+               ci_census_.accepted[4][2], ci_census_.accepted[4][3],
+               ci_census_.rejected);
+      ESP_LOGI(TAG,
+               "XMQ shadow hourly observation budget exhausted (max %u, read-only)",
                static_cast<unsigned>(kMaxObservations));
+    }
     const auto heap = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT));
     if (heap < min_free_heap_) min_free_heap_ = heap;
     xmq_runtime::ShadowReference old;
