@@ -74,6 +74,13 @@ int main() {
     require(diagnostic.counters().observations == 1,
             "invalid heat field contract consumed diagnostic slot");
 
+    reference.absent_dates.push_back("current_date");
+    require(inspect(writes) == ShadowDisposition::IncompleteReference,
+            "unproven absence of calendar setter was accepted");
+    reference.absent_dates.clear();
+    require(diagnostic.counters().observations == 1,
+            "unproven absent date consumed XMQ comparison budget");
+
     reference.dates["previous_date"] = "2020-12-30";
     require(inspect(writes) == ShadowDisposition::Difference,
             "previous date mismatch hidden by complete write mask");
