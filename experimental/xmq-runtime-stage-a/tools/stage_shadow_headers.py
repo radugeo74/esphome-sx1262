@@ -15,7 +15,15 @@ DEST = ROOT / "components" / "xmq_shadow_probe"
 
 
 def main() -> None:
-    headers = sorted(ROOT.glob("xmq_*.h"))
+    # CBC/TPL5 helpers are HOST-ONLY and include aes.h from the legacy
+    # tree. Staging them makes ESPHome's generated all-header esphome.h
+    # include aes.h from the wrong component, even though nothing uses CBC.
+    # Never silently vendor encryption code into the read-only probe.
+    host_only = {"xmq_tpl5_cbc.h", "xmq_tpl5_direct_header.h"}
+    headers = sorted(
+        source for source in ROOT.glob("xmq_*.h")
+        if source.name not in host_only
+    )
     if not headers:
         raise RuntimeError("No original Stage A XMQ headers found")
     DEST.mkdir(parents=True, exist_ok=True)
@@ -44,6 +52,12 @@ def main() -> None:
             copy2(source, target)
         checksum = hashlib.sha256(original).hexdigest()[:12]
         print(f"STAGED {source.name} source_sha256={checksum}")
+    for excluded in host_only:
+        # Fail closed if an old generated copy could be picked up by the
+        # generated ESPHome umbrella header on a reused workspace.
+        stale = DEST / excluded
+        if stale.exists():
+            stale.unlink()
     print(f"XMQ_STAGING_OK {len(headers)} headers; reader has build-only macro guard")
 
 
