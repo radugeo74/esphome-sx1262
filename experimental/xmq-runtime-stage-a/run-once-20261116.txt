@@ -213,3 +213,5 @@ Validation 2026-11-21 exclude-host-only-TPL5-AES-from-ESPHome: ONE Stage A workf
 Validation 2026-11-21 exact configured meter routing identity: ONE Stage A workflow tests CI7A DLL vs CI72 inner TPL same-frame M/A bytes, original MVT selection, reject other ID/Mfct/version/type, synthetic AES/TPL5-to-XMQ fixtures, staging isolation and all four Heltec/ESP32 build gates. No real keys, no firmware flash, legacy remains sole HA publisher.
 
 Validation 2026-11-21 strict CI/encoding admission: SINGLE Stage A run confirms same-frame identity, rejects synthetic OriginalIxml mkradio4 bytes as live CI 0x72/0x7A StandardDv, rejects ciphertext, and does not treat mode-5 2F2F sentinel as authentication; existing synthetic crypto/XMQ host suites + four ESP32/Heltec compilation gates. No production flash, keys or sensor updates.
+
+Validation 2026-11-21 fix CI host-only transitive TPL5 includes: ONE existing Stage A run checks four excluded host-only headers xmq_tpl5_{cbc,direct_header,identity_gate,live_admission}.h, clean/stale ESPHome staging regression, synthetic CI/encoding XMQ checks, 4 firmware host/ESPHome compilation jobs, NO FLASH.
