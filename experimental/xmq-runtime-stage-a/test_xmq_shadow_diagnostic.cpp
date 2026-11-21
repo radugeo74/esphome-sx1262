@@ -35,6 +35,27 @@ int main() {
             disabled.counters().min_free_heap==120000,
             "matched counters / heap sample incorrect");
 
+    // The same XMQ parse reports field readiness without reading legacy
+    // values or making a second projection. A bad contract fails closed.
+    PrimaryReadiness independent;
+    ShadowDiagnostic single_pass(2);
+    single_pass.set_enabled(true);
+    require(single_pass.inspect(registry, {"HYD",0xFE,0x06},
+                ApplicationEncoding::StandardDv, valid, old,
+                0, false, "mkradio4a", {"target_m3"}, &independent,
+                {"target_date"}) == ShadowDisposition::Match,
+            "single-pass readiness changed legacy shadow outcome");
+    require(independent.ready && independent.required == 2 &&
+            independent.available == 2,
+            "single-pass independent readiness omitted XMQ date/numeric");
+    independent.ready = true;
+    require(single_pass.inspect(registry, {"HYD",0xFE,0x06},
+                ApplicationEncoding::StandardDv, {}, old,
+                0, false, "mkradio4a", {"target_m3"}, &independent,
+                {"target_date"}) == ShadowDisposition::UnsupportedOrError &&
+            !independent.ready && independent.available == 0,
+            "failed parse retained stale readiness from prior telegram");
+
     // A caller that provides no reference fields must never report MATCH.
     // Zero comparisons are not independent evidence of parser parity.
     ShadowReference empty_reference;
