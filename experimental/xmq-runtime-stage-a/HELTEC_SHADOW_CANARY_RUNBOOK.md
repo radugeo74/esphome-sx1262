@@ -415,6 +415,25 @@ are removed. The staging regression test covers all four:
 Do not flash Heltec before the bundled compile and host tests
 finish green.
 
+## CI-origin classification before any direct XMQ activation
+
+`xmq_ci_route_contract.h` now distinguishes the two evidence-backed
+classes already recognized by the original `xmq_telegram_capture.h`:
+manufacturer-specific **CI 0xA0/0xA2 -> OriginalIxml**, available
+only as a successfully decrypted and handled **legacy verified**
+application, versus standard **CI 0x72/0x7A -> StandardDv**, either
+legacy verified or a *candidate* direct TPL5 path. The latter is
+**not authorized for publication** simply by its CI classification;
+it still requires DLL CRC, correct meter binding, actual decrypt
+provenance and the independent XMQ readiness gate.
+
+The classifier rejects unknown CI, wrong encoding, missing CRC evidence,
+unverified proprietary payload and ambiguous dual-provenance requests.
+`test_xmq_ci_route_contract.cpp` exercises each distinction with host
+synthetic inputs. This is an isolation rule, not a claim that
+actual private meter frames use a particular CI; complete live
+telegram samples must establish that before selecting the direct route.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
