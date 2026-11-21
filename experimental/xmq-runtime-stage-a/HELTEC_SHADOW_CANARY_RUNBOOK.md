@@ -41,6 +41,41 @@ Never flash that synthetic CI fixture to the live device. The original
    firmware image, memory and rollback checks, and explicit user approval.
    Maintain legacy ownership of every sensor. Do not replace the decoder.
 
+## Hardware-specific guard for the existing T1_C1 installation
+
+**DO NOT FLASH** `heltec-xmq-shadow-enabled-lab.yaml`,
+`heltec-xmq-canary.yaml`, or `heltec-xmq-canary-12-meters.yaml`
+to the real 12-meter Heltec. The 12-meter GitHub fixture intentionally
+uses `native_stream_mode: T1` and `mode: [T1]` for host compilation,
+whereas the working Heltec installation uses **`T1_C1`**. A green GitHub
+build is not evidence that the fixture preserves its actual radio settings.
+
+Use the **private, running, known-good YAML** as the source of truth for
+every candidate. Preserve the active SX126x pins, 868.95 MHz parameters,
+`native_stream_mode: T1_C1`, all 12 meter modes/IDs/keys, entity names,
+Wi-Fi, API and OTA settings, and the existing legacy-only HA writer.
+The original 12-meter fixture is only a synthetic compile regression.
+
+1. Preserve the actual known-good image and private YAML, and record the
+   currently installed source revision. Confirm USB rollback works.
+2. Prepare and locally compile the **disabled** XMQ candidate by changing
+   only the reviewed component sources and adding
+   `xmq_shadow_probe.enabled: false`. Run the existing local fail-closed
+   parity and rollback gates; reject any change to T1/C1 or meter topology.
+3. Only after the disabled candidate is independently validated on the
+   physical Heltec, create a **separate enabled candidate** from that exact
+   reviewed private configuration. The only intended semantic change at
+   this stage is `xmq_shadow_probe.enabled: true`; inspect the resolved
+   YAML diff locally and retain the disabled image for immediate rollback.
+   The existing `canary_release_gate.py` intentionally rejects enabled
+   candidates: **do not bypass or weaken that gate**. The enabled image
+   needs its own manual review and explicit installation approval.
+4. Do not publish real configuration, IDs, decryption keys, captures,
+   manifests or firmware backup to GitHub. Do not consider host-only
+   setter-provenance tests proof of live setter attribution: the installed
+   probe still logs `provenance=not_proven` until a separately audited
+   live integration can demonstrate the same-frame contract.
+
 ## What to verify on the device after an approved enabled canary
 
 - Confirm the active build version and uptime in the boot log. Installing an
