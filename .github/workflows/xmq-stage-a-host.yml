@@ -50,6 +50,17 @@ jobs:
           done
           echo "XMQ suite failures: $failures"
           exit "$((failures>0))"
+      - name: Execute isolated TPL5 AES CBC known-answer and reject tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=experimental/xmq-runtime-stage-a
+          g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -I"$dir" -Icomponents/wmbus_common \
+            "$dir/test_xmq_tpl5_cbc.cpp" components/wmbus_common/aes.cc \
+            -o "$RUNNER_TEMP/xmq-tpl5-cbc"
+          "$RUNNER_TEMP/xmq-tpl5-cbc"
       - name: Verify privacy-safe local XMQ shadow log summarizer with synthetic fixtures
         run: python experimental/xmq-runtime-stage-a/tools/test_summarize_shadow_log.py
       - name: Check confidential local canary preflight regression fixtures
