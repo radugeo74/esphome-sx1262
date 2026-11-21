@@ -217,6 +217,25 @@ cannot safely replace legacy for encrypted meters. No private AES keys,
 meter IDs or payloads should be placed in CI, and this host-only contract
 does not change the Heltec image or HA writer.
 
+## TPL security checks before independent AES integration
+
+The host-only direct-radio contract now recognizes TPL security modes 0
+(clear), 5 (AES-CBC IV), and 7 (AES-CBC with KDF/MAC); mode 8 and any
+unrecognized or manufacturer-specific mode fail closed. In addition
+to verified DLL CRC and a cleartext payload, the caller must supply
+security evidence consistent with the mode:
+
+- Mode 0: no decryption claimed.
+- Mode 5: a completed decrypt operation and verified CBC check bytes.
+- Mode 7: a completed decrypt operation, verified CBC check bytes,
+  **and** authenticated MAC.
+
+These booleans must be supplied by a separately audited decryptor; they
+are **not** cryptographic proof by themselves. Tests deliberately use
+public, already-clear fixture payloads plus synthetic evidence flags,
+so a passing test does not establish live AES correctness.
+Production `wmbus_common` still owns decryption and sensors.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
