@@ -112,8 +112,13 @@ int main() {
             "TPL5 wrong access unexpectedly preserved complete plaintext");
     auto wrong_address = header;
     wrong_address.address_a[0] ^= 0x01;
-    require(!decrypt_tpl5_application(full_payload, key, wrong_address, 2).accepted,
-            "TPL5 wrong inner address accepted");
+    // Changing A-field IV bytes 2..7 does not affect 2F2F at bytes 0..1.
+    // The weak CBC sentinel can still pass despite corrupted plaintext.
+    const auto wrong_address_result =
+        decrypt_tpl5_application(full_payload, key, wrong_address, 2);
+    require(wrong_address_result.accepted &&
+            wrong_address_result.plaintext != clear_with_tail,
+            "TPL5 wrong inner address unexpectedly preserved full plaintext");
     const auto all_blocks = decrypt_tpl5_application(synth_cipher, key, header, 0);
     require(all_blocks.accepted && all_blocks.plaintext == synth_clear,
             "TPL5 zero block count should decrypt complete aligned payload");
