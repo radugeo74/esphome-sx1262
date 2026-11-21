@@ -189,3 +189,5 @@ Validation 2026-11-21 per-meter-bound-provenance: exactly ONE Stage A workflow v
 Validation 2026-11-21 host-frame-correlation-sequence: ONE gated Stage A workflow for per-thread successful-frame tokens bound to exact legacy meter instance, repeated same-meter telegrams, failed parse paths, two meters, disabled callbacks, staged-source drift and all preexisting host/firmware build gates. No live source changes, no private data, NO FLASH.
 
 Validation 2026-11-21 XMQ-independent-output-readiness: exactly ONE Stage A workflow validates new host-only fail-closed XMQ primary field production contract against upstream HCA + water fixtures; missing fields, duplicate names, driver mismatch; no HA writes or radio changes, NO FLASH.
+
+Validation 2026-11-21 XMQ-independent-readiness CI retry: one grouped Stage A workflow after correcting host-only C++17 unused lab_frame_sequence in exact-setter-body test; prior #99 failed host build, no RF or HA changes; validate XMQ-only output readiness fixtures and all builds. NO FLASH.
