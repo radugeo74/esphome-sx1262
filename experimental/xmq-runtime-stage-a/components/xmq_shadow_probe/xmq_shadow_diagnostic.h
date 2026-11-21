@@ -76,6 +76,13 @@ class ShadowDiagnostic {
         throw std::invalid_argument("invalid shadow tolerance");
       const auto new_outputs=project_verified_application(
           registry,inner_mvt,encoding,clear_application,explicit_driver);
+      // A zero-field comparison cannot establish parity. Fail closed even
+      // when the caller forgets to supply an expected-field contract.
+      if (old_outputs.numeric.empty() && old_outputs.dates.empty() &&
+          old_outputs.absent_numeric.empty() && old_outputs.absent_dates.empty()) {
+        ++counters_.skipped;
+        return ShadowDisposition::IncompleteReference;
+      }
       // In strict mode, an incomplete legacy snapshot must not pass as MATCH.
     // The complete expected field list is a caller-supplied contract for
     // each telegram variant; never infer "parity" from only one known value.
