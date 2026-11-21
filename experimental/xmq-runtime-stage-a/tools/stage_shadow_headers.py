@@ -19,7 +19,8 @@ def main() -> None:
     # tree. Staging them makes ESPHome's generated all-header esphome.h
     # include aes.h from the wrong component, even though nothing uses CBC.
     # Never silently vendor encryption code into the read-only probe.
-    host_only = {"xmq_tpl5_cbc.h", "xmq_tpl5_direct_header.h"}
+    host_only = {"xmq_tpl5_cbc.h", "xmq_tpl5_direct_header.h",
+                 "xmq_tpl5_identity_gate.h", "xmq_tpl5_live_admission.h"}
     headers = sorted(
         source for source in ROOT.glob("xmq_*.h")
         if source.name not in host_only
