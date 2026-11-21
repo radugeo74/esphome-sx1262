@@ -121,7 +121,7 @@ int main() {
     MeterCommonImplementation meter;
     FieldInfo heat{"current_hca"};
     FieldInfo water{"total_m3"};
-    FieldInfo date{"previous_date"};
+    FieldInfo date{"previous"};
     DVEntry entry{};
     xmq_runtime::LegacyWriteJournal journal(12, 20);
     lab_journal = &journal;
@@ -135,11 +135,11 @@ int main() {
     require(journal.wrote_numeric("current_hca_dv"), "generated DV numeric key missing");
     require(journal.wrote_numeric("total_m3_dv"), "generated water DV key missing");
     require(!journal.wrote_numeric("total_m3"), "template was falsely attributed");
-    require(journal.wrote_string("previous_date"), "no-DV text key missing");
-    require(journal.wrote_string("previous_date_dv"), "generated DV text key missing");
+    require(journal.wrote_string("previous"), "no-DV text key missing");
+    require(journal.wrote_string("previous_dv"), "generated DV text key missing");
     require(meter.numeric_values_.count({"current_hca_dv", Unit::Unitless}) == 1,
             "generated numeric key not actually stored");
-    require(meter.string_values_.count("previous_date_dv") == 1,
+    require(meter.string_values_.count("previous_dv") == 1,
             "generated text key not actually stored");
     require(journal.counts().numeric_writes == 3 &&
             journal.counts().string_writes == 2 &&
@@ -150,7 +150,7 @@ int main() {
     require(journal.counts().numeric_writes == 1 &&
             journal.wrote_numeric("current_hca") &&
             !journal.wrote_numeric("current_hca_dv") &&
-            !journal.wrote_string("previous_date"),
+            !journal.wrote_string("previous"),
             "previous frame leaked or unchanged write missed");
     journal.end_telegram();
     lab_journal = nullptr;
