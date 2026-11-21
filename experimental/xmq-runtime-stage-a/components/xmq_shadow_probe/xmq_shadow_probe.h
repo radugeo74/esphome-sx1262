@@ -7,6 +7,7 @@
 #include "xmq_compat_include.h"
 #include "xmq_live_capture_hook.h"
 #include "xmq_shadow_budget.h"
+#include "xmq_ci_security_census.h"
 #include <memory>
 
 namespace esphome {
@@ -31,6 +32,7 @@ class ShadowProbe : public Component {
       unsupported_ = 0;
       no_reference_ = 0;
       diagnostic_ = xmq_runtime::ShadowDiagnostic(kMaxObservations, 0.051);
+      ci_census_ = xmq_runtime::CiSecurityCensus{};
       diagnostic_.set_enabled(true);
       ESP_LOGI("xmq_shadow_probe",
                "XMQ shadow hourly observation budget renewed (max %u, read-only)",
@@ -49,6 +51,7 @@ class ShadowProbe : public Component {
   uint32_t no_reference_{0};
   std::unique_ptr<xmq_runtime::DriverRegistry> registry_;
   xmq_runtime::ShadowDiagnostic diagnostic_{128, 0.051};
+  xmq_runtime::CiSecurityCensus ci_census_{};
   uint32_t min_free_heap_{UINT32_MAX};
   static constexpr uint32_t kMaxObservations = kShadowWindowMaxObservations;
 };
