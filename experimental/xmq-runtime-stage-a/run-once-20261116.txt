@@ -177,3 +177,5 @@ Validation batch 2026-11-21 log-window: ONE Stage A workflow validates hourly ro
 Validation batch 2026-11-21 empty-reference: ONE Stage A workflow tests fail-closed zero-field XMQ comparison plus existing local log-window regression; no radio/legacy changes, NO FLASH.
 
 Validation 2026-11-21 provenance-gates: exactly ONE gated Stage A host workflow for original mkradio4/fhkvdataiii same-telegram legacy setter evidence, missing or extra cached fields, impossible setter counts, unproven absence claims and existing shadow regressions; no secrets, no radio modifications, no device flash.
+
+Validation 2026-11-21 live-T1-C1-canary: exactly ONE existing Stage A workflow checks private release gate rejects T1-only synthetic lab configs and requires 7 fhkvdataiii + 5 mkradio4 meters, while preserving source-of-truth YAML parity and rollback checks; NO FLASH, no secret data, no live RF changes.
