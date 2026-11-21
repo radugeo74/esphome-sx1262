@@ -339,6 +339,26 @@ requires verified full-frame semantics, decryption identity, correct
 application boundaries, anti-stale behavior and a tested fallback.
 Neither real meter keys nor IDs are included in GitHub or logs.
 
+## Stage A #109 host-only AES header isolation
+
+Stage A #109 proved the synthetic TPL5 -> CBC -> XMQ host test
+but failed two ESPHome Heltec builds because the generic shadow-header
+staging copied `xmq_tpl5_cbc.h` (and its transitive
+`#include "aes.h"`) into the ESPHome component umbrella header.
+The CBC experiment is **not used by the on-device shadow probe**.
+
+`tools/stage_shadow_headers.py` now excludes both
+`xmq_tpl5_cbc.h` and `xmq_tpl5_direct_header.h` from ESPHome
+staging, and purges stale generated copies while leaving the host
+sources untouched. `tools/test_shadow_staging_allowlist.py`
+regresses that behavior on a temporary workspace. Host crypto
+tests still compile against the original `wmbus_common/aes.cc`.
+
+This is dependency isolation only: it does not grant any encrypted
+meter the right to publish from XMQ, change T1/C1 RF, update HA,
+or install firmware. A successful next CI must confirm all five
+jobs before attempting further on-device work.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
