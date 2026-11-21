@@ -49,6 +49,9 @@ assert "source_mkradio4()" in probe
 assert "source_fhkvdataiii()" in probe
 assert "old.numeric.empty()" in probe
 assert "provenance=not_proven" in probe
+assert "XMQ shadow hourly observation budget exhausted" in probe
+assert "if (inspected_ == kMaxObservations)" in probe
+assert "static_cast<unsigned>(kMaxObservations)" in probe
 assert "changed_numeric" in probe
 assert "matched_numeric_dv" in probe
 assert "unmatched_numeric_dv" in probe
