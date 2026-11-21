@@ -74,4 +74,31 @@ inline PrimaryReadiness inspect_primary_readiness(
   }
   return report;
 }
+// Decode verified application bytes using XMQ ONLY, then gate the complete
+// expected fields before returning them. Never reads legacy snapshots.
+// On ANY failure the destination is cleared and is not publishable.
+// This remains host-only until a reviewed on-device adapter exists.
+inline bool decode_primary_candidate(
+    const DriverRegistry &registry, const Mvt &inner_mvt,
+    ApplicationEncoding encoding, const std::vector<uint8_t> &clear_application,
+    const std::string &expected_driver,
+    const std::vector<std::string> &required_numeric,
+    const std::vector<std::string> &required_dates,
+    XmqFrameResult &destination) noexcept {
+  try {
+    destination = XmqFrameResult{};
+    // Do not accept auto-detection selecting a different driver.
+    const auto projected = project_verified_application(
+        registry, inner_mvt, encoding, clear_application, expected_driver);
+    const auto ready = inspect_primary_readiness(
+        projected, expected_driver, required_numeric, required_dates);
+    if (!ready.ready) return false;
+    destination = projected;
+    return true;
+  } catch (...) {
+    destination = XmqFrameResult{};
+    return false;
+  }
+}
+
 } // namespace xmq_runtime
