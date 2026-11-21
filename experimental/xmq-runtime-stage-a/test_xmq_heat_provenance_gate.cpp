@@ -62,6 +62,17 @@ int main() {
     require(diagnostic.counters().observations == 1,
             "dropped write unexpectedly called XMQ evaluator");
     writes.dropped_writes = 0;
+    // A stale cached value cannot be approved by a mask for other fields.
+    reference.dates.erase("previous_date");
+    require(inspect(writes) == ShadowDisposition::IncompleteReference,
+            "missing previous_date falsely accepted by write mask");
+    reference.dates["previous_date"] = "2020-12-31";
+    reference.numeric["unsupported_heat_field"] = 1.0;
+    require(inspect(writes) == ShadowDisposition::IncompleteReference,
+            "unknown heat reference field was accepted");
+    reference.numeric.erase("unsupported_heat_field");
+    require(diagnostic.counters().observations == 1,
+            "invalid heat field contract consumed diagnostic slot");
 
     reference.dates["previous_date"] = "2020-12-30";
     require(inspect(writes) == ShadowDisposition::Difference,
