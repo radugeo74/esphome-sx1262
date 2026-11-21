@@ -313,6 +313,32 @@ SX1262 receiver, Home Assistant sensor state and OTA image have not
 been modified. No flash until real-device proven end-to-end parity
 and a tested rollback.
 
+## Synthetic end-to-end direct TPL5 to XMQ host fixture
+
+`test_xmq_tpl5_to_xmq.cpp` now uses the public original
+`mkradio4` application fixture, prepends the TPL5 CBC `2F2F`
+sentinel, pads synthetic AES blocks, encrypts them with a PUBLIC NIST
+test key and IV derived from synthetic manufacturer/address/access
+fields, then exercises **CI=7A short and CI=72 long** paths:
+
+- DLL frame length and caller-asserted CRC verification boundary
+- Direct TPL M/A/ACC and security mode 5 header extraction
+- AES-128-CBC decryption of the strict block span
+- Explicit removal of test-only `2F2F` and known fixture padding
+- `decode_primary_candidate()` for real upstream XMQ `mkradio4`
+- Both decoded readings `total_m3=0.4` and `target_m3=0.1`
+
+The complete test does NOT verify live DLL CRC (it sets a synthetic
+caller-verified flag), decrypt any actual meter's ciphertext or derive
+the application length from an unknown frame. The exact plaintext
+length is known in the test from a public upstream fixture. In live
+traffic CBC `2F2F` does not authenticate address, access byte or
+payload, so this test must never authorize direct HA publishing or
+`VerifiedCleartext` trust for received frames. Production still
+requires verified full-frame semantics, decryption identity, correct
+application boundaries, anti-stale behavior and a tested fallback.
+Neither real meter keys nor IDs are included in GitHub or logs.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
