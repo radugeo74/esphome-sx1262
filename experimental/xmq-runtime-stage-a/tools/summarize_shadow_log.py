@@ -74,7 +74,7 @@ def summarize(lines):
             stats["unproven_observations"] += 1
         # A successful numeric snapshot comparison is NOT proof of
         # same-telegram writes. Track missing DV attribution separately.
-        if int(fields.get("compared", "0")) > 0 and (
+        if fields.get("compared", "0").isdigit() and int(fields["compared"]) > 0 and (
             fields.get("provenance") != "proven"
         ):
             stats["comparison_without_provenance"] += 1
