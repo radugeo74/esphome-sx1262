@@ -983,3 +983,11 @@ python experimental/xmq-runtime-stage-a/tools/verify_rollback.py \
 - **#86 a eșuat în verificarea statică**, nu în compilarea firmware-ului: `check_shadow_lab_meter.py` încă cerea vechea expresie `enabled_ && registry_`. Refactorizarea `wants_readings()` din incrementul CA folosește acum explicit `if (!enabled_ || !registry_) return false;`, urmată de verificarea `inspected_ < kMaxObservations`.
 - Am corectat exclusiv aserțiunea învechită, fără să relaxez condiția fail-closed: testul impune în continuare `enabled_`, existența registry-ului, limita 128 pe oră, reînnoirea bazată pe `millis()` cu scădere `uint32_t` și resetarea diagnosticii.
 - Cele patru compilări din #86 au fost **skipped** din cauza jobului host roșu; rezultatul hardware/ESPHome al incrementului CA nu este încă validat de CI. Nicio modificare la radio, YAML-ul personal, chei sau firmware-ul instalat.
+
+## Increment CC — test C++ real al ferestrei XMQ, cu overflow millis (21.11.2026)
+
+- **#87:** jobul host este verde, împreună cu trei joburi de compilare; jobul combinat Heltec/XMQ era în desfășurare la verificarea inițială. Nu afirmăm verde complet până nu se încheie ultimul job.
+- Am extras predicatul folosit **efectiv** de `ShadowProbe::wants_readings()` într-un mic header fără dependențe, `components/xmq_shadow_probe/xmq_shadow_budget.h`: un interval de **3.600.000 ms**, maxim **128 observații**, comparația `uint32_t(now-start) >= window` fără semne.
+- Noul `test_xmq_shadow_window.cpp` exercită C++-ul real al intervalului cu `g++ -fsanitize=address,undefined`: limita cu 1 ms înainte și exact la o oră, valori după limită, **overflow real al contorului `millis()`**, și o a doua fereastră după resetare. Marker: `XMQ_SHADOW_WINDOW_OK`.
+- Verificarea statică `check_shadow_lab_meter.py` impune utilizarea helperului în observatorul de firmware; nu permitem validarea unui algoritm de test diferit față de cel instalabil.
+- Aceasta nu dovedește că firmware-ul existent pe Heltec s-a actualizat sau că un timer de pe dispozitiv a declanșat logul de reînnoire; implementarea continuă să reînnoiască doar la prima telegramă ulterioară unei ferestre expirate. Nu se modifică radio, senzori, credențiale, YAML privat sau firmware-ul instalat.
