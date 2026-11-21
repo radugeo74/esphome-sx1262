@@ -5,6 +5,7 @@
 // its correct INNER meter MVT/format, and values already published by the
 // existing decoder. Failures do not propagate to that existing decoder.
 #include "xmq_shadow_compare.h"
+#include "xmq_primary_readiness.h"
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -54,7 +55,10 @@ class ShadowDiagnostic {
                             size_t free_heap=0,
                             bool valid_heap_sample=false,
                             const std::string &explicit_driver="",
-                            const std::vector<std::string> &expected_numeric={}) noexcept {
+                            const std::vector<std::string> &expected_numeric={},
+                            PrimaryReadiness *primary=nullptr,
+                            const std::vector<std::string> &primary_dates={}) noexcept {
+    if (primary != nullptr) *primary = PrimaryReadiness{};
     if (!enabled_) {
       ++counters_.skipped;
       return ShadowDisposition::Disabled;
@@ -76,6 +80,12 @@ class ShadowDiagnostic {
         throw std::invalid_argument("invalid shadow tolerance");
       const auto new_outputs=project_verified_application(
           registry,inner_mvt,encoding,clear_application,explicit_driver);
+      // Primary candidate is derived from the existing XMQ projection,
+      // never from legacy snapshots. No second parser execution.
+      if (primary != nullptr) {
+        *primary = inspect_primary_readiness(
+            new_outputs, explicit_driver, expected_numeric, primary_dates);
+      }
       // A zero-field comparison cannot establish parity. Fail closed even
       // when the caller forgets to supply an expected-field contract.
       if (old_outputs.numeric.empty() && old_outputs.dates.empty() &&
