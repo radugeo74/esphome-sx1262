@@ -75,7 +75,13 @@ int main() {
             "real proprietary CI could bypass verified legacy parser");
 
     // Only a declared standard CI may enter the standard DV path.
-    auto standard = original;
+    ::Telegram standard;
+    standard.decryption_failed = false;
+    standard.discard = false;
+    standard.header_size = original.header_size;
+    standard.suffix_size = original.suffix_size;
+    standard.frame = original.frame;
+    standard.addresses = original.addresses;
     standard.tpl_ci = 0x7A;
     VerifiedApplication standard_snapshot;
     require(capture_verified_payload(
@@ -102,7 +108,13 @@ int main() {
                 XmqTelegramRoute::Reject,
             "real Telegram standard CI bypassed CRC evidence");
 
-    auto unknown = original;
+    ::Telegram unknown;
+    unknown.decryption_failed = false;
+    unknown.discard = false;
+    unknown.header_size = original.header_size;
+    unknown.suffix_size = original.suffix_size;
+    unknown.frame = original.frame;
+    unknown.addresses = original.addresses;
     unknown.tpl_ci = 0x8C;
     VerifiedApplication denied;
     require(!capture_verified_payload(
