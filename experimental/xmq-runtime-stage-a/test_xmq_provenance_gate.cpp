@@ -49,6 +49,18 @@ int main() {
     require(diagnostic.counters().observations == 1,
             "dropped report called XMQ parser");
     writes.dropped_writes = 0;
+    // A valid-looking write mask must not certify an extra cached value.
+    reference.numeric["unexpected_cached_field"] = 123.0;
+    require(inspect(writes) == ShadowDisposition::IncompleteReference,
+            "unexpected cached field bypassed setter-to-reference contract");
+    reference.numeric.erase("unexpected_cached_field");
+    // Even a real setter cannot validate an absent legacy reference field.
+    reference.numeric.erase("target_m3");
+    require(inspect(writes) == ShadowDisposition::IncompleteReference,
+            "reference subset falsely certified with complete setter mask");
+    reference.numeric["target_m3"] = 0.1;
+    require(diagnostic.counters().observations == 1,
+            "bad reference-to-mask contract invoked XMQ decoder");
     reference.numeric["total_m3"] = 0.5;
     require(inspect(writes) == ShadowDisposition::Difference,
             "a real numeric mismatch was hidden by write evidence");
