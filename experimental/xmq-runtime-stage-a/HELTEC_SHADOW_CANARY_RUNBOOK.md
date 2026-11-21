@@ -379,6 +379,24 @@ Any future sensor-publishing gate must separately establish
 payload provenance, security mode and field semantics, then
 validate the expected 12-meter contract in the real environment.
 
+## CI/encoding gate — synthetic CBC fixture is not live proof
+
+The offline synthetic TPL5-to-XMQ test encrypts original proprietary
+`mkradio4` fixture bytes under standard OMS TPL CI 0x72/0x7A.
+That proves only reversible AES-CBC and independent XMQ numeric
+projection on chosen bytes. **It is not a valid live telegram fixture**:
+CI 0x72/0x7A is the StandardDv encoding path, whereas the original
+proprietary fixture is OriginalIxml. Promotion to live requires exact
+CI/encoding consistency and verified plaintext provenance.
+
+`xmq_tpl5_live_admission.h` rejects proprietary IXML on standard
+CI 0x72/0x7A, rejects ciphertext and preserves the explicit
+prohibition on treating CBC `2F2F` as authentication. The associated
+host assertions make accidental promotion of synthetic fixtures fail
+CI. This gate still does NOT make mode-5 telemetry live-ready:
+a future independent source must establish verifiable meter,
+link and application provenance first.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
