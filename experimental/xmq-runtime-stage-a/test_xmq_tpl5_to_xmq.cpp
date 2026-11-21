@@ -1,5 +1,6 @@
 #include "xmq_tpl5_direct_header.h"
 #include "xmq_tpl5_identity_gate.h"
+#include "xmq_tpl5_live_admission.h"
 #include "xmq_primary_readiness.h"
 #include <array>
 #include <cstdint>
@@ -79,6 +80,23 @@ int main() {
               identity.inner_mvt.version == 0x95 &&
               identity.inner_mvt.type == 0x62,
               "configured inner meter routing identity failed");
+      // Fixture deliberately feeds proprietary mkradio4 bytes through a
+      // synthetic standard OMS CI. It MUST remain an offline crypto/parsing
+      // unit test, not a live transport admission or sensor writer.
+      require(!tpl5_encoding_admissible(ci, ApplicationEncoding::OriginalIxml),
+              "proprietary fixture admitted on standard TPL CI");
+      require(tpl5_encoding_admissible(ci, ApplicationEncoding::StandardDv),
+              "standard OMS CI unexpectedly rejected");
+      require(!admit_direct_tpl5_xmq_candidate(
+                  parsed, identity, ci, ApplicationEncoding::OriginalIxml,
+                  PrimaryPayloadTrust::VerifiedCleartext),
+              "synthetic proprietary fixture falsely admitted to live TPL");
+      require(!admit_direct_tpl5_xmq_candidate(
+                  parsed, identity, ci, ApplicationEncoding::StandardDv,
+                  PrimaryPayloadTrust::Ciphertext),
+              "unverified ciphertext falsely admitted to XMQ");
+      require(!tpl5_cbc_sentinel_proves_verified_cleartext(),
+              "CBC framing check falsely declared cryptographic proof");
       auto wrong_meter = expected;
       wrong_meter.address_a[0] ^= 1;
       require(!inspect_tpl5_routing_identity(parsed, wrong_meter).accepted,
