@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from canary_release_gate import release_gate
+from canary_release_gate import release_gate, require_live_t1_c1_profile
 
 
 def run_tests():
@@ -21,7 +21,14 @@ def run_tests():
 
         def validate(path, fixture):
             events.append(("validate", path.name))
-            return {"file": path.name}
+            return {
+                "file": path.name,
+                "wmbus_radio": {"native_stream_mode": "T1_C1"},
+                "wmbus_meter": (
+                    [{"type": "fhkvdataiii", "mode": ["T1"]} for _ in range(7)] +
+                    [{"type": "mkradio4", "mode": ["T1", "C1"]} for _ in range(5)]
+                ),
+            }
 
         def compare(a, b):
             events.append(("compare", a["file"], b["file"]))
@@ -69,6 +76,24 @@ def run_tests():
                 pass
         assert not events, "identical paths must fail before reading private YAML"
         assert not manifest.exists(), "synthetic tests must not emit a manifest"
+        # A T1-only synthetic CI fixture is NOT a safe real-world fallback.
+        safe = validate(original, True)
+        require_live_t1_c1_profile(safe)
+        for mutation in (
+            lambda c: c["wmbus_radio"].update(native_stream_mode="T1"),
+            lambda c: c["wmbus_meter"].pop(),
+            lambda c: c["wmbus_meter"][0].update(type="mkradio4"),
+            lambda c: c["wmbus_meter"][0].update(mode=["C1"]),
+        ):
+            import copy
+            unsafe = copy.deepcopy(safe)
+            mutation(unsafe)
+            try:
+                require_live_t1_c1_profile(unsafe)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("unsafe live profile was approved")
         print("CANARY_RELEASE_GATE_OK: mandatory YAML parity before image approval, fail closed, no secrets or flashing")
 
 
