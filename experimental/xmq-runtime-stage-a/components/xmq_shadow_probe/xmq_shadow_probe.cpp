@@ -25,6 +25,7 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
                           const LegacyReadings &old_values) noexcept {
   if (!wants_readings()) return;
   try {
+    if (!budget_.consume()) return;
     ++inspected_;
     // One aggregate status line when the bounded session uses its final slot.
     // There is no log on every suppressed frame and no meter identification.
