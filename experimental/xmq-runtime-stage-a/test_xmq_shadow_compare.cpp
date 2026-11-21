@@ -77,6 +77,33 @@ int main() {
                 {"current_date", "previous_date"}).ready,
             "nonfinite XMQ numeric output accepted for sensor publishing");
 
+    XmqFrameResult ready_output;
+    require(decode_primary_candidate(
+                registry, {"TCH", 0x94, 0x80},
+                ApplicationEncoding::OriginalIxml,
+                parse_hex("0F9F292D005024040011BD08380904000000070000000000000000000000000001000000000003140E"),
+                "fhkvdataiii",
+                {"current_hca", "previous_hca", "temp_room_c", "temp_radiator_c"},
+                {"current_date", "previous_date"}, ready_output),
+            "independent XMQ HCA decoder rejected original fixture");
+    require(ready_output.driver == "fhkvdataiii" &&
+            ready_output.numeric.size() >= 4 && ready_output.dates.size() >= 2,
+            "XMQ-only HCA output missing required sensors");
+    require(!decode_primary_candidate(
+                registry, {"TCH", 0x94, 0x80},
+                ApplicationEncoding::OriginalIxml,
+                {0x00}, "fhkvdataiii", {"current_hca"}, {},
+                ready_output) &&
+            ready_output.numeric.empty() && ready_output.dates.empty(),
+            "failed decode retained stale data from previous telegram");
+    require(!decode_primary_candidate(
+                registry, {"TCH", 0x94, 0x80},
+                ApplicationEncoding::OriginalIxml,
+                parse_hex("0F9F292D005024040011BD08380904000000070000000000000000000000000001000000000003140E"),
+                "fhkvdataiii", {"missing_field"}, {}, ready_output) &&
+            ready_output.numeric.empty() && ready_output.dates.empty(),
+            "incomplete field contract retained stale XMQ output");
+
     const auto oms=project_verified_application(
       registry,{"TCH",0x94,0x80},ApplicationEncoding::StandardDv,
       parse_hex("036E980000436E440400426C3F3C0F0F0AE388E05EADCD9772"));
@@ -100,6 +127,16 @@ int main() {
     require(!inspect_primary_readiness(
                 water, "mkradio4", {"target_m3", "total_m3", "other"}).ready,
             "incomplete water frame accepted");
+    require(decode_primary_candidate(
+                registry, {"TCH", 0x95, 0x62},
+                ApplicationEncoding::OriginalIxml,
+                parse_hex("06702901006017030004000300000000000000000000000000000000000000000000"),
+                "mkradio4", {"target_m3", "total_m3"}, {},
+                ready_output) &&
+            ready_output.driver == "mkradio4" &&
+            ready_output.numeric.count("target_m3") == 1 &&
+            ready_output.numeric.count("total_m3") == 1,
+            "independent XMQ water decoder failed to produce both sensors");
     ShadowReference mk4_expected;
     mk4_expected.numeric={{"total_m3",0.4},{"target_m3",0.1}};
     report=compare_shadow_reference(water,mk4_expected);
