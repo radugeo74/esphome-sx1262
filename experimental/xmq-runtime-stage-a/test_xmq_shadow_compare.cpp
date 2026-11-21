@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -51,6 +52,30 @@ int main() {
     require(!inspect_primary_readiness(
                 hca, "fhkvdataiii", {"field_not_in_frame"}).ready,
             "missing primary output accepted");
+
+    require(valid_primary_iso_date("2024-02-29") &&
+            !valid_primary_iso_date("2025-02-29") &&
+            valid_primary_iso_date("2000-02-29") &&
+            !valid_primary_iso_date("1900-02-29") &&
+            !valid_primary_iso_date("2025-99-99") &&
+            !valid_primary_iso_date("yyyy-12-01") &&
+            !valid_primary_iso_date("0000-01-01"),
+            "invalid calendar date accepted as XMQ primary ready");
+    auto corrupted_date = hca;
+    corrupted_date.dates["current_date"] = "2025-99-99";
+    require(!inspect_primary_readiness(
+                corrupted_date, "fhkvdataiii",
+                {"current_hca", "previous_hca", "temp_room_c", "temp_radiator_c"},
+                {"current_date", "previous_date"}).ready,
+            "invalid XMQ calendar output accepted for sensor publishing");
+    auto corrupt_numeric = hca;
+    corrupt_numeric.numeric["current_hca"].value =
+        std::numeric_limits<double>::quiet_NaN();
+    require(!inspect_primary_readiness(
+                corrupt_numeric, "fhkvdataiii",
+                {"current_hca", "previous_hca", "temp_room_c", "temp_radiator_c"},
+                {"current_date", "previous_date"}).ready,
+            "nonfinite XMQ numeric output accepted for sensor publishing");
 
     const auto oms=project_verified_application(
       registry,{"TCH",0x94,0x80},ApplicationEncoding::StandardDv,
