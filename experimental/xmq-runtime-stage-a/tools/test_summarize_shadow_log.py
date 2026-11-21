@@ -46,4 +46,22 @@ assert "provenance" in summary and "NOT proof" in summary
 assert "matched_numeric_dv=0" in summary
 assert "shadow_budget: exhausted=1 renewed=1" in summary
 assert "no observed comparisons" in module.format_summary(*module.summarize([]))
+
+# The firmware restarts its observed/captured/rejected snapshots every hour.
+# Do not let an exhausted prior window mask the smaller renewed value.
+two_windows = [
+    "[I][xmq_shadow_probe]: Live XMQ shadow: driver=mkradio4 disposition=1 "
+    "compared=2 mismatches=0 observed=128 captured=120 rejected=8 provenance=not_proven",
+    "[I][xmq_shadow_probe]: XMQ shadow hourly observation budget renewed (max 128, read-only)",
+    "[I][xmq_shadow_probe]: Live XMQ shadow: driver=mkradio4 disposition=1 "
+    "compared=2 mismatches=0 observed=1 captured=1 rejected=0 provenance=not_proven",
+]
+window_counts, window_drivers = module.summarize(two_windows)
+assert window_counts["shadow_budget_renewed"] == 1
+assert window_drivers["mkradio4"]["observations"] == 2
+assert window_drivers["mkradio4"]["matches"] == 2
+assert window_drivers["mkradio4"]["observed"] == 1
+assert window_drivers["mkradio4"]["captured"] == 1
+assert window_drivers["mkradio4"]["rejected"] == 0
+
 print("SHADOW_LOCAL_LOG_SUMMARY_OK: aggregated synthetic T1/C1 and XMQ diagnostics; IDs/payload never printed")
