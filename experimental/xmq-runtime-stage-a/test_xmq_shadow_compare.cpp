@@ -1,4 +1,5 @@
 #include "xmq_shadow_compare.h"
+#include "xmq_primary_readiness.h"
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -34,6 +35,23 @@ int main() {
     require(report.equal() && report.compared==6,
             "upstream proprietary HCA reference does not match");
 
+    // Independent XMQ-produced fields: NOT read from an old sensor snapshot.
+    const auto hca_primary = inspect_primary_readiness(
+        hca, "fhkvdataiii",
+        {"current_hca", "previous_hca", "temp_room_c", "temp_radiator_c"},
+        {"current_date", "previous_date"});
+    require(hca_primary.ready && hca_primary.available == 6,
+            "independent HCA primary candidate lacks required fields");
+    require(!inspect_primary_readiness(
+                hca, "mkradio4", {"current_hca"}).ready,
+            "wrong XMQ driver accepted as primary");
+    require(!inspect_primary_readiness(
+                hca, "fhkvdataiii", {"current_hca", "current_hca"}).ready,
+            "duplicate primary field accepted");
+    require(!inspect_primary_readiness(
+                hca, "fhkvdataiii", {"field_not_in_frame"}).ready,
+            "missing primary output accepted");
+
     const auto oms=project_verified_application(
       registry,{"TCH",0x94,0x80},ApplicationEncoding::StandardDv,
       parse_hex("036E980000436E440400426C3F3C0F0F0AE388E05EADCD9772"));
@@ -50,6 +68,13 @@ int main() {
     const auto water=project_verified_application(
       registry,{"TCH",0x95,0x62},ApplicationEncoding::OriginalIxml,
       parse_hex("06702901006017030004000300000000000000000000000000000000000000000000"));
+    const auto water_primary = inspect_primary_readiness(
+        water, "mkradio4", {"target_m3", "total_m3"});
+    require(water_primary.ready && water_primary.available == 2,
+            "independent water primary candidate lacks required fields");
+    require(!inspect_primary_readiness(
+                water, "mkradio4", {"target_m3", "total_m3", "other"}).ready,
+            "incomplete water frame accepted");
     ShadowReference mk4_expected;
     mk4_expected.numeric={{"total_m3",0.4},{"target_m3",0.1}};
     report=compare_shadow_reference(water,mk4_expected);
