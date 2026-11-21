@@ -397,6 +397,24 @@ CI. This gate still does NOT make mode-5 telemetry live-ready:
 a future independent source must establish verifiable meter,
 link and application provenance first.
 
+## Stage A #112 transitive host-only header isolation
+
+The CI for the strict CI/encoding gate exposed an ESPHome packaging
+failure, not an XMQ host decoder failure: the shadow staging script
+copied `xmq_tpl5_identity_gate.h`, which includes the host-only
+`xmq_tpl5_direct_header.h`. The latter is deliberately excluded
+from the generated ESPHome image. The new
+`xmq_tpl5_live_admission.h` has the same transitive host-only
+dependency.
+
+Both additional headers are now excluded and stale generated copies
+are removed. The staging regression test covers all four:
+`xmq_tpl5_cbc.h`, `xmq_tpl5_direct_header.h`,
+`xmq_tpl5_identity_gate.h`, and
+`xmq_tpl5_live_admission.h`. No extra workflow is added.
+Do not flash Heltec before the bundled compile and host tests
+finish green.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
