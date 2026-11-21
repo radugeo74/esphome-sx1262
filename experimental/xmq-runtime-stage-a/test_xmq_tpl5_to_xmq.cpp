@@ -1,4 +1,5 @@
 #include "xmq_tpl5_direct_header.h"
+#include "xmq_tpl5_identity_gate.h"
 #include "xmq_primary_readiness.h"
 #include <array>
 #include <cstdint>
@@ -72,6 +73,28 @@ int main() {
       const auto frame = synthetic_tpl5_frame(ci, fields, key, water);
       const auto parsed = parse_direct_tpl5_header(frame, true);
       require(parsed.valid, "fixture TPL5 header rejected");
+      const ExpectedTpl5Identity expected{fields.mfct_le, fields.address_a};
+      const auto identity = inspect_tpl5_routing_identity(parsed, expected);
+      require(identity.accepted && identity.inner_mvt.mfct == "TCH" &&
+              identity.inner_mvt.version == 0x95 &&
+              identity.inner_mvt.type == 0x62,
+              "configured inner meter routing identity failed");
+      auto wrong_meter = expected;
+      wrong_meter.address_a[0] ^= 1;
+      require(!inspect_tpl5_routing_identity(parsed, wrong_meter).accepted,
+              "different meter ID was allowed to decode");
+      wrong_meter = expected;
+      wrong_meter.mfct_le[0] ^= 1;
+      require(!inspect_tpl5_routing_identity(parsed, wrong_meter).accepted,
+              "different manufacturer was allowed to decode");
+      wrong_meter = expected;
+      wrong_meter.address_a[4] ^= 1;
+      require(!inspect_tpl5_routing_identity(parsed, wrong_meter).accepted,
+              "different meter version was allowed to decode");
+      wrong_meter = expected;
+      wrong_meter.address_a[5] ^= 1;
+      require(!inspect_tpl5_routing_identity(parsed, wrong_meter).accepted,
+              "different meter media type was allowed to decode");
       const auto decrypted = decrypt_direct_tpl5_frame(frame, true, key);
       require(decrypted.accepted && decrypted.plaintext.size() >= 2 + water.size(),
               "fixture CBC decryption rejected");
@@ -83,7 +106,7 @@ int main() {
           decrypted.plaintext.begin() + 2 + water.size());
       require(clear == water, "synthetic CBC payload differed from fixture");
       require(decode_primary_candidate(
-                  registry, {"TCH",0x95,0x62},
+                  registry, identity.inner_mvt,
                   ApplicationEncoding::OriginalIxml, clear,
                   "mkradio4", {"target_m3","total_m3"}, {}, last),
               "decrypted fixture rejected by independent XMQ parser");
