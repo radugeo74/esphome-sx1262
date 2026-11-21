@@ -34,6 +34,14 @@ assert string.rindex("StringField(v, fi);") < string.rindex("try_string_write(fi
 assert numeric.index("generateFieldNameNoUnit(this, dve)") < numeric.rindex("try_numeric_write(field_name_no_unit)")
 assert string.index("generateFieldNameNoUnit(this, dve)") < string.rindex("try_string_write(field_name_no_unit)")
 assert result.count("xmq_stage_a_register_legacy_write_observer(") == 1
+assert result.count("xmq_stage_a_register_legacy_write_observer_bound(") == 1
+assert result.count("lab_bound_observer(static_cast<const void *>(this),") == 1
+assert result.index("processFieldCalculators();") < result.index(
+    "lab_bound_observer(static_cast<const void *>(this),")
+assert result.index("lab_bound_observer(static_cast<const void *>(this),") < result.index(
+    "triggerUpdate(&t);")
+assert "xmq_stage_a_register_legacy_write_observer_bound" not in original.decode()
+
 assert result.count("xmq_runtime::dispatch_legacy_write_report(") == 1
 assert result.index("processFieldCalculators();") < result.index("xmq_runtime::dispatch_legacy_write_report(")
 assert result.index("xmq_runtime::dispatch_legacy_write_report(") < result.index("triggerUpdate(&t);")
