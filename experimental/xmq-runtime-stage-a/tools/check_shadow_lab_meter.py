@@ -70,7 +70,8 @@ assert "capture_verified_payload(" in probe
 assert "diagnostic_.inspect(" in probe
 header=(lab.parent/"xmq_shadow_probe/xmq_shadow_probe.h").read_text()
 assert "bool enabled_{false};" in header
-assert "enabled_ && registry_" in header
+assert "if (!enabled_ || !registry_) return false;" in header
+assert "return inspected_ < kMaxObservations;" in header
 assert "kMaxObservations = 128" in header
 # Budget must renew at most once per hour, without unbounded observations
 # or permanent silence after 128 successful meter telegrams.
