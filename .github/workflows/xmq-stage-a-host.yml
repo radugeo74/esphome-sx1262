@@ -30,7 +30,7 @@ jobs:
           dir=experimental/xmq-runtime-stage-a
           python "$dir/tools/stage_shadow_headers.py"
           failures=0
-          for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime hca_numeric calendar oms_partial clear_runtime driver_registry driver_loader source_registry mounted_vfs frame_bridge shadow_compare shadow_diagnostic shadow_window provenance_gate heat_provenance_gate legacy_write_journal legacy_write_report legacy_write_observer telegram_capture real_telegram_contract compat_macros staged_reader; do
+          for suite in reader semantic expression dv_subset projection ixml_subset numeric_runtime hca_numeric calendar oms_partial clear_runtime driver_registry driver_loader source_registry mounted_vfs frame_bridge shadow_compare shadow_diagnostic shadow_window provenance_gate heat_provenance_gate legacy_write_journal legacy_write_report legacy_write_observer telegram_capture real_telegram_contract compat_macros ci_route_contract staged_reader; do
             echo "::group::XMQ suite: $suite"
             if g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
               -fsanitize=address,undefined -fno-omit-frame-pointer \
