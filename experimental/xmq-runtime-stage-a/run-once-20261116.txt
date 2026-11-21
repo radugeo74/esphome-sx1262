@@ -201,3 +201,5 @@ Validation 2026-11-21 direct-T1-C1-XMQ-trust-boundary: one Stage A gated run for
 Validation 2026-11-21 TPL-security-fail-closed: exactly ONE Stage A run verifies host-only mode 0/5/7 classification, mode 5 CBC sentinel evidence, mode 7 MAC and decrypt evidence, rejection of mode 8/unknown and encrypted data without proof, prior direct T1/C1 tests; no production decoder, AES keys or firmware flash changes.
 
 Validation 2026-11-21 isolated real TPL5 AES CBC: ONE existing Stage A workflow compiles original tiny-AES128-C CBC with new host-only decrypt adapter and NIST 800-38A known-answer vector, tests invalid sentinel, wrong key/IV, multi-block synthetic payload, bounds and stale-result clearing; verifies prior XMQ host + ESP-IDF/Heltec jobs; no private AES keys, no production firmware, NO FLASH.
+
+Validation 2026-11-21 TPL5-IV-blocks-and-clear-tail: ONE Stage A workflow checks exact legacy M-field/A-field/ACC x8 IV composition, CBC encrypted prefix from TPL config count, strict bounds, clear tail preservation, wrong access/address and all-block mode; runs existing NIST AES-CBC and Heltec/ESP32 build gates. No live firmware or keys; NO FLASH.
