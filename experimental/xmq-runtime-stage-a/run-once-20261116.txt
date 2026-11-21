@@ -163,3 +163,5 @@ Validation BZ 2026-11-20: ONE gated CI verifies offline aggregate-only XMQ shado
 Validation CA 2026-11-21: ONE gated CI verifies hourly (128 per hour) opt-in XMQ shadow observation budget renewal and diagnostic reset after long hardware uptime, preserves read-only legacy-owned sensor path and 2026.11.0 Heltec enabled lab compile. No real logs, private meter IDs/keys, RF radio changes or flash.
 
 Validation CB 2026-11-21: ONE gated CI reruns unchanged hourly read-only XMQ shadow 128 observations/hour patch with corrected stale static assertion (enabled/registry checks split). Four previously skipped ESPHome and ESP-IDF compile jobs must run. No RF, YAML or firmware changes.
+
+Validation CC 2026-11-21: ONE gated CI compiles/tests actual rollover-safe 1-hour XMQ shadow window C++ helper under ASan/UBSan at 1ms boundary and uint32 wraparound, enforces matching ESPHome shadow header integration; preserves radio, original sensors and private canary firmware.
