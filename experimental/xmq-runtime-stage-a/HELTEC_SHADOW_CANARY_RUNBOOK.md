@@ -476,6 +476,32 @@ Stage A #115 failed compilation because a test tried to copy the real
 constructs independent `Telegram` objects and copies only fields
 explicitly needed by the test. This does not modify the legacy class.
 
+## Optional Heltec CI/security census through existing legacy shadow callback
+
+The **experimental opt-in** `xmq_shadow_probe` now stages the
+allocation-free `xmq_ci_security_census.h` and calls
+`ci_census_.observe_telegram(telegram, decoded)` only after the
+existing bounded post-decode callback has consumed a budget slot.
+It resets counts at each hourly budget renewal. A single aggregate
+`XMQ CI/TPL census` line is emitted when **128** callbacks consume the
+session quota; it reports a 5x4 table of CI A0/A2/72/7A/other and
+TPL modes none/5/7/other with a rejected count. It neither logs nor
+retains meter IDs, access counters, manufacturers, raw frames,
+keys, payloads or per-meter counts. It cannot update HA sensors.
+
+**Coverage limitation:** this is not a radio-wide census. The existing
+shadow hook and driver registry handle the subset of configured legacy
+drivers with shadow readings (currently `mkradio4` and `fhkvdataiii`),
+not necessarily `mkradio4a` or unmatched frames. It counts
+*post-decode callback observations*, so an absent bucket does not
+prove a CI/security mode is absent on air. The log line is emitted
+only when the 128-observation cap is reached, not every hour by timer.
+There is no production YAML change or device flash.
+
+Before enabling this read-only probe, review the whole firmware
+configuration, log-level behavior, radio memory budget and rollback.
+The installed SX1262 remains on its existing decoder.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
