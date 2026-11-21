@@ -167,3 +167,5 @@ Validation CB 2026-11-21: ONE gated CI reruns unchanged hourly read-only XMQ sha
 Validation CC 2026-11-21: ONE gated CI compiles/tests actual rollover-safe 1-hour XMQ shadow window C++ helper under ASan/UBSan at 1ms boundary and uint32 wraparound, enforces matching ESPHome shadow header integration; preserves radio, original sensors and private canary firmware.
 
 Validation CD 2026-11-21: ONE gated CI checks single aggregate log on the 128th XMQ shadow observation, preexisting hourly renewal log, privacy-safe local summary and C++ boundary rollover tests; 2026.11 Heltec read-only build only, no RF/legacy/sensor/real firmware changes.
+
+Validation CE 2026-11-21: ONE gated CI verifies firmware-shared allocation-free XMQ shadow observation budget: two pre/post legacy admission queries never double-charge, 128 accepted/129 blocked, one-hour renewal, uint32 rollover, retained privacy-safe logs; no RF, 12 meter YAML, real captures, keys or flash.
