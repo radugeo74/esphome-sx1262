@@ -13,7 +13,11 @@ namespace xmq_runtime {
 inline bool reference_matches_write_contract(
     const ShadowReference &reference, LegacyReportDriver driver,
     uint32_t required_numeric_mask, uint32_t required_date_mask) noexcept {
-  if (driver == LegacyReportDriver::Unknown) return false;
+  if (driver == LegacyReportDriver::Unknown ||
+      !reference.absent_numeric.empty() || !reference.absent_dates.empty())
+    return false;
+  // No-write assertions require a separate per-frame absence proof.
+  // Do not use cached absence lists to certify positive setter provenance.
   uint32_t actual_numeric = 0;
   uint32_t actual_dates = 0;
   for (const auto &entry : reference.numeric) {
