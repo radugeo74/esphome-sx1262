@@ -64,4 +64,28 @@ assert window_drivers["mkradio4"]["observed"] == 1
 assert window_drivers["mkradio4"]["captured"] == 1
 assert window_drivers["mkradio4"]["rejected"] == 0
 
+# Real-Heltec-shaped, synthetic-only evidence gap regression. No private
+# IDs, source telegrams or capture files are present in this repository.
+synthetic_live = [
+    "[I][xmq_shadow_probe]: Live XMQ shadow: driver=fhkvdataiii "
+    "disposition=1 compared=4 mismatches=0 calendar_refs=0 observed=1 "
+    "matched_numeric_dv=0 unmatched_numeric_dv=4 provenance=not_proven",
+    "[I][xmq_shadow_probe]: Live XMQ shadow: driver=mkradio4 "
+    "disposition=1 compared=2 mismatches=0 calendar_refs=0 observed=2 "
+    "matched_numeric_dv=0 unmatched_numeric_dv=2 provenance=not_proven",
+]
+live_counts, live_drivers = module.summarize(synthetic_live)
+live_summary = module.format_summary(live_counts, live_drivers)
+assert "live_evidence: matches=2 differences=0" in live_summary
+assert "numeric_and_date_fields_compared=6 calendar_refs=0" in live_summary
+assert "comparisons_without_setter_provenance=2" in live_summary
+assert "GAP: no calendar references compared" in live_summary
+assert "GAP: legacy setter-level attribution NOT established" in live_summary
+# A malformed untrusted log counter must never abort the local audit.
+malformed = module.summarize([
+    "[I] Live XMQ shadow: driver=mkradio4 disposition=1 compared=malformed "
+    "mismatches=0 provenance=not_proven"
+])
+assert "comparisons_without_setter_provenance=0" in module.format_summary(*malformed)
+
 print("SHADOW_LOCAL_LOG_SUMMARY_OK: aggregated synthetic T1/C1 and XMQ diagnostics; IDs/payload never printed")
