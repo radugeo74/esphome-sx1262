@@ -68,6 +68,8 @@ int main() {
     LegacyWriteReport heat_evidence{};
     heat_evidence.numeric_field_mask = 0b0011;
     heat_evidence.date_field_mask = 0b10;
+    heat_evidence.numeric_writes = 2;
+    heat_evidence.string_writes = 1;
     require(legacy_write_evidence_complete(heat_evidence,
                                             LegacyReportDriver::Fhkvdataiii,
                                             0b0011, 0b10),
@@ -76,6 +78,18 @@ int main() {
                                              LegacyReportDriver::Fhkvdataiii,
                                              0b1111, 0b10),
             "missing heat fields falsely accepted");
+    LegacyWriteReport impossible = heat_evidence;
+    impossible.numeric_writes = 1;
+    require(!legacy_write_evidence_complete(impossible,
+                                             LegacyReportDriver::Fhkvdataiii,
+                                             0b0011, 0b10),
+            "numeric field mask accepted despite insufficient setter writes");
+    impossible = heat_evidence;
+    impossible.string_writes = 0;
+    require(!legacy_write_evidence_complete(impossible,
+                                             LegacyReportDriver::Fhkvdataiii,
+                                             0b0011, 0b10),
+            "calendar mask accepted despite zero date setter writes");
     std::cout << "LEGACY_WRITE_OBSERVER_OK: opt-in callback executed, "
                  "per-frame summary isolated, values never passed\n";
     return 0;
