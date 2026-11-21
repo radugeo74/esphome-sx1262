@@ -1,4 +1,5 @@
 #include "xmq_telegram_capture.h"
+#include "xmq_ci_route_contract.h"
 // This is the ACTUAL existing production Telegram declaration, not a mock.
 // The unchanged upstream Telegram declares a private constructor with an
 // intentionally unused argument; contain its warning, keep -Werror for tests.
@@ -61,6 +62,57 @@ int main() {
             "real Telegram inner address must win over converter address");
     require(snapshot.payload==parse_hex("0F9F292D"),
             "real Telegram header/suffix bounds changed");
+    // Classify transport using the ACTUAL upstream Telegram::tpl_ci
+    // member, not a guessed CI based on selected XMQ driver name.
+    require(classify_xmq_telegram_route(
+                static_cast<std::uint8_t>(original.tpl_ci), snapshot.encoding,
+                true, true, false) ==
+                XmqTelegramRoute::LegacyVerifiedProprietary,
+            "real Telegram proprietary CI did not classify correctly");
+    require(classify_xmq_telegram_route(
+                static_cast<std::uint8_t>(original.tpl_ci), snapshot.encoding,
+                false, true, true) == XmqTelegramRoute::Reject,
+            "real proprietary CI could bypass verified legacy parser");
+
+    // Only a declared standard CI may enter the standard DV path.
+    auto standard = original;
+    standard.tpl_ci = 0x7A;
+    VerifiedApplication standard_snapshot;
+    require(capture_verified_payload(
+                standard, true, ApplicationEncoding::StandardDv,
+                standard_snapshot),
+            "real Telegram standard CI capture failed");
+    require(classify_xmq_telegram_route(
+                static_cast<std::uint8_t>(standard.tpl_ci),
+                standard_snapshot.encoding, true, true, false) ==
+                XmqTelegramRoute::LegacyVerifiedStandard,
+            "real Telegram standard CI route failed");
+    require(!capture_verified_payload(
+                standard, true, ApplicationEncoding::OriginalIxml,
+                standard_snapshot) && standard_snapshot.payload.empty(),
+            "real Telegram standard CI was misclassified as proprietary");
+    require(classify_xmq_telegram_route(
+                static_cast<std::uint8_t>(standard.tpl_ci),
+                ApplicationEncoding::StandardDv, false, true, true) ==
+                XmqTelegramRoute::DirectTpl5StandardCandidate,
+            "real Telegram standard CI candidate missing");
+    require(classify_xmq_telegram_route(
+                static_cast<std::uint8_t>(standard.tpl_ci),
+                ApplicationEncoding::StandardDv, false, false, true) ==
+                XmqTelegramRoute::Reject,
+            "real Telegram standard CI bypassed CRC evidence");
+
+    auto unknown = original;
+    unknown.tpl_ci = 0x8C;
+    VerifiedApplication denied;
+    require(!capture_verified_payload(
+                unknown, true, ApplicationEncoding::OriginalIxml,
+                denied) && denied.payload.empty() &&
+            classify_xmq_telegram_route(
+                static_cast<std::uint8_t>(unknown.tpl_ci),
+                ApplicationEncoding::OriginalIxml, true, true, false) ==
+                XmqTelegramRoute::Reject,
+            "unrecognized real Telegram CI reached XMQ");
     const auto preserved=original.frame;
     require(!capture_verified_payload(original,false,
             ApplicationEncoding::OriginalIxml,snapshot) &&
