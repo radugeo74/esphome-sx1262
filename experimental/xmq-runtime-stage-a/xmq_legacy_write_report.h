@@ -59,4 +59,27 @@ inline LegacyWriteReport summarize_legacy_writes(
   }
   return report;
 }
+// Host-only evidence gate: a field snapshot is not proof of a write.
+// Callers supply the exact required masks for their telegram variant.
+// Partial OMS frames may legitimately require a subset; never infer the masks
+// from values cached on a meter. Zero-field evidence is always inconclusive.
+inline bool legacy_write_evidence_complete(
+    const LegacyWriteReport &report, LegacyReportDriver driver,
+    std::uint32_t required_numeric_mask,
+    std::uint32_t required_date_mask = 0) noexcept {
+  if (driver == LegacyReportDriver::Unknown || report.dropped_writes != 0)
+    return false;
+  const std::uint32_t allowed_numeric =
+      driver == LegacyReportDriver::Fhkvdataiii ? 0x0FU : 0x03U;
+  const std::uint32_t allowed_dates =
+      driver == LegacyReportDriver::Fhkvdataiii ? 0x03U : 0U;
+  if ((required_numeric_mask | required_date_mask) == 0 ||
+      (required_numeric_mask & ~allowed_numeric) != 0 ||
+      (required_date_mask & ~allowed_dates) != 0)
+    return false;
+  return (report.numeric_field_mask & required_numeric_mask) ==
+             required_numeric_mask &&
+         (report.date_field_mask & required_date_mask) == required_date_mask;
+}
+
 }  // namespace xmq_runtime
