@@ -183,3 +183,5 @@ Validation 2026-11-21 live-T1-C1-canary: exactly ONE existing Stage A workflow c
 Validation 2026-11-21 physical-shadow-evidence-gap: ONE Stage A host workflow for synthetic-only 11-match-equivalent evidence labels, non-proven setter provenance, zero calendar references, privacy-safe aggregate summary and malformed counters; no private logs or IDs, no radio source changes, NO FLASH.
 
 Validation 2026-11-21 calendar-setter-alias: ONE Stage A workflow validates host-only exact upstream `current`/`previous` calendar setter names, mixed alias deduplication, and verbatim staged setter execution; no live radio, firmware, keys, or flash changes.
+
+Validation 2026-11-21 per-meter-bound-provenance: exactly ONE Stage A workflow verifies host-only staged legacy setter journal callback bound to actual MeterCommonImplementation instance, two independent meters, parse failures, disabled callbacks, no HA or radio alterations; active common source unmodified; NO FLASH.
