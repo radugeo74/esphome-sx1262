@@ -38,10 +38,15 @@ clone=clone.replace(include,"")
 clone=clone.replace(
     "  // A previous telegram must never supply override data for this frame.\n"
     "  this->xmq_frame_values_ready_ = false;\n", "")
-clone=clone.replace(
-    "      // XMQ can override only target/total getters while these exact\n"
-    "      // telegram callbacks run. All unrelated fields retain legacy source.\n"
-    "      this->in_telegram_publish_ = true;\n", "")
+stage3_defer_start=clone.index("    // Capture the chosen XMQ readings with THIS telegram's deferred task.")
+stage3_defer_end=clone.index("      this->on_telegram_callback_manager();",stage3_defer_start)
+stage3_defer_segment=clone[stage3_defer_start:stage3_defer_end]
+assert "const bool xmq_ready = this->xmq_frame_values_ready_;" in stage3_defer_segment
+assert "const float xmq_target = this->xmq_target_m3_;" in stage3_defer_segment
+assert "const float xmq_total = this->xmq_total_m3_;" in stage3_defer_segment
+assert "this->defer([this, xmq_ready, xmq_target, xmq_total]()" in stage3_defer_segment
+assert "this->in_telegram_publish_ = true;" in stage3_defer_segment
+clone=clone[:stage3_defer_start]+"    this->defer([this]() {\n"+clone[stage3_defer_end:]
 clone=clone.replace(
     "      this->in_telegram_publish_ = false;\n"
     "      this->xmq_frame_values_ready_ = false;\n", "")
