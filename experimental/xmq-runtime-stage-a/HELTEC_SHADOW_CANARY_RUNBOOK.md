@@ -759,9 +759,11 @@ On a valid, already legacy-verified/decrypted proprietary `CI=0xA2`
 telegram for the selected mkradio4, XMQ decodes the exact application
 payload into `target_m3` and `total_m3` in its **existing one-pass**
 diagnostic; the code does not use legacy values to produce either
-XMQ value. Only complete XMQ fields whose numeric values agree with
-legacy produce one line like
-`XMQ_STAGE1_MKRADIO4_OK target_m3=... total_m3=... source=xmq_primary ... ha_writes=0`.
+XMQ value. Complete XMQ fields produce one read-only line whether their values
+**match** or **differ** from the legacy reference, for example
+`XMQ_STAGE1_MKRADIO4_RESULT target_m3=... total_m3=... source=xmq_primary parity=match|different ... ha_writes=0`.
+A divergence is explicitly reported, **not** silently promoted to success.
+Absent/incomplete fields or rejected captures produce no XMQ numeric result.
 The numeric values are sensitive consumption data: keep ESPHome
 logs private, do not commit them unredacted, and do not print real
 meter IDs, cryptographic keys or telegram payloads.
@@ -774,7 +776,7 @@ setter provenance, independent AES/RF, or permission to replace
 Home Assistant updates. The legacy meter remains the ONLY writer.
 
 Stage 1 is **not complete on hardware** until a real selected meter
-produces this XMQ log on a reviewed canary and retains its existing
+produces this XMQ log with `parity=match` on a reviewed canary and retains its existing
 legacy Home Assistant sensors. A passing host/CI compilation alone
 is not proof.
 
