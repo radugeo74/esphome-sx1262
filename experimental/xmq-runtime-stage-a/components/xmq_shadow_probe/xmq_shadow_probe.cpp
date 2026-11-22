@@ -17,21 +17,23 @@ bool ShadowProbe::memory_headroom_available() noexcept {
   return xmq_runtime::shadow_memory_allows_decode(free_heap, largest_block);
 }
 
-bool wants_legacy_readings() noexcept {
-  return active_probe != nullptr && active_probe->wants_readings();
+bool wants_legacy_readings(const void *source_meter) noexcept {
+  return active_probe != nullptr && active_probe->wants_readings(source_meter);
 }
 
-void observe_legacy_telegram(const ::Telegram &telegram, bool decoded,
+void observe_legacy_telegram(const void *source_meter,
+                             const ::Telegram &telegram, bool decoded,
                              const char *driver,
                              const LegacyReadings &old_values) noexcept {
   if (active_probe != nullptr)
-    active_probe->observe(telegram, decoded, driver, old_values);
+    active_probe->observe(source_meter, telegram, decoded, driver, old_values);
 }
 
-void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
+void ShadowProbe::observe(const void *source_meter,
+                          const ::Telegram &telegram, bool decoded,
                           const char *driver,
                           const LegacyReadings &old_values) noexcept {
-  if (!wants_readings()) return;
+  if (!wants_readings(source_meter)) return;
   try {
     if (!budget_.consume()) return;
     ++inspected_;
