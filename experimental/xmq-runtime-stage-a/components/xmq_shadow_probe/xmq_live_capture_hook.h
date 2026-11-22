@@ -21,10 +21,13 @@ struct LegacyReadings {
   LegacyNumeric temp_radiator_c;
   std::string current_date;
   std::string previous_date;
+  std::string target_date;
   bool current_date_changed{false};
   bool previous_date_changed{false};
   bool current_date_matched_dv{false};
   bool previous_date_matched_dv{false};
+  bool target_date_changed{false};
+  bool target_date_matched_dv{false};
 };
 bool wants_legacy_readings() noexcept;
 void observe_legacy_telegram(const ::Telegram &telegram, bool decoded,
