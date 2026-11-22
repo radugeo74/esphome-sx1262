@@ -53,6 +53,16 @@ jobs:
           done
           echo "XMQ suite failures: $failures"
           exit "$((failures>0))"
+      - name: Stage 4 host-only synthetic T1 clear-frame to XMQ decode (no HA writes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=experimental/xmq-runtime-stage-a
+          g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \\
+            -fsanitize=address,undefined -fno-omit-frame-pointer \\
+            -I"$dir" "$dir/test_xmq_t1_clear_candidate.cpp" \\
+            -o "$RUNNER_TEMP/xmq-stage4-t1-candidate"
+          "$RUNNER_TEMP/xmq-stage4-t1-candidate"
       - name: Execute isolated TPL5 AES CBC known-answer and reject tests
         shell: bash
         run: |
