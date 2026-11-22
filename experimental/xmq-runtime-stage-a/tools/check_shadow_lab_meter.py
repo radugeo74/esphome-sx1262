@@ -75,6 +75,10 @@ assert 'shadow_driver == "mkradio4a"' in observer
 assert 'readings.target_date = date("target");' in observer
 assert 'matched_dv("target", Quantity::PointInTime);' in observer
 assert "legacy.target_date_changed" in observer
+assert "frame->link_mode() == LinkMode::T1" in observer
+assert "telegram->tpl_sec_mode == TPLSecurityMode::NoSecurity" in observer
+assert "const std::vector<uint8_t> *stage4_dll" in observer
+assert "stage4_dll, clear_t1_attested);" in observer
 assert "xmq_shadow_probe::observe_legacy_telegram(" in observer
 assert "this, *telegram, decoded, shadow_driver.c_str(), legacy" in observer
 assert "target_meter: lab_water" in (root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-enabled-lab.yaml").read_text()
@@ -121,6 +125,14 @@ assert "disposition == xmq_runtime::ShadowDisposition::Match &&" in probe
 assert "stage2_target_ != nullptr && stage2_total_ != nullptr" in probe
 assert "XMQ_STAGE2_MKRADIO4_TEST_PUBLISHED" in probe
 assert "XMQ_STAGE3_PRIMARY_ARMED" in probe
+assert "XMQ_STAGE4_T1_DIRECT_DIAGNOSTIC" in probe
+assert "security=legacy_attested" in probe
+assert "transport_independent=0" in probe
+assert "sensor_writes=0" in probe
+assert "capture_t1_clear_mkradio4_candidate(" in probe
+assert "decode_primary_candidate(" in probe
+assert "direct.payload" in probe
+
 assert "source_meter == target_meter_" in probe
 assert "target_meter_->set_xmq_frame_values(" in probe
 assert probe.index("disposition == xmq_runtime::ShadowDisposition::Match &&") < probe.index(
