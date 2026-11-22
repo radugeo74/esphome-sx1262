@@ -11,7 +11,20 @@ lab=root/"experimental/xmq-runtime-stage-a/components/wmbus_meter"
 original=root/"components/wmbus_meter"
 clone=(lab/"wmbus_meter.cpp").read_text()
 base=(original/"wmbus_meter.cpp").read_text()
-assert (lab/"wmbus_meter.h").read_bytes()==(original/"wmbus_meter.h").read_bytes()
+header_clone=(lab/"wmbus_meter.h").read_text()
+header_base=(original/"wmbus_meter.h").read_text()
+assert "void set_xmq_frame_values(float target_m3, float total_m3);" in header_clone
+assert "bool in_telegram_publish_{false};" in header_clone
+header_normalized=header_clone.replace(
+    "  // Single-frame XMQ override, set only after independently decoded parity\n"
+    "  // matches legacy; affects only selected target/total HA callback getters.\n"
+    "  void set_xmq_frame_values(float target_m3, float total_m3);\n", "")
+header_normalized=header_normalized.replace(
+    "  bool xmq_frame_values_ready_{false};\n"
+    "  bool in_telegram_publish_{false};\n"
+    "  float xmq_target_m3_{0.0f};\n"
+    "  float xmq_total_m3_{0.0f};\n", "")
+assert header_normalized==header_base, "unexpected Stage 3 wmbus_meter.h changes"
 for name in ("__init__.py","automation.h","base_sensor.cpp","base_sensor.h",
              "base_sensor.py","sensor/__init__.py","sensor/sensor.cpp",
              "sensor/sensor.h","text_sensor/__init__.py",
@@ -21,6 +34,24 @@ for name in ("__init__.py","automation.h","base_sensor.cpp","base_sensor.h",
 include='#include "esphome/components/xmq_shadow_probe/xmq_live_capture_hook.h"\n'
 assert clone.count(include)==1
 clone=clone.replace(include,"")
+# Undo only narrow Stage 3 overrides before exact legacy comparison.
+clone=clone.replace(
+    "  // A previous telegram must never supply override data for this frame.\n"
+    "  this->xmq_frame_values_ready_ = false;\n", "")
+clone=clone.replace(
+    "      // XMQ can override only target/total getters while these exact\n"
+    "      // telegram callbacks run. All unrelated fields retain legacy source.\n"
+    "      this->in_telegram_publish_ = true;\n", "")
+clone=clone.replace(
+    "      this->in_telegram_publish_ = false;\n"
+    "      this->xmq_frame_values_ready_ = false;\n", "")
+stage3_getter_start=clone.index("void Meter::set_xmq_frame_values(")
+stage3_getter_end=clone.index("  // RSSI is not handled by meter but by telegram :/",stage3_getter_start)
+assert "if (this->in_telegram_publish_ && this->xmq_frame_values_ready_)" in clone[stage3_getter_start:stage3_getter_end]
+clone=clone[:stage3_getter_start]+(
+    "optional<float> Meter::get_numeric_field(std::string field_name) {\n"
+)+clone[stage3_getter_end:]
+
 start = clone.index("  // Baseline values are observed BEFORE legacy decoding.")
 end = clone.index("\n  if (id_match) {", start)
 observer = clone[start:end]
@@ -84,6 +115,15 @@ assert "stage2_total_->publish_state(total->second.value);" in probe
 assert "disposition == xmq_runtime::ShadowDisposition::Match &&" in probe
 assert "stage2_target_ != nullptr && stage2_total_ != nullptr" in probe
 assert "XMQ_STAGE2_MKRADIO4_TEST_PUBLISHED" in probe
+assert "XMQ_STAGE3_PRIMARY_ARMED" in probe
+assert "source_meter == target_meter_" in probe
+assert "target_meter_->set_xmq_frame_values(" in probe
+assert probe.index("disposition == xmq_runtime::ShadowDisposition::Match &&") < probe.index(
+    "target_meter_->set_xmq_frame_values(")
+schema=(lab.parent/"xmq_shadow_probe/__init__.py").read_text()
+assert 'cv.Optional(CONF_DECODER, default="legacy")' in schema
+assert 'cg.add(var.set_xmq_primary(config[CONF_DECODER] == "xmq"))' in schema
+assert 'config[CONF_DECODER] == "xmq"' in schema
 assert "source_fhkvdataiii()" in probe
 assert "source_mkradio4a()" in probe
 assert 'name == "mkradio4a"' in probe
