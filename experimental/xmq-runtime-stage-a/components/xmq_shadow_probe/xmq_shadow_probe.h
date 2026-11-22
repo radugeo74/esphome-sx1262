@@ -12,19 +12,23 @@
 #include <memory>
 
 namespace esphome {
+namespace wmbus_meter { class Meter; }
 namespace xmq_shadow_probe {
 
 class ShadowProbe : public Component {
  public:
   void set_enabled(bool enabled) { enabled_ = enabled; }
+  void set_target_meter(wmbus_meter::Meter *meter) { target_meter_ = meter; }
   void setup() override;
   void dump_config() override;
-  void observe(const ::Telegram &telegram, bool decoded, const char *driver,
+  void observe(const void *source_meter, const ::Telegram &telegram,
+               bool decoded, const char *driver,
                const LegacyReadings &old_values) noexcept;
   // Early allocation-free check before the cloned legacy meter builds
   // per-field comparison snapshots. Does not gate legacy decoding.
   bool memory_headroom_available() noexcept;
-  bool wants_readings() noexcept {
+  bool wants_readings(const void *source_meter) noexcept {
+    if (target_meter_ != nullptr && source_meter != target_meter_) return false;
     if (!enabled_ || !registry_) return false;
     // A bounded budget PER hour, not one permanent budget per boot.
     // Subtraction remains valid across the uint32_t millis() wraparound.
@@ -54,6 +58,7 @@ class ShadowProbe : public Component {
 
  private:
   bool enabled_{false};
+  wmbus_meter::Meter *target_meter_{nullptr};
   ShadowObservationBudget budget_{};
   uint32_t inspected_{0};
   uint32_t captured_{0};
