@@ -245,3 +245,5 @@ Validation 2026-11-22 T1_C1 actual native-stream mode synthetic build-only gate:
 Validation 2026-11-22 #126 duplicate-ID package merge fix: ONE existing Stage A run compiles standalone synthetic T1_C1 XMQ enabled shadow image under ESPHome 2026.10.1 and 2026.11.0, source guard proves exact baseline derivation and two unique meter declarations; no API/WiFi/secrets, no flash, no legacy device changes.
 
 Validation 2026-11-22 release gate supports existing mkradio4a alongside mkradio4 without altering live 12-meter topology: ONE existing Stage A CI validates mixed and all-mkradio4a water profiles, rejection of other drivers, exact resolved-YAML parity, synthetic T1_C1 lab on 2026.10.1 and 2026.11.0, host and ESP32/Heltec builds. NO FLASH.
+
+Validation 2026-11-22 offline canary immutable source gate: ONE existing Stage A CI tests full 40-character Git SHA required for xmq_shadow_probe and cloned wmbus_meter external components, rejects branches/tags/short SHA/missing source, supports manually reviewed local sources, keeps full private YAML parity and all five build/test jobs. NO FLASH and no private data.
