@@ -209,6 +209,12 @@ void ShadowProbe::setup() {
     ESP_LOGI(TAG, "XMQ probe disabled; existing meter decoder untouched");
     return;
   }
+  // Avoid allocating a second driver registry at boot when headroom
+  // is already below the threshold. Legacy meter setup continues.
+  if (!memory_headroom_available()) {
+    ESP_LOGW(TAG, "XMQ shadow disabled at setup: insufficient heap headroom");
+    return;
+  }
   try {
     registry_.reset(new xmq_runtime::DriverRegistry({
         xmq_runtime::load_driver(xmq_runtime::source_mkradio4()),
