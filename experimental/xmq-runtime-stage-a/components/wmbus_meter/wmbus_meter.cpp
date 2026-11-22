@@ -170,9 +170,18 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
 
   if (id_match) {
     this->last_telegram = std::move(telegram);
-    this->defer([this]() {
-      // XMQ can override only target/total getters while these exact
-      // telegram callbacks run. All unrelated fields retain legacy source.
+    // Capture the chosen XMQ readings with THIS telegram's deferred task.
+    // A subsequent radio frame cannot overwrite this callback's readings.
+    const bool xmq_ready = this->xmq_frame_values_ready_;
+    const float xmq_target = this->xmq_target_m3_;
+    const float xmq_total = this->xmq_total_m3_;
+    this->xmq_frame_values_ready_ = false;
+    this->defer([this, xmq_ready, xmq_target, xmq_total]() {
+      // Only selected target/total getters inside this callback can read
+      // the independently decoded XMQ pair; all other getters use legacy.
+      this->xmq_target_m3_ = xmq_target;
+      this->xmq_total_m3_ = xmq_total;
+      this->xmq_frame_values_ready_ = xmq_ready;
       this->in_telegram_publish_ = true;
       this->on_telegram_callback_manager();
       this->in_telegram_publish_ = false;
