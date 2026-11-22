@@ -78,6 +78,20 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
     if (name == "mkradio4") {
       put("target_m3", old_values.target_m3);
       put("total_m3", old_values.total_m3);
+    } else if (name == "mkradio4a") {
+      // Require BOTH original legacy fields and their per-frame DV match.
+      // An unchanged cached target value is not evidence of this telegram.
+      if (!old_values.target_m3.present || !old_values.target_m3.matched_dv ||
+          old_values.target_date.empty() ||
+          !old_values.target_date_matched_dv) {
+        ++no_reference_;
+        return;
+      }
+      put("target_m3", old_values.target_m3);
+      old.dates.emplace("target_date", old_values.target_date);
+      if (old_values.target_date_changed) ++changed_dates;
+      else ++unchanged_dates;
+      ++matched_date_dv;
     } else if (name == "fhkvdataiii") {
       put("current_hca", old_values.current_hca);
       put("previous_hca", old_values.previous_hca);
@@ -130,11 +144,15 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
         snapshot.payload, old, heap, true, name,
         name == "mkradio4" ?
             std::vector<std::string>{"target_m3", "total_m3"} :
+        name == "mkradio4a" ?
+            std::vector<std::string>{"target_m3"} :
             std::vector<std::string>{"current_hca", "previous_hca",
                                      "temp_room_c", "temp_radiator_c"},
         &xmq_fields,
         name == "fhkvdataiii" ?
             std::vector<std::string>{"current_date", "previous_date"} :
+        name == "mkradio4a" ?
+            std::vector<std::string>{"target_date"} :
             std::vector<std::string>{});
     const auto &stats = diagnostic_.counters();
     // Log only aggregates, never IDs, raw payloads, keys or old/new values.
@@ -173,6 +191,7 @@ void ShadowProbe::setup() {
   try {
     registry_.reset(new xmq_runtime::DriverRegistry({
         xmq_runtime::load_driver(xmq_runtime::source_mkradio4()),
+        xmq_runtime::load_driver(xmq_runtime::source_mkradio4a()),
         xmq_runtime::load_driver(xmq_runtime::source_fhkvdataiii())}));
     diagnostic_.set_enabled(true);
   } catch (const std::exception &) {
