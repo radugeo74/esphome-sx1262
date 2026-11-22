@@ -136,6 +136,7 @@ assert (
 assert "++low_memory_skipped_;" in header
 assert "bool memory_headroom_available() noexcept;" in header
 assert "bool ShadowProbe::memory_headroom_available() noexcept" in probe
+assert "XMQ shadow disabled at setup: insufficient heap headroom" in probe
 assert probe.index("bool ShadowProbe::memory_headroom_available() noexcept") <
        probe.index("void ShadowProbe::observe(")
 assert "shadow_memory_allows_decode(free_heap, largest_block)" in probe
