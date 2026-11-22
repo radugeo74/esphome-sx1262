@@ -705,6 +705,30 @@ Never upload the private reference/candidate YAML, secrets or images
 to GitHub. The generated CI T1_C1 synthetic YAML is never
 a valid fallback or candidate for a real 12-meter installation.
 
+## Immutable external-component source revision before a real canary
+
+The private offline release gate now rejects Git-backed
+`external_components` for the cloned `wmbus_meter` and
+`xmq_shadow_probe` unless their `source.ref` is an exact
+**40-character Git commit SHA**. Moving branch names such as
+`experimental/xmq-runtime-stage-a`, tags and short SHAs are
+**not** accepted for this real-canary gate. The check requires
+both component declarations and precedes generation of the
+private rollback manifest.
+
+For a locally compiled/reviewed checkout, `source.type: local`
+is permitted; that source still needs a separate manual review
+and provenance record, since a filesystem path is not an
+immutable source identifier. The GitHub CI build fixtures
+continue to use branch refs only for **synthetic compilation
+tests**, never as an authorized live canary.
+
+The same gate still compares the fully expanded private YAML
+to the known-good reference, retaining every real meter
+identity, driver, key, T1/C1 mode, RF pin, Home Assistant
+entity and network setting. No confidential configuration
+or SHA values are printed by the source guard.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
