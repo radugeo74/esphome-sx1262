@@ -67,7 +67,7 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
   // Keep the old decoder, radio dispatch and sensor updates unchanged.
   xmq_shadow_probe::LegacyReadings before;
   xmq_shadow_probe::LegacyReadings legacy;
-  const bool probe_requested = xmq_shadow_probe::wants_legacy_readings();
+  const bool probe_requested = xmq_shadow_probe::wants_legacy_readings(this);
   const std::string shadow_driver = probe_requested ? this->get_driver() : "";
   auto capture = [this](const char *name,
                         xmq_shadow_probe::LegacyNumeric &dest) {
@@ -164,7 +164,7 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
         legacy.target_date != before.target_date;
   }
   xmq_shadow_probe::observe_legacy_telegram(
-      *telegram, decoded, shadow_driver.c_str(), legacy);
+      this, *telegram, decoded, shadow_driver.c_str(), legacy);
 
   if (id_match) {
     this->last_telegram = std::move(telegram);
