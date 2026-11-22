@@ -525,6 +525,34 @@ post-decode shadow callback. It does not yet prove coverage for
 until that coverage is established. No firmware flash is authorized
 by the CI result alone.
 
+## mkradio4a metadata-only CI/TPL observer coverage
+
+The actual upstream `driver_mkradio4a.cc` registers both T1 and C1,
+sets expected TPL security mode `AES_CBC_IV` (mode 5), and its
+**public upstream** telegram fixtures use **CI 0x72** (long TPL) with
+a `2F2F` framing sentinel and an inner address. These are documented
+upstream examples, **not proof of the current user's meter's RF
+CI or security envelope**. In contrast, public `mkradio4` fixtures
+use manufacturer-specific CI 0xA2.
+
+The experiment's cloned `wmbus_meter` invokes the existing
+`observe_legacy_telegram` hook **after `handleTelegram` for any
+configured meter**, including mkradio4a. The census updates before
+the shadow comparison's supported-driver check; hence mkradio4a
+can add CI/TPL counts without implementing or faking XMQ parity.
+The build-only `heltec-xmq-shadow-build.yaml` includes one
+synthetic `mkradio4a` meter with no key and no HA sensor.
+`check_shadow_lab_meter.py` now asserts callback ordering and
+this test-only fixture.
+
+No live meter ID, key, frame, date or volume is saved in the census.
+It only counts successfully handled post-decode callbacks. The
+currently bundled XMQ shadow decoder continues to compare only
+`mkradio4` and `fhkvdataiii`; adding a real `mkradio4a`
+numeric/date parity check is a **separate** feature requiring
+the correct XMQ driver source, verified date handling and a
+full build/run test. This stage does not add that feature.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
