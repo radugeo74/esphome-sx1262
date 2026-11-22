@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from canary_release_gate import release_gate, require_live_t1_c1_profile
+from canary_release_gate import release_gate, require_live_t1_c1_profile, require_pinned_canary_sources
 
 
 def run_tests():
@@ -24,6 +24,10 @@ def run_tests():
             return {
                 "file": path.name,
                 "wmbus_radio": {"native_stream_mode": "T1_C1"},
+                "external_components": [{
+                    "source": {"type": "git", "ref": "a" * 40},
+                    "components": ["wmbus_meter", "xmq_shadow_probe"],
+                }],
                 "wmbus_meter": (
                     [{"type": "fhkvdataiii", "mode": ["T1"]} for _ in range(7)] +
                     [{"type": "mkradio4", "mode": ["T1", "C1"]} for _ in range(5)]
@@ -106,6 +110,45 @@ def run_tests():
                 pass
             else:
                 raise AssertionError("unsafe live profile was approved")
+        # Branch names and abbreviated SHAs are mutable/unreviewable for an
+        # installed canary. Test both shadow components and local-only sources.
+        for good in (
+            {"type": "git", "ref": "a" * 40},
+            {"type": "git", "ref": "0123456789abcdef" * 2 + "01234567"},
+            {"type": "local", "path": "/ci-synthetic/checkout"},
+        ):
+            config = {"external_components": [{
+                "source": good,
+                "components": ["xmq_shadow_probe", "wmbus_meter"],
+            }]}
+            require_pinned_canary_sources(config)
+        for bad in (
+            {"type": "git", "ref": "experimental/xmq-runtime-stage-a"},
+            {"type": "git", "ref": "abcdef0"},
+            {"type": "git", "ref": "g" * 40},
+            {"type": "git"},
+            {"type": "http", "ref": "a" * 40},
+        ):
+            config = {"external_components": [{
+                "source": bad,
+                "components": ["xmq_shadow_probe", "wmbus_meter"],
+            }]}
+            try:
+                require_pinned_canary_sources(config)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("mutable/unsupported canary source accepted")
+        try:
+            require_pinned_canary_sources({"external_components": [{
+                "source": {"type": "git", "ref": "a" * 40},
+                "components": ["xmq_shadow_probe"],
+            }]})
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("missing cloned meter source accepted")
+        print("CANARY_SOURCE_PIN_OK: exact Git SHA or local source, mutable Git refs blocked")
         print("CANARY_RELEASE_GATE_OK: mandatory YAML parity before image approval, fail closed, no secrets or flashing")
 
 
