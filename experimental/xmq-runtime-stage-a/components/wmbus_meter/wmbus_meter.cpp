@@ -90,6 +90,9 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     if (shadow_driver == "mkradio4") {
       capture("target_m3", readings.target_m3);
       capture("total_m3", readings.total_m3);
+    } else if (shadow_driver == "mkradio4a") {
+      capture("target_m3", readings.target_m3);
+      readings.target_date = date("target");
     } else if (shadow_driver == "fhkvdataiii") {
       capture("current_hca", readings.current_hca);
       capture("previous_hca", readings.previous_hca);
@@ -136,6 +139,9 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     legacy.previous_date_matched_dv =
         !legacy.previous_date.empty() &&
         matched_dv("previous", Quantity::PointInTime);
+    legacy.target_date_matched_dv =
+        !legacy.target_date.empty() &&
+        matched_dv("target", Quantity::PointInTime);
     auto mark = [](xmq_shadow_probe::LegacyNumeric &after,
                    const xmq_shadow_probe::LegacyNumeric &prior) {
       after.changed = after.present &&
@@ -153,6 +159,9 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     legacy.previous_date_changed =
         !legacy.previous_date.empty() &&
         legacy.previous_date != before.previous_date;
+    legacy.target_date_changed =
+        !legacy.target_date.empty() &&
+        legacy.target_date != before.target_date;
   }
   xmq_shadow_probe::observe_legacy_telegram(
       *telegram, decoded, shadow_driver.c_str(), legacy);
