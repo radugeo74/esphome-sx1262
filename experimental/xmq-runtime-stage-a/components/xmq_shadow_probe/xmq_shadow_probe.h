@@ -21,6 +21,9 @@ class ShadowProbe : public Component {
   void dump_config() override;
   void observe(const ::Telegram &telegram, bool decoded, const char *driver,
                const LegacyReadings &old_values) noexcept;
+  // Early allocation-free check before the cloned legacy meter builds
+  // per-field comparison snapshots. Does not gate legacy decoding.
+  bool memory_headroom_available() noexcept;
   bool wants_readings() noexcept {
     if (!enabled_ || !registry_) return false;
     // A bounded budget PER hour, not one permanent budget per boot.
@@ -41,7 +44,12 @@ class ShadowProbe : public Component {
                "XMQ shadow hourly observation budget renewed (max %u, read-only)",
                static_cast<unsigned>(kMaxObservations));
     }
-    return budget_.may_observe();
+    if (!budget_.may_observe()) return false;
+    if (!memory_headroom_available()) {
+      ++low_memory_skipped_;
+      return false;
+    }
+    return true;
   }
 
  private:
