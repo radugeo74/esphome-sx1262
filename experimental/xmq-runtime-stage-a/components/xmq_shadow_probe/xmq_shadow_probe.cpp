@@ -3,6 +3,8 @@
 #include "esphome/components/wmbus_meter/wmbus_meter.h"
 #include "xmq_telegram_capture.h"
 #include "xmq_driver_sources.h"
+#include "xmq_t1_clear_candidate.h"
+#include "xmq_primary_readiness.h"
 #include "esp_heap_caps.h"
 #include <cmath>
 
@@ -26,15 +28,20 @@ bool wants_legacy_readings(const void *source_meter) noexcept {
 void observe_legacy_telegram(const void *source_meter,
                              const ::Telegram &telegram, bool decoded,
                              const char *driver,
-                             const LegacyReadings &old_values) noexcept {
+                             const LegacyReadings &old_values,
+                             const std::vector<uint8_t> *verified_t1_dll,
+                             bool clear_security_attested) noexcept {
   if (active_probe != nullptr)
-    active_probe->observe(source_meter, telegram, decoded, driver, old_values);
+    active_probe->observe(source_meter, telegram, decoded, driver, old_values,
+                          verified_t1_dll, clear_security_attested);
 }
 
 void ShadowProbe::observe(const void *source_meter,
                           const ::Telegram &telegram, bool decoded,
                           const char *driver,
-                          const LegacyReadings &old_values) noexcept {
+                          const LegacyReadings &old_values,
+                          const std::vector<uint8_t> *verified_t1_dll,
+                          bool clear_security_attested) noexcept {
   if (!wants_readings(source_meter)) return;
   try {
     if (!budget_.consume()) return;
@@ -172,6 +179,42 @@ void ShadowProbe::observe(const void *source_meter,
       return;
     }
     ++captured_;
+    // Stage 4: independently extract application bytes from the native
+    // CRC-stripped T1 DLL, not from legacy Telegram::frame. The existing
+    // successfully decoded Telegram still ATTESTS clear security, so this
+    // is NOT independent security/transport validation. Diagnostic only.
+    if (target_meter_ != nullptr && source_meter == target_meter_ &&
+        name == "mkradio4" && decoded && verified_t1_dll != nullptr) {
+      xmq_runtime::VerifiedApplication direct;
+      const bool accepted = xmq_runtime::capture_t1_clear_mkradio4_candidate(
+          *verified_t1_dll, xmq_runtime::CandidateLinkMode::T1, true,
+          clear_security_attested, direct);
+      bool ready = false;
+      bool parity = false;
+      if (accepted && direct.inner_mvt.manufacturer == snapshot.inner_mvt.manufacturer &&
+          direct.inner_mvt.version == snapshot.inner_mvt.version &&
+          direct.inner_mvt.type == snapshot.inner_mvt.type) {
+        xmq_runtime::XmqFrameResult projected;
+        ready = xmq_runtime::decode_primary_candidate(
+            *registry_, direct.inner_mvt, direct.encoding, direct.payload,
+            "mkradio4", {"target_m3", "total_m3"}, {}, projected);
+        if (ready) {
+          const auto t = projected.numeric.find("target_m3");
+          const auto v = projected.numeric.find("total_m3");
+          parity = t != projected.numeric.end() && v != projected.numeric.end() &&
+                   old_values.target_m3.present && old_values.total_m3.present &&
+                   std::isfinite(t->second.value) && std::isfinite(v->second.value) &&
+                   std::fabs(t->second.value - old_values.target_m3.value) <= 0.051 &&
+                   std::fabs(v->second.value - old_values.total_m3.value) <= 0.051;
+        }
+      }
+      ESP_LOGI(TAG,
+               "XMQ_STAGE4_T1_DIRECT_DIAGNOSTIC extracted=%u ready=%u parity=%s "
+               "crc=native_verified security=legacy_attested "
+               "sensor_writes=0 transport_independent=0",
+               static_cast<unsigned>(accepted), static_cast<unsigned>(ready),
+               parity ? "match" : "not_match");
+    }
     // Reuse the existing XMQ projection; do not parse twice or write sensors.
     xmq_runtime::PrimaryReadiness xmq_fields;
     xmq_runtime::XmqFrameResult stage1_output;
