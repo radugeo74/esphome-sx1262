@@ -265,3 +265,5 @@ Stage 1 2026-11-22 focused divergence visibility: ONE existing Stage A run check
 2026-11-22 Stage 4 safety hardening: independent caller-attested clear application status is mandatory alongside CRC and T1. Add encrypted/unknown-security rejection fixtures, no live radio changes. One existing CI workflow only.
 
 2026-11-22 Stage 4 selected-mkradio4 read-only T1 direct application diagnostic, strict NoSecurity legacy attestation, CRC verified by native radio, no new receiver, no HA writes, 12 meter preservation. One existing Stage A CI for 2026.11.0 synthetic build, NO FLASH.
+
+2026-11-22 Stage 4 #138 fix: bundle exact same T1 candidate header into xmq_shadow_probe component for GitHub external_components builds; assert cmp to tested host header. Revalidate single existing workflow, no flash.
