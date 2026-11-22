@@ -197,17 +197,20 @@ void ShadowProbe::observe(const void *source_meter,
     if (stage1_mkradio4 && snapshot.encoding ==
             xmq_runtime::ApplicationEncoding::OriginalIxml &&
         xmq_fields.ready &&
-        disposition == xmq_runtime::ShadowDisposition::Match) {
+        (disposition == xmq_runtime::ShadowDisposition::Match ||
+         disposition == xmq_runtime::ShadowDisposition::Difference)) {
       const auto target = stage1_output.numeric.find("target_m3");
       const auto total = stage1_output.numeric.find("total_m3");
       if (target != stage1_output.numeric.end() &&
           total != stage1_output.numeric.end()) {
         ESP_LOGI(TAG,
-                 "XMQ_STAGE1_MKRADIO4_OK target_m3=%.3f total_m3=%.3f "
-                 "source=xmq_primary parity=match "
+                 "XMQ_STAGE1_MKRADIO4_RESULT target_m3=%.3f total_m3=%.3f "
+                 "source=xmq_primary parity=%s "
                  "transport=legacy_verified provenance=not_proven "
                  "ha_writes=0",
-                 target->second.value, total->second.value);
+                 target->second.value, total->second.value,
+                 disposition == xmq_runtime::ShadowDisposition::Match ?
+                     "match" : "different");
       }
     }
     const auto &stats = diagnostic_.counters();
