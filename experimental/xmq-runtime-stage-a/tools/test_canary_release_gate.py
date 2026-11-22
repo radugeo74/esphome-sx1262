@@ -79,10 +79,22 @@ def run_tests():
         # A T1-only synthetic CI fixture is NOT a safe real-world fallback.
         safe = validate(original, True)
         require_live_t1_c1_profile(safe)
+        # A known-good installation may include mkradio4a for one or more
+        # water meters. The shape gate accepts it, but the full YAML parity
+        # gate must still prevent candidate-side driver substitutions.
+        import copy
+        mixed = copy.deepcopy(safe)
+        mixed["wmbus_meter"][7]["type"] = "mkradio4a"
+        require_live_t1_c1_profile(mixed)
+        all_mk4a = copy.deepcopy(safe)
+        for meter in all_mk4a["wmbus_meter"][7:]:
+            meter["type"] = "mkradio4a"
+        require_live_t1_c1_profile(all_mk4a)
         for mutation in (
             lambda c: c["wmbus_radio"].update(native_stream_mode="T1"),
             lambda c: c["wmbus_meter"].pop(),
             lambda c: c["wmbus_meter"][0].update(type="mkradio4"),
+            lambda c: c["wmbus_meter"][7].update(type="iperl"),
             lambda c: c["wmbus_meter"][0].update(mode=["C1"]),
         ):
             import copy
