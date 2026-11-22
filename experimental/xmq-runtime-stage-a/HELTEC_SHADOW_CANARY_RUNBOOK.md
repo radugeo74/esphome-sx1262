@@ -729,6 +729,55 @@ identity, driver, key, T1/C1 mode, RF pin, Home Assistant
 entity and network setting. No confidential configuration
 or SHA values are printed by the source guard.
 
+## Stage 1 milestone: one real mkradio4 decoded by XMQ (no HA writes)
+
+The Stage 1 implementation adds optional `target_meter` to
+`xmq_shadow_probe`. Its value is the **existing ESPHome component ID**
+of exactly one configured `wmbus_meter`, not a radio meter ID. The
+probe receives that instance's pointer at the existing post-decode
+callback and excludes all other configured meters from XMQ decode.
+The no-network CI-only T1_C1 fixture selects `lab_water`, a synthetic
+`mkradio4` meter. It must never be flashed.
+
+Example for a **private, separately approved** 12-meter YAML:
+
+```yaml
+xmq_shadow_probe:
+  id: xmq_lab_probe
+  enabled: true
+  target_meter: YOUR_EXISTING_MKRADIO4_COMPONENT_ID
+```
+
+This example is NOT a complete firmware configuration. Start from the
+real backed-up working YAML, preserve T1_C1, 12 meters, network/API/OTA,
+keys and entity mapping; pin external sources to a reviewed commit,
+build both fallback and candidate privately, and obtain explicit
+approval before installing. The standard disabled-canary release
+gate does NOT authorize enabling XMQ or flashing.
+
+On a valid, already legacy-verified/decrypted proprietary `CI=0xA2`
+telegram for the selected mkradio4, XMQ decodes the exact application
+payload into `target_m3` and `total_m3` in its **existing one-pass**
+diagnostic; the code does not use legacy values to produce either
+XMQ value. Only complete XMQ fields whose numeric values agree with
+legacy produce one line like
+`XMQ_STAGE1_MKRADIO4_OK target_m3=... total_m3=... source=xmq_primary ... ha_writes=0`.
+The numeric values are sensitive consumption data: keep ESPHome
+logs private, do not commit them unredacted, and do not print real
+meter IDs, cryptographic keys or telegram payloads.
+
+`mkradio4` uses proprietary `processContent()` writes, NOT
+`DVEntry::hasFieldInfo` matchers; requiring DV matches here
+would silently suppress every valid sample. A matching independent
+XMQ projection is meaningful but does **not** prove same-frame legacy
+setter provenance, independent AES/RF, or permission to replace
+Home Assistant updates. The legacy meter remains the ONLY writer.
+
+Stage 1 is **not complete on hardware** until a real selected meter
+produces this XMQ log on a reviewed canary and retains its existing
+legacy Home Assistant sensors. A passing host/CI compilation alone
+is not proof.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
