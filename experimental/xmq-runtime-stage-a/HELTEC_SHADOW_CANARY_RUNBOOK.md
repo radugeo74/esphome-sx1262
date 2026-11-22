@@ -729,6 +729,51 @@ identity, driver, key, T1/C1 mode, RF pin, Home Assistant
 entity and network setting. No confidential configuration
 or SHA values are printed by the source guard.
 
+## Stage 1 private single-meter release gate (never flashes)
+
+After a **separately reviewed, successfully compiled** private enabled
+Stage 1 canary is ready, run this command locally (paths are examples):
+
+```bash
+python experimental/xmq-runtime-stage-a/tools/stage1_mkradio4_release_gate.py \\
+  --reference /private/heltec-known-good.yaml \\
+  --candidate /private/heltec-xmq-one-mkradio4.yaml \\
+  --fallback-bin /private/heltec-known-good.bin \\
+  --canary-bin /private/heltec-xmq-one-mkradio4.bin \\
+  --manifest /private/heltec-stage1-manifest.json
+```
+
+Both YAML inputs are validated/resolved privately by `esphome config`
+and never written to GitHub. The candidate MUST retain exactly 12
+meters, native SX1262 `T1_C1`, all existing IDs, types, AES keys,
+sensors, network/API/OTA and radio settings. Only the already-audited
+external component source declarations may differ, plus this explicit
+configuration:
+
+```yaml
+xmq_shadow_probe:
+  id: xmq_lab_probe
+  enabled: true
+  target_meter: YOUR_EXISTING_MKRADIO4_COMPONENT_ID
+```
+
+The local gate requires `target_meter` to match **exactly one**
+pre-existing `wmbus_meter` component with driver `mkradio4`, and
+rejects selecting a heat allocator, `mkradio4a`, a missing meter,
+extra probe flags, altered meter values, or unpinned Git source refs.
+It reuses the original strict operational YAML-parity gate on a
+temporary **in-memory disabled copy**, keeping the ordinary disabled
+canary release gate untouched.
+
+A separate known-good app `.bin`, a new candidate app `.bin`
+and a private non-existing output manifest path are required. The
+gate checks image format/digests and writes a private SHA-256
+manifest; it cannot verify that a backup has been flashed or recovered
+successfully on this hardware. **It never flashes or grants permission
+to flash.** Ensure exact source commit pins, physically workable USB
+rollback, free heap headroom, and explicit approval before installing
+any optional enabled observer.
+
 ## Stage 1 milestone: one real mkradio4 decoded by XMQ (no HA writes)
 
 The Stage 1 implementation adds optional `target_meter` to
