@@ -25,7 +25,7 @@ start = clone.index("  // Baseline values are observed BEFORE legacy decoding.")
 end = clone.index("\n  if (id_match) {", start)
 observer = clone[start:end]
 assert observer.count("this->meter->handleTelegram(") == 1
-assert "const bool probe_requested = xmq_shadow_probe::wants_legacy_readings();" in observer
+assert "const bool probe_requested = xmq_shadow_probe::wants_legacy_readings(this);" in observer
 assert "if (probe_requested) snapshot(before);" in observer
 assert "if (decoded && probe_requested)" in observer
 assert "after.changed = after.present" in observer
@@ -40,6 +40,10 @@ assert 'readings.target_date = date("target");' in observer
 assert 'matched_dv("target", Quantity::PointInTime);' in observer
 assert "legacy.target_date_changed" in observer
 assert "xmq_shadow_probe::observe_legacy_telegram(" in observer
+assert "this, *telegram, decoded, shadow_driver.c_str(), legacy" in observer
+assert "target_meter: lab_water" in (root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-enabled-lab.yaml").read_text()
+assert 'cv.Optional(CONF_TARGET_METER): cv.use_id(Meter)' in (lab.parent/"xmq_shadow_probe/__init__.py").read_text()
+assert "wants_legacy_readings(this)" in observer
 # The callback is outside the field-snapshot branch. A successfully
 # decoded mkradio4a can therefore contribute metadata even though the
 # numerical XMQ shadow currently supports only mkradio4/fhkvdataiii.
@@ -56,7 +60,7 @@ clone = clone[:start] + '''  this->meter->handleTelegram(about, frame->data(), f
 ''' + clone[end:]
 assert clone==base, "unexpected changes to meter handling outside lab hook"
 probe=(lab.parent/"xmq_shadow_probe/xmq_shadow_probe.cpp").read_text()
-assert "if (!wants_readings()) return;" in probe
+assert "if (!wants_readings(source_meter)) return;" in probe
 assert "shadow_memory_allows_decode(heap, largest_block)" in probe
 assert "heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)" in probe
 assert "++low_memory_skipped_" in probe
@@ -65,6 +69,13 @@ assert probe.index("shadow_memory_allows_decode(heap, largest_block)") < probe.i
 )
 assert "diagnostic_.inspect(" in probe
 assert "source_mkradio4()" in probe
+assert "stage1_mkradio4 ? &stage1_output : nullptr" in probe
+assert "XMQ_STAGE1_MKRADIO4_OK target_m3=%.3f total_m3=%.3f" in probe
+assert "source=xmq_primary parity=match" in probe
+assert "provenance=not_proven" in probe
+assert "old_values.target_m3.matched_dv" in probe
+assert "old_values.total_m3.matched_dv" in probe
+assert "publish_state(" not in probe
 assert "source_fhkvdataiii()" in probe
 assert "source_mkradio4a()" in probe
 assert 'name == "mkradio4a"' in probe
@@ -99,7 +110,7 @@ for forbidden in (
     "sensor->publish_state(", "sensor::Sensor", "set_radio(",
 ):
     assert forbidden not in probe, "shadow probe gained an unsafe sink: " + forbidden
-assert "if (!wants_readings()) return;" in probe
+assert "if (!wants_readings(source_meter)) return;" in probe
 assert "if (!enabled_)" in probe
 assert "active_probe = this;" in probe
 assert "capture_verified_payload(" in probe
@@ -148,6 +159,9 @@ assert "hourly observation budget renewed" in header
 print("SHADOW_HOURLY_BUDGET_CONTRACT_OK: 128 observations/hour, uint32 rollover-safe renewal, no sensor writes")
 
 assert "set_enabled(bool enabled)" in header
+assert "set_target_meter(wmbus_meter::Meter *meter)" in header
+assert "target_meter_ != nullptr && source_meter != target_meter_" in header
+assert "bool wants_legacy_readings(const void *source_meter)" in (lab.parent/"xmq_shadow_probe/xmq_live_capture_hook.h").read_text()
 enabled_yaml=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-enabled-lab.yaml").read_text()
 assert enabled_yaml.count("enabled: true") == 1
 assert "!include heltec-xmq-shadow-build.yaml" in enabled_yaml
@@ -178,7 +192,7 @@ expected = (baseline.replace(
     "esphome:\n  name: sx126x-xmq-shadow-t1c1-lab"
 ).replace(
     "  enabled: false  # opt-in capture-only; still disabled in build fixture",
-    "  enabled: true  # only for synthetic offline CI, NEVER FLASH"
+    "  enabled: true  # only for synthetic offline CI, NEVER FLASH\n  target_meter: lab_water  # select only synthetic mkradio4; never log meter IDs"
 ).replace(
     "  native_stream_mode: T1\n",
     "  native_stream_mode: T1_C1\n"
