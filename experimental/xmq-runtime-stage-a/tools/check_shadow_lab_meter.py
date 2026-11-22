@@ -70,8 +70,10 @@ assert probe.index("shadow_memory_allows_decode(heap, largest_block)") < probe.i
 assert "diagnostic_.inspect(" in probe
 assert "source_mkradio4()" in probe
 assert "stage1_mkradio4 ? &stage1_output : nullptr" in probe
-assert "XMQ_STAGE1_MKRADIO4_OK target_m3=%.3f total_m3=%.3f" in probe
-assert "source=xmq_primary parity=match" in probe
+assert "XMQ_STAGE1_MKRADIO4_RESULT target_m3=%.3f total_m3=%.3f" in probe
+assert 'disposition == xmq_runtime::ShadowDisposition::Difference' in probe
+assert '"match" : "different"' in probe
+assert "source=xmq_primary parity=%s" in probe
 assert "provenance=not_proven" in probe
 assert "old_values.target_m3.matched_dv" in probe  # for mkradio4a only
 assert "telegram.tpl_ci != 0xA2" in probe
