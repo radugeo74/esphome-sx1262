@@ -553,6 +553,29 @@ numeric/date parity check is a **separate** feature requiring
 the correct XMQ driver source, verified date handling and a
 full build/run test. This stage does not add that feature.
 
+## Independent XMQ mkradio4a volume and date readiness (host only)
+
+Stage A #119 passed all 5 GitHub jobs, including the direct
+GitHub-sourced external component compilation. The next isolated
+`test_xmq_mkradio4a_primary.cpp` uses the original upstream
+`mkradio4a.xmq` with **two public clear DV record samples**:
+
+- `TCH,95,37`: target volume 16.1 m³, target date 2021-12-31
+- `HYD,FE,06`: target volume 75.2 m³, target date 2021-12-31
+
+The test invokes `decode_primary_candidate` with both
+`target_m3` and `target_date` mandatory. It rejects either
+record missing, wrong driver/MVT, proprietary IXML interpretation
+of the standard DV record and CI=0xA2 with a StandardDv encoding.
+Rejected output must be **fully cleared**, not partially publishable.
+
+The test is *not* an encrypted RF fixture, and it does not
+authorize mkradio4a to write HA states. It asserts XMQ
+readiness only after caller-provided verified/clear application
+bytes and CI-consistent routing; no field values are borrowed
+from legacy. The existing read-only shadow build still does
+not compare mkradio4a readings. Do not flash the lab YAML.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
