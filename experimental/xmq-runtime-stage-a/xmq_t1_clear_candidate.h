@@ -31,7 +31,7 @@ inline bool capture_t1_clear_mkradio4_candidate(
   // Restrict Stage 4 to the observed unencrypted MK4 application envelope.
   // The marker is format evidence, NOT a proof of encryption mode. A live
   // adapter must additionally verify security metadata independently.
-  if (dll[11] != 0x06 || dll[12] != 0x3e || dll[13] != 0x35)
+  if (dll[11] != 0x06 || !((dll[12] == 0x3e && dll[13] == 0x35) ||\n                            (dll[12] == 0x70 && dll[13] == 0x29)))
     return false;
   try {
     VerifiedApplication out;
