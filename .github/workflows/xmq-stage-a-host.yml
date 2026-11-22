@@ -100,6 +100,8 @@ jobs:
         run: python experimental/xmq-runtime-stage-a/tools/test_verify_rollback.py
       - name: Verify combined canary release gate is fail-closed before touching private images
         run: python experimental/xmq-runtime-stage-a/tools/test_canary_release_gate.py
+      - name: Verify one-meter mkradio4 XMQ Stage 1 local release gate
+        run: python experimental/xmq-runtime-stage-a/tools/test_stage1_mkradio4_release_gate.py
       - name: Verify lab meter clone has only the guarded post-decode hook
         run: python experimental/xmq-runtime-stage-a/tools/check_shadow_lab_meter.py
       - name: Verify future isolated legacy setter instrumentation staging without patching active common
