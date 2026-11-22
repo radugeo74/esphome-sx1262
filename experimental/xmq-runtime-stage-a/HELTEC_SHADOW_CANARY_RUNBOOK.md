@@ -932,3 +932,33 @@ shadow equality for numeric `fhkvdataiii`/`mkradio4` fields. They do not
 establish independent XMQ parsing provenance, date-field parity, or a completed
 on-device hourly renewal. CI fixture compilation is not the same as verifying
 the private 12-meter firmware.
+
+## Stage 4 — independent clear T1 candidate (host only; 2026-11-22)
+
+Stage 3 was physically observed on a Heltec running ESPHome 2026.11.0
+with `decoder: xmq`: the selected MK radio4 meter emitted two
+`XMQ_STAGE3_PRIMARY_ARMED` events with complete two-field
+`parity=match`. All 12 configured meters continued publishing.
+**Stage 3 still uses `transport=legacy_verified`, and no live setter
+provenance was proven.** Do not confuse the XMQ field producer with an
+independent radio/security stack.
+
+Stage 4 introduces `xmq_t1_clear_candidate.h` and a synthetic host
+test, with **no modifications to installed `sx126x`, `wmbus_radio`,
+`wmbus_meter`, `wmbus_common` or `xmq_shadow_probe` components**.
+The candidate accepts only a caller-asserted CRC-verified T1 DLL, exact
+L-field length, SND_NR/TCH/95-or-70/62-or-72/CI=A2, and one of two
+known original clear MK radio4 application envelopes. It extracts the
+application directly from the received DLL and runs the existing XMQ
+`decode_primary_candidate()` with required `target_m3/total_m3`.
+The test uses synthetic data, never private meter telegrams. C1,
+unverified CRC, unknown CI, invalid envelope and malformed size fail
+closed. It creates no Home Assistant entities.
+
+**Limits:** the host adapter takes a *trusted* CRC boolean: it does not
+calculate radio CRC. The marker is not cryptographic proof of cleartext,
+and no live security-mode verification exists in this host adapter.
+It cannot decrypt C1 without AES keys, cannot publish sensors, and is
+**not an OTA candidate**. Next gate: independent on-device T1 frame
+security classification and a strictly read-only comparison with
+Stage 3; preserve existing firmware and rollback. No new workflow files.
