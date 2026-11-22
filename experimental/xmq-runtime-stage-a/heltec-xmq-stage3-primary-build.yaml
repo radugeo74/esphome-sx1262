@@ -1,0 +1,16 @@
+# SYNTHETIC BUILD-ONLY primary-source switch check, NEVER FLASH.
+# No network, no meter keys, no real meter ID, no HA integration.
+packages:
+  base: !include heltec-xmq-stage2-sensors-build.yaml
+
+xmq_shadow_probe:
+  id: xmq_lab_probe
+  enabled: true
+  decoder: xmq
+  target_meter: lab_water
+  test_target_m3:
+    name: "CI XMQ Water Target Test"
+    internal: true
+  test_total_m3:
+    name: "CI XMQ Water Total Test"
+    internal: true
