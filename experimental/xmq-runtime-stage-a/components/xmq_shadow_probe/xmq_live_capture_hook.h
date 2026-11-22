@@ -29,8 +29,9 @@ struct LegacyReadings {
   bool target_date_changed{false};
   bool target_date_matched_dv{false};
 };
-bool wants_legacy_readings() noexcept;
-void observe_legacy_telegram(const ::Telegram &telegram, bool decoded,
+bool wants_legacy_readings(const void *source_meter) noexcept;
+void observe_legacy_telegram(const void *source_meter,
+                             const ::Telegram &telegram, bool decoded,
                              const char *driver,
                              const LegacyReadings &old_values) noexcept;
 }  // namespace xmq_shadow_probe
