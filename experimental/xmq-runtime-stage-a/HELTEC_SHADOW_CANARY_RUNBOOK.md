@@ -686,6 +686,25 @@ or continuing legacy sensor updates. Use only the private known-good
 YAML (preserving all 12 meters and original T1_C1 settings) to
 construct any later, separately reviewed reversible candidate.
 
+## Private release gate: mixed water-driver topologies
+
+The local `canary_release_gate.py` accepts either existing
+`mkradio4` or `mkradio4a` among the **five water meters**, while
+still requiring seven `fhkvdataiii` heat allocators and **exactly
+twelve meters in total**. This does **not** permit any driver
+substitution when constructing the candidate: the existing
+`preflight_canary.check()` compares the full resolved meter entries
+(including every driver, mode, ID and key) against the previously
+working private YAML. Only the optional XMQ component is allowed
+as an explicitly disabled addition. Mixed-water and unsupported-driver
+cases are exercised in the existing offline release-gate tests.
+
+These are source/configuration parity checks, not proof that a
+`mkradio4a` telegram has been decoded on the physical Heltec.
+Never upload the private reference/candidate YAML, secrets or images
+to GitHub. The generated CI T1_C1 synthetic YAML is never
+a valid fallback or candidate for a real 12-meter installation.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
