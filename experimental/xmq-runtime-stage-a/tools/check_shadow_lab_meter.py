@@ -35,6 +35,10 @@ assert "value.matched_dv = matched_dv(" in observer
 assert "legacy.current_date_matched_dv" in observer
 assert "capture(\"target_m3\"" in observer
 assert "capture(\"current_hca\"" in observer
+assert 'shadow_driver == "mkradio4a"' in observer
+assert 'readings.target_date = date("target");' in observer
+assert 'matched_dv("target", Quantity::PointInTime);' in observer
+assert "legacy.target_date_changed" in observer
 assert "xmq_shadow_probe::observe_legacy_telegram(" in observer
 # The callback is outside the field-snapshot branch. A successfully
 # decoded mkradio4a can therefore contribute metadata even though the
@@ -56,6 +60,15 @@ assert "if (!wants_readings()) return;" in probe
 assert "diagnostic_.inspect(" in probe
 assert "source_mkradio4()" in probe
 assert "source_fhkvdataiii()" in probe
+assert "source_mkradio4a()" in probe
+assert 'name == "mkradio4a"' in probe
+assert "old_values.target_date_matched_dv" in probe
+assert 'old.dates.emplace("target_date", old_values.target_date)' in probe
+assert 'std::vector<std::string>{"target_date"}' in probe
+# Incomplete or stale reference must abort before any XMQ comparison.
+assert probe.index("!old_values.target_m3.matched_dv") < probe.index(
+    "diagnostic_.inspect("
+)
 assert "old.numeric.empty()" in probe
 assert "provenance=not_proven" in probe
 assert "XMQ shadow hourly observation budget exhausted" in probe
