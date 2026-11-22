@@ -26,7 +26,11 @@ def require_live_t1_c1_profile(config):
         raise ValueError("live canary must contain twelve meters")
     heat = sum(isinstance(m, dict) and m.get("type") == "fhkvdataiii"
                for m in meters)
-    water = sum(isinstance(m, dict) and m.get("type") == "mkradio4"
+    # Accept either supported water variant in the *existing* installation.
+    # preflight.check() still demands byte-for-byte identical resolved meter
+    # driver entries between the working reference and disabled candidate.
+    water = sum(isinstance(m, dict) and
+                m.get("type") in ("mkradio4", "mkradio4a")
                 for m in meters)
     if (heat, water) != (7, 5):
         raise ValueError("live canary meter driver distribution changed")
