@@ -57,6 +57,12 @@ clone = clone[:start] + '''  this->meter->handleTelegram(about, frame->data(), f
 assert clone==base, "unexpected changes to meter handling outside lab hook"
 probe=(lab.parent/"xmq_shadow_probe/xmq_shadow_probe.cpp").read_text()
 assert "if (!wants_readings()) return;" in probe
+assert "shadow_memory_allows_decode(heap, largest_block)" in probe
+assert "heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)" in probe
+assert "++low_memory_skipped_" in probe
+assert probe.index("shadow_memory_allows_decode(heap, largest_block)") < probe.index(
+    "diagnostic_.inspect("
+)
 assert "diagnostic_.inspect(" in probe
 assert "source_mkradio4()" in probe
 assert "source_fhkvdataiii()" in probe
@@ -99,6 +105,9 @@ assert "active_probe = this;" in probe
 assert "capture_verified_payload(" in probe
 assert "diagnostic_.inspect(" in probe
 header=(lab.parent/"xmq_shadow_probe/xmq_shadow_probe.h").read_text()
+assert '#include "xmq_shadow_memory_gate.h"' in header
+assert "low_memory_skipped_ = 0;" in header
+assert "min_largest_free_block_ = UINT32_MAX;" in header
 assert "bool enabled_{false};" in header
 assert "if (!enabled_ || !registry_) return false;" in header
 assert "kMaxObservations = kShadowWindowMaxObservations" in header
