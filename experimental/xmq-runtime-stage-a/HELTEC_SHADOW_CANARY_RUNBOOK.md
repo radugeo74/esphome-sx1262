@@ -602,6 +602,21 @@ results on actual configured meters or memory/load measurements.
 No RF takeover, sensor publication, key logging, real meter ID,
 production YAML edit or device flash is performed.
 
+## GitHub-bundled XMQ rule integrity
+
+`tools/test_bundled_driver_sources.py` verifies that the entire
+original XMQ text for `fhkvdataiii`, `mkradio4`, and
+`mkradio4a` is included in the GitHub-installable
+`components/xmq_shadow_probe/xmq_driver_sources.h`. The
+**existing** host Stage A workflow executes this check before
+staging/compilation, so direct-GitHub firmware cannot quietly use
+different XMQ driver definitions from offline host tests.
+
+This is a static source integrity gate only: it does not prove
+independent on-air AES decryption, per-meter data parity,
+RAM safety or RF performance. The new mkradio4a read-only
+comparison and budget remain opt-in and cannot update sensors.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
