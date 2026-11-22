@@ -669,13 +669,13 @@ largest free block and RX/sensor continuity; no flash is performed.
 
 The **actual** SX1262 installation uses `native_stream_mode: T1_C1`,
 not the T1-only generic compile fixture. The new
-`heltec-xmq-shadow-t1-c1-build.yaml` inherits the opt-in,
-offline shadow test image but explicitly uses `T1_C1` and
+`heltec-xmq-shadow-t1-c1-build.yaml` is a **standalone**,
+CI-checked derivative of the offline shadow test image, using `T1_C1` and
 two fake/keyless meter IDs configured with `mode: [T1, C1]`.
 It has **no Wi-Fi, API, OTA, MQTT, real meter secrets or production
 sensors**; do not upload or flash this synthetic lab image.
 
-The **same Stage A workflow** now checks this resolved YAML and
+The **same Stage A workflow** checks this standalone YAML for exact\nderivation from the T1-only baseline, preventing duplicate meter IDs\ncaused by ESPHome package-list concatenation, and
 compiles it with ESPHome 2026.10.1 and 2026.11.0. This can catch
 a dual-link-mode configuration or C++ compatibility regression,
 which a T1-only CI build cannot.
