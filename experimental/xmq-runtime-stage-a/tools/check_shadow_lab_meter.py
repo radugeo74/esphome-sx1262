@@ -127,7 +127,16 @@ assert "ShadowObservationBudget budget_{};" in header
 assert "inspected_ = 0;" in header
 assert "diagnostic_ = xmq_runtime::ShadowDiagnostic(kMaxObservations, 0.051);" in header
 assert "diagnostic_.set_enabled(true);" in header
-assert "return budget_.may_observe();" in header
+assert "if (!budget_.may_observe()) return false;" in header
+assert "if (!memory_headroom_available())" in header
+assert header.index("if (!memory_headroom_available())") <
+       header.index("return true;", header.index("if (!memory_headroom_available())")
+assert "++low_memory_skipped_;" in header
+assert "bool memory_headroom_available() noexcept;" in header
+assert "bool ShadowProbe::memory_headroom_available() noexcept" in probe
+assert probe.index("bool ShadowProbe::memory_headroom_available() noexcept") <
+       probe.index("void ShadowProbe::observe(")
+assert "shadow_memory_allows_decode(free_heap, largest_block)" in probe
 assert "if (!budget_.consume()) return;" in probe
 assert "if (!enabled_ || !registry_) return false;" in header
 assert "hourly observation budget renewed" in header
