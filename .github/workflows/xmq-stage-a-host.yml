@@ -374,6 +374,9 @@ jobs:
           esphome config "$dir/heltec-xmq-shadow-t1-c1-build.yaml"
           esphome compile "$dir/heltec-xmq-shadow-t1-c1-build.yaml"
           echo "SHADOW_T1_C1_2026_11_COMPILE_OK: synthetic T1_C1 SX1262 with XMQ read-only, NO FLASH"
+          esphome config "$dir/heltec-xmq-stage2-sensors-build.yaml"
+          esphome compile "$dir/heltec-xmq-stage2-sensors-build.yaml"
+          echo "XMQ_STAGE2_2026_11_SENSORS_COMPILE_OK: paired opt-in XMQ sensors, synthetic T1_C1, NO FLASH"
 
   heltec-xmq-shadow-build:
     name: Heltec SX1262 ESPHome with XMQ linked, probe disabled
@@ -421,6 +424,9 @@ jobs:
           esphome config "$dir/heltec-xmq-shadow-t1-c1-build.yaml"
           esphome compile "$dir/heltec-xmq-shadow-t1-c1-build.yaml"
           echo "SHADOW_T1_C1_2026_10_COMPILE_OK: synthetic dual-mode shadow build only; NO FLASH"
+          esphome config "$dir/heltec-xmq-stage2-sensors-build.yaml"
+          esphome compile "$dir/heltec-xmq-stage2-sensors-build.yaml"
+          echo "XMQ_STAGE2_2026_10_SENSORS_COMPILE_OK: paired opt-in XMQ sensors, synthetic T1_C1, NO FLASH"
       - name: Validate and compile canary connectivity with temporary CI-only credentials
         shell: bash
         run: |
