@@ -9,6 +9,14 @@ namespace xmq_shadow_probe {
 static const char *const TAG = "xmq_shadow_probe";
 static ShadowProbe *active_probe = nullptr;
 
+bool ShadowProbe::memory_headroom_available() noexcept {
+  const auto free_heap = static_cast<size_t>(
+      heap_caps_get_free_size(MALLOC_CAP_8BIT));
+  const auto largest_block = static_cast<size_t>(
+      heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+  return xmq_runtime::shadow_memory_allows_decode(free_heap, largest_block);
+}
+
 bool wants_legacy_readings() noexcept {
   return active_probe != nullptr && active_probe->wants_readings();
 }
