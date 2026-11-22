@@ -23,6 +23,9 @@ public:
   std::string as_json(bool pretty_print = false);
   optional<std::string> get_string_field(std::string field_name);
   optional<float> get_numeric_field(std::string field_name);
+  // Single-frame XMQ override, set only after independently decoded parity
+  // matches legacy; affects only selected target/total HA callback getters.
+  void set_xmq_frame_values(float target_m3, float total_m3);
 
 protected:
   LinkModeSet link_modes_;
@@ -32,6 +35,10 @@ protected:
   std::unique_ptr<Telegram> last_telegram;
 
   CallbackManager<void()> on_telegram_callback_manager;
+  bool xmq_frame_values_ready_{false};
+  bool in_telegram_publish_{false};
+  float xmq_target_m3_{0.0f};
+  float xmq_total_m3_{0.0f};
 
   void handle_frame(wmbus_radio::Frame *frame);
 };
