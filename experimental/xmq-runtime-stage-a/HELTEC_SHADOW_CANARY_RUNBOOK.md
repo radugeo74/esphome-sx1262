@@ -729,6 +729,51 @@ identity, driver, key, T1/C1 mode, RF pin, Home Assistant
 entity and network setting. No confidential configuration
 or SHA values are printed by the source guard.
 
+## Stage 3: controlled original-sensor source selection (UNFLASHED)
+
+Stage 3 introduces `decoder: legacy | xmq` in `xmq_shadow_probe`
+(default `legacy`). This is the **sole** source selection for the
+one existing `target_meter`; it is not a global driver switch.
+
+```yaml
+xmq_shadow_probe:
+  id: xmq_lab_probe
+  enabled: true
+  target_meter: water_calda_baie
+  decoder: legacy  # safe default; stage 2 test sensors unchanged
+  test_target_m3:
+    name: "XMQ TEST apa calda baie target"
+  test_total_m3:
+    name: "XMQ TEST apa calda baie total"
+```
+
+Only after the Stage 3 synthetic CI passes, the current private YAML has
+been independently validated and compiled, and a known-good Stage 2
+image is preserved for USB rollback, an explicitly approved canary may
+set `decoder: xmq`. The selected meter remains legacy-decrypted; XMQ
+independently decodes its already verified original CI=0xA2 application
+payload. Before either original `target_m3` / `total_m3` sensor
+callback, the candidate arms a short-lived, **per-telegram** XMQ value
+pair only when both XMQ fields are complete, finite, nonnegative and
+match the two legacy references. It does not change the underlying
+legacy meter's stored numeric fields. Its two original HA getters use
+XMQ during that callback only, then clear the override. Other 11 meter
+objects and all RSSI/other fields remain on the legacy path.
+
+Missing, divergent or rejected XMQ results automatically leave the
+original sensor callbacks using legacy values. The shadow observation
+budget is up to 128 per hour; on expiry or low heap headroom the
+original sensors continue on legacy. The actual source can therefore
+alternate **per telegram** rather than staying XMQ unconditionally;
+logging `XMQ_STAGE3_PRIMARY_ARMED` indicates XMQ was selected for one
+valid callback, not independent AES or a hardware-complete primary stack.
+
+For a first hardware canary, keep `decoder: legacy`, confirm the
+existing Stage 2 sensors continue to update, then review/approve a
+separate build with `decoder: xmq`. Keep real firmware, key material,
+meter IDs and consumption logs private. The synthetic offline fixture
+`heltec-xmq-stage3-primary-build.yaml` MUST NEVER BE FLASHED.
+
 ## Stage 2: separate XMQ-only water sensors (opt-in; legacy is primary)
 
 Stage 1 demonstrated a real T1/A proprietary mkradio4 telegram and
