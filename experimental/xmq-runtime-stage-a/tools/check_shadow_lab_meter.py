@@ -78,7 +78,12 @@ assert "provenance=not_proven" in probe
 assert "old_values.target_m3.matched_dv" in probe  # for mkradio4a only
 assert "telegram.tpl_ci != 0xA2" in probe
 assert "mkradio4 is proprietary CI=0xA2" in probe
-assert "publish_state(" not in probe
+assert probe.count("publish_state(") == 2
+assert "stage2_target_->publish_state(target->second.value);" in probe
+assert "stage2_total_->publish_state(total->second.value);" in probe
+assert "disposition == xmq_runtime::ShadowDisposition::Match &&" in probe
+assert "stage2_target_ != nullptr && stage2_total_ != nullptr" in probe
+assert "XMQ_STAGE2_MKRADIO4_TEST_PUBLISHED" in probe
 assert "source_fhkvdataiii()" in probe
 assert "source_mkradio4a()" in probe
 assert 'name == "mkradio4a"' in probe
@@ -109,8 +114,8 @@ assert "XMQ CI/TPL census scoped=legacy_shadow_callback" in probe
 # This guard is source-level contract checking, not an RF/runtime test.
 for forbidden in (
     "add_frame_handler(", "add_meter_frame_handler(",
-    "handleTelegram(", "mark_as_handled(", "publish_state(",
-    "sensor->publish_state(", "sensor::Sensor", "set_radio(",
+    "handleTelegram(", "mark_as_handled(",
+    "sensor->publish_state(", "set_radio(",
 ):
     assert forbidden not in probe, "shadow probe gained an unsafe sink: " + forbidden
 assert "if (!wants_readings(source_meter)) return;" in probe
@@ -208,4 +213,19 @@ assert "type: mkradio4" in t1c1
 for unsafe in ("wifi:", "api:", "ota:", "mqtt:", "!secret", "password:", "key:"):
     assert unsafe not in t1c1, "unsafe T1_C1 build fixture: " + unsafe
 print("SHADOW_T1_C1_LAB_CONTRACT_OK: two synthetic T1+C1 meters, no network, no keys, NO FLASH")
+stage2=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-stage2-sensors-build.yaml").read_text()
+assert "!include heltec-xmq-shadow-t1-c1-build.yaml" in stage2
+assert "target_meter: lab_water" in stage2
+assert stage2.count("test_target_m3:") == 1 and stage2.count("test_total_m3:") == 1
+assert stage2.count("internal: true") == 2
+for unsafe in ("wifi:", "api:", "ota:", "mqtt:", "!secret", "password:", "key:"):
+    assert unsafe not in stage2, "unsafe Stage 2 build fixture: "+unsafe
+schema=(lab.parent/"xmq_shadow_probe/__init__.py").read_text()
+assert "has_target != has_total" in schema
+assert 'if has_target and (not config[CONF_ENABLED] or CONF_TARGET_METER not in config)' in schema
+assert "await sensor.new_sensor(config[CONF_TEST_TARGET])" in schema
+assert "await sensor.new_sensor(config[CONF_TEST_TOTAL])" in schema
+assert "set_stage2_sensors(target, total)" in schema
+print("XMQ_STAGE2_SENSOR_CONTRACT_OK: paired opt-in XMQ-only test sensors, gated parity, no legacy writes")
+
 
