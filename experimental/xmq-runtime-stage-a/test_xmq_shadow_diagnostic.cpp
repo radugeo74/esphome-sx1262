@@ -1,4 +1,5 @@
 #include "xmq_shadow_diagnostic.h"
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -62,6 +63,42 @@ int main() {
             stage1_candidate.driver.empty() &&
             stage1_candidate.numeric.empty() && stage1_candidate.dates.empty(),
             "failed parse retained stale readiness/output from prior telegram");
+
+    // Stage 1: one selected mkradio4 uses ONLY the generic XMQ projection
+    // returned by the same diagnostic pass; no legacy value is copied into it.
+    DriverRegistry mk4_registry({load_driver(upstream("mkradio4"))});
+    const auto mk4_payload=parse_hex(
+        "06702901006017030004000300000000000000000000000000000000000000000000");
+    ShadowReference mk4_legacy;
+    mk4_legacy.numeric={{"target_m3",0.1},{"total_m3",0.4}};
+    ShadowDiagnostic mk4_probe(3);
+    mk4_probe.set_enabled(true);
+    XmqFrameResult mk4_xmq;
+    PrimaryReadiness mk4_ready;
+    require(mk4_probe.inspect(mk4_registry, {"TCH",0x95,0x62},
+                ApplicationEncoding::OriginalIxml, mk4_payload, mk4_legacy,
+                160000, true, "mkradio4", {"target_m3","total_m3"},
+                &mk4_ready, {}, &mk4_xmq)==ShadowDisposition::Match,
+            "Stage 1 mkradio4 XMQ and legacy fixture did not match");
+    require(mk4_ready.ready && mk4_ready.available==2 &&
+            mk4_xmq.driver=="mkradio4" &&
+            std::fabs(mk4_xmq.numeric.at("target_m3").value-0.1)<1e-8 &&
+            std::fabs(mk4_xmq.numeric.at("total_m3").value-0.4)<1e-8,
+            "Stage 1 independent XMQ numeric outputs missing or incorrect");
+    // A mismatch must be detected; independent XMQ values stay original.
+    mk4_legacy.numeric["total_m3"]=9.4;
+    require(mk4_probe.inspect(mk4_registry, {"TCH",0x95,0x62},
+                ApplicationEncoding::OriginalIxml, mk4_payload, mk4_legacy,
+                160000, true, "mkradio4", {"target_m3","total_m3"},
+                &mk4_ready, {}, &mk4_xmq)==ShadowDisposition::Difference &&
+            std::fabs(mk4_xmq.numeric.at("total_m3").value-0.4)<1e-8,
+            "Stage 1 XMQ copied mismatched legacy output");
+    require(mk4_probe.inspect(mk4_registry, {"TCH",0x95,0x62},
+                ApplicationEncoding::OriginalIxml, {}, mk4_legacy,
+                160000, true, "mkradio4", {"target_m3","total_m3"},
+                &mk4_ready, {}, &mk4_xmq)==ShadowDisposition::UnsupportedOrError &&
+            !mk4_ready.ready && mk4_xmq.numeric.empty(),
+            "Stage 1 stale XMQ values retained after invalid telegram");
 
     // A caller that provides no reference fields must never report MATCH.
     // Zero comparisons are not independent evidence of parser parity.
