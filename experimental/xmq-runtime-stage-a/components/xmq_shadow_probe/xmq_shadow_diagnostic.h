@@ -57,8 +57,10 @@ class ShadowDiagnostic {
                             const std::string &explicit_driver="",
                             const std::vector<std::string> &expected_numeric={},
                             PrimaryReadiness *primary=nullptr,
-                            const std::vector<std::string> &primary_dates={}) noexcept {
+                            const std::vector<std::string> &primary_dates={},
+                            XmqFrameResult *primary_output=nullptr) noexcept {
     if (primary != nullptr) *primary = PrimaryReadiness{};
+    if (primary_output != nullptr) *primary_output = XmqFrameResult{};
     if (!enabled_) {
       ++counters_.skipped;
       return ShadowDisposition::Disabled;
@@ -85,6 +87,10 @@ class ShadowDiagnostic {
       if (primary != nullptr) {
         *primary = inspect_primary_readiness(
             new_outputs, explicit_driver, expected_numeric, primary_dates);
+        // Copy only when explicitly requested and the independent XMQ
+        // fields satisfy the complete contract. No second XMQ parse.
+        if (primary_output != nullptr && primary->ready)
+          *primary_output = new_outputs;
       }
       // A zero-field comparison cannot establish parity. Fail closed even
       // when the caller forgets to supply an expected-field contract.
