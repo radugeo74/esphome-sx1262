@@ -25,6 +25,7 @@ jobs:
           cmp "$dir/xmq_ci_security_census.h" "$dir/components/xmq_shadow_probe/xmq_ci_security_census.h"
           cmp "$dir/xmq_shadow_memory_gate.h" "$dir/components/xmq_shadow_probe/xmq_shadow_memory_gate.h"
           python "$dir/tools/test_bundled_driver_sources.py"
+          cmp "$dir/xmq_t1_clear_candidate.h" "$dir/components/xmq_shadow_probe/xmq_t1_clear_candidate.h"
           echo "PASS: GitHub-installable shadow API matches host source"
       - name: Compile and run isolated XMQ tests
         shell: bash
