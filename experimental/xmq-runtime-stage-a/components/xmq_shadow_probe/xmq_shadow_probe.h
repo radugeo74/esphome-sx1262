@@ -1,7 +1,8 @@
 #pragma once
-// Experimental build-only probe. It does NOT subscribe to wmbus_radio,
-// obtain AES keys, access Telegram, or modify any meter/sensor.
+// Isolated optional XMQ shadow. Never subscribes to RF or changes legacy sensors.
+// Stage 2 may publish ONLY two explicit independent XMQ test sensors.
 #include "esphome/core/component.h"
+#include "esphome/components/sensor/sensor.h"
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"
 #include "xmq_compat_include.h"
@@ -19,6 +20,10 @@ class ShadowProbe : public Component {
  public:
   void set_enabled(bool enabled) { enabled_ = enabled; }
   void set_target_meter(wmbus_meter::Meter *meter) { target_meter_ = meter; }
+  void set_stage2_sensors(sensor::Sensor *target, sensor::Sensor *total) {
+    stage2_target_ = target;
+    stage2_total_ = total;
+  }
   void setup() override;
   void dump_config() override;
   void observe(const void *source_meter, const ::Telegram &telegram,
@@ -59,6 +64,8 @@ class ShadowProbe : public Component {
  private:
   bool enabled_{false};
   wmbus_meter::Meter *target_meter_{nullptr};
+  sensor::Sensor *stage2_target_{nullptr};
+  sensor::Sensor *stage2_total_{nullptr};
   ShadowObservationBudget budget_{};
   uint32_t inspected_{0};
   uint32_t captured_{0};
