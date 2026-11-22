@@ -989,3 +989,33 @@ must remain until independent validation of security and transport is
 implemented and verified. This remains an unflashed experimental source
 candidate even after CI green; review the physical YAML and retain the
 Stage 3 installed ref `45d07d2ae4bd8fc3edeb6d7b24e54b6bacf0919f`.
+
+## Stage 5 — independent T1 structural evidence (candidate, NO FLASH)
+
+The physical Heltec Stage 4 log (72) at 2026-11-22 20:27:01
+confirmed one real selected MK radio4 telegram:
+`XMQ_STAGE4_T1_DIRECT_DIAGNOSTIC extracted=1 ready=1 parity=match`,
+while Stage 3 original and test sensor values agreed at 33.9 m3.
+
+Stage 5 adds `xmq_t1_security_evidence.h`, available both as
+the host source and byte-identical in `components/xmq_shadow_probe/`.
+The classifier operates ONLY on the raw, CRC-stripped T1 DLL (and the
+caller's radio CRC/mode attestations), with no input from
+`Telegram::tpl_sec_mode`. It recognizes a narrow TCH MK radio4
+proprietary `CI=A2` envelope or returns UnknownSecurity/Reject.
+A recognized proprietary envelope is **not cryptographic proof**
+that it is clear. The existing legacy parser still has final say over
+whether the Stage 4 decoder is admitted; no AES/C1 and no independent
+security provenance are claimed.
+
+When the selected MK4 meter emits a legacy-attested clear T1, Stage 5
+will log only:
+`XMQ_STAGE5_T1_SECURITY_EVIDENCE structural=mk4_candidate
+legacy_clear_attested=1 crypto_proven=0 independent_security=0
+sensor_writes=0`.
+No raw telegram, ID or measured value is emitted by that diagnostic.
+Do not infer security from `A2`, `06 3E 35`, successful XMQ decode
+or numeric parity. The gate remains fail-closed and read-only; the
+working Stage 3/4 firmware should not be replaced before complete CI
+and reviewed physical rollout. This stage is **not** independent
+cryptographic/security verification of the proprietary format.
