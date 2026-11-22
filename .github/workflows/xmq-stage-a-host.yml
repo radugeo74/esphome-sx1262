@@ -64,6 +64,17 @@ jobs:
             -I"$dir" "$dir/test_xmq_t1_clear_candidate.cpp" \
             -o "$RUNNER_TEMP/xmq-stage4-t1-candidate"
           "$RUNNER_TEMP/xmq-stage4-t1-candidate"
+      - name: Stage 5 isolated T1 envelope/security evidence classification (no HA writes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=experimental/xmq-runtime-stage-a
+          cmp "$dir/xmq_t1_security_evidence.h" "$dir/components/xmq_shadow_probe/xmq_t1_security_evidence.h"
+          g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -I"$dir" "$dir/test_xmq_t1_security_evidence.cpp" \
+            -o "$RUNNER_TEMP/xmq-stage5-t1-security"
+          "$RUNNER_TEMP/xmq-stage5-t1-security"
       - name: Execute isolated TPL5 AES CBC known-answer and reject tests
         shell: bash
         run: |
