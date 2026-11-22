@@ -3,6 +3,7 @@
 #include "xmq_telegram_capture.h"
 #include "xmq_driver_sources.h"
 #include "esp_heap_caps.h"
+#include <cmath>
 
 namespace esphome {
 namespace xmq_shadow_probe {
@@ -203,14 +204,31 @@ void ShadowProbe::observe(const void *source_meter,
       const auto total = stage1_output.numeric.find("total_m3");
       if (target != stage1_output.numeric.end() &&
           total != stage1_output.numeric.end()) {
+        // Only paired opt-in XMQ sensors are writable. Require complete
+        // two-field readiness AND parity match before publishing either;
+        // mismatch, invalid CI, low heap or exceptions publish NOTHING.
+        // The values come from XMQ projection, not the legacy snapshot.
+        if (stage2_target_ != nullptr && stage2_total_ != nullptr &&
+            disposition == xmq_runtime::ShadowDisposition::Match &&
+            std::isfinite(target->second.value) &&
+            std::isfinite(total->second.value) &&
+            target->second.value >= 0.0 && total->second.value >= 0.0) {
+          stage2_target_->publish_state(target->second.value);
+          stage2_total_->publish_state(total->second.value);
+          ESP_LOGI(TAG,
+                   "XMQ_STAGE2_MKRADIO4_TEST_PUBLISHED source=xmq_primary "
+                   "parity=match fields=2 test_sensors=2 legacy_writes=0");
+        }
         ESP_LOGI(TAG,
                  "XMQ_STAGE1_MKRADIO4_RESULT target_m3=%.3f total_m3=%.3f "
                  "source=xmq_primary parity=%s "
                  "transport=legacy_verified provenance=not_proven "
-                 "ha_writes=0",
+                 "test_sensors=%u legacy_writes=0",
                  target->second.value, total->second.value,
                  disposition == xmq_runtime::ShadowDisposition::Match ?
-                     "match" : "different");
+                     "match" : "different",
+                 static_cast<unsigned>(stage2_target_ != nullptr &&
+                                       stage2_total_ != nullptr));
       }
     }
     const auto &stats = diagnostic_.counters();
@@ -287,8 +305,9 @@ void ShadowProbe::setup() {
 }
 
 void ShadowProbe::dump_config() {
-  ESP_LOGCONFIG(TAG, "Experimental XMQ lab shadow: %s (capture-only, NO sensor changes)",
-                enabled_ ? "live bounded numeric shadow (no sensor writes)" : "disabled");
+  ESP_LOGCONFIG(TAG, "Experimental XMQ shadow: %s, test entities: %s (legacy sensors untouched)",
+                enabled_ ? "enabled" : "disabled",
+                stage2_target_ && stage2_total_ ? "paired" : "none");
 }
 
 }  // namespace xmq_shadow_probe
