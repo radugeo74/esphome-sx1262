@@ -165,9 +165,27 @@ print("SHADOW_LAB_METER_OK: guarded legacy field snapshot + read-only XMQ compar
 # Actual SX1262 install receives T1 and C1; test this configuration
 # separately from the old T1-only synthetic baseline, never as an OTA image.
 t1c1=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-t1-c1-build.yaml").read_text()
-assert "!include heltec-xmq-shadow-enabled-lab.yaml" in t1c1
+assert "packages:" not in t1c1, "wmbus_meter list package merge duplicates IDs"
 assert "native_stream_mode: T1_C1" in t1c1
 assert t1c1.count("mode: [T1, C1]") == 2
+assert t1c1.count("id: lab_water\n") == 1
+assert t1c1.count("id: lab_water_mkradio4a_census\n") == 1
+# Build fixture may be standalone to avoid ESPHome list concatenation, but
+# must remain a mechanically checked derivative of the legacy-safe baseline.
+baseline = yaml
+expected = (baseline.replace(
+    "esphome:\n  name: sx126x-xmq-shadow-lab",
+    "esphome:\n  name: sx126x-xmq-shadow-t1c1-lab"
+).replace(
+    "  enabled: false  # opt-in capture-only; still disabled in build fixture",
+    "  enabled: true  # only for synthetic offline CI, NEVER FLASH"
+).replace(
+    "  native_stream_mode: T1\n",
+    "  native_stream_mode: T1_C1\n"
+).replace("    mode: [T1]\n", "    mode: [T1, C1]\n"))
+assert t1c1.split("# Derived from heltec-xmq-shadow-build.yaml, with exact drift checked in CI.\n", 1)[1] == expected, (
+    "standalone T1_C1 fixture drifted from source baseline"
+)
 assert "type: mkradio4a" in t1c1
 assert "type: mkradio4" in t1c1
 for unsafe in ("wifi:", "api:", "ota:", "mqtt:", "!secret", "password:", "key:"):
