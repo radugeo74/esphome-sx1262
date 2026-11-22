@@ -665,6 +665,27 @@ enforce that the pre-snapshot memory check is in place. A real
 canary requires a reviewed rollback and runtime data on heap,
 largest free block and RX/sensor continuity; no flash is performed.
 
+## T1_C1 synthetic shadow build gate (no device installation)
+
+The **actual** SX1262 installation uses `native_stream_mode: T1_C1`,
+not the T1-only generic compile fixture. The new
+`heltec-xmq-shadow-t1-c1-build.yaml` inherits the opt-in,
+offline shadow test image but explicitly uses `T1_C1` and
+two fake/keyless meter IDs configured with `mode: [T1, C1]`.
+It has **no Wi-Fi, API, OTA, MQTT, real meter secrets or production
+sensors**; do not upload or flash this synthetic lab image.
+
+The **same Stage A workflow** now checks this resolved YAML and
+compiles it with ESPHome 2026.10.1 and 2026.11.0. This can catch
+a dual-link-mode configuration or C++ compatibility regression,
+which a T1-only CI build cannot.
+
+It does **not** validate RF T1/C1 timings, accurate packet reception,
+AES decryption, the 12 live meter configurations, startup memory,
+or continuing legacy sensor updates. Use only the private known-good
+YAML (preserving all 12 meters and original T1_C1 settings) to
+construct any later, separately reviewed reversible candidate.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
