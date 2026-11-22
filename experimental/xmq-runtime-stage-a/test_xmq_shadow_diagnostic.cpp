@@ -38,23 +38,30 @@ int main() {
     // The same XMQ parse reports field readiness without reading legacy
     // values or making a second projection. A bad contract fails closed.
     PrimaryReadiness independent;
+    XmqFrameResult stage1_candidate;
     ShadowDiagnostic single_pass(2);
     single_pass.set_enabled(true);
     require(single_pass.inspect(registry, {"HYD",0xFE,0x06},
                 ApplicationEncoding::StandardDv, valid, old,
                 0, false, "mkradio4a", {"target_m3"}, &independent,
-                {"target_date"}) == ShadowDisposition::Match,
+                {"target_date"}, &stage1_candidate) == ShadowDisposition::Match,
             "single-pass readiness changed legacy shadow outcome");
     require(independent.ready && independent.required == 2 &&
             independent.available == 2,
             "single-pass independent readiness omitted XMQ date/numeric");
+    require(stage1_candidate.driver == "mkradio4a" &&
+            stage1_candidate.numeric.count("target_m3") == 1 &&
+            stage1_candidate.dates.count("target_date") == 1,
+            "one-pass XMQ numeric/date output missing");
     independent.ready = true;
     require(single_pass.inspect(registry, {"HYD",0xFE,0x06},
                 ApplicationEncoding::StandardDv, {}, old,
                 0, false, "mkradio4a", {"target_m3"}, &independent,
-                {"target_date"}) == ShadowDisposition::UnsupportedOrError &&
-            !independent.ready && independent.available == 0,
-            "failed parse retained stale readiness from prior telegram");
+                {"target_date"}, &stage1_candidate) == ShadowDisposition::UnsupportedOrError &&
+            !independent.ready && independent.available == 0 &&
+            stage1_candidate.driver.empty() &&
+            stage1_candidate.numeric.empty() && stage1_candidate.dates.empty(),
+            "failed parse retained stale readiness/output from prior telegram");
 
     // A caller that provides no reference fields must never report MATCH.
     // Zero comparisons are not independent evidence of parser parity.
