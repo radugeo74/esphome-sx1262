@@ -642,6 +642,29 @@ compile does not authorize a production flash. After compiling,
 test only a separately reviewed, reversible canary, measuring
 free/largest/minimum heap, RX counts and legacy sensor continuity.
 
+## Earlier read-only memory checks: startup and pre-snapshot
+
+In addition to the existing pre-decode memory check, the opt-in
+`xmq_shadow_probe` now performs the same 128 KiB free / 80 KiB
+contiguous **8-bit-capable** heap threshold **before constructing the
+XMQ driver registry at setup**. If the check fails, the shadow
+probe remains inactive while legacy processing continues unchanged.
+
+When the cloned `wmbus_meter` asks `wants_legacy_readings()`, the
+probe also performs the allocation-free heap preflight **before**
+capturing baseline legacy numeric/date values, before/after DV
+snapshots, and before optional XMQ inspection. If low, the
+snapshot is skipped. The previously added check immediately
+before XMQ parser execution is retained as a second guard.
+These checks cannot guarantee that later allocations will succeed.
+
+Both checks affect only the experimental shadow observer and do
+not own the SX1262 receiver, call `mark_as_handled`, suppress
+legacy meter frames, or write HA values. Source-level guard tests
+enforce that the pre-snapshot memory check is in place. A real
+canary requires a reviewed rollback and runtime data on heap,
+largest free block and RX/sensor continuity; no flash is performed.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
