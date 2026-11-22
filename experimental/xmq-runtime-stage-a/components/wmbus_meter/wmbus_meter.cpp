@@ -55,6 +55,8 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     return;
   }
 
+  // A previous telegram must never supply override data for this frame.
+  this->xmq_frame_values_ready_ = false;
   auto about =
       AboutTelegram(App.get_friendly_name(), frame->rssi(), FrameType::WMBUS);
 
@@ -169,7 +171,12 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
   if (id_match) {
     this->last_telegram = std::move(telegram);
     this->defer([this]() {
+      // XMQ can override only target/total getters while these exact
+      // telegram callbacks run. All unrelated fields retain legacy source.
+      this->in_telegram_publish_ = true;
       this->on_telegram_callback_manager();
+      this->in_telegram_publish_ = false;
+      this->xmq_frame_values_ready_ = false;
       this->last_telegram = nullptr;
     });
 
@@ -199,7 +206,23 @@ optional<std::string> Meter::get_string_field(std::string field_name) {
   return {};
 }
 
+void Meter::set_xmq_frame_values(float target_m3, float total_m3) {
+  if (!std::isfinite(target_m3) || !std::isfinite(total_m3) ||
+      target_m3 < 0 || total_m3 < 0)
+    return;
+  this->xmq_target_m3_ = target_m3;
+  this->xmq_total_m3_ = total_m3;
+  this->xmq_frame_values_ready_ = true;
+}
+
 optional<float> Meter::get_numeric_field(std::string field_name) {
+  // Override is visible ONLY inside the selected meter's deferred sensor
+  // update for this telegram. Before and outside that callback, fall back
+  // unconditionally to the existing legacy engine.
+  if (this->in_telegram_publish_ && this->xmq_frame_values_ready_) {
+    if (field_name == "target_m3") return this->xmq_target_m3_;
+    if (field_name == "total_m3") return this->xmq_total_m3_;
+  }
   // RSSI is not handled by meter but by telegram :/
   if (field_name == "rssi_dbm")
     return this->last_telegram->about.rssi_dbm;
