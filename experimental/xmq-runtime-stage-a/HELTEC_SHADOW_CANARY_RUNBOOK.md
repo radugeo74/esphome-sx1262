@@ -576,6 +576,32 @@ bytes and CI-consistent routing; no field values are borrowed
 from legacy. The existing read-only shadow build still does
 not compare mkradio4a readings. Do not flash the lab YAML.
 
+## mkradio4a read-only shadow parity — complete DV volume AND date
+
+After the independent public-source XMQ primary test, the isolated
+`components/wmbus_meter` clone now records the legacy `target_m3`
+and the original `target` PointInTime field for `mkradio4a`.
+The clone marks both numeric and date field-matcher evidence from the
+**same successfully parsed Telegram**. This is an opt-in lab callback,
+not a change to `components/wmbus_meter` in production.
+
+The opt-in shadow probe bundles the original upstream
+`source_mkradio4a()` XMQ rules alongside the existing drivers.
+For mkradio4a **only**, it requires the legacy volume to be present
+and matched to this telegram's DV entry, and a nonempty target date
+also matched to this telegram's DV entry, before comparison. Missing
+or unmatched reference evidence is counted as `no_reference_` and
+never as `Match`. XMQ must independently return both
+`target_m3` and `target_date`; its primary readiness gate
+rejects incomplete XMQ output.
+
+The comparison remains bounded, optional, read-only, uses verified
+legacy plaintext and does not prove independent AES/radio transport.
+A passing host/build CI cannot substitute for observed matching
+results on actual configured meters or memory/load measurements.
+No RF takeover, sensor publication, key logging, real meter ID,
+production YAML edit or device flash is performed.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
