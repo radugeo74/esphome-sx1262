@@ -1,6 +1,6 @@
 #pragma once
-// Isolated optional XMQ shadow. Never subscribes to RF or changes legacy sensors.
-// Stage 2 may publish ONLY two explicit independent XMQ test sensors.
+// Isolated optional XMQ observer. Stage 3 opt-in mkradio4 may supply
+// matched XMQ readings for only the selected meter during its HA callback.
 #include "esphome/core/component.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/core/log.h"
@@ -19,6 +19,7 @@ namespace xmq_shadow_probe {
 class ShadowProbe : public Component {
  public:
   void set_enabled(bool enabled) { enabled_ = enabled; }
+  void set_xmq_primary(bool xmq_primary) { xmq_primary_ = xmq_primary; }
   void set_target_meter(wmbus_meter::Meter *meter) { target_meter_ = meter; }
   void set_stage2_sensors(sensor::Sensor *target, sensor::Sensor *total) {
     stage2_target_ = target;
@@ -63,6 +64,7 @@ class ShadowProbe : public Component {
 
  private:
   bool enabled_{false};
+  bool xmq_primary_{false};
   wmbus_meter::Meter *target_meter_{nullptr};
   sensor::Sensor *stage2_target_{nullptr};
   sensor::Sensor *stage2_total_{nullptr};
