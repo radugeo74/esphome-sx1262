@@ -43,7 +43,7 @@ def require_live_t1_c1_profile(config):
     # The gate does not force unsupported C1 onto a meter.
 
 
-_FULL_SHA = re.compile(r"[0-9a-fA-F]{40}\\Z")
+_FULL_SHA = re.compile(r"[0-9a-fA-F]{40}\Z")
 
 
 def require_pinned_canary_sources(config):
