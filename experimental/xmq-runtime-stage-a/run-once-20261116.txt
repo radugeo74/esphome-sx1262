@@ -257,3 +257,5 @@ Stage 1 2026-11-22 focused divergence visibility: ONE existing Stage A run check
 2026-11-22 Stage 2: ONE existing Stage A workflow verifies two separate XMQ-only mkradio4 test sensor schema IDs and selective sensor publication only on completed CI A2 parity match, legacy entity writes unchanged, 128/hour shadow budget and heap guard, synthetic T1_C1 Heltec build on ESPHome 2026.10.1 + 2026.11.0. NO FLASH, no private meter YAML/secrets in CI.
 
 2026-11-22 Stage 3 one selected mkradio4 HA source switch: ONE existing Stage A CI validates decoder:legacy (default), opt-in decoder:xmq strictly on CI A2 XMQ/legacy parity, one per-frame deferred callback-only target/total override, fallback to legacy on invalid/mismatch/low heap/budget, no changes to 11 other meters; ESPHome 2026.10.1 and 2026.11.0 synthetic T1_C1 builds. NO FLASH.
+
+2026-11-22 Stage 4 host-only clear T1 candidate: single existing CI runs synthetic verified T1/A DLL-to-XMQ direct payload extraction/decoding, rejects C1 without AES, unverified CRC and malformed frames. No firmware component or radio changes, no flash.
