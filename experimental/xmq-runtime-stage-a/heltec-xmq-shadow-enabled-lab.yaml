@@ -12,3 +12,4 @@ esphome:
 xmq_shadow_probe:
   id: xmq_lab_probe
   enabled: true
+  target_meter: lab_water  # select only synthetic mkradio4; never log meter IDs
