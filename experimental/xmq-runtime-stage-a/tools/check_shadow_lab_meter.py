@@ -73,8 +73,9 @@ assert "stage1_mkradio4 ? &stage1_output : nullptr" in probe
 assert "XMQ_STAGE1_MKRADIO4_OK target_m3=%.3f total_m3=%.3f" in probe
 assert "source=xmq_primary parity=match" in probe
 assert "provenance=not_proven" in probe
-assert "old_values.target_m3.matched_dv" in probe
-assert "old_values.total_m3.matched_dv" in probe
+assert "old_values.target_m3.matched_dv" in probe  # for mkradio4a only
+assert "telegram.tpl_ci != 0xA2" in probe
+assert "mkradio4 is proprietary CI=0xA2" in probe
 assert "publish_state(" not in probe
 assert "source_fhkvdataiii()" in probe
 assert "source_mkradio4a()" in probe
