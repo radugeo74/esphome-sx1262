@@ -261,3 +261,5 @@ Stage 1 2026-11-22 focused divergence visibility: ONE existing Stage A run check
 2026-11-22 Stage 4 host-only clear T1 candidate: single existing CI runs synthetic verified T1/A DLL-to-XMQ direct payload extraction/decoding, rejects C1 without AES, unverified CRC and malformed frames. No firmware component or radio changes, no flash.
 
 2026-11-22 Stage 4 CI retry: fix a literal backslash-n in C++ conditional after run #135 (29 prior suites passed); rerun single existing workflow, no OTA changes.
+
+2026-11-22 Stage 4 safety hardening: independent caller-attested clear application status is mandatory alongside CRC and T1. Add encrypted/unknown-security rejection fixtures, no live radio changes. One existing CI workflow only.
