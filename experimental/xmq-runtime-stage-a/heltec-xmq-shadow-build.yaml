@@ -80,6 +80,14 @@ wmbus_meter:
     meter_id: 0x12345678  # synthetic, NOT a private meter
     type: mkradio4
     mode: [T1]
+  # Additional build-only callback coverage for the AES-CBC-IV water driver.
+  # This has NO real meter key, data, or HA sensor; the XMQ observer may
+  # count CI/TPL metadata but MUST NOT publish or claim field parity.
+  - id: lab_water_mkradio4a_census
+    radio_id: wmbus_receiver
+    meter_id: 0x12345679  # synthetic CI-only value
+    type: mkradio4a
+    mode: [T1]
 
 sensor:
   - platform: wmbus_meter
