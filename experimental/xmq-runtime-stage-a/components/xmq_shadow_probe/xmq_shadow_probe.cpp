@@ -97,13 +97,15 @@ void ShadowProbe::observe(const void *source_meter,
       else ++unmatched_numeric_dv;
     };
     if (name == "mkradio4") {
-      // Stage 1 requires two current-telegram field matches, not just
-      // previously cached legacy meter readings. No sensor writes.
+      // mkradio4 is proprietary CI=0xA2; legacy processContent()
+      // directly calls setNumericValue without DV FieldInfo matching.
+      // Only demand finite legacy references here; the separately
+      // captured and decoded XMQ payload is the per-frame evidence.
+      // Same-frame legacy setter provenance remains NOT proven.
       if (target_meter_ != nullptr &&
-          (!old_values.target_m3.present ||
-           !old_values.total_m3.present ||
-           !old_values.target_m3.matched_dv ||
-           !old_values.total_m3.matched_dv)) {
+          (!decoded || telegram.tpl_ci != 0xA2 ||
+           !old_values.target_m3.present ||
+           !old_values.total_m3.present)) {
         ++no_reference_;
         return;
       }
@@ -192,7 +194,9 @@ void ShadowProbe::observe(const void *source_meter,
     // Values come from XMQ's independent one-pass projection of the
     // verified legacy-decrypted application bytes, never from old values.
     // Reading them does NOT prove independent RF/AES or field setter provenance.
-    if (stage1_mkradio4 && xmq_fields.ready &&
+    if (stage1_mkradio4 && snapshot.encoding ==
+            xmq_runtime::ApplicationEncoding::OriginalIxml &&
+        xmq_fields.ready &&
         disposition == xmq_runtime::ShadowDisposition::Match) {
       const auto target = stage1_output.numeric.find("target_m3");
       const auto total = stage1_output.numeric.find("total_m3");
