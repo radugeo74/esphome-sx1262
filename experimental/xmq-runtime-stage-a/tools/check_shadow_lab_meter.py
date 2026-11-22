@@ -168,8 +168,8 @@ t1c1=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-t1-c1-build.yaml"
 assert "packages:" not in t1c1, "wmbus_meter list package merge duplicates IDs"
 assert "native_stream_mode: T1_C1" in t1c1
 assert t1c1.count("mode: [T1, C1]") == 2
-assert t1c1.count("id: lab_water\n") == 1
-assert t1c1.count("id: lab_water_mkradio4a_census\n") == 1
+assert t1c1.count("  - id: lab_water\n") == 1
+assert t1c1.count("  - id: lab_water_mkradio4a_census\n") == 1
 # Build fixture may be standalone to avoid ESPHome list concatenation, but
 # must remain a mechanically checked derivative of the legacy-safe baseline.
 baseline = yaml
