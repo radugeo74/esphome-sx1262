@@ -88,8 +88,10 @@ def main():
             return old if path == ref else new
         def images(before, after, output):
             events.append(("verify", before.name, after.name, output.name))
-        with patch("stage1_mkradio4_release_gate.validate_and_read", side_effect=resolved), \\
-             patch("stage1_mkradio4_release_gate.verify", side_effect=images):
+        with (
+            patch("stage1_mkradio4_release_gate.validate_and_read", side_effect=resolved),
+            patch("stage1_mkradio4_release_gate.verify", side_effect=images),
+        ):
             release_stage1(ref, can, oldbin, newbin, manifest,
                            resolved_fixtures=True)
         assert events == [
