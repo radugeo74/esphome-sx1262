@@ -36,6 +36,15 @@ assert "legacy.current_date_matched_dv" in observer
 assert "capture(\"target_m3\"" in observer
 assert "capture(\"current_hca\"" in observer
 assert "xmq_shadow_probe::observe_legacy_telegram(" in observer
+# The callback is outside the field-snapshot branch. A successfully
+# decoded mkradio4a can therefore contribute metadata even though the
+# numerical XMQ shadow currently supports only mkradio4/fhkvdataiii.
+assert observer.index("xmq_shadow_probe::observe_legacy_telegram(") > observer.index(
+    "if (decoded && probe_requested)"
+)
+assert observer.index("xmq_shadow_probe::observe_legacy_telegram(") > observer.index(
+    "this->meter->handleTelegram("
+)
 assert "frame->mark_as_handled()" not in observer
 assert "set_radio(" not in observer
 clone = clone[:start] + '''  this->meter->handleTelegram(about, frame->data(), false, &adresses, &id_match,
@@ -57,6 +66,11 @@ assert "matched_numeric_dv" in probe
 assert "unmatched_numeric_dv" in probe
 assert "matched_date_dv" in probe
 assert "observe_legacy_telegram" in probe
+assert "ci_census_.observe_telegram(telegram, decoded);" in probe
+assert probe.index("ci_census_.observe_telegram(telegram, decoded);") < probe.index(
+    'if (name == "mkradio4")'
+)
+assert "XMQ CI/TPL census scoped=legacy_shadow_callback" in probe
 # The opt-in observer may inspect a successfully decoded Telegram, but must
 # never become another receiver, invoke legacy decoding, or publish sensors.
 # This guard is source-level contract checking, not an RF/runtime test.
@@ -107,4 +121,8 @@ print("SHADOW_READ_ONLY_CONTRACT_OK: post-decode capture only, no radio ownershi
 yaml=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-build.yaml").read_text()
 assert "enabled: false" in yaml
 assert "components: [wmbus_meter, xmq_shadow_probe]" in yaml
+assert "id: lab_water_mkradio4a_census" in yaml
+assert "type: mkradio4a" in yaml
+assert "meter_id: 0x12345679" in yaml
+assert "key: !secret" not in yaml
 print("SHADOW_LAB_METER_OK: guarded legacy field snapshot + read-only XMQ comparison; dispatch unchanged")
