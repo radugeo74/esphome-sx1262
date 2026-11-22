@@ -1,5 +1,7 @@
 #pragma once
 #include <string>
+#include <cstdint>
+#include <vector>
 // Lab-only, read-only post-decode hook. This small POD API avoids linking
 // the legacy meter source against XMQ parser internals.
 // No radio callbacks, meter mutations, HA sensors or sensitive payload logs.
@@ -33,6 +35,8 @@ bool wants_legacy_readings(const void *source_meter) noexcept;
 void observe_legacy_telegram(const void *source_meter,
                              const ::Telegram &telegram, bool decoded,
                              const char *driver,
-                             const LegacyReadings &old_values) noexcept;
+                             const LegacyReadings &old_values,
+                             const std::vector<uint8_t> *verified_t1_dll,
+                             bool clear_security_attested) noexcept;
 }  // namespace xmq_shadow_probe
 }  // namespace esphome
