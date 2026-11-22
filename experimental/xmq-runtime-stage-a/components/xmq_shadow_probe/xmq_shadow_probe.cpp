@@ -4,6 +4,7 @@
 #include "xmq_telegram_capture.h"
 #include "xmq_driver_sources.h"
 #include "xmq_t1_clear_candidate.h"
+#include "xmq_t1_security_evidence.h"
 #include "xmq_primary_readiness.h"
 #include "esp_heap_caps.h"
 #include <cmath>
@@ -185,6 +186,16 @@ void ShadowProbe::observe(const void *source_meter,
     // is NOT independent security/transport validation. Diagnostic only.
     if (target_meter_ != nullptr && source_meter == target_meter_ &&
         name == "mkradio4" && decoded && verified_t1_dll != nullptr) {
+      const auto stage5_evidence =
+          xmq_runtime::inspect_t1_envelope_without_legacy(
+              *verified_t1_dll, true, true);
+      ESP_LOGI(TAG,
+               "XMQ_STAGE5_T1_SECURITY_EVIDENCE structural=%s "
+               "legacy_clear_attested=%u crypto_proven=0 "
+               "independent_security=0 sensor_writes=0",
+               stage5_evidence == xmq_runtime::T1EnvelopeEvidence::ProprietaryMk4Candidate
+                   ? "mk4_candidate" : "unknown_or_reject",
+               static_cast<unsigned>(clear_security_attested));
       xmq_runtime::VerifiedApplication direct;
       const bool accepted = xmq_runtime::capture_t1_clear_mkradio4_candidate(
           *verified_t1_dll, xmq_runtime::CandidateLinkMode::T1, true,
