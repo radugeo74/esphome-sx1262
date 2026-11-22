@@ -32,6 +32,7 @@ external_components:
 xmq_shadow_probe:
   id: xmq_lab_probe
   enabled: true  # only for synthetic offline CI, NEVER FLASH
+  target_meter: lab_water  # select only synthetic mkradio4; never log meter IDs
 
 spi:
   clk_pin: GPIO9
