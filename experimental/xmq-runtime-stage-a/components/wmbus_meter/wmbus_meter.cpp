@@ -165,8 +165,19 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
         !legacy.target_date.empty() &&
         legacy.target_date != before.target_date;
   }
+  // Native wmbus_radio already checked DLL CRC and stripped its CRC words.
+  // Never offer C1 to Stage 4. The legacy parser's NoSecurity metadata
+  // attests clear content for this transitional, READ-ONLY diagnostic.
+  // It does NOT establish independent security provenance.
+  const bool clear_t1_attested =
+      decoded && frame->link_mode() == LinkMode::T1 &&
+      telegram->tpl_sec_mode == TPLSecurityMode::NoSecurity &&
+      !telegram->decryption_failed && !telegram->discard;
+  const std::vector<uint8_t> *stage4_dll =
+      clear_t1_attested ? &frame->data() : nullptr;
   xmq_shadow_probe::observe_legacy_telegram(
-      this, *telegram, decoded, shadow_driver.c_str(), legacy);
+      this, *telegram, decoded, shadow_driver.c_str(), legacy,
+      stage4_dll, clear_t1_attested);
 
   if (id_match) {
     this->last_telegram = std::move(telegram);
