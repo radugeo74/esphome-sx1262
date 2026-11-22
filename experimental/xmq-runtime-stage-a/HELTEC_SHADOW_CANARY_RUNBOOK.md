@@ -729,6 +729,55 @@ identity, driver, key, T1/C1 mode, RF pin, Home Assistant
 entity and network setting. No confidential configuration
 or SHA values are printed by the source guard.
 
+## Stage 2: separate XMQ-only water sensors (opt-in; legacy is primary)
+
+Stage 1 demonstrated a real T1/A proprietary mkradio4 telegram and
+`target_m3` / `total_m3` parity on SX1262. Stage 2 adds two **separate**
+ESPHome sensor entities, declared INSIDE `xmq_shadow_probe`, so existing
+`wmbus_meter` sensors and entity IDs remain unchanged.
+
+Add only these two keys to the selected Stage 1 probe in private YAML:
+
+```yaml
+xmq_shadow_probe:
+  id: xmq_lab_probe
+  enabled: true
+  target_meter: water_calda_baie
+  test_target_m3:
+    name: "XMQ TEST apa calda baie target"
+    id: xmq_test_apa_calda_baie_target
+  test_total_m3:
+    name: "XMQ TEST apa calda baie total"
+    id: xmq_test_apa_calda_baie_total
+```
+
+Both fields are required as a pair. They are **absent by default**.
+The XMQ-only entities receive readings when the selected original
+mkradio4 telegram has passed the existing CRC/legacy parse, CI=0xA2,
+XMQ's complete two-field readiness, numeric finite/nonnegative checks,
+and strict `parity=match`. Any mismatch, unsupported frame, low heap,
+or decoder error updates **neither** XMQ sensor. Never publish one
+without the other; timestamps may differ minimally due to normal HA
+API ordering. The existing 12 meters and their sensor fields are
+untouched. The Stage 2 output is NOT an independent AES or radio stack.
+
+On a successful frame expect a log
+`XMQ_STAGE2_MKRADIO4_TEST_PUBLISHED ... test_sensors=2 legacy_writes=0`,
+followed by normal legacy sensor updates. Absence is not proof of failure:
+the selected meter may not have transmitted and the shadow budget is
+limited to 128 observations/hour. Monitor timing: the initial Stage 1
+hardware log had a 59 ms radio-operation warning, versus the ESPHome
+50 ms recommendation. Stop and roll back if periodic radio reception,
+memory or legacy entities regress.
+
+The previous Stage 1 offline release checker intentionally permits
+only `enabled`, `id` and `target_meter`; it must NOT be reused
+unchanged to authorize the new Stage 2 sensor fields. Build and
+review the private Stage 2 candidate separately and preserve the exact
+known-good binary before OTA. The isolated `heltec-xmq-stage2-sensors-build.yaml`
+CI fixture uses synthetic IDs and `internal: true` sensors with
+no real keys/network and must never be flashed.
+
 ## Stage 1 private single-meter release gate (never flashes)
 
 After a **separately reviewed, successfully compiled** private enabled
