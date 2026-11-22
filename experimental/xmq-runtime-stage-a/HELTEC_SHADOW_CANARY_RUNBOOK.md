@@ -617,6 +617,31 @@ independent on-air AES decryption, per-meter data parity,
 RAM safety or RF performance. The new mkradio4a read-only
 comparison and budget remain opt-in and cannot update sensors.
 
+## Optional XMQ memory preflight for Heltec SX1262
+
+The experimental, read-only shadow parser now requires **at least 128 KiB
+of 8-bit-capable free heap** and **80 KiB in the largest contiguous
+8-bit-capable free block** immediately before building reference
+maps or invoking XMQ. Failure skips *only the optional shadow
+comparison*, with a bounded `low_memory_skipped` counter; the
+legacy meter receiver/decoder and Home Assistant publishing are
+not affected by this early return.
+
+`xmq_shadow_memory_gate.h` has byte-identical host and direct-GitHub
+ESPHome component copies. `test_xmq_shadow_memory_gate.cpp`
+checks thresholds, invalid impossible samples and a reported
+Heltec memory baseline (160852 B free / 112640 B largest block).
+The CI checks the exact bundled copy and enforces the gate's
+placement before `diagnostic_.inspect`.
+
+The source now records `min_largest_block` as well as
+`min_free_heap` and `low_memory_skipped` in its non-sensitive
+shadow statistics. These are **preflight guards, not memory usage
+measurements or proof against later OOM**. A successful firmware
+compile does not authorize a production flash. After compiling,
+test only a separately reviewed, reversible canary, measuring
+free/largest/minimum heap, RX counts and legacy sensor continuity.
+
 ## Stop conditions and rollback
 
 Stop the experiment and reinstall the verified previous image if the legacy
