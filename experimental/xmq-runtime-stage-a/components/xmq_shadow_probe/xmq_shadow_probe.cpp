@@ -56,7 +56,18 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
                static_cast<unsigned>(kMaxObservations));
     }
     const auto heap = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT));
+    const auto largest_block = static_cast<uint32_t>(
+        heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     if (heap < min_free_heap_) min_free_heap_ = heap;
+    if (largest_block < min_largest_free_block_)
+      min_largest_free_block_ = largest_block;
+    // Never run the optional XMQ decoder if heap or allocation continuity
+    // is below the conservative read-only shadow floor. Legacy already
+    // handled the frame; this return never changes its result or sensors.
+    if (!xmq_runtime::shadow_memory_allows_decode(heap, largest_block)) {
+      ++low_memory_skipped_;
+      return;
+    }
     xmq_runtime::ShadowReference old;
     unsigned changed_numeric = 0;
     unsigned unchanged_numeric = 0;
@@ -165,7 +176,8 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
              "matched_date_dv=%u unmatched_date_dv=%u "
              "provenance=not_proven xmq_fields_ready=%u "
              "xmq_fields_present=%u xmq_fields_required=%u "
-             "primary_transport=legacy_verified min_free_heap=%u",
+             "primary_transport=legacy_verified min_free_heap=%u "
+             "min_largest_block=%u low_memory_skipped=%u",
              name.c_str(), static_cast<unsigned>(disposition),
              static_cast<unsigned>(stats.last_compared),
              static_cast<unsigned>(stats.last_mismatches),
@@ -176,7 +188,8 @@ void ShadowProbe::observe(const ::Telegram &telegram, bool decoded,
              unmatched_numeric_dv, matched_date_dv, unmatched_date_dv,
              static_cast<unsigned>(xmq_fields.ready),
              static_cast<unsigned>(xmq_fields.available),
-             static_cast<unsigned>(xmq_fields.required), min_free_heap_);
+             static_cast<unsigned>(xmq_fields.required), min_free_heap_,
+             min_largest_free_block_, low_memory_skipped_);
   } catch (const std::exception &) {
     ++unsupported_;
     ESP_LOGW(TAG, "Live XMQ shadow unsupported/error; legacy decoder unaffected");
