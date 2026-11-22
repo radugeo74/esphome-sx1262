@@ -1,8 +1,8 @@
 #pragma once
-// Stage 4 HOST-ONLY: extract a candidate clear application directly from a
-// radio-verified T1 DLL frame, BEFORE invoking legacy handleTelegram().
-// This is NOT a live radio hook, security/decryption implementation, or
-// authorization to write HA sensors. Do not put it in deployed components.
+// Stage 4: extract a candidate application from a CRC-verified T1 DLL.
+// The host test uses synthetic frames; the bundled copy is invoked only
+// by the selected-meter read-only post-legacy diagnostic. No radio hook,
+// decryption, independent security proof or sensor publishing is provided.
 #include "xmq_telegram_capture.h"
 #include <cstdint>
 #include <vector>
