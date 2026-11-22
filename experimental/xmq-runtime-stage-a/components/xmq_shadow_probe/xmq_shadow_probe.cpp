@@ -97,6 +97,16 @@ void ShadowProbe::observe(const void *source_meter,
       else ++unmatched_numeric_dv;
     };
     if (name == "mkradio4") {
+      // Stage 1 requires two current-telegram field matches, not just
+      // previously cached legacy meter readings. No sensor writes.
+      if (target_meter_ != nullptr &&
+          (!old_values.target_m3.present ||
+           !old_values.total_m3.present ||
+           !old_values.target_m3.matched_dv ||
+           !old_values.total_m3.matched_dv)) {
+        ++no_reference_;
+        return;
+      }
       put("target_m3", old_values.target_m3);
       put("total_m3", old_values.total_m3);
     } else if (name == "mkradio4a") {
@@ -160,6 +170,9 @@ void ShadowProbe::observe(const void *source_meter,
     ++captured_;
     // Reuse the existing XMQ projection; do not parse twice or write sensors.
     xmq_runtime::PrimaryReadiness xmq_fields;
+    xmq_runtime::XmqFrameResult stage1_output;
+    const bool stage1_mkradio4 =
+        target_meter_ != nullptr && name == "mkradio4";
     const auto disposition = diagnostic_.inspect(
         *registry_, snapshot.inner_mvt, snapshot.encoding,
         snapshot.payload, old, heap, true, name,
@@ -174,7 +187,25 @@ void ShadowProbe::observe(const void *source_meter,
             std::vector<std::string>{"current_date", "previous_date"} :
         name == "mkradio4a" ?
             std::vector<std::string>{"target_date"} :
-            std::vector<std::string>{});
+            std::vector<std::string>{},
+        stage1_mkradio4 ? &stage1_output : nullptr);
+    // Values come from XMQ's independent one-pass projection of the
+    // verified legacy-decrypted application bytes, never from old values.
+    // Reading them does NOT prove independent RF/AES or field setter provenance.
+    if (stage1_mkradio4 && xmq_fields.ready &&
+        disposition == xmq_runtime::ShadowDisposition::Match) {
+      const auto target = stage1_output.numeric.find("target_m3");
+      const auto total = stage1_output.numeric.find("total_m3");
+      if (target != stage1_output.numeric.end() &&
+          total != stage1_output.numeric.end()) {
+        ESP_LOGI(TAG,
+                 "XMQ_STAGE1_MKRADIO4_OK target_m3=%.3f total_m3=%.3f "
+                 "source=xmq_primary parity=match "
+                 "transport=legacy_verified provenance=not_proven "
+                 "ha_writes=0",
+                 target->second.value, total->second.value);
+      }
+    }
     const auto &stats = diagnostic_.counters();
     // Log only aggregates, never IDs, raw payloads, keys or old/new values.
     ESP_LOGI(TAG,
