@@ -162,3 +162,15 @@ assert "type: mkradio4a" in yaml
 assert "meter_id: 0x12345679" in yaml
 assert "key: !secret" not in yaml
 print("SHADOW_LAB_METER_OK: guarded legacy field snapshot + read-only XMQ comparison; dispatch unchanged")
+# Actual SX1262 install receives T1 and C1; test this configuration
+# separately from the old T1-only synthetic baseline, never as an OTA image.
+t1c1=(root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-t1-c1-build.yaml").read_text()
+assert "!include heltec-xmq-shadow-enabled-lab.yaml" in t1c1
+assert "native_stream_mode: T1_C1" in t1c1
+assert t1c1.count("mode: [T1, C1]") == 2
+assert "type: mkradio4a" in t1c1
+assert "type: mkradio4" in t1c1
+for unsafe in ("wifi:", "api:", "ota:", "mqtt:", "!secret", "password:", "key:"):
+    assert unsafe not in t1c1, "unsafe T1_C1 build fixture: " + unsafe
+print("SHADOW_T1_C1_LAB_CONTRACT_OK: two synthetic T1+C1 meters, no network, no keys, NO FLASH")
+
