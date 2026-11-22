@@ -1,0 +1,26 @@
+# SYNTHETIC OFFLINE BUILD ONLY — NEVER FLASH to the 12-meter Heltec.
+# Exercise the actual T1_C1 SX1262 stream selection, unlike T1-only CI
+# build fixtures, without real identities, AES material or network access.
+packages:
+  base: !include heltec-xmq-shadow-enabled-lab.yaml
+
+esphome:
+  name: sx126x-xmq-shadow-t1c1-lab
+  friendly_name: SX126x XMQ T1 C1 Build Lab
+
+wmbus_radio:
+  native_stream_mode: T1_C1
+
+# Replace the parent package's meter list to prove both link modes are valid
+# with an opt-in read-only shadow observer. These are synthetic, keyless IDs.
+wmbus_meter:
+  - id: lab_water
+    radio_id: wmbus_receiver
+    meter_id: 0x12345678
+    type: mkradio4
+    mode: [T1, C1]
+  - id: lab_water_mkradio4a_census
+    radio_id: wmbus_receiver
+    meter_id: 0x12345679
+    type: mkradio4a
+    mode: [T1, C1]
