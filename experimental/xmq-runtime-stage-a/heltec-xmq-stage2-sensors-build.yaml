@@ -1,0 +1,16 @@
+# SYNTHETIC BUILD-ONLY proof of two independent XMQ test sensor entities.
+# Inherits exactly two fake meters from standalone T1_C1 lab; NEVER FLASH.
+# No real IDs, network, API, OTA, secrets or production entity names.
+packages:
+  base: !include heltec-xmq-shadow-t1-c1-build.yaml
+
+xmq_shadow_probe:
+  id: xmq_lab_probe
+  enabled: true
+  target_meter: lab_water
+  test_target_m3:
+    name: "CI XMQ Water Target Test"
+    internal: true
+  test_total_m3:
+    name: "CI XMQ Water Total Test"
+    internal: true
