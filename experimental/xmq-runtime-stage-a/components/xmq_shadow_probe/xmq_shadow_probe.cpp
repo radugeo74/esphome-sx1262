@@ -1,5 +1,6 @@
 #include "xmq_shadow_probe.h"
 #include "esphome/components/wmbus_common/wmbus.h"
+#include "esphome/components/wmbus_meter/wmbus_meter.h"
 #include "xmq_telegram_capture.h"
 #include "xmq_driver_sources.h"
 #include "esp_heap_caps.h"
@@ -219,6 +220,23 @@ void ShadowProbe::observe(const void *source_meter,
                    "XMQ_STAGE2_MKRADIO4_TEST_PUBLISHED source=xmq_primary "
                    "parity=match fields=2 test_sensors=2 legacy_writes=0");
         }
+        // Stage 3 default stays legacy. Opt-in applies only to the
+        // selected existing meter, only after full XMQ parity match.
+        // Meter's callback-scoped getter clears this after publication.
+        if (xmq_primary_ && target_meter_ != nullptr &&
+            source_meter == target_meter_ &&
+            disposition == xmq_runtime::ShadowDisposition::Match &&
+            std::isfinite(target->second.value) &&
+            std::isfinite(total->second.value) &&
+            target->second.value >= 0.0 && total->second.value >= 0.0) {
+          target_meter_->set_xmq_frame_values(
+              static_cast<float>(target->second.value),
+              static_cast<float>(total->second.value));
+          ESP_LOGI(TAG,
+                   "XMQ_STAGE3_PRIMARY_ARMED source=xmq_primary "
+                   "fields=2 parity=match selected_meter_only=1 "
+                   "fallback=legacy");
+        }
         ESP_LOGI(TAG,
                  "XMQ_STAGE1_MKRADIO4_RESULT target_m3=%.3f total_m3=%.3f "
                  "source=xmq_primary parity=%s "
@@ -305,9 +323,10 @@ void ShadowProbe::setup() {
 }
 
 void ShadowProbe::dump_config() {
-  ESP_LOGCONFIG(TAG, "Experimental XMQ shadow: %s, test entities: %s (legacy sensors untouched)",
+  ESP_LOGCONFIG(TAG, "Experimental XMQ: %s, decoder=%s, paired test entities=%s",
                 enabled_ ? "enabled" : "disabled",
-                stage2_target_ && stage2_total_ ? "paired" : "none");
+                xmq_primary_ ? "xmq" : "legacy",
+                stage2_target_ && stage2_total_ ? "yes" : "no");
 }
 
 }  // namespace xmq_shadow_probe
