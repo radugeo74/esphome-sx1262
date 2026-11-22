@@ -6,6 +6,7 @@ images and writing a private SHA-256 manifest. Does not print YAML, credentials,
 meter IDs, AES keys or device addresses. Final human approval is mandatory.
 """
 import argparse
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -42,6 +43,46 @@ def require_live_t1_c1_profile(config):
     # The gate does not force unsupported C1 onto a meter.
 
 
+_FULL_SHA = re.compile(r"[0-9a-fA-F]{40}\\Z")
+
+
+def require_pinned_canary_sources(config):
+    """Refuse mutable Git revisions for the shadow and cloned meter sources.
+
+    Local sources are permitted for a separately reviewed local build, but
+    cannot be cryptographically pinned by an ESPHome Git ref. Do not log paths,
+    URLs, credentials or ref values. The first-stage parity test still checks
+    which components are allowed.
+    """
+    declarations = config.get("external_components")
+    if not isinstance(declarations, list):
+        raise ValueError("canary external sources are not auditable")
+    required = {"xmq_shadow_probe", "wmbus_meter"}
+    covered = set()
+    for entry in declarations:
+        if not isinstance(entry, dict):
+            raise ValueError("canary external sources are not auditable")
+        names = entry.get("components")
+        if not isinstance(names, list):
+            raise ValueError("canary external sources are not auditable")
+        selected = required.intersection(names)
+        if not selected:
+            continue
+        covered.update(selected)
+        source = entry.get("source")
+        if not isinstance(source, dict):
+            raise ValueError("canary source must declare a reviewed source type")
+        source_type = source.get("type")
+        if source_type == "git":
+            ref = source.get("ref")
+            if not isinstance(ref, str) or not _FULL_SHA.fullmatch(ref):
+                raise ValueError("canary Git external component must pin a full commit SHA")
+        elif source_type != "local":
+            raise ValueError("canary external source type not supported")
+    if covered != required:
+        raise ValueError("canary shadow and meter sources must be explicit")
+
+
 def release_gate(reference, candidate, fallback_bin, canary_bin, manifest,
                  *, resolved_fixtures=False):
     # Never read or expose raw config details in a log. Both YAML inputs must
@@ -55,7 +96,9 @@ def release_gate(reference, candidate, fallback_bin, canary_bin, manifest,
     require_live_t1_c1_profile(original)
     require_live_t1_c1_profile(updated)
     check(original, updated)
+    require_pinned_canary_sources(updated)
     print("CANARY_CONFIG_PARITY_OK: confidential fields and operational topology unchanged")
+    print("CANARY_SOURCE_REF_OK: Git shadow sources pinned to immutable full SHA; local sources require manual review")
     verify(fallback_bin, canary_bin, manifest)
     print("CANARY_RELEASE_MANIFEST_OK: private manifest written, no flashing performed")
     print("MANUAL_APPROVAL_REQUIRED: verify external source revisions, hardware, USB recovery, T1/C1 plan and backup provenance")
