@@ -946,7 +946,7 @@ independent radio/security stack.
 Stage 4 introduces `xmq_t1_clear_candidate.h` and a synthetic host
 test, with **no modifications to installed `sx126x`, `wmbus_radio`,
 `wmbus_meter`, `wmbus_common` or `xmq_shadow_probe` components**.
-The candidate accepts only a caller-asserted CRC-verified T1 DLL, exact
+The candidate accepts only a caller-asserted CRC-verified **and independently verified clear-application** T1 DLL, exact
 L-field length, SND_NR/TCH/95-or-70/62-or-72/CI=A2, and one of two
 known original clear MK radio4 application envelopes. It extracts the
 application directly from the received DLL and runs the existing XMQ
@@ -955,9 +955,11 @@ The test uses synthetic data, never private meter telegrams. C1,
 unverified CRC, unknown CI, invalid envelope and malformed size fail
 closed. It creates no Home Assistant entities.
 
-**Limits:** the host adapter takes a *trusted* CRC boolean: it does not
-calculate radio CRC. The marker is not cryptographic proof of cleartext,
-and no live security-mode verification exists in this host adapter.
+**Limits:** the host adapter takes *trusted* CRC and clear-application
+booleans: it does not calculate radio CRC or determine the security mode.
+Both attestations are mandatory and false means rejection. The marker is
+not cryptographic proof of cleartext, and no live security-mode
+verification exists in this host adapter.
 It cannot decrypt C1 without AES keys, cannot publish sensors, and is
 **not an OTA candidate**. Next gate: independent on-device T1 frame
 security classification and a strictly read-only comparison with
