@@ -964,3 +964,28 @@ It cannot decrypt C1 without AES keys, cannot publish sensors, and is
 **not an OTA candidate**. Next gate: independent on-device T1 frame
 security classification and a strictly read-only comparison with
 Stage 3; preserve existing firmware and rollback. No new workflow files.
+
+## Stage 4 read-only live diagnostic candidate (after CI #137)
+
+On 2026-11-22 workflow #137 passed the **host-only** Stage 4 tests.
+A subsequent **unflashed** candidate connects the T1 DLL supplied by the
+already CRC-verifying native wmbus_radio to the selected-meter Stage 4
+adapter, within the existing post-legacy observer callback. This is NOT a
+second radio receiver and neither consumes nor changes an incoming frame.
+It runs only for a successfully decoded selected mkradio4 T1 with
+`tpl_sec_mode == NoSecurity`, no decryption failure/discard, and ample
+existing XMQ shadow memory/budget. The legacy parser therefore still
+supplies the security attestation; the extracted application payload itself
+comes directly from the radio-validated frame instead of
+`Telegram::frame`. The result is compared to current legacy readings,
+but never changes sensor writes or Stage 3's matched XMQ override.
+
+Expect a bounded `XMQ_STAGE4_T1_DIRECT_DIAGNOSTIC` line with
+`extracted`, `ready`, `parity`, `crc=native_verified`,
+`security=legacy_attested`, `sensor_writes=0`, and
+`transport_independent=0`. A mismatch or missing diagnostic is NOT
+authorization for XMQ takeover. The property `transport_independent=0`
+must remain until independent validation of security and transport is
+implemented and verified. This remains an unflashed experimental source
+candidate even after CI green; review the physical YAML and retain the
+Stage 3 installed ref `45d07d2ae4bd8fc3edeb6d7b24e54b6bacf0919f`.
