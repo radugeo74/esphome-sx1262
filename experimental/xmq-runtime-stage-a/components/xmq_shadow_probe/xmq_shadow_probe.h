@@ -29,7 +29,9 @@ class ShadowProbe : public Component {
   void dump_config() override;
   void observe(const void *source_meter, const ::Telegram &telegram,
                bool decoded, const char *driver,
-               const LegacyReadings &old_values) noexcept;
+               const LegacyReadings &old_values,
+               const std::vector<uint8_t> *verified_t1_dll,
+               bool clear_security_attested) noexcept;
   // Early allocation-free check before the cloned legacy meter builds
   // per-field comparison snapshots. Does not gate legacy decoding.
   bool memory_headroom_available() noexcept;
