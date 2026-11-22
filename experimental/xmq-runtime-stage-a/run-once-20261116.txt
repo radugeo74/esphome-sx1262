@@ -241,3 +241,5 @@ Validation 2026-11-22 XMQ early heap fail-closed: ONE existing Stage A CI verifi
 Validation 2026-11-22 #124 host-guard Python SyntaxError fix: reuse the ONE Stage A workflow, revalidate protected early shadow heap setup/presnapshot gates, host suites and all four Heltec/ESP32 compilation jobs including direct GitHub external component. NO FLASH; legacy sensor pipeline untouched.
 
 Validation 2026-11-22 T1_C1 actual native-stream mode synthetic build-only gate: ONE existing Stage A workflow adds offline/credential-free enabled XMQ shadow image with T1_C1 plus T1/C1 mkradio4 and mkradio4a (fake IDs), compiled with ESPHome 2026.10.1 and 2026.11.0, source guards forbid network/private secrets. No actual RF test, no device flash, no HA sensor writes.
+
+Validation 2026-11-22 #126 duplicate-ID package merge fix: ONE existing Stage A run compiles standalone synthetic T1_C1 XMQ enabled shadow image under ESPHome 2026.10.1 and 2026.11.0, source guard proves exact baseline derivation and two unique meter declarations; no API/WiFi/secrets, no flash, no legacy device changes.
