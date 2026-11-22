@@ -16,7 +16,7 @@ int main() {
   dll.insert(dll.end(),payload.begin(),payload.end());
   dll[0]=static_cast<uint8_t>(dll.size()-1);
   VerifiedApplication result;
-  check(capture_t1_clear_mkradio4_candidate(dll,CandidateLinkMode::T1,true,result),
+  check(capture_t1_clear_mkradio4_candidate(dll,CandidateLinkMode::T1,true,true,result),
         "synthetic clear T1 frame refused");
   check(result.inner_mvt.manufacturer=="TCH" &&
         result.inner_mvt.version==0x95 && result.inner_mvt.type==0x62 &&
@@ -30,14 +30,19 @@ int main() {
         std::fabs(output.numeric.at("total_m3").value-0.4)<0.000001,
         "incorrect synthetic MK4 volumes");
   auto rejects=[&](std::vector<uint8_t> candidate,CandidateLinkMode mode,
-                   bool verified) {
+                   bool crc_verified, bool clear_verified=true) {
     VerifiedApplication old=result;
-    return !capture_t1_clear_mkradio4_candidate(candidate,mode,verified,old) &&
+    return !capture_t1_clear_mkradio4_candidate(candidate,mode,crc_verified,
+                                              clear_verified,old) &&
            old.payload.empty() && old.inner_mvt.manufacturer.empty();
   };
   check(rejects(dll,CandidateLinkMode::C1,true),"C1 admitted without AES");
+  check(rejects(dll,CandidateLinkMode::C1,true,false),
+        "encrypted C1 admitted without AES");
   check(rejects(dll,CandidateLinkMode::Unknown,true),"unknown mode admitted");
   check(rejects(dll,CandidateLinkMode::T1,false),"CRC-unverified admitted");
+  check(rejects(dll,CandidateLinkMode::T1,true,false),
+        "security-unverified application admitted");
   auto bad=dll; bad[0]--;check(rejects(bad,CandidateLinkMode::T1,true),"bad L admitted");
   bad=dll;bad[1]=0x53;check(rejects(bad,CandidateLinkMode::T1,true),"wrong C admitted");
   bad=dll;bad[2]=0x00;check(rejects(bad,CandidateLinkMode::T1,true),"wrong maker admitted");
