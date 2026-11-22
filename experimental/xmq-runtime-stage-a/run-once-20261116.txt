@@ -235,3 +235,5 @@ Validation 2026-11-22 mkradio4a read-only shadow parity: one existing Stage A wo
 Validation 2026-11-22 XMQ rule integrity across host and GitHub-installed Heltec shadow: ONE existing Stage A run checks exact original mkradio4, mkradio4a and fhkvdataiii XMQ source embedding in external component before staging, plus read-only mkradio4a target volume/date comparison and full host/Heltec/ESP32 builds. No live key, HA sensor write, or flash.
 
 Validation 2026-11-22 conservative optional XMQ shadow heap preflight: ONE existing Stage A CI checks free 8-bit heap >=128 KiB and contiguous largest block >=80 KiB, fail-closed XMQ-only skip without affecting legacy, host test boundaries, byte-identical Github header, source guard and complete ESP32/Heltec build gates. NO FLASH.
+
+Validation 2026-11-22 XMQ early heap fail-closed: ONE existing Stage A CI verifies opt-in probe checks 128 KiB free and 80 KiB contiguous 8-bit heap BEFORE startup registry allocations and BEFORE reading legacy field snapshots, retains parser preflight; no legacy radio/sensor changes, complete host and Heltec ESPHome (including direct GitHub) build checks. NO FLASH.
