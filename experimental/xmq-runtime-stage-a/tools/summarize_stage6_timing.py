@@ -29,7 +29,7 @@ def summarize(lines):
               "stage45_eligible": 0, "sx126x_loop_warnings": 0,
               "invalid_timing": 0}
     for line in lines:
-        if "SX126x" in line and ("took a long time" in line or "Component" in line and "ms" in line):
+        if "sx126x" in line.lower() and "took a long time" in line.lower():
             counts["sx126x_loop_warnings"] += 1
         marker = next((m for m in set(MARKERS.values()) if m in line), None)
         if marker is None:
@@ -67,7 +67,7 @@ def report(counts, samples):
         p95 = values[(95 * (len(values) - 1) + 99) // 100]
         lines.append(f"{key}: n={len(values)} min_us={values[0]} median_us={statistics.median(values):g} p95_nearest_us={p95} max_us={values[-1]}")
     lines.append("LIMIT: phase durations exclude parts of radio processing; warnings cannot be attributed to XMQ from aggregate timings alone.")
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 def main():
