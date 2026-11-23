@@ -19,7 +19,7 @@ MARKERS = {
     "stage45_total_us": "XMQ_STAGE4_T1_DIRECT_DIAGNOSTIC",
     "stage1_compare_us": "XMQ_STAGE45_REUSE",
 }
-NUM = re.compile(r"(?<![\\w])([a-z][a-z0-9_]+)=(\\d+)(?![\\w])")
+NUM = re.compile(r"(?<![\w])([a-z][a-z0-9_]+)=(\d+)(?![\w])")
 MAX_US = 60_000_000
 
 
