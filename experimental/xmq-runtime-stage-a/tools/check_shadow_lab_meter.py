@@ -135,6 +135,9 @@ assert "direct.payload == snapshot.payload" in probe
 assert "direct.encoding == snapshot.encoding" in probe
 assert "stage4_reuse = parity &&" in probe
 assert "stage4_reuse ? &stage4_projection : nullptr" in probe
+assert "XMQ_STAGE45_REUSE reused=%u stage1_compare_us=%u" in probe
+assert "stage1_projection_us = micros() - stage1_started_us" in probe
+assert "if (stage1_mkradio4)" in probe
 assert "decode_primary_candidate(" in probe
 assert "stage4_projection.numeric.find(" in probe
 assert "inspect_t1_envelope_without_legacy(" in probe
