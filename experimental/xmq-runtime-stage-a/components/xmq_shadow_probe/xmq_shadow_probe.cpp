@@ -186,9 +186,13 @@ void ShadowProbe::observe(const void *source_meter,
     // is NOT independent security/transport validation. Diagnostic only.
     if (target_meter_ != nullptr && source_meter == target_meter_ &&
         name == "mkradio4" && decoded && verified_t1_dll != nullptr) {
+      // Instrument only the selected meter. micros() subtraction is wrap-safe.
+      // This does not change the native radio path or the Stage 3 publishing gate.
+      const uint32_t stage45_started_us = micros();
       const auto stage5_evidence =
           xmq_runtime::inspect_t1_envelope_without_legacy(
               *verified_t1_dll, true, true);
+      const uint32_t stage5_us = micros() - stage45_started_us;
       ESP_LOGI(TAG,
                "XMQ_STAGE5_T1_SECURITY_EVIDENCE structural=%s "
                "legacy_clear_attested=%u crypto_proven=0 "
@@ -219,12 +223,16 @@ void ShadowProbe::observe(const void *source_meter,
                    std::fabs(v->second.value - old_values.total_m3.value) <= 0.051;
         }
       }
+      const uint32_t stage45_us = micros() - stage45_started_us;
       ESP_LOGI(TAG,
                "XMQ_STAGE4_T1_DIRECT_DIAGNOSTIC extracted=%u ready=%u parity=%s "
                "crc=native_verified security=legacy_attested "
-               "sensor_writes=0 transport_independent=0",
+               "sensor_writes=0 transport_independent=0 "
+               "stage5_classify_us=%u stage45_total_us=%u",
                static_cast<unsigned>(accepted), static_cast<unsigned>(ready),
-               parity ? "match" : "not_match");
+               parity ? "match" : "not_match",
+               static_cast<unsigned>(stage5_us),
+               static_cast<unsigned>(stage45_us));
     }
     // Reuse the existing XMQ projection; do not parse twice or write sensors.
     xmq_runtime::PrimaryReadiness xmq_fields;
