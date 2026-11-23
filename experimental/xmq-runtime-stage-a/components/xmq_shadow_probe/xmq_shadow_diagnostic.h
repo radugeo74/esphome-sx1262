@@ -58,7 +58,8 @@ class ShadowDiagnostic {
                             const std::vector<std::string> &expected_numeric={},
                             PrimaryReadiness *primary=nullptr,
                             const std::vector<std::string> &primary_dates={},
-                            XmqFrameResult *primary_output=nullptr) noexcept {
+                            XmqFrameResult *primary_output=nullptr,
+                            const XmqFrameResult *verified_preprojection=nullptr) noexcept {
     if (primary != nullptr) *primary = PrimaryReadiness{};
     if (primary_output != nullptr) *primary_output = XmqFrameResult{};
     if (!enabled_) {
@@ -80,8 +81,16 @@ class ShadowDiagnostic {
     try {
       if (!(tolerance_>=0.0) || !std::isfinite(tolerance_))
         throw std::invalid_argument("invalid shadow tolerance");
-      const auto new_outputs=project_verified_application(
-          registry,inner_mvt,encoding,clear_application,explicit_driver);
+      // Caller must prove byte-identical clear application, inner MVT and
+      // encoding before supplying a Stage 4 direct-T1 projection. Otherwise
+      // the default path decodes independently as before. Never reuse a
+      // legacy snapshot as an XMQ projection.
+      XmqFrameResult decoded_outputs;
+      if (verified_preprojection == nullptr)
+        decoded_outputs = project_verified_application(
+            registry,inner_mvt,encoding,clear_application,explicit_driver);
+      const XmqFrameResult &new_outputs =
+          verified_preprojection != nullptr ? *verified_preprojection : decoded_outputs;
       // Primary candidate is derived from the existing XMQ projection,
       // never from legacy snapshots. No second parser execution.
       if (primary != nullptr) {
