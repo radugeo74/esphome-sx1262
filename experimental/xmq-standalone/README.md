@@ -6,6 +6,8 @@ Branch: `experimental/xmq-standalone-no-legacy`, independent of the proven
 ## Implemented
 
 - Native SX1262 T1/C1 PHY and CRC verification unchanged.
+- wmbus_common radio-only mode omits the old `meters.cc` legacy decoder
+  from the ESPHome build. The shared framing/CRC library remains available.
 - Radio frame dispatch is **compiled without the legacy Telegram::parseHeader
   path** when the XMQ-only component is enabled.
 - Independent XMQ driver registry and IXML application decoder for
