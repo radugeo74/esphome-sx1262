@@ -1,0 +1,367 @@
+#pragma once
+// Exact upstream XMQ sources, bundled at build time for GitHub-only ESPHome.
+// No per-meter hardcoded decoding logic. GPL-3.0-or-later upstream.
+namespace xmq_runtime {
+inline const char *source_mkradio4() { return R"XMQSOURCE(// Copyright (C) 2026 Fredrik Öhrström (gpl-3.0-or-later)
+driver {
+    name           = mkradio4
+    meter_type     = WaterMeter
+    default_fields = name,id,total_m3,target_m3,timestamp
+    manufacturer   = Techem
+    detect {
+        mvt = TCH,95,62
+        mvt = TCH,70,62
+        mvt = TCH,95,72
+        mvt = TCH,70,72
+    }
+    fields {
+        field {
+            name       = prev_raw
+            quantity   = Dimensionless
+            attributes = HIDE
+            match {
+                difvifkey = 4215
+            }
+        }
+        field {
+            name       = curr_raw
+            quantity   = Dimensionless
+            attributes = HIDE
+            match {
+                difvifkey = 0215
+            }
+        }
+        field {
+            name       = prev
+            quantity   = Volume
+            attributes = HIDE
+            calculate  = 'prev_raw_counter * 1m3'
+        }
+        field {
+            name       = curr
+            quantity   = Volume
+            attributes = HIDE
+            calculate  = 'curr_raw_counter * 1m3'
+        }
+        field {
+            name      = target
+            quantity  = Volume
+            info      = 'The total water consumption recorded at the beginning of this month.'
+            calculate = prev_m3
+        }
+        field {
+            name      = total
+            quantity  = Volume
+            info      = 'The total water consumption recorded by this meter.'
+            calculate = 'prev_m3 + curr_m3'
+        }
+        field {
+            name                 = mfct_specific_data
+            quantity             = Text
+            attributes           = HIDE
+            match_entire_payload = true
+            ixml                 = "decode = frame.
+                                    frame = byte,
+                                            byte,
+                                            byte,
+                                            Prev,
+                                            byte,
+                                            byte,
+                                            Curr,
+                                            byte*.
+
+                                    Prev = word, @DV_prev.
+                                    Curr = word, @DV_curr.
+
+                                    -hex  = ['A'-'F';'0'-'9'].
+                                    -byte = hex, hex.
+                                    -word = byte, byte.
+
+                                    DV_prev>dvk = +'4215'.
+                                    DV_curr>dvk = +'0215'."
+        }
+    }
+    tests {
+        test {
+            comment  = 'Legacy payload'
+            args     = 'Duschagain mkradio4 02410120 NOKEY'
+            telegram = 2F446850200141029562A2_06702901006017030004000300000000000000000000000000000000000000000000000000
+            json     = '{"_":"telegram","media":"warm water","driver":"mkradio4","name":"Duschagain","id":"02410120","total_m3":0.4,"target_m3":0.1,"timestamp":"1111-11-11T11:11:11Z"}'
+            fields   = 'Duschagain;02410120;0.4;0.1;1111-11-11 11:11.11'
+        }
+    }
+}
+)XMQSOURCE"; }
+inline const char *source_mkradio4a() { return R"XMQSOURCE(// Copyright (C) 2017-2022 Fredrik Öhrström (gpl-3.0-or-later)
+// Diehl MK Radio 4a water meter.
+driver {
+    name           = mkradio4a
+    meter_type     = WaterMeter
+    default_fields = name,id,target_m3,target_date,timestamp
+    manufacturer   = Techem
+    detect {
+        mvt = HYD,fe,06
+        mvt = TCH,95,37
+    }
+    fields {
+        field {
+            name           = target
+            quantity       = Volume
+            info           = 'The total water consumption recorded at the end of previous year.'
+            vif_scaling    = Auto
+            dif_signedness = Signed
+            match {
+                measurement_type = Instantaneous
+                vif_range        = Volume
+                storage_nr       = 1
+            }
+        }
+        field {
+            name           = target
+            quantity       = PointInTime
+            info           = 'Date when previous year ended.'
+            vif_scaling    = Auto
+            dif_signedness = Signed
+            display_unit   = DateLT
+            match {
+                measurement_type = Instantaneous
+                vif_range        = Date
+                storage_nr       = 1
+            }
+        }
+    }
+    tests {
+        test {
+            args     = 'FOO mkradio4a 66953825 NOKEY'
+            comment  = 'Warm water'
+            telegram = 4B44685036494600953772253895662423FE064E0030052F2F_4315A10000426CBF2C0F542CF2DD8BEC869511B2DB8301C3ABA390FB4FDB6F1144DA1F3897DD55F2AD0D194F68510FF8FADFB9
+            json     = '{"_":"telegram","media":"warm water","driver":"mkradio4a","name":"FOO","id":"66953825","target_m3":16.1,"target_date":"2021-12-31","timestamp":"1111-11-11T11:11:11Z"}'
+            fields   = 'FOO;66953825;16.1;2021-12-31;1111-11-11 11:11.11'
+        }
+        test {
+            args     = 'BAR mkradio4a 01770002 NOKEY'
+            comment  = 'Cold water'
+            telegram = 4B4468508644710095377202007701A85CFE078A0030052F2F_4315F00200426CBF2C0FEE456BF6F802216503E25EB73E9377D54F672681B76C469696E4C7BCCC9072CC79F712360FC3F57D85
+            json     = '{"_":"telegram","media":"water","driver":"mkradio4a","name":"BAR","id":"01770002","target_m3":75.2,"target_date":"2021-12-31","timestamp":"1111-11-11T11:11:11Z"}'
+            fields   = 'BAR;01770002;75.2;2021-12-31;1111-11-11 11:11.11'
+        }
+    }
+}
+
+)XMQSOURCE"; }
+inline const char *source_fhkvdataiii() { return R"XMQSOURCE(// Copyright (C) 2019-2022 Fredrik Öhrström (gpl-3.0-or-later)
+driver {
+    name           = fhkvdataiii
+    meter_type     = HeatCostAllocationMeter
+    default_fields = name,id,current_hca,current_date,previous_hca,previous_date,temp_room_c,temp_radiator_c,timestamp
+    manufacturer   = Techem
+    detect {
+        mvt = TCH,69,80
+        mvt = TCH,94,80
+    }
+    fields {
+        field {
+            name                 = mfct_specific
+            quantity             = Text
+            attributes           = HIDE
+            match_entire_payload = true
+            ixml                 = "decode = version_01 | version_69 | version_94.
+                                    version_01 = '01', PrevDate, PrevHca, CurrDate, CurrHca, TempRoom, TempRad, byte*.
+                                    version_69 = '11', PrevDate, PrevHca, CurrDate, CurrHca, TempRoom, TempRad, byte*.
+                                    version_94 = '0F', PrevDate, PrevHca, CurrDate, CurrHca, Extra, TempRoom, TempRad, byte*.
+
+                                    PrevDate = word, @DV_prev_date_raw.
+                                    PrevHca = word, @DV_prev_hca.
+                                    CurrDate = word, @DV_curr_date_raw.
+                                    CurrHca = word, @DV_curr_hca.
+                                    -Extra = byte.
+                                    TempRoom = word, @DV_temp_room.
+                                    TempRad = word, @DV_temp_rad.
+
+                                    -hex = ['A'-'F';'0'-'9'].
+                                    -byte = hex, hex.
+                                    -word = byte, byte.
+
+                                    DV_prev_date_raw>dvk = +'02FD3A'.
+                                    DV_prev_hca>dvk = +'426E'.
+                                    DV_curr_date_raw>dvk = +'42FD3A'.
+                                    DV_curr_hca>dvk = +'026E'.
+                                    DV_temp_room>dvk = +'0265'.
+                                    DV_temp_rad>dvk = +'025D'."
+        }
+        // The proprietary 0x80 telegram is decoded above into 026E/426E records.
+        // The meters also send an OMS 0x08 telegram (as decoded by fhkvdataiv), its
+        // HCA records must not overwrite these values, see the fields below.
+        field {
+            name     = current
+            quantity = HCA
+            info     = 'Energy consumption so far in this billing period (0x80 telegram).'
+            match {
+                difvifkey = 026E
+            }
+        }
+        field {
+            name     = previous
+            quantity = HCA
+            info     = 'Energy consumption in previous billing period (0x80 telegram).'
+            match {
+                difvifkey = 426E
+            }
+        }
+        field {
+            name     = current_consumption
+            quantity = HCA
+            info     = 'The current heat cost allocation (0x08 telegram).'
+            match {
+                difvifkey = 036E
+            }
+        }
+        field {
+            name     = consumption_at_set_date
+            quantity = HCA
+            info     = 'Heat cost allocation at the most recent billing period date (0x08 telegram).'
+            match {
+                difvifkey = 436E
+            }
+        }
+        field {
+            name     = set_date
+            quantity = Text
+            info     = 'The most recent billing period date (0x08 telegram).'
+            match {
+                measurement_type = Instantaneous
+                vif_range        = Date
+                storage_nr       = 1
+            }
+        }
+        field {
+            name       = previous_date_raw
+            quantity   = Dimensionless
+            attributes = HIDE
+            match {
+                difvifkey = 02FD3A
+            }
+        }
+        field {
+            name       = current_date_raw
+            quantity   = Dimensionless
+            attributes = HIDE
+            match {
+                difvifkey = 42FD3A
+            }
+        }
+        field {
+            name       = previous_day
+            quantity   = Dimensionless
+            attributes = HIDE
+            calculate  = 'previous_date_raw_counter % 32counter'
+        }
+        field {
+            name       = previous_month
+            quantity   = Dimensionless
+            attributes = HIDE
+            calculate  = '(previous_date_raw_counter >> 5counter) % 16counter'
+        }
+        field {
+            name       = previous_year
+            quantity   = Dimensionless
+            attributes = HIDE
+            calculate  = 'previous_date_raw_counter >> 9counter'
+        }
+        field {
+            name       = current_day
+            quantity   = Dimensionless
+            attributes = HIDE
+            calculate  = '((current_date_raw_counter >> 4counter) % 32counter) + ((((current_date_raw_counter >> 4counter) % 32counter) <= 0counter) * 1counter)'
+        }
+        field {
+            name       = current_month
+            quantity   = Dimensionless
+            attributes = HIDE
+            calculate  = '((current_date_raw_counter >> 9counter) % 16counter) + ((((current_date_raw_counter >> 9counter) % 16counter) <= 0counter) * 12counter)'
+        }
+        field {
+            name       = current_year
+            quantity   = Dimensionless
+            attributes = HIDE
+            info       = 'Current billing year is previous year unless month/day rolled over.'
+            calculate  = 'previous_year_counter + ((current_month_counter < previous_month_counter) || ((current_month_counter == previous_month_counter) && (current_day_counter <= previous_day_counter)))'
+        }
+        field {
+            name         = current
+            quantity     = PointInTime
+            display_unit = date
+            info         = 'Date of current billing period.'
+            calculate    = "'2000-01-01' +
+                            (((current_year_counter * 12counter) + current_month_counter - 1counter) * 1month) +
+                            ((current_day_counter - 1counter) * 24h)"
+        }
+        field {
+            name         = previous
+            quantity     = PointInTime
+            display_unit = date
+            info         = 'Date of last billing period.'
+            calculate    = "'2000-01-01' +
+                            (((previous_year_counter * 12counter) + previous_month_counter - 1counter) * 1month) +
+                            ((previous_day_counter - 1counter) * 24h)"
+        }
+        field {
+            name     = temp_room
+            quantity = Temperature
+            info     = 'Current room temperature.'
+            match {
+                measurement_type = Instantaneous
+                vif_range        = ExternalTemperature
+            }
+        }
+        field {
+            name     = temp_radiator
+            quantity = Temperature
+            info     = 'Current radiator temperature.'
+            match {
+                measurement_type = Instantaneous
+                vif_range        = ReturnTemperature
+            }
+        }
+    }
+    tests {
+        test {
+            args     = 'Room fhkvdataiii 11776622 NOKEY'
+            telegram = 34446850226677116980A0119F27020480048300C408F709143C003D341A2B0B2A0707000000000000062D114457563D71A1850000
+            json     = '{"_":"telegram","media":"heat cost allocator","driver":"fhkvdataiii","name":"Room","id":"11776622","current_hca":131,"current_date":"2020-02-08","previous_hca":1026,"previous_date":"2019-12-31","temp_room_c":22.44,"temp_radiator_c":25.51,"timestamp":"1111-11-11T11:11:11Z"}'
+            fields   = 'Room;11776622;131;2020-02-08;1026;2019-12-31;22.44;25.51;1111-11-11 11:11.11'
+        }
+        test {
+            args     = 'Rooom fhkvdataiii 11111234 NOKEY'
+            telegram = 33446850341211119480A2_0F9F292D005024040011BD08380904000000070000000000000000000000000001000000000003140E
+            json     = '{"_":"telegram","media":"heat cost allocator","driver":"fhkvdataiii","name":"Rooom","id":"11111234","current_hca":4,"current_date":"2021-02-05","previous_hca":45,"previous_date":"2020-12-31","temp_room_c":22.37,"temp_radiator_c":23.6,"timestamp":"1111-11-11T11:11:11Z"}'
+            fields   = 'Rooom;11111234;4;2021-02-05;45;2020-12-31;22.37;23.6;1111-11-11 11:11.11'
+        }
+        test {
+            args     = 'Version01 fhkvdataiii 41059605 NOKEY'
+            comment  = 'Test another, perhaps older, telegram which starts with 01 instead of 11.'
+            telegram = 32446850059605416980A0_019F334805400CFE029808B1080000000000060F4F3467AEA9A88D7B8D503E000000000000000000
+            json     = '{"_": "telegram","current_date": "2026-06-04","current_hca": 766,"id": "41059605","media": "heat cost allocator","driver": "fhkvdataiii","name": "Version01","previous_date": "2025-12-31","previous_hca": 1352,"temp_radiator_c": 22.25,"temp_room_c": 22,"timestamp": "1111-11-11T11:11:11Z"}'
+            fields   = 'Version01;41059605;766;2026-06-04;1352;2025-12-31;22;22.25;1111-11-11 11:11.11'
+        }
+        test {
+            args     = 'Room fhkvdataiii 12128782 NOKEY'
+            comment  = 'Version 0x94 proprietary telegram, the same meter also sends the OMS 0x08 telegram below.'
+            telegram = 33446850828712129480A2_0F9F3344042016960091E807DC0701030003030000000000000000010001020F05161635162A1B4018
+            json     = '{"_":"telegram","media":"heat cost allocator","driver":"fhkvdataiii","name":"Room","id":"12128782","current_date":"2026-11-02","current_hca":150,"previous_date":"2025-12-31","previous_hca":1092,"temp_radiator_c":20.12,"temp_room_c":20.24,"timestamp":"1111-11-11T11:11:11Z"}'
+            fields   = 'Room;12128782;150;2026-11-02;1092;2025-12-31;20.24;20.12;1111-11-11 11:11.11'
+        }
+        // Something is not quite right here: TCH,94,08 is auto detected as fhkvdataiv,
+        // but this test decodes it with fhkvdataiii, hence auto_detect = false.
+        test {
+            args        = 'Room fhkvdataiii 12128782 NOKEY'
+            auto_detect = false
+            comment     = 'OMS 0x08 telegram of the same meter: separate fields, current_hca is not overwritten and no dates are calculated from missing records.'
+            telegram    = 294468508287121294087A538810252F2F_036E980000436E440400426C3F3C0F0F0AE388E05EADCD9772
+            json        = '{"_":"telegram","media":"heat cost allocation","driver":"fhkvdataiii","name":"Room","id":"12128782","consumption_at_set_date_hca":1092,"current_date":null,"current_consumption_hca":152,"previous_date":null,"set_date":"2025-12-31","timestamp":"1111-11-11T11:11:11Z"}'
+            fields      = 'Room;12128782;null;null;null;null;null;null;1111-11-11 11:11.11'
+        }
+    }
+}
+)XMQSOURCE"; }
+} // namespace xmq_runtime
