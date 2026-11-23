@@ -112,6 +112,8 @@ jobs:
         run: python experimental/xmq-runtime-stage-a/tools/test_shadow_staging_allowlist.py
       - name: Verify privacy-safe local XMQ shadow log summarizer with synthetic fixtures
         run: python experimental/xmq-runtime-stage-a/tools/test_summarize_shadow_log.py
+      - name: Verify local Stage 6 timing aggregation with synthetic fixtures
+        run: python experimental/xmq-runtime-stage-a/tools/test_summarize_stage6_timing.py
       - name: Check confidential local canary preflight regression fixtures
         shell: bash
         run: |
