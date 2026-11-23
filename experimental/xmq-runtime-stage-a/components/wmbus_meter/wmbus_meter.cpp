@@ -105,9 +105,12 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     }
   };
   if (probe_requested) snapshot(before);
-
+  // Stage 6: measure actual legacy parser time, only for selected XMQ meter.
+  const uint32_t stage6_legacy_started_us = probe_requested ? micros() : 0;
   const bool decoded = this->meter->handleTelegram(
       about, frame->data(), false, &adresses, &id_match, telegram.get());
+  const uint32_t stage6_legacy_us =
+      probe_requested ? micros() - stage6_legacy_started_us : 0;
 
   if (decoded && probe_requested) {
     snapshot(legacy);
@@ -175,9 +178,21 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
       !telegram->decryption_failed && !telegram->discard;
   const std::vector<uint8_t> *stage4_dll =
       clear_t1_attested ? &frame->data() : nullptr;
+  const uint32_t stage6_observer_started_us = probe_requested ? micros() : 0;
   xmq_shadow_probe::observe_legacy_telegram(
       this, *telegram, decoded, shadow_driver.c_str(), legacy,
       stage4_dll, clear_t1_attested);
+  if (probe_requested) {
+    const uint32_t stage6_observer_us = micros() - stage6_observer_started_us;
+    const uint32_t stage6_snapshot_us =
+        stage6_observer_started_us - stage6_legacy_started_us - stage6_legacy_us;
+    ESP_LOGI("xmq_shadow_probe",
+             "XMQ_STAGE6_PIPELINE legacy_decode_us=%u snapshot_after_us=%u "
+             "observer_us=%u selected_meter_only=1",
+             static_cast<unsigned>(stage6_legacy_us),
+             static_cast<unsigned>(stage6_snapshot_us),
+             static_cast<unsigned>(stage6_observer_us));
+  }
 
   if (id_match) {
     this->last_telegram = std::move(telegram);
@@ -187,7 +202,8 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
     const float xmq_target = this->xmq_target_m3_;
     const float xmq_total = this->xmq_total_m3_;
     this->xmq_frame_values_ready_ = false;
-    this->defer([this, xmq_ready, xmq_target, xmq_total]() {
+    this->defer([this, xmq_ready, xmq_target, xmq_total, probe_requested]() {
+      const uint32_t stage6_publish_started_us = probe_requested ? micros() : 0;
       // Only selected target/total getters inside this callback can read
       // the independently decoded XMQ pair; all other getters use legacy.
       this->xmq_target_m3_ = xmq_target;
@@ -195,6 +211,12 @@ void Meter::handle_frame(wmbus_radio::Frame *frame) {
       this->xmq_frame_values_ready_ = xmq_ready;
       this->in_telegram_publish_ = true;
       this->on_telegram_callback_manager();
+      if (probe_requested) {
+        ESP_LOGI("xmq_shadow_probe",
+                 "XMQ_STAGE6_PUBLISH callback_us=%u selected_meter_only=1 "
+                 "deferred=1",
+                 static_cast<unsigned>(micros() - stage6_publish_started_us));
+      }
       this->in_telegram_publish_ = false;
       this->xmq_frame_values_ready_ = false;
       this->last_telegram = nullptr;
