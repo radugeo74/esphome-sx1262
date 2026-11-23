@@ -250,6 +250,7 @@ void ShadowProbe::observe(const void *source_meter,
     xmq_runtime::XmqFrameResult stage1_output;
     const bool stage1_mkradio4 =
         target_meter_ != nullptr && name == "mkradio4";
+    const uint32_t stage1_started_us = micros();
     const auto disposition = diagnostic_.inspect(
         *registry_, snapshot.inner_mvt, snapshot.encoding,
         snapshot.payload, old, heap, true, name,
@@ -267,6 +268,15 @@ void ShadowProbe::observe(const void *source_meter,
             std::vector<std::string>{},
         stage1_mkradio4 ? &stage1_output : nullptr,
         stage4_reuse ? &stage4_projection : nullptr);
+    const uint32_t stage1_projection_us = micros() - stage1_started_us;
+    if (stage1_mkradio4) {
+      ESP_LOGI(TAG,
+               "XMQ_STAGE45_REUSE reused=%u stage1_compare_us=%u "
+               "security=legacy_attested fallback=legacy "
+               "selected_meter_only=1",
+               static_cast<unsigned>(stage4_reuse),
+               static_cast<unsigned>(stage1_projection_us));
+    }
     // Values come from XMQ's independent one-pass projection of the
     // verified legacy-decrypted application bytes, never from old values.
     // Reading them does NOT prove independent RF/AES or field setter provenance.
