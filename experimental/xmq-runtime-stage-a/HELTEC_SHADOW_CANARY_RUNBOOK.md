@@ -1081,3 +1081,33 @@ the comparator did not run;
 it is not an error on its own. `stage1_compare_us` includes the shadow
 comparator and readiness checks, not radio processing or HA publishing.
 Do not infer a reduction in radio loop time from a single sample.
+
+## Stage 6 timing-only experiment — no firmware rollout before CI
+
+The 2026-11-23 hardware capture (76) confirmed 4/4 selected mkradio4
+T1 frames with `reused=1 eligible=1 parity=match`, all 12 configured
+meters decoded, no BUSY/DIO1 failures, and one 55 ms SX126x loop
+warning. This observation does not prove which software phase caused
+the 55 ms warning.
+
+The selected meter now emits two additional bounded metrics:
+
+- `XMQ_STAGE6_PIPELINE legacy_decode_us=N snapshot_after_us=N observer_us=N selected_meter_only=1`
+  directly after synchronous legacy handleTelegram and the XMQ observer
+  callback. `legacy_decode_us` includes the legacy handleTelegram call
+  only. `snapshot_after_us` includes post-decode reading snapshots,
+  selected-field evidence and construction of the Stage 4 input, but
+  **excludes** initial pre-decode snapshots. `observer_us` includes
+  all XMQ observer work and its existing logs.
+- `XMQ_STAGE6_PUBLISH callback_us=N selected_meter_only=1 deferred=1`
+  is emitted from the deferred on_telegram callback; it measures
+  invocation of subscribed callbacks and state publication, not
+  delivery through the Home Assistant network/API or radio processing.
+
+All measurements are unsigned wrap-safe microseconds with no telegram
+payloads, IDs, AES keys or raw readings. Only the existing selected
+meter is instrumented, and the observer memory/budget gate is unchanged.
+The cloned legacy component remains byte-for-byte equivalent after
+removing the strictly instrumented sections and prior Stage 3 hook in
+the source contract. The existing Stage 5 hardware reference remains
+the rollback point. Compare multiple frames before optimizing.
