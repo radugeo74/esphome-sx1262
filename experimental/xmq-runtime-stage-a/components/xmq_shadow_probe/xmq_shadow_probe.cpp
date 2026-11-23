@@ -269,11 +269,19 @@ void ShadowProbe::observe(const void *source_meter,
         stage1_mkradio4 ? &stage1_output : nullptr,
         stage4_reuse ? &stage4_projection : nullptr);
     const uint32_t stage1_projection_us = micros() - stage1_started_us;
+    // An eligible Stage 4 projection is not actually consumed when the
+    // bounded shadow diagnostic is disabled or out of observation budget.
+    // Report actual reuse, not just eligibility.
+    const bool stage1_reused =
+        stage4_reuse &&
+        disposition != xmq_runtime::ShadowDisposition::Disabled &&
+        disposition != xmq_runtime::ShadowDisposition::BudgetExhausted;
     if (stage1_mkradio4) {
       ESP_LOGI(TAG,
-               "XMQ_STAGE45_REUSE reused=%u stage1_compare_us=%u "
+               "XMQ_STAGE45_REUSE reused=%u eligible=%u stage1_compare_us=%u "
                "security=legacy_attested fallback=legacy "
                "selected_meter_only=1",
+               static_cast<unsigned>(stage1_reused),
                static_cast<unsigned>(stage4_reuse),
                static_cast<unsigned>(stage1_projection_us));
     }
