@@ -100,6 +100,44 @@ int main() {
             !mk4_ready.ready && mk4_xmq.numeric.empty(),
             "Stage 1 stale XMQ values retained after invalid telegram");
 
+    // Stage 4/5 reuse: the caller has separately checked exact raw-T1
+    // application bytes, MVT, encoding and legacy parity. The shadow
+    // comparator must still apply its own expected-field contract.
+    const auto preprojected = project_verified_application(
+        mk4_registry, {"TCH",0x95,0x62},
+        ApplicationEncoding::OriginalIxml, mk4_payload, "mkradio4");
+    ShadowDiagnostic reuse_probe(3, 0.051);
+    reuse_probe.set_enabled(true);
+    ShadowReference reuse_reference;
+    reuse_reference.numeric={{"target_m3",0.1},{"total_m3",0.4}};
+    PrimaryReadiness reused_ready;
+    XmqFrameResult reused_output;
+    require(reuse_probe.inspect(
+                mk4_registry, {"TCH",0x95,0x62},
+                ApplicationEncoding::OriginalIxml, mk4_payload, reuse_reference,
+                160000,true,"mkradio4",{"target_m3","total_m3"},
+                &reused_ready,{},&reused_output,&preprojected)
+                == ShadowDisposition::Match &&
+            reused_ready.ready && reused_output.driver=="mkradio4" &&
+            reused_output.numeric.size()==2,
+            "preprojection reuse rejected a fully matched MK4 frame");
+    reuse_reference.numeric["total_m3"] = 9.4;
+    require(reuse_probe.inspect(
+                mk4_registry, {"TCH",0x95,0x62},
+                ApplicationEncoding::OriginalIxml, mk4_payload, reuse_reference,
+                160000,true,"mkradio4",{"target_m3","total_m3"},
+                &reused_ready,{},&reused_output,&preprojected)
+                == ShadowDisposition::Difference,
+            "preprojection reuse concealed legacy mismatch");
+    reuse_reference.numeric.erase("total_m3");
+    require(reuse_probe.inspect(
+                mk4_registry, {"TCH",0x95,0x62},
+                ApplicationEncoding::OriginalIxml, mk4_payload, reuse_reference,
+                160000,true,"mkradio4",{"target_m3","total_m3"},
+                &reused_ready,{},&reused_output,&preprojected)
+                == ShadowDisposition::IncompleteReference,
+            "preprojection reuse accepted incomplete legacy reference");
+
     // A caller that provides no reference fields must never report MATCH.
     // Zero comparisons are not independent evidence of parser parity.
     ShadowReference empty_reference;
