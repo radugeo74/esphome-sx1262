@@ -44,9 +44,23 @@ stage3_defer_segment=clone[stage3_defer_start:stage3_defer_end]
 assert "const bool xmq_ready = this->xmq_frame_values_ready_;" in stage3_defer_segment
 assert "const float xmq_target = this->xmq_target_m3_;" in stage3_defer_segment
 assert "const float xmq_total = this->xmq_total_m3_;" in stage3_defer_segment
-assert "this->defer([this, xmq_ready, xmq_target, xmq_total]()" in stage3_defer_segment
+assert "this->defer([this, xmq_ready, xmq_target, xmq_total, probe_requested]()" in stage3_defer_segment
+assert "stage6_publish_started_us = probe_requested ? micros() : 0;" in stage3_defer_segment
 assert "this->in_telegram_publish_ = true;" in stage3_defer_segment
 clone=clone[:stage3_defer_start]+"    this->defer([this]() {\n"+clone[stage3_defer_end:]
+# Remove Stage 6 timing-only log from the deferred callback before comparing
+# with the unmodified legacy baseline. It must not alter callback semantics.
+stage6_callback_timing=(
+    '      if (probe_requested) {\n'
+    '        ESP_LOGI("xmq_shadow_probe",\n'
+    '                 "XMQ_STAGE6_PUBLISH callback_us=%u selected_meter_only=1 "\n'
+    '                 "deferred=1",\n'
+    '                 static_cast<unsigned>(micros() - stage6_publish_started_us));\n'
+    '      }\n'
+)
+assert stage6_callback_timing in clone
+clone=clone.replace(stage6_callback_timing,"")
+
 clone=clone.replace(
     "      this->in_telegram_publish_ = false;\n"
     "      this->xmq_frame_values_ready_ = false;\n", "")
@@ -79,6 +93,12 @@ assert "frame->link_mode() == LinkMode::T1" in observer
 assert "telegram->tpl_sec_mode == TPLSecurityMode::NoSecurity" in observer
 assert "const std::vector<uint8_t> *stage4_dll" in observer
 assert "stage4_dll, clear_t1_attested);" in observer
+assert "stage6_legacy_started_us = probe_requested ? micros() : 0;" in observer
+assert "stage6_legacy_us =" in observer
+assert "stage6_observer_started_us = probe_requested ? micros() : 0;" in observer
+assert "XMQ_STAGE6_PIPELINE legacy_decode_us=%u snapshot_after_us=%u" in observer
+assert "observer_us=%u selected_meter_only=1" in observer
+assert "stage6_observer_started_us - stage6_legacy_started_us - stage6_legacy_us" in observer
 assert "xmq_shadow_probe::observe_legacy_telegram(" in observer
 assert "this, *telegram, decoded, shadow_driver.c_str(), legacy" in observer
 assert "target_meter: lab_water" in (root/"experimental/xmq-runtime-stage-a/heltec-xmq-shadow-enabled-lab.yaml").read_text()
