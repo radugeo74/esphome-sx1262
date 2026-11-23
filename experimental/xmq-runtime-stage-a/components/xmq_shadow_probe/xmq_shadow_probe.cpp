@@ -184,6 +184,8 @@ void ShadowProbe::observe(const void *source_meter,
     // CRC-stripped T1 DLL, not from legacy Telegram::frame. The existing
     // successfully decoded Telegram still ATTESTS clear security, so this
     // is NOT independent security/transport validation. Diagnostic only.
+    xmq_runtime::XmqFrameResult stage4_projection;
+    bool stage4_reuse = false;
     if (target_meter_ != nullptr && source_meter == target_meter_ &&
         name == "mkradio4" && decoded && verified_t1_dll != nullptr) {
       // Instrument only the selected meter. micros() subtraction is wrap-safe.
@@ -209,18 +211,27 @@ void ShadowProbe::observe(const void *source_meter,
       if (accepted && direct.inner_mvt.manufacturer == snapshot.inner_mvt.manufacturer &&
           direct.inner_mvt.version == snapshot.inner_mvt.version &&
           direct.inner_mvt.type == snapshot.inner_mvt.type) {
-        xmq_runtime::XmqFrameResult projected;
         ready = xmq_runtime::decode_primary_candidate(
             *registry_, direct.inner_mvt, direct.encoding, direct.payload,
-            "mkradio4", {"target_m3", "total_m3"}, {}, projected);
+            "mkradio4", {"target_m3", "total_m3"}, {}, stage4_projection);
         if (ready) {
-          const auto t = projected.numeric.find("target_m3");
-          const auto v = projected.numeric.find("total_m3");
-          parity = t != projected.numeric.end() && v != projected.numeric.end() &&
+          const auto t = stage4_projection.numeric.find("target_m3");
+          const auto v = stage4_projection.numeric.find("total_m3");
+          parity = t != stage4_projection.numeric.end() &&
+                   v != stage4_projection.numeric.end() &&
                    old_values.target_m3.present && old_values.total_m3.present &&
                    std::isfinite(t->second.value) && std::isfinite(v->second.value) &&
                    std::fabs(t->second.value - old_values.target_m3.value) <= 0.051 &&
                    std::fabs(v->second.value - old_values.total_m3.value) <= 0.051;
+          // Reuse ONLY after exact-byte identity with the already verified
+          // legacy application and matching MVT/encoding. If the transport
+          // supplied different data, Stage 1 retains its original XMQ parse.
+          stage4_reuse = parity &&
+                         direct.inner_mvt.manufacturer == snapshot.inner_mvt.manufacturer &&
+                         direct.inner_mvt.version == snapshot.inner_mvt.version &&
+                         direct.inner_mvt.type == snapshot.inner_mvt.type &&
+                         direct.encoding == snapshot.encoding &&
+                         direct.payload == snapshot.payload;
         }
       }
       const uint32_t stage45_us = micros() - stage45_started_us;
@@ -254,7 +265,8 @@ void ShadowProbe::observe(const void *source_meter,
         name == "mkradio4a" ?
             std::vector<std::string>{"target_date"} :
             std::vector<std::string>{},
-        stage1_mkradio4 ? &stage1_output : nullptr);
+        stage1_mkradio4 ? &stage1_output : nullptr,
+        stage4_reuse ? &stage4_projection : nullptr);
     // Values come from XMQ's independent one-pass projection of the
     // verified legacy-decrypted application bytes, never from old values.
     // Reading them does NOT prove independent RF/AES or field setter provenance.
