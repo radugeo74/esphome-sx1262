@@ -30,6 +30,7 @@ CONFIG_SCHEMA = cv.Schema({
 
 async def to_code(config):
     add_idf_sdkconfig_option("CONFIG_COMPILER_CXX_EXCEPTIONS", True)
+    cg.add_build_flag("-DXMQ_STANDALONE_ONLY=1")
     var = cg.new_Pvariable(config[CONF_ID])
     cg.add(var.set_meter(config[CONF_METER_ID], config[CONF_FAMILY] == "heat"))
     radio = await cg.get_variable(config[CONF_RADIO_ID])

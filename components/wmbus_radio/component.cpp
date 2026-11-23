@@ -91,6 +91,19 @@ void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr)
 #endif
 
 void Radio::dispatch_frame_(Frame &frame) {
+#ifdef XMQ_STANDALONE_ONLY
+  // Compile-time exclusive path: legacy Telegram::parseHeader and meter
+  // dispatch do NOT enter the XMQ firmware object code.
+  if (!this->direct_xmq_only_) {
+    ESP_LOGE(TAG, "XMQ standalone requires direct_xmq_only: true");
+    return;
+  }
+  for (auto &handler : this->handlers_) handler(&frame);
+  if (frame.handlers_count() == 0) {
+    ESP_LOGD(TAG, "XMQ-only frame not claimed");
+  }
+  return;
+#else
   if (this->direct_xmq_only_) {
     // Exclusive XMQ dispatch: no Telegram::parseHeader or legacy meter callback.
     for (auto &handler : this->handlers_) handler(&frame);
@@ -134,6 +147,7 @@ void Radio::dispatch_frame_(Frame &frame) {
   ESP_LOGW(TAG, "%s",
            (std::string{"https://wmbusmeters.org/analyze/"} +
             frame.as_hex()).c_str());
+#endif // XMQ_STANDALONE_ONLY
 }
 
 void Radio::sx127x_stream_callback_(void *context, const uint8_t *data,
