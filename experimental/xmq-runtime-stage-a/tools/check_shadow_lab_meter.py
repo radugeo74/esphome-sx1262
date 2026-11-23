@@ -131,6 +131,12 @@ assert "stage5_classify_us=%u stage45_total_us=%u" in probe
 assert "stage45_started_us = micros()" in probe
 assert "stage5_us = micros() - stage45_started_us" in probe
 assert "stage45_us = micros() - stage45_started_us" in probe
+assert "direct.payload == snapshot.payload" in probe
+assert "direct.encoding == snapshot.encoding" in probe
+assert "stage4_reuse = parity &&" in probe
+assert "stage4_reuse ? &stage4_projection : nullptr" in probe
+assert "decode_primary_candidate(" in probe
+assert "stage4_projection.numeric.find(" in probe
 assert "inspect_t1_envelope_without_legacy(" in probe
 assert "legacy_clear_attested=%u crypto_proven=0" in probe
 assert "independent_security=0 sensor_writes=0" in probe
