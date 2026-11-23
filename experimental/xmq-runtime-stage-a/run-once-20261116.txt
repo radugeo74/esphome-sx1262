@@ -271,3 +271,5 @@ Stage 1 2026-11-22 focused divergence visibility: ONE existing Stage A run check
 2026-11-22 Stage 5: classify raw CRC-verified T1 DLL proprietary MK4 envelope independent of legacy parser metadata; report structural evidence ONLY, never security proof. Add synthetic negative tests, byte-identical GitHub component bundle and single existing workflow; no HA changes/flash.
 
 2026-11-23 Stage 5 performance diagnosis: selected-meter only, wrap-safe micros timings appended to existing Stage 4 log; Stage 5 classification and combined Stage 4/5 latency, no changes to meter writes, radio or protocol security. One existing XMQ CI, no flash.
+
+2026-11-23 Stage 4/5 optimization: one direct-T1 XMQ projection reused by Stage 1 only with exact clear payload/MVT/encoding identity, complete field readiness and legacy parity. Otherwise existing independent projection; no radio/security/meter changes. Validate using one existing XMQ workflow.
