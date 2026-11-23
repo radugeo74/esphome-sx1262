@@ -119,7 +119,8 @@ int main() {
                 &reused_ready,{},&reused_output,&preprojected)
                 == ShadowDisposition::Match &&
             reused_ready.ready && reused_output.driver=="mkradio4" &&
-            reused_output.numeric.size()==2,
+            reused_output.numeric.count("target_m3")==1 &&
+            reused_output.numeric.count("total_m3")==1,
             "preprojection reuse rejected a fully matched MK4 frame");
     reuse_reference.numeric["total_m3"] = 9.4;
     require(reuse_probe.inspect(
