@@ -127,6 +127,10 @@ assert "XMQ_STAGE2_MKRADIO4_TEST_PUBLISHED" in probe
 assert "XMQ_STAGE3_PRIMARY_ARMED" in probe
 assert "XMQ_STAGE4_T1_DIRECT_DIAGNOSTIC" in probe
 assert "XMQ_STAGE5_T1_SECURITY_EVIDENCE" in probe
+assert "stage5_classify_us=%u stage45_total_us=%u" in probe
+assert "stage45_started_us = micros()" in probe
+assert "stage5_us = micros() - stage45_started_us" in probe
+assert "stage45_us = micros() - stage45_started_us" in probe
 assert "inspect_t1_envelope_without_legacy(" in probe
 assert "legacy_clear_attested=%u crypto_proven=0" in probe
 assert "independent_security=0 sensor_writes=0" in probe
