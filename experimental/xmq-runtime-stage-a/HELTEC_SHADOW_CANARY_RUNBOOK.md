@@ -1019,3 +1019,26 @@ or numeric parity. The gate remains fail-closed and read-only; the
 working Stage 3/4 firmware should not be replaced before complete CI
 and reviewed physical rollout. This stage is **not** independent
 cryptographic/security verification of the proprietary format.
+
+## Stage 5 timing-only follow-up (unflashed source)
+
+2026-11-23 hardware log (1) showed selected T1/A MK4 Stage 5 structural
+candidate, Stage 4 `extracted=1 ready=1 parity=match`, and Stage 3
+`XMQ_STAGE3_PRIMARY_ARMED`; all 12 configured meters were heard. One
+ESPHome SX126x component-loop warning reported ~60 ms versus the 50 ms
+threshold. This warning **does not establish** that XMQ caused the delay.
+
+The follow-up instrumentation appends to the existing selected-meter Stage 4
+line (no extra log entry):
+`stage5_classify_us=N stage45_total_us=M`.
+These are diagnostic measurements, not an optimized implementation:
+- `stage5_classify_us` covers only the independent T1 envelope classifier;
+- `stage45_total_us` covers that classifier, Stage 5 log emission,
+  Stage 4 candidate extraction and its XMQ decode/parity, but excludes
+  the Stage 4 line emission and later Stage 1/2/3 projection and logs.
+- Clock arithmetic is unsigned and wrap-safe. No additional radio handling,
+  entity writes, meter IDs, telegrams or AES materials are logged.
+
+Compare several selected-meter frames before attributing any component
+loop warning to XMQ or proposing changes to the decoder. The already
+confirmed Stage 5 build at `9b4698ee` remains the rollback reference.
