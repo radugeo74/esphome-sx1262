@@ -277,3 +277,5 @@ Stage 1 2026-11-22 focused divergence visibility: ONE existing Stage A run check
 2026-11-23 selected-meter XMQ reuse telemetry: report stage4->stage1 actual reuse, compare duration, and fallback status; tests/source contracts updated. Single existing CI workflow, no hardware flash.
 
 2026-11-23 Stage45 instrumentation audit: log eligible vs actually reused projection, exclude exhausted observation budget; no changes to radio, decoder integrity, or HA writes; verify with existing XMQ Stage A CI only.
+
+2026-11-23 CI red #144 fix: shadow_diagnostic preprojection requires the two named numeric fields, not an exact count of output fields. Same single workflow.
