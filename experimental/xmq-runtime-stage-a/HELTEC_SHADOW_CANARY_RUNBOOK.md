@@ -1042,3 +1042,27 @@ These are diagnostic measurements, not an optimized implementation:
 Compare several selected-meter frames before attributing any component
 loop warning to XMQ or proposing changes to the decoder. The already
 confirmed Stage 5 build at `9b4698ee` remains the rollback reference.
+
+## Stage 4/5 one-pass XMQ reuse experiment (NOT FLASHED)
+
+Hardware log (74) showed one 2026-11-23 direct-T1 MK4 selected frame:
+`stage5_classify_us=9`, `stage45_total_us=8801`, Stage 4 parity=match,
+followed by an SX126x loop warning of 57 ms. The measured 8.801 ms is
+not all decoder time, as it includes Stage 5 log emission.
+
+In this experimental follow-up the same Stage 4 direct-T1 projection
+may feed Stage 1's comparator **only if** the T1-derived and
+legacy-verified applications have equal manufacturer/version/type,
+encoding and **byte-identical** clear application payloads, and the
+direct projection has full two-field readiness and parity with the legacy
+readings. Otherwise Stage 1 performs its original independent XMQ
+projection. The comparator still enforces its reference completeness,
+budget, numeric/date parity, and failure handling.
+
+This is a performance optimization, **not new security evidence**:
+radio CRC and legacy clear-security attestation are unchanged, and the
+direct raw payload is not itself cryptographically authenticated.
+One selected mkradio4 only; no radio, other meters, keys, or
+publish/fallback changes. Do not flash before complete CI. Compare
+Stage 4/5 microseconds and component-loop warnings on multiple real
+selected-meter frames before drawing a performance conclusion.
