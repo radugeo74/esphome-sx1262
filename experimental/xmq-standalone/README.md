@@ -1,26 +1,49 @@
-# XMQ standalone — isolated experimental branch
+# XMQ standalone — exclusive ESPHome SX1262 path
 
-This branch is a separate migration line. The working Heltec Stage 6
-firmware remains on `experimental/xmq-runtime-stage-a`.
+Branch: `experimental/xmq-standalone-no-legacy`, independent of the proven
+`experimental/xmq-runtime-stage-a` rollback path.
 
-## Scope implemented
-- Pure XMQ decoding contract for **7 heat + 5 water logical configurations**
-  through the two new-engine drivers, using public synthetic inputs.
-- No calls to legacy `handleTelegram()`, legacy Telegram snapshots, or
-  legacy sensor setters in the standalone processor.
-- **Fail closed** on unknown security or unverified ciphertext.
-- Host-only first gate; **no installable Heltec YAML or OTA image yet**.
+## Implemented
 
-## Remaining engineering gates before real 12-meter installation
-1. Native CRC-verified T1/C1 radio callback directly into independent XMQ
-   transport adapter, with **no legacy full Telegram decoder**.
-2. Independent TCH proprietary A0/A2 plaintext/security classification.
-   A2 structural signatures alone are **not** proof of unencrypted data.
-3. Independent OMS TPL security and AES handling for every encrypted
-   meter/mode actually present; prevent false verification.
-4. Bind **all 12 real meter IDs** privately to separate XMQ entities and
-   publish all existing HA fields, including RSSI; no secrets in Git.
-5. Verify actual frames from all 12 meters, no missed updates, bounded
-   loop time, heap stability, and OTA rollback.
+- Native SX1262 T1/C1 PHY and CRC verification unchanged.
+- Radio frame dispatch is **compiled without the legacy Telegram::parseHeader
+  path** when the XMQ-only component is enabled.
+- Independent XMQ driver registry and IXML application decoder for
+  `fhkvdataiii` (4 numeric fields) and `mkradio4` (2 numeric fields).
+- Twelve configured XMQ meter instances, independently routed by numeric
+  meter IDs, publishing their fields and RSSI as ESPHome sensors.
+- A single GitHub workflow compiles a complete Heltec ESPHome 2026.11.0
+  firmware with 12 **synthetic meter IDs**, Wi-Fi, encrypted API and OTA
+  credentials that are **fake and unusable for an actual device**.
+- Host fixtures validate independent XMQ extraction for 7 heat + 5 water
+  logical instances. No `wmbus_meter` or shadow observer in this fixture.
 
-No one should flash this branch while these gates are open.
+## Limitations and physical rollout gate
+
+- The proprietary Techem T1 A0/A2 **known clear-form** envelope is handled
+  only for documented versions and types. No independent cryptographic
+  authentication exists for proprietary frames; do not treat a byte prefix
+  as proof of authenticated cleartext.
+- C1 radio still receives and verifies CRC; **XMQ does not yet decode
+  encrypted C1 frames**, and no actual key should be committed.
+- All 12 physical meters have NOT yet been observed using this standalone
+  firmware. Full runtime operation is not established by a green CI build.
+- The public synthetic build fixture has no real meter IDs and MUST NOT
+  be installed on the user's Heltec. Keep the current Stage 6 firmware and
+  OTA rollback image before attempting an authorized private installation.
+- A private YAML using the 12 known IDs and 50 existing sensor names can
+  be maintained locally; it must never be pushed to this public repository.
+- Verify 12/12 live meters, state updates in Home Assistant, memory,
+  SX1262 loop warnings, failure handling and safe rollback before replacing
+  production firmware.
+
+## Configuration
+
+Use external components from this branch: `components` for
+`sx126x,wmbus_common,wmbus_radio`, and
+`experimental/xmq-standalone/components` for `xmq_meter`.
+Set `wmbus_radio.direct_xmq_only: true`, `native_stream_mode: T1_C1`.
+Use one `xmq_meter` entry per real meter, with `family: heat|water`,
+`meter_id`, `radio_id` and the existing named sensor fields.
+
+Never include `wmbus_meter:` or `xmq_shadow_probe:` in this firmware.

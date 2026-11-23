@@ -9,6 +9,16 @@ esp32:
     type: esp-idf
 logger:
   level: INFO
+# CI-only network credentials. This fixture must NEVER be flashed.
+wifi:
+  ssid: "XMQ-CI-ONLY"
+  password: "synthetic-build-only"
+api:
+  encryption:
+    key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+ota:
+  - platform: esphome
+    password: "synthetic-ota-build-only"
 external_components:
   - source:
       type: local
@@ -57,195 +67,145 @@ xmq_meter:
     family: heat
     current_hca:
       name: "CI XMQ Heat 1 current_hca"
-      internal: true
     previous_hca:
       name: "CI XMQ Heat 1 previous_hca"
-      internal: true
     temp_room_c:
       name: "CI XMQ Heat 1 temp_room_c"
-      internal: true
     temp_radiator_c:
       name: "CI XMQ Heat 1 temp_radiator_c"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Heat 1 rssi_dbm"
-      internal: true
   - id: xmq_heat_2
     radio_id: receiver
     meter_id: 0x12345001
     family: heat
     current_hca:
       name: "CI XMQ Heat 2 current_hca"
-      internal: true
     previous_hca:
       name: "CI XMQ Heat 2 previous_hca"
-      internal: true
     temp_room_c:
       name: "CI XMQ Heat 2 temp_room_c"
-      internal: true
     temp_radiator_c:
       name: "CI XMQ Heat 2 temp_radiator_c"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Heat 2 rssi_dbm"
-      internal: true
   - id: xmq_heat_3
     radio_id: receiver
     meter_id: 0x12345002
     family: heat
     current_hca:
       name: "CI XMQ Heat 3 current_hca"
-      internal: true
     previous_hca:
       name: "CI XMQ Heat 3 previous_hca"
-      internal: true
     temp_room_c:
       name: "CI XMQ Heat 3 temp_room_c"
-      internal: true
     temp_radiator_c:
       name: "CI XMQ Heat 3 temp_radiator_c"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Heat 3 rssi_dbm"
-      internal: true
   - id: xmq_heat_4
     radio_id: receiver
     meter_id: 0x12345003
     family: heat
     current_hca:
       name: "CI XMQ Heat 4 current_hca"
-      internal: true
     previous_hca:
       name: "CI XMQ Heat 4 previous_hca"
-      internal: true
     temp_room_c:
       name: "CI XMQ Heat 4 temp_room_c"
-      internal: true
     temp_radiator_c:
       name: "CI XMQ Heat 4 temp_radiator_c"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Heat 4 rssi_dbm"
-      internal: true
   - id: xmq_heat_5
     radio_id: receiver
     meter_id: 0x12345004
     family: heat
     current_hca:
       name: "CI XMQ Heat 5 current_hca"
-      internal: true
     previous_hca:
       name: "CI XMQ Heat 5 previous_hca"
-      internal: true
     temp_room_c:
       name: "CI XMQ Heat 5 temp_room_c"
-      internal: true
     temp_radiator_c:
       name: "CI XMQ Heat 5 temp_radiator_c"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Heat 5 rssi_dbm"
-      internal: true
   - id: xmq_heat_6
     radio_id: receiver
     meter_id: 0x12345005
     family: heat
     current_hca:
       name: "CI XMQ Heat 6 current_hca"
-      internal: true
     previous_hca:
       name: "CI XMQ Heat 6 previous_hca"
-      internal: true
     temp_room_c:
       name: "CI XMQ Heat 6 temp_room_c"
-      internal: true
     temp_radiator_c:
       name: "CI XMQ Heat 6 temp_radiator_c"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Heat 6 rssi_dbm"
-      internal: true
   - id: xmq_heat_7
     radio_id: receiver
     meter_id: 0x12345006
     family: heat
     current_hca:
       name: "CI XMQ Heat 7 current_hca"
-      internal: true
     previous_hca:
       name: "CI XMQ Heat 7 previous_hca"
-      internal: true
     temp_room_c:
       name: "CI XMQ Heat 7 temp_room_c"
-      internal: true
     temp_radiator_c:
       name: "CI XMQ Heat 7 temp_radiator_c"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Heat 7 rssi_dbm"
-      internal: true
   - id: xmq_water_8
     radio_id: receiver
     meter_id: 0x12345007
     family: water
     target_m3:
       name: "CI XMQ Water 8 target_m3"
-      internal: true
     total_m3:
       name: "CI XMQ Water 8 total_m3"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Water 8 rssi_dbm"
-      internal: true
   - id: xmq_water_9
     radio_id: receiver
     meter_id: 0x12345008
     family: water
     target_m3:
       name: "CI XMQ Water 9 target_m3"
-      internal: true
     total_m3:
       name: "CI XMQ Water 9 total_m3"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Water 9 rssi_dbm"
-      internal: true
   - id: xmq_water_10
     radio_id: receiver
     meter_id: 0x12345009
     family: water
     target_m3:
       name: "CI XMQ Water 10 target_m3"
-      internal: true
     total_m3:
       name: "CI XMQ Water 10 total_m3"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Water 10 rssi_dbm"
-      internal: true
   - id: xmq_water_11
     radio_id: receiver
     meter_id: 0x1234500a
     family: water
     target_m3:
       name: "CI XMQ Water 11 target_m3"
-      internal: true
     total_m3:
       name: "CI XMQ Water 11 total_m3"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Water 11 rssi_dbm"
-      internal: true
   - id: xmq_water_12
     radio_id: receiver
     meter_id: 0x1234500b
     family: water
     target_m3:
       name: "CI XMQ Water 12 target_m3"
-      internal: true
     total_m3:
       name: "CI XMQ Water 12 total_m3"
-      internal: true
     rssi_dbm:
       name: "CI XMQ Water 12 rssi_dbm"
-      internal: true
