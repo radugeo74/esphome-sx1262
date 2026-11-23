@@ -91,6 +91,13 @@ void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr)
 #endif
 
 void Radio::dispatch_frame_(Frame &frame) {
+  if (this->direct_xmq_only_) {
+    // Exclusive XMQ dispatch: no Telegram::parseHeader or legacy meter callback.
+    for (auto &handler : this->handlers_) handler(&frame);
+    if (frame.handlers_count() == 0)
+      ESP_LOGD(TAG, "XMQ direct: frame not claimed (unknown meter or security)");
+    return;
+  }
   // Parse the validated frame header once for all meter subscriptions.
   // Preserve the original generic on_frame callbacks for every frame.
   Telegram header;

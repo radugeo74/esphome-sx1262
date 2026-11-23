@@ -29,6 +29,12 @@ jobs:
             -Iexperimental/xmq-runtime-stage-a/components/xmq_shadow_probe \
             "$dir/test_standalone_engine.cpp" -o /tmp/xmq-standalone-engine
           /tmp/xmq-standalone-engine
+      - name: Compile complete Heltec SX1262 XMQ-primary firmware with 12 synthetic meters
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check "esphome==2026.11.0"
+          esphome compile experimental/xmq-standalone/heltec-xmq-12-build.yaml
       - name: Assert independent processor excludes legacy decoder and HA writes
         shell: bash
         run: |

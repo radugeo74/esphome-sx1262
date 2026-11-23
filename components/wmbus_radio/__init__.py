@@ -25,6 +25,7 @@ CONF_NATIVE_STREAM_MODE = "native_stream_mode"
 CONF_NATIVE_PHY_DIAGNOSTICS = "native_phy_diagnostics"
 CONF_ON_FRAME = "on_frame"
 CONF_MARK_AS_HANDLED = "mark_as_handled"
+CONF_DIRECT_XMQ_ONLY = "direct_xmq_only"
 
 radio_ns = cg.esphome_ns.namespace("wmbus_radio")
 RadioComponent = radio_ns.class_("Radio", cg.Component)
@@ -51,6 +52,7 @@ NATIVE_SCHEMA = (
             cv.Optional(CONF_SX126X_ID): cv.use_id(sx126x.SX126x),
             cv.Optional(CONF_SX127X_ID): cv.use_id(sx127x.SX127x),
             cv.Optional(CONF_NATIVE_PHY_DIAGNOSTICS, default=False): cv.boolean,
+            cv.Optional(CONF_DIRECT_XMQ_ONLY, default=False): cv.boolean,
             cv.Optional(CONF_NATIVE_STREAM_MODE, default="T1"): cv.one_of(
                 "T1", "T1_C1", "T1_C1_B", upper=True
             ),
@@ -86,6 +88,7 @@ async def to_code(config):
         config[CONF_NATIVE_STREAM_MODE] != "T1"
     ))
     cg.add(var.set_native_phy_diagnostics(config[CONF_NATIVE_PHY_DIAGNOSTICS]))
+    cg.add(var.set_direct_xmq_only(config[CONF_DIRECT_XMQ_ONLY]))
     await cg.register_component(var, config)
 
     for conf in config.get(CONF_ON_FRAME, []):

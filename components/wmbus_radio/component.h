@@ -41,6 +41,7 @@ public:
   void set_native_t1_c1_b(bool enabled) { this->native_t1_c1_b_ = enabled; }
   void set_native_phy_diagnostics(bool enabled) { this->native_phy_diagnostics_ = enabled; }
 
+  void set_direct_xmq_only(bool enable) { this->direct_xmq_only_ = enable; }
   void setup() override;
   void loop() override;
 
@@ -64,6 +65,7 @@ protected:
   sx127x::SX127x *native_sx127x_{nullptr};
   bool native_t1_c1_b_{false};
   bool native_phy_diagnostics_{false};
+  bool direct_xmq_only_{false};
   uint32_t c1_a_verified_{0};
   uint32_t c1_b_verified_{0};
   uint32_t c1_crc_rejected_{0};
