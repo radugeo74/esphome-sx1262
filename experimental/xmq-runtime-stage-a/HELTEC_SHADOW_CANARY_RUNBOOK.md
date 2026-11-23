@@ -1066,3 +1066,14 @@ One selected mkradio4 only; no radio, other meters, keys, or
 publish/fallback changes. Do not flash before complete CI. Compare
 Stage 4/5 microseconds and component-loop warnings on multiple real
 selected-meter frames before drawing a performance conclusion.
+
+### Runtime evidence for Stage 4 -> Stage 1 projection reuse
+After this instrumented build passes CI, a selected `mkradio4` T1
+frame logs `XMQ_STAGE45_REUSE reused=N stage1_compare_us=M
+security=legacy_attested fallback=legacy selected_meter_only=1`.
+Here `reused=1` means the exact raw T1 application, MVT and encoding
+matched the legacy-verifiable snapshot, with full Stage 4 numeric parity.
+`reused=0` means the independent Stage 1 XMQ decode was retained;
+it is not an error on its own. `stage1_compare_us` includes the shadow
+comparator and readiness checks, not radio processing or HA publishing.
+Do not infer a reduction in radio loop time from a single sample.
