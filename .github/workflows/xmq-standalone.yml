@@ -62,6 +62,10 @@ jobs:
           assert "phy::strip_format_a(telegram)" in cpp
           assert "phy::strip_format_b(telegram)" in cpp
           assert "direct_xmq_only_" not in section
+          assert "https://wmbusmeters.org/analyze/%s" in section
+          assert "frame.as_hex()" in section
+          assert "frame.handlers_count()" in section
+          assert "this->analyzer_links_" in section
           assert '#if __has_include("esphome/components/sx127x/sx127x.h")' in h
           assert "#ifdef WMBUS_RADIO_HAS_SX127X" in cpp
           assert "void Radio::on_packet(" in cpp

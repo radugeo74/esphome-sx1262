@@ -95,7 +95,35 @@ void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr)
 // Do not reintroduce Telegram::parseHeader or legacy meter dispatch here.
 void Radio::dispatch_frame_(Frame &frame) {
   for (auto &handler : this->handlers_) handler(&frame);
-  if (!frame.handlers_count()) ESP_LOGD(TAG, "XMQ-only frame not claimed");
+  const bool handled = frame.handlers_count() != 0;
+  if (!handled) ESP_LOGD(TAG, "XMQ-only frame not claimed");
+
+  // Analyzer URLs are made from CRC-verified, CRC-stripped DLL bytes only.
+  // Publish no URL for invalid PHY frames. Never contact the website here.
+  if (this->analyzer_links_ == 0 || (this->analyzer_links_ == 1 && handled))
+    return;
+  const auto &data = frame.data();
+  if (data.size() < 11) return;
+
+  // One report per meter identity per minute. On a busy receiver, hundreds
+  // of foreign meters can transmit every minute; cap cache memory at 64 IDs.
+  uint32_t identity = 2166136261u;
+  for (size_t i = 1; i < 10; ++i) {
+    identity = (identity ^ data[i]) * 16777619u;
+  }
+  const uint32_t now = millis();
+  for (const auto &entry : this->analyzer_recent_) {
+    if (entry.id == identity && entry.used &&
+        uint32_t(now - entry.when) < 60000u)
+      return;
+  }
+  auto &entry = this->analyzer_recent_[this->analyzer_next_++ % this->analyzer_recent_.size()];
+  entry = {identity, now, true};
+  const std::string url_hex = frame.as_hex();
+  ESP_LOGI(TAG, "XMQ %s %s/%s RSSI=%d dBm analyzer: https://wmbusmeters.org/analyze/%s",
+           handled ? "decoded" : "unhandled",
+           frame.link_mode() == LinkMode::C1 ? "C1" : "T1",
+           frame.format().c_str(), int(frame.rssi()), url_hex.c_str());
 }
 
 void Radio::sx127x_stream_callback_(void *context, const uint8_t *data,

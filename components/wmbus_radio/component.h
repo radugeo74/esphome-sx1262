@@ -40,6 +40,8 @@ public:
 #endif
   void set_native_t1_c1_b(bool enabled) { this->native_t1_c1_b_ = enabled; }
   void set_native_phy_diagnostics(bool enabled) { this->native_phy_diagnostics_ = enabled; }
+  // 0 = off, 1 = unhandled only, 2 = all verified frames.
+  void set_analyzer_links(uint8_t mode) { this->analyzer_links_ = mode; }
 
   void set_direct_xmq_only(bool enable) { this->direct_xmq_only_ = enable; }
   void setup() override;
@@ -66,6 +68,10 @@ protected:
   bool native_t1_c1_b_{false};
   bool native_phy_diagnostics_{false};
   bool direct_xmq_only_{false}; // YAML API compatibility; XMQ-only dispatch is unconditional.
+  uint8_t analyzer_links_{1};
+  struct AnalyzerSeen { uint32_t id{0}; uint32_t when{0}; bool used{false}; };
+  std::array<AnalyzerSeen, 64> analyzer_recent_{};
+  size_t analyzer_next_{0};
   uint32_t c1_a_verified_{0};
   uint32_t c1_b_verified_{0};
   uint32_t c1_crc_rejected_{0};

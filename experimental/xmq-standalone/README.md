@@ -68,3 +68,21 @@ test includes an authentic CRC-verified T1/A telegram from Heltec log (80),
 CRC mutations, truncated frames, and generated format-B fixtures. SX126x and
 SX127x both retain PHY support. Common legacy link type declarations still
 remain for compatibility; full removal of wmbus_common is a separate step.
+
+
+### Wmbusmeters analyzer URLs in the ESPHome logs
+
+The radio can print a ready-to-open analyzer URL for a CRC-valid, CRC-stripped
+T1 or C1 telegram. It does not send network requests and does not use the
+legacy decoder. No URL is emitted for a PHY-invalid telegram. The URL contains
+raw meter identity/data; avoid sharing logs publicly without redaction.
+
+```yaml
+wmbus_radio:
+  # ... existing radio configuration ...
+  analyzer_links: unhandled  # default; options: off, unhandled, all
+```
+
+`unhandled` reports only frames not decoded by a configured XMQ meter;
+`all` also reports decoded frames. URLs are capped to one per radio meter
+identity in 60 seconds (64-entry fixed cache) to reduce log spam.
