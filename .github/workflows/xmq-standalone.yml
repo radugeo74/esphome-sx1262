@@ -66,6 +66,10 @@ jobs:
           assert "frame.as_hex()" in section
           assert "frame.handlers_count()" in section
           assert "this->analyzer_links_" in section
+          assert "if (!handled && this->frame_logging_)" in section
+          assert "if (this->frame_logging_) ESP_LOGD(TAG, \"T1 3-of-6 symbol rejected\")" in cpp
+          assert "if (this->frame_logging_)" in cpp
+          assert "cv.Optional(CONF_FRAME_LOGGING, default=False): cv.boolean" in Path("components/wmbus_radio/__init__.py").read_text()
           assert '#if __has_include("esphome/components/sx127x/sx127x.h")' in h
           assert "#ifdef WMBUS_RADIO_HAS_SX127X" in cpp
           assert "void Radio::on_packet(" in cpp

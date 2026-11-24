@@ -96,7 +96,7 @@ void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr)
 void Radio::dispatch_frame_(Frame &frame) {
   for (auto &handler : this->handlers_) handler(&frame);
   const bool handled = frame.handlers_count() != 0;
-  if (!handled) ESP_LOGD(TAG, "XMQ-only frame not claimed");
+  if (!handled && this->frame_logging_) ESP_LOGD(TAG, "XMQ-only frame not claimed");
 
   // Analyzer URLs are made from CRC-verified, CRC-stripped DLL bytes only.
   // Publish no URL for invalid PHY frames. Never contact the website here.
@@ -190,7 +190,7 @@ void Radio::decode_native_stream_(float rssi) {
                   (this->native_phy_[1] == 0xCD ||
                    this->native_phy_[1] == 0x3D);
   if (c1 && !this->native_t1_c1_b_) {
-    ESP_LOGD(TAG, "C1 rejected: T1-only source configured");
+    if (this->frame_logging_) ESP_LOGD(TAG, "C1 rejected: T1-only source configured");
     return;
   }
   const char *format = "A";
@@ -241,7 +241,7 @@ void Radio::decode_native_stream_(float rssi) {
     }
     if (format_b) ++this->c1_b_verified_;
     else ++this->c1_a_verified_;
-    if (this->native_phy_diagnostics_) {
+    if (this->native_phy_diagnostics_ && this->frame_logging_) {
       ESP_LOGI(TAG, "C1 PHY adapter verified A=%u B=%u crc_bad=%u len_bad=%u",
                static_cast<unsigned>(this->c1_a_verified_),
                static_cast<unsigned>(this->c1_b_verified_),
@@ -253,7 +253,7 @@ void Radio::decode_native_stream_(float rssi) {
                              this->native_phy_.begin() + n);
     const auto decoded = decode3of6(raw);
     if (!decoded || decoded->empty()) {
-      ESP_LOGD(TAG, "T1 3-of-6 symbol rejected");
+      if (this->frame_logging_) ESP_LOGD(TAG, "T1 3-of-6 symbol rejected");
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_SYMBOL);
 #endif
@@ -268,14 +268,14 @@ void Radio::decode_native_stream_(float rssi) {
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_LENGTH);
 #endif
-      ESP_LOGD(TAG, "T1 format A DLL length rejected");
+      if (this->frame_logging_) ESP_LOGD(TAG, "T1 format A DLL length rejected");
       return;
     }
     if (!phy::strip_format_a(telegram)) {
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
 #endif
-      ESP_LOGD(TAG, "T1 format A DLL CRC rejected");
+      if (this->frame_logging_) ESP_LOGD(TAG, "T1 format A DLL CRC rejected");
       return;
     }
   }
@@ -298,9 +298,10 @@ void Radio::decode_native_stream_(float rssi) {
     record_sx127x(sx127x::WmbusDecodeResult::T1_VERIFIED);
 #endif
   Frame frame(std::move(telegram), mode, signal, format);
-  ESP_LOGI(TAG, "Native %s verified %s/%s (%zu bytes, RSSI %d dBm)",
-           this->native_sx127x_ ? "SX127x" : "SX126x",
-           toString(mode), format, frame.data().size(), signal);
+  if (this->frame_logging_)
+    ESP_LOGI(TAG, "Native %s verified %s/%s (%zu bytes, RSSI %d dBm)",
+             this->native_sx127x_ ? "SX127x" : "SX126x",
+             toString(mode), format, frame.data().size(), signal);
   this->dispatch_frame_(frame);
 }
 

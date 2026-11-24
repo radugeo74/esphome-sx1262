@@ -23,6 +23,7 @@ CONF_SX126X_ID = "sx126x_id"
 CONF_SX127X_ID = "sx127x_id"
 CONF_NATIVE_STREAM_MODE = "native_stream_mode"
 CONF_NATIVE_PHY_DIAGNOSTICS = "native_phy_diagnostics"
+CONF_FRAME_LOGGING = "frame_logging"
 CONF_ON_FRAME = "on_frame"
 CONF_MARK_AS_HANDLED = "mark_as_handled"
 CONF_DIRECT_XMQ_ONLY = "direct_xmq_only"
@@ -53,6 +54,7 @@ NATIVE_SCHEMA = (
             cv.Optional(CONF_SX126X_ID): cv.use_id(sx126x.SX126x),
             cv.Optional(CONF_SX127X_ID): cv.use_id(sx127x.SX127x),
             cv.Optional(CONF_NATIVE_PHY_DIAGNOSTICS, default=False): cv.boolean,
+            cv.Optional(CONF_FRAME_LOGGING, default=False): cv.boolean,
             cv.Optional(CONF_DIRECT_XMQ_ONLY, default=False): cv.boolean,
             cv.Optional(CONF_ANALYZER_LINKS, default="unhandled"): cv.one_of(
                 "off", "unhandled", "all", lower=True
@@ -92,6 +94,7 @@ async def to_code(config):
         config[CONF_NATIVE_STREAM_MODE] != "T1"
     ))
     cg.add(var.set_native_phy_diagnostics(config[CONF_NATIVE_PHY_DIAGNOSTICS]))
+    cg.add(var.set_frame_logging(config[CONF_FRAME_LOGGING]))
     cg.add(var.set_direct_xmq_only(config[CONF_DIRECT_XMQ_ONLY]))
     cg.add(var.set_analyzer_links({"off": 0, "unhandled": 1, "all": 2}[config[CONF_ANALYZER_LINKS]]))
     await cg.register_component(var, config)
