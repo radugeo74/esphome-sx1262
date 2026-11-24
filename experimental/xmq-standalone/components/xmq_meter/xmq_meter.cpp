@@ -12,7 +12,7 @@ void Meter::set_radio(wmbus_radio::Radio *radio) {
 }
 
 void Meter::handle_frame_(wmbus_radio::Frame *frame) {
-  if (frame == nullptr || frame->link_mode() != LinkMode::T1) return;
+  if (frame == nullptr || frame->link_mode() != wmbus_radio::LinkMode::T1) return;
   // The radio already checked PHY encoding and DLL CRC. No legacy Telegram
   // parsing/driver is allowed. Proprietary CI A0/A2 is admitted ONLY when
   // its exact known clear-form envelope and assigned ID match.

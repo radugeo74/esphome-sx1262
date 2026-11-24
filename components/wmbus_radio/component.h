@@ -9,7 +9,6 @@
 
 #include "esphome/core/component.h"
 
-#include "esphome/components/wmbus_common/wmbus.h"
 // ESPHome only copies selected radio components into the generated build.
 // Keep the opposite radio header optional in single-radio configurations.
 #if __has_include("esphome/components/sx127x/sx127x.h")

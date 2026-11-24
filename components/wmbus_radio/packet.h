@@ -6,11 +6,12 @@
 #include <string>
 #include <vector>
 
-#include "esphome/components/wmbus_common/wmbus.h"
 #include "esphome/core/helpers.h"
 
 namespace esphome {
 namespace wmbus_radio {
+// Standalone radio link modes; independent of legacy wmbus_common types.
+enum class LinkMode : uint8_t { T1, C1 };
 struct Frame {
 public:
   // Verified, CRC-stripped frame delivered by the patched native SX126x bridge.

@@ -38,7 +38,7 @@ std::string Frame::as_rtlwmbus() {
   auto output = std::string{};
   output.reserve(2 + 5 + 24 + 1 + 4 + 5 + 2 * this->data_.size() + 1);
 
-  output += linkModeName(this->link_mode_); // size 2
+  output += this->link_mode_ == LinkMode::C1 ? "C1" : "T1"; // size 2
   output += ";1;1;";                        // size 5
   output += time_buffer;                    // size 24
   output += ';';                            // size 1

@@ -325,7 +325,7 @@ void Radio::decode_native_stream_(float rssi) {
   if (this->frame_logging_)
     ESP_LOGI(TAG, "Native %s verified %s/%s (%zu bytes, RSSI %d dBm)",
              this->native_sx127x_ ? "SX127x" : "SX126x",
-             toString(mode), format, frame.data().size(), signal);
+             c1 ? "C1" : "T1", format, frame.data().size(), signal);
   this->dispatch_frame_(frame);
 }
 

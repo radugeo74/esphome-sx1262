@@ -23,7 +23,7 @@ external_components:
   - source:
       type: local
       path: ../../components
-    components: [sx126x, wmbus_common, wmbus_radio]
+    components: [sx126x, wmbus_radio]
   - source:
       type: local
       path: ./components
@@ -55,9 +55,6 @@ sx126x:
   dio1_pin: GPIO14
   rst_pin: GPIO12
   cs_pin: GPIO8
-wmbus_common:
-  radio_only: true
-
 wmbus_radio:
   id: receiver
   sx126x_id: native_radio

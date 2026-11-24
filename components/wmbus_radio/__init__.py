@@ -15,7 +15,6 @@ CODEOWNERS = ["@SzczepanLeon", "@kubasaw"]
 
 DEPENDENCIES = ["esp32"]
 
-AUTO_LOAD = ["wmbus_common"]
 
 MULTI_CONF = True
 
