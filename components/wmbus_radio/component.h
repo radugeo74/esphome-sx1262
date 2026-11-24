@@ -16,7 +16,6 @@
 #include "esphome/components/sx127x/sx127x.h"
 #define WMBUS_RADIO_HAS_SX127X 1
 #endif
-#include "esphome/components/wmbus_common/address.h"
 
 #include "packet.h"
 
@@ -50,9 +49,6 @@ public:
   void note_xmq_decoded(bool water) { ++this->stats_.xmq_decoded[water ? 1 : 0]; }
 
   void add_frame_handler(std::function<void(Frame *)> &&callback);
-  // Meter callbacks are routed only when DLL/TPL addresses match.
-  void add_meter_frame_handler(std::vector<AddressExpression> addresses,
-                               std::function<void(Frame *)> &&callback);
 
 protected:
   void dispatch_frame_(Frame &frame);
@@ -97,11 +93,6 @@ protected:
   size_t native_phy_size_{0};
   bool native_phy_active_{false};
 
-  struct MeterFrameHandler {
-    std::vector<AddressExpression> addresses;
-    std::function<void(Frame *)> callback;
-  };
-  std::vector<MeterFrameHandler> meter_handlers_;
   std::vector<std::function<void(Frame *)>> handlers_;
 };
 } // namespace wmbus_radio

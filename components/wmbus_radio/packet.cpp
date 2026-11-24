@@ -2,7 +2,6 @@
 
 #include <ctime>
 
-#include "esphome/components/wmbus_common/meters.h"
 #include "esphome/core/helpers.h"
 
 namespace esphome {

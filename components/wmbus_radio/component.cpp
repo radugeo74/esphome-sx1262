@@ -36,11 +36,6 @@ void Radio::setup() {
       this->mark_failed();
       return;
     }
-    // Ensure exact ID subscriptions are registered even if codegen called
-    // add_meter_frame_handler before set_native_sx127x.
-    for (const auto &handler : this->meter_handlers_)
-      for (const auto &address : handler.addresses)
-        this->native_sx127x_->register_recovery_meter_id(address.id);
     this->native_sx127x_->set_wmbus_diagnostics(this->native_phy_diagnostics_);
     this->native_sx127x_->set_wmbus_stream_callback(
         &Radio::sx127x_stream_callback_, this);
@@ -336,18 +331,6 @@ void Radio::decode_native_stream_(float rssi) {
 
 void Radio::add_frame_handler(std::function<void(Frame *)> &&callback) {
   this->handlers_.push_back(std::move(callback));
-}
-
-void Radio::add_meter_frame_handler(std::vector<AddressExpression> addresses,
-                                    std::function<void(Frame *)> &&callback) {
-#ifdef WMBUS_RADIO_HAS_SX127X
-  // Register exact configured BCD IDs for *comparison only*. The worker
-  // never calls meter handlers and cannot dispatch reconstructed telegrams.
-  if (this->native_sx127x_ != nullptr)
-    for (const auto &entry : addresses)
-      this->native_sx127x_->register_recovery_meter_id(entry.id);
-#endif
-  this->meter_handlers_.push_back({std::move(addresses), std::move(callback)});
 }
 
 } // namespace wmbus_radio
