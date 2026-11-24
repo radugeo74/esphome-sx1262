@@ -30,6 +30,14 @@ jobs:
             -Iexperimental/xmq-runtime-stage-a/components/xmq_shadow_probe \
             "$dir/test_standalone_engine.cpp" -o /tmp/xmq-standalone-engine
           /tmp/xmq-standalone-engine
+      - name: Validate independent EN13757 PHY CRC on captured T1 and generated B frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            experimental/xmq-standalone/test_phy_crc.cpp -o /tmp/xmq-phy-crc
+          /tmp/xmq-phy-crc
       - name: Compile complete Heltec SX1262 XMQ-primary firmware with 12 synthetic meters
         shell: bash
         run: |
@@ -48,6 +56,11 @@ jobs:
           assert "for (auto &handler : this->handlers_)" in section
           assert "Telegram" not in section.replace("Telegram::parseHeader", "bad") or "Telegram::parseHeader" not in section
           assert "meter_handlers_" not in section
+          assert "trimCRCsFrameFormatA(" not in cpp
+          assert "trimCRCsFrameFormatB(" not in cpp
+          assert "checkWMBusFrame(" not in cpp
+          assert "phy::strip_format_a(telegram)" in cpp
+          assert "phy::strip_format_b(telegram)" in cpp
           assert "direct_xmq_only_" not in section
           assert '#if __has_include("esphome/components/sx127x/sx127x.h")' in h
           assert "#ifdef WMBUS_RADIO_HAS_SX127X" in cpp

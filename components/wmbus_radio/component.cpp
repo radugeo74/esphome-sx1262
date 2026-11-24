@@ -9,6 +9,7 @@
 #define WMBUS_RADIO_HAS_SX126X 1
 #endif
 #include "decode3of6.h"
+#include "phy_crc.h"
 
 #define ASSERT(expr, expected, before_exit)                                    \
   {                                                                            \
@@ -196,8 +197,8 @@ void Radio::decode_native_stream_(float rssi) {
       }
       return;
     }
-    if (!(format_b ? trimCRCsFrameFormatB(telegram)
-                   : trimCRCsFrameFormatA(telegram))) {
+    if (!(format_b ? phy::strip_format_b(telegram)
+                   : phy::strip_format_a(telegram))) {
       ++this->c1_crc_rejected_;
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
@@ -254,17 +255,8 @@ void Radio::decode_native_stream_(float rssi) {
   if (telegram.size() < 11 ||
       static_cast<size_t>(telegram[0]) + 1 != telegram.size())
     return;
-  // The input has already passed the native DLL CRC check.
-  // Avoid its resync and length-adjustment behavior for untrusted input.
-  size_t frame_length = 0;
-  int payload_length = 0;
-  int payload_offset = 0;
-  const auto status = checkWMBusFrame(telegram, &frame_length,
-                                      &payload_length, &payload_offset,
-                                      false);
-  if (status != FrameStatus::FullFrame || payload_offset != 1 ||
-      frame_length != telegram.size())
-    return;
+  // Direct PHY length check; no legacy checkWMBusFrame and no resync/parser.
+  if (telegram[1] != 0x44 && telegram[1] != 0x46) return;
   // Saturate RSSI to the existing int8_t sensor API; do not substitute
   // premature average RSSI for Semtech's sync RSSI.
   const float bounded = std::max(-128.0f, std::min(0.0f, rssi));

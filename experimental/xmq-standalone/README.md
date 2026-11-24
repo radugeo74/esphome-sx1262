@@ -57,3 +57,14 @@ meter-address subscription fallback. XMQ Frame subscribers are the only
 consumers. SX127x optional radio support is retained: both its listener and PHY decode feedback remain available for compatible builds.
 Retained: T1 3-of-6 and the existing validated Format A/B DLL CRC bridge,
 whose replacement requires byte-for-byte real-frame regression tests.
+
+### Independent DLL PHY CRC (EN 13757)
+
+The radio path now uses `phy_crc.h` for format-A/B DLL CRC verification and
+stripping instead of `wmbus_common/wmbus.cc` `trimCRCsFrameFormatA/B`.
+It also performs an explicit frame-length check instead of calling
+`checkWMBusFrame` (the legacy resynchronization/parsing helper). A regression
+test includes an authentic CRC-verified T1/A telegram from Heltec log (80),
+CRC mutations, truncated frames, and generated format-B fixtures. SX126x and
+SX127x both retain PHY support. Common legacy link type declarations still
+remain for compatibility; full removal of wmbus_common is a separate step.
