@@ -243,7 +243,7 @@ void Radio::decode_native_stream_(float rssi) {
       ESP_LOGD(TAG, "T1 format A DLL length rejected");
       return;
     }
-    if (!trimCRCsFrameFormatA(telegram)) {
+    if (!phy::strip_format_a(telegram)) {
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
 #endif
