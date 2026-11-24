@@ -36,7 +36,7 @@ jobs:
           set -euo pipefail
           python -m pip install --disable-pip-version-check "esphome==2026.11.0"
           esphome compile experimental/xmq-standalone/heltec-xmq-12-build.yaml
-      - name: Verify no legacy dispatch and no SX127x dependency in XMQ-only branch
+      - name: Verify no legacy dispatch and preserve SX127x backend
         shell: bash
         run: |
           set -euo pipefail
@@ -49,7 +49,9 @@ jobs:
           assert "Telegram" not in section.replace("Telegram::parseHeader", "bad") or "Telegram::parseHeader" not in section
           assert "meter_handlers_" not in section
           assert "direct_xmq_only_" not in section
-          assert '#if !defined(XMQ_STANDALONE_ONLY) && __has_include("esphome/components/sx127x/sx127x.h")' in h
+          assert '#if __has_include("esphome/components/sx127x/sx127x.h")' in h
+          assert "#ifdef WMBUS_RADIO_HAS_SX127X" in cpp
+          assert "void Radio::on_packet(" in cpp
           print("XMQ_ONLY_LEGACY_DISPATCH_REMOVED")
           PY
       - name: Assert independent processor excludes legacy decoder and HA writes

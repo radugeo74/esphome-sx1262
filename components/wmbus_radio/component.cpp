@@ -27,7 +27,7 @@ namespace wmbus_radio {
 static const char *TAG = "wmbus";
 
 void Radio::setup() {
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
   if (this->native_sx127x_ != nullptr) {
     if (this->native_sx127x_->is_failed()) {
       ESP_LOGE(TAG, "Native SX127x unavailable; refusing to start wM-Bus receiver");
@@ -73,7 +73,7 @@ void Radio::loop() {
   // Native SX126x invokes frame callbacks from its own ESPHome loop.
 }
 
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
 void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) {
   // SX127x official packet mode supplies a bounded FIFO payload.
   // Feed it to the same strict T1/C1 PHY decoder as SX126x. No frame is
@@ -145,7 +145,7 @@ void Radio::native_stream_(const uint8_t *data, size_t length,
 }
 
 void Radio::decode_native_stream_(float rssi) {
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
   auto record_sx127x = [this](sx127x::WmbusDecodeResult event) {
     if (this->native_sx127x_ != nullptr)
       this->native_sx127x_->note_wmbus_decode_result(event);
@@ -182,7 +182,7 @@ void Radio::decode_native_stream_(float rssi) {
     const size_t expected = format_b ? l + 1 : l + 1 + 2 * blocks;
     if (telegram.size() != expected) {
       ++this->c1_length_rejected_;
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_LENGTH);
 #endif
       if (this->native_phy_diagnostics_ &&
@@ -199,7 +199,7 @@ void Radio::decode_native_stream_(float rssi) {
     if (!(format_b ? trimCRCsFrameFormatB(telegram)
                    : trimCRCsFrameFormatA(telegram))) {
       ++this->c1_crc_rejected_;
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
 #endif
       if (this->native_phy_diagnostics_ &&
@@ -225,7 +225,7 @@ void Radio::decode_native_stream_(float rssi) {
     const auto decoded = decode3of6(raw);
     if (!decoded || decoded->empty()) {
       ESP_LOGD(TAG, "T1 3-of-6 symbol rejected");
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_SYMBOL);
 #endif
       return;
@@ -236,14 +236,14 @@ void Radio::decode_native_stream_(float rssi) {
     const size_t blocks = 1 + (static_cast<size_t>(l) - 9 + 15) / 16;
     const size_t expected_decoded = static_cast<size_t>(l) + 1 + 2 * blocks;
     if (telegram.size() != expected_decoded) {
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_LENGTH);
 #endif
       ESP_LOGD(TAG, "T1 format A DLL length rejected");
       return;
     }
     if (!trimCRCsFrameFormatA(telegram)) {
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
 #endif
       ESP_LOGD(TAG, "T1 format A DLL CRC rejected");
@@ -269,7 +269,7 @@ void Radio::decode_native_stream_(float rssi) {
   // premature average RSSI for Semtech's sync RSSI.
   const float bounded = std::max(-128.0f, std::min(0.0f, rssi));
   const int8_t signal = static_cast<int8_t>(std::lround(bounded));
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
   if (c1)
     record_sx127x(format[0] == 'B'
                       ? sx127x::WmbusDecodeResult::C1B_VERIFIED
@@ -290,7 +290,7 @@ void Radio::add_frame_handler(std::function<void(Frame *)> &&callback) {
 
 void Radio::add_meter_frame_handler(std::vector<AddressExpression> addresses,
                                     std::function<void(Frame *)> &&callback) {
-#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
+#ifdef WMBUS_RADIO_HAS_SX127X
   // Register exact configured BCD IDs for *comparison only*. The worker
   // never calls meter handlers and cannot dispatch reconstructed telegrams.
   if (this->native_sx127x_ != nullptr)
