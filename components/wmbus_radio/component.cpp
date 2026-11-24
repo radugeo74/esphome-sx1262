@@ -28,6 +28,7 @@ namespace wmbus_radio {
 static const char *TAG = "wmbus";
 
 void Radio::setup() {
+  this->stats_last_report_ms_ = millis();
 #ifdef WMBUS_RADIO_HAS_SX127X
   if (this->native_sx127x_ != nullptr) {
     if (this->native_sx127x_->is_failed()) {
@@ -71,7 +72,29 @@ void Radio::setup() {
 }
 
 void Radio::loop() {
-  // Native SX126x invokes frame callbacks from its own ESPHome loop.
+  // One constant-size summary per minute; never log individual packets here.
+  if (!this->native_phy_diagnostics_) return;
+  const uint32_t now = millis();
+  if (uint32_t(now - this->stats_last_report_ms_) < 60000u) return;
+  this->stats_last_report_ms_ = now;
+  const PhyStats &s = this->stats_;
+  const PhyStats &p = this->stats_previous_;
+  ESP_LOGI(TAG,
+           "XMQ PHY 60s %s T1 valid=%u 3of6=%u length_bad=%u crc_bad=%u "
+           "C1/A=%u C1/B=%u C1_crc_bad=%u C1_length_bad=%u "
+           "XMQ heat=%u water=%u",
+           this->native_sx127x_ ? "SX127x" : "SX126x",
+           static_cast<unsigned>(s.t1_valid - p.t1_valid),
+           static_cast<unsigned>(s.t1_symbol_bad - p.t1_symbol_bad),
+           static_cast<unsigned>(s.t1_length_bad - p.t1_length_bad),
+           static_cast<unsigned>(s.t1_crc_bad - p.t1_crc_bad),
+           static_cast<unsigned>(s.c1_valid[0] - p.c1_valid[0]),
+           static_cast<unsigned>(s.c1_valid[1] - p.c1_valid[1]),
+           static_cast<unsigned>(s.c1_crc_bad - p.c1_crc_bad),
+           static_cast<unsigned>(s.c1_length_bad - p.c1_length_bad),
+           static_cast<unsigned>(s.xmq_decoded[0] - p.xmq_decoded[0]),
+           static_cast<unsigned>(s.xmq_decoded[1] - p.xmq_decoded[1]));
+  this->stats_previous_ = s;
 }
 
 #ifdef WMBUS_RADIO_HAS_SX127X
@@ -211,6 +234,7 @@ void Radio::decode_native_stream_(float rssi) {
     const size_t expected = format_b ? l + 1 : l + 1 + 2 * blocks;
     if (telegram.size() != expected) {
       ++this->c1_length_rejected_;
+      ++this->stats_.c1_length_bad;
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_LENGTH);
 #endif
@@ -228,6 +252,7 @@ void Radio::decode_native_stream_(float rssi) {
     if (!(format_b ? phy::strip_format_b(telegram)
                    : phy::strip_format_a(telegram))) {
       ++this->c1_crc_rejected_;
+      ++this->stats_.c1_crc_bad;
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
 #endif
@@ -239,8 +264,8 @@ void Radio::decode_native_stream_(float rssi) {
       }
       return;
     }
-    if (format_b) ++this->c1_b_verified_;
-    else ++this->c1_a_verified_;
+    if (format_b) { ++this->c1_b_verified_; ++this->stats_.c1_valid[1]; }
+    else { ++this->c1_a_verified_; ++this->stats_.c1_valid[0]; }
     if (this->native_phy_diagnostics_ && this->frame_logging_) {
       ESP_LOGI(TAG, "C1 PHY adapter verified A=%u B=%u crc_bad=%u len_bad=%u",
                static_cast<unsigned>(this->c1_a_verified_),
@@ -253,6 +278,7 @@ void Radio::decode_native_stream_(float rssi) {
                              this->native_phy_.begin() + n);
     const auto decoded = decode3of6(raw);
     if (!decoded || decoded->empty()) {
+      ++this->stats_.t1_symbol_bad;
       if (this->frame_logging_) ESP_LOGD(TAG, "T1 3-of-6 symbol rejected");
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_SYMBOL);
@@ -265,6 +291,7 @@ void Radio::decode_native_stream_(float rssi) {
     const size_t blocks = 1 + (static_cast<size_t>(l) - 9 + 15) / 16;
     const size_t expected_decoded = static_cast<size_t>(l) + 1 + 2 * blocks;
     if (telegram.size() != expected_decoded) {
+      ++this->stats_.t1_length_bad;
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_LENGTH);
 #endif
@@ -272,6 +299,7 @@ void Radio::decode_native_stream_(float rssi) {
       return;
     }
     if (!phy::strip_format_a(telegram)) {
+      ++this->stats_.t1_crc_bad;
 #ifdef WMBUS_RADIO_HAS_SX127X
       record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
 #endif
@@ -297,6 +325,7 @@ void Radio::decode_native_stream_(float rssi) {
   else
     record_sx127x(sx127x::WmbusDecodeResult::T1_VERIFIED);
 #endif
+  if (!c1) ++this->stats_.t1_valid;
   Frame frame(std::move(telegram), mode, signal, format);
   if (this->frame_logging_)
     ESP_LOGI(TAG, "Native %s verified %s/%s (%zu bytes, RSSI %d dBm)",

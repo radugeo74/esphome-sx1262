@@ -5,6 +5,7 @@ namespace esphome { namespace xmq_meter {
 static const char *const TAG = "xmq_meter";
 
 void Meter::set_radio(wmbus_radio::Radio *radio) {
+  this->radio_ = radio;
   radio->add_frame_handler([this](wmbus_radio::Frame *frame) {
     this->handle_frame_(frame);
   });
@@ -55,6 +56,7 @@ void Meter::handle_frame_(wmbus_radio::Frame *frame) {
     return;
   }
   frame->mark_as_handled();
+  if (this->radio_ != nullptr) this->radio_->note_xmq_decoded(water);
   const uint32_t elapsed = micros() - start;
   const float rssi = float(frame->rssi());
   this->defer([this, output = std::move(output), rssi]() {

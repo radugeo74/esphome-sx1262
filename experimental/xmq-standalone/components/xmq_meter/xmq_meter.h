@@ -21,6 +21,7 @@ class Meter : public Component {
   }
  protected:
   void handle_frame_(wmbus_radio::Frame *frame);
+  wmbus_radio::Radio *radio_{nullptr};
   uint32_t meter_id_{0};
   bool heat_{false};
   std::vector<std::pair<std::string, sensor::Sensor *>> sensors_;

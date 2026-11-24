@@ -69,6 +69,13 @@ jobs:
           assert "if (!handled && this->frame_logging_)" in section
           assert "if (this->frame_logging_) ESP_LOGD(TAG, \"T1 3-of-6 symbol rejected\")" in cpp
           assert "if (this->frame_logging_)" in cpp
+          assert "XMQ PHY 60s" in cpp
+          assert "stats_previous_ = s" in cpp
+          assert "++this->stats_.t1_symbol_bad" in cpp
+          assert "++this->stats_.t1_crc_bad" in cpp
+          assert "++this->stats_.c1_crc_bad" in cpp
+          meter_cpp = Path("experimental/xmq-standalone/components/xmq_meter/xmq_meter.cpp").read_text()
+          assert "note_xmq_decoded(water)" in meter_cpp
           assert "cv.Optional(CONF_FRAME_LOGGING, default=False): cv.boolean" in Path("components/wmbus_radio/__init__.py").read_text()
           assert '#if __has_include("esphome/components/sx127x/sx127x.h")' in h
           assert "#ifdef WMBUS_RADIO_HAS_SX127X" in cpp

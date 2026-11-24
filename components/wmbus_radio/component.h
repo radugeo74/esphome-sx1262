@@ -47,6 +47,7 @@ public:
   void set_direct_xmq_only(bool enable) { this->direct_xmq_only_ = enable; }
   void setup() override;
   void loop() override;
+  void note_xmq_decoded(bool water) { ++this->stats_.xmq_decoded[water ? 1 : 0]; }
 
   void add_frame_handler(std::function<void(Frame *)> &&callback);
   // Meter callbacks are routed only when DLL/TPL addresses match.
@@ -78,6 +79,19 @@ protected:
   uint32_t c1_b_verified_{0};
   uint32_t c1_crc_rejected_{0};
   uint32_t c1_length_rejected_{0};
+  struct PhyStats {
+    uint32_t t1_valid{0};
+    uint32_t t1_symbol_bad{0};
+    uint32_t t1_length_bad{0};
+    uint32_t t1_crc_bad{0};
+    uint32_t c1_valid[2]{0, 0};
+    uint32_t c1_crc_bad{0};
+    uint32_t c1_length_bad{0};
+    uint32_t xmq_decoded[2]{0, 0}; // heat, water
+  };
+  PhyStats stats_{};
+  PhyStats stats_previous_{};
+  uint32_t stats_last_report_ms_{0};
   static constexpr size_t MAX_NATIVE_PHY_SIZE = 384;
   std::array<uint8_t, MAX_NATIVE_PHY_SIZE> native_phy_{};
   size_t native_phy_size_{0};
