@@ -12,7 +12,7 @@
 #include "esphome/components/wmbus_common/wmbus.h"
 // ESPHome only copies selected radio components into the generated build.
 // Keep the opposite radio header optional in single-radio configurations.
-#if __has_include("esphome/components/sx127x/sx127x.h")
+#if !defined(XMQ_STANDALONE_ONLY) && __has_include("esphome/components/sx127x/sx127x.h")
 #include "esphome/components/sx127x/sx127x.h"
 #define WMBUS_RADIO_HAS_SX127X 1
 #endif
@@ -65,7 +65,7 @@ protected:
   sx127x::SX127x *native_sx127x_{nullptr};
   bool native_t1_c1_b_{false};
   bool native_phy_diagnostics_{false};
-  bool direct_xmq_only_{false};
+  bool direct_xmq_only_{false}; // YAML API compatibility; XMQ-only dispatch is unconditional.
   uint32_t c1_a_verified_{0};
   uint32_t c1_b_verified_{0};
   uint32_t c1_crc_rejected_{0};

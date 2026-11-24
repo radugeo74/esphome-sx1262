@@ -49,3 +49,11 @@ Use one `xmq_meter` entry per real meter, with `family: heat|water`,
 `meter_id`, `radio_id` and the existing named sensor fields.
 
 Never include `wmbus_meter:` or `xmq_shadow_probe:` in this firmware.
+
+## Cleanup: exclusive radio dispatch
+
+Standalone radio dispatch no longer contains a legacy parser branch or
+meter-address subscription fallback. XMQ Frame subscribers are the only
+consumers. SX127x optional headers are excluded under XMQ_STANDALONE_ONLY.
+Retained: T1 3-of-6 and the existing validated Format A/B DLL CRC bridge,
+whose replacement requires byte-for-byte real-frame regression tests.

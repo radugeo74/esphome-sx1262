@@ -27,7 +27,7 @@ namespace wmbus_radio {
 static const char *TAG = "wmbus";
 
 void Radio::setup() {
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
   if (this->native_sx127x_ != nullptr) {
     if (this->native_sx127x_->is_failed()) {
       ESP_LOGE(TAG, "Native SX127x unavailable; refusing to start wM-Bus receiver");
@@ -73,7 +73,7 @@ void Radio::loop() {
   // Native SX126x invokes frame callbacks from its own ESPHome loop.
 }
 
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
 void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr) {
   // SX127x official packet mode supplies a bounded FIFO payload.
   // Feed it to the same strict T1/C1 PHY decoder as SX126x. No frame is
@@ -90,62 +90,11 @@ void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr)
 }
 #endif
 
+// The standalone branch has exactly one application decoder: XMQ.
+// Do not reintroduce Telegram::parseHeader or legacy meter dispatch here.
 void Radio::dispatch_frame_(Frame &frame) {
-#ifdef XMQ_STANDALONE_ONLY
-  // This build contains no legacy decoder to fall back to. The compile-time
-  // contract has precedence over stale ESPHome generated config/cache:
-  // always route CRC-verified frames straight to the XMQ subscribers.
-  // A missing runtime boolean must never drop every frame silently.
   for (auto &handler : this->handlers_) handler(&frame);
-  if (frame.handlers_count() == 0) {
-    ESP_LOGD(TAG, "XMQ-only frame not claimed");
-  }
-  return;
-#else
-  if (this->direct_xmq_only_) {
-    // Exclusive XMQ dispatch: no Telegram::parseHeader or legacy meter callback.
-    for (auto &handler : this->handlers_) handler(&frame);
-    if (frame.handlers_count() == 0)
-      ESP_LOGD(TAG, "XMQ direct: frame not claimed (unknown meter or security)");
-    return;
-  }
-  // Parse the validated frame header once for all meter subscriptions.
-  // Preserve the original generic on_frame callbacks for every frame.
-  Telegram header;
-  const bool parsed = header.parseHeader(frame.data());
-  for (auto &handler : this->handlers_)
-    handler(&frame);
-
-  if (parsed && !header.addresses.empty()) {
-    for (auto &entry : this->meter_handlers_) {
-      bool wildcard = false;
-      if (doesTelegramMatchExpressions(header.addresses, entry.addresses, &wildcard))
-        entry.callback(&frame);
-    }
-  } else {
-    // Preserve previous meter behavior for a CRC-valid frame whose header
-    // cannot be parsed by the lightweight prefilter. Individual handlers
-    // still enforce their own mode and address checks.
-    for (auto &entry : this->meter_handlers_)
-      entry.callback(&frame);
-  }
-
-  if (frame.handlers_count()) {
-    ESP_LOGI(TAG, "Telegram handled by %u handlers",
-             static_cast<unsigned>(frame.handlers_count()));
-    return;
-  }
-
-  ESP_LOGW(TAG, "Telegram not handled by any handler");
-  if (!parsed || header.addresses.empty()) {
-    ESP_LOGW(TAG, "No valid meter address in unhandled frame");
-  } else {
-    ESP_LOGW(TAG, "Unhandled meter address: %s", header.addresses.back().id.c_str());
-  }
-  ESP_LOGW(TAG, "%s",
-           (std::string{"https://wmbusmeters.org/analyze/"} +
-            frame.as_hex()).c_str());
-#endif // XMQ_STANDALONE_ONLY
+  if (!frame.handlers_count()) ESP_LOGD(TAG, "XMQ-only frame not claimed");
 }
 
 void Radio::sx127x_stream_callback_(void *context, const uint8_t *data,
@@ -196,7 +145,7 @@ void Radio::native_stream_(const uint8_t *data, size_t length,
 }
 
 void Radio::decode_native_stream_(float rssi) {
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
   auto record_sx127x = [this](sx127x::WmbusDecodeResult event) {
     if (this->native_sx127x_ != nullptr)
       this->native_sx127x_->note_wmbus_decode_result(event);
@@ -233,7 +182,7 @@ void Radio::decode_native_stream_(float rssi) {
     const size_t expected = format_b ? l + 1 : l + 1 + 2 * blocks;
     if (telegram.size() != expected) {
       ++this->c1_length_rejected_;
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
       record_sx127x(sx127x::WmbusDecodeResult::BAD_LENGTH);
 #endif
       if (this->native_phy_diagnostics_ &&
@@ -250,7 +199,7 @@ void Radio::decode_native_stream_(float rssi) {
     if (!(format_b ? trimCRCsFrameFormatB(telegram)
                    : trimCRCsFrameFormatA(telegram))) {
       ++this->c1_crc_rejected_;
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
       record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
 #endif
       if (this->native_phy_diagnostics_ &&
@@ -276,7 +225,7 @@ void Radio::decode_native_stream_(float rssi) {
     const auto decoded = decode3of6(raw);
     if (!decoded || decoded->empty()) {
       ESP_LOGD(TAG, "T1 3-of-6 symbol rejected");
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
       record_sx127x(sx127x::WmbusDecodeResult::BAD_SYMBOL);
 #endif
       return;
@@ -287,14 +236,14 @@ void Radio::decode_native_stream_(float rssi) {
     const size_t blocks = 1 + (static_cast<size_t>(l) - 9 + 15) / 16;
     const size_t expected_decoded = static_cast<size_t>(l) + 1 + 2 * blocks;
     if (telegram.size() != expected_decoded) {
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
       record_sx127x(sx127x::WmbusDecodeResult::BAD_LENGTH);
 #endif
       ESP_LOGD(TAG, "T1 format A DLL length rejected");
       return;
     }
     if (!trimCRCsFrameFormatA(telegram)) {
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
       record_sx127x(sx127x::WmbusDecodeResult::BAD_CRC);
 #endif
       ESP_LOGD(TAG, "T1 format A DLL CRC rejected");
@@ -305,7 +254,7 @@ void Radio::decode_native_stream_(float rssi) {
   if (telegram.size() < 11 ||
       static_cast<size_t>(telegram[0]) + 1 != telegram.size())
     return;
-  // checkWMBusFrame only checks framing; CRC was already checked above.
+  // The input has already passed the native DLL CRC check.
   // Avoid its resync and length-adjustment behavior for untrusted input.
   size_t frame_length = 0;
   int payload_length = 0;
@@ -320,7 +269,7 @@ void Radio::decode_native_stream_(float rssi) {
   // premature average RSSI for Semtech's sync RSSI.
   const float bounded = std::max(-128.0f, std::min(0.0f, rssi));
   const int8_t signal = static_cast<int8_t>(std::lround(bounded));
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
   if (c1)
     record_sx127x(format[0] == 'B'
                       ? sx127x::WmbusDecodeResult::C1B_VERIFIED
@@ -341,7 +290,7 @@ void Radio::add_frame_handler(std::function<void(Frame *)> &&callback) {
 
 void Radio::add_meter_frame_handler(std::vector<AddressExpression> addresses,
                                     std::function<void(Frame *)> &&callback) {
-#ifdef WMBUS_RADIO_HAS_SX127X
+#if defined(WMBUS_RADIO_HAS_SX127X) && !defined(XMQ_STANDALONE_ONLY)
   // Register exact configured BCD IDs for *comparison only*. The worker
   // never calls meter handlers and cannot dispatch reconstructed telegrams.
   if (this->native_sx127x_ != nullptr)
