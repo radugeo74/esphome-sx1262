@@ -92,12 +92,10 @@ void Radio::on_packet(const std::vector<uint8_t> &packet, float rssi, float snr)
 
 void Radio::dispatch_frame_(Frame &frame) {
 #ifdef XMQ_STANDALONE_ONLY
-  // Compile-time exclusive path: legacy Telegram::parseHeader and meter
-  // dispatch do NOT enter the XMQ firmware object code.
-  if (!this->direct_xmq_only_) {
-    ESP_LOGE(TAG, "XMQ standalone requires direct_xmq_only: true");
-    return;
-  }
+  // This build contains no legacy decoder to fall back to. The compile-time
+  // contract has precedence over stale ESPHome generated config/cache:
+  // always route CRC-verified frames straight to the XMQ subscribers.
+  // A missing runtime boolean must never drop every frame silently.
   for (auto &handler : this->handlers_) handler(&frame);
   if (frame.handlers_count() == 0) {
     ESP_LOGD(TAG, "XMQ-only frame not claimed");
